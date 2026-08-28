@@ -41,8 +41,10 @@ file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
+site_url = "http://localhost:3666"
 additional_redirect_urls = [
+  "http://localhost:3666/auth/callback",
+  "http://localhost:3666/auth/confirm",
   "http://localhost:3000/auth/callback",
   "http://localhost:3000/auth/confirm",
   "http://localhost:3001/auth/confirm",

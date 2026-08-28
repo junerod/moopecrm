@@ -1,0 +1,14 @@
+# VPS compartilhada: Apache (ou outro proxy) já ocupa 80/443.
+# Publica o CRM na 3666 e NÃO sobe o Caddy do kit.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml \
+#     --env-file .env up -d app worker waha redis srh scheduler
+#
+# Não use `up -d` sem listar os serviços — isso tentaria o Caddy nas 80/443.
+services:
+  app:
+    ports:
+      - "3666:3000"
+
+  caddy:
+    profiles: ["caddy"]
