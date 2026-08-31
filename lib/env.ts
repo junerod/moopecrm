@@ -245,6 +245,15 @@ const schema = z.object({
   RESEND_FROM_EMAIL: z.string().optional().default(""),
 
   /**
+   * Mailserver da instalação (Locaweb por trás de um POST /enviar-email).
+   * Quando as três estão preenchidas, o CRM usa este caminho e NÃO a Resend.
+   * Vazio = desligado; instalação antiga sem estas chaves não quebra.
+   */
+  MAILSERVER_URL: z.string().optional().default(""),
+  MAILSERVER_API_KEY: z.string().optional().default(""),
+  MAILSERVER_FROM_EMAIL: z.string().optional().default(""),
+
+  /**
    * E-mail de suporte que a instalação mostra ao CLIENTE FINAL (tela de conta
    * suspensa, tela de cobrança).
    *

@@ -68,7 +68,9 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
   {
     segmento: "connect-nuvemshop",
     rotulo: "Sua loja",
-    existe: (ctx) => ctx.lojaLigada,
+    // A Nuvemshop some da cara do operador neste produto. O passo e o schema
+    // ficam, mas o wizard nunca oferece a tela — nem com NUVEMSHOP_ENABLED.
+    existe: () => false,
     cumprido: (s) => marcado(s.nuvemshop),
     pulado: (s) => foiPulado(s.nuvemshop),
   },

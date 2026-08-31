@@ -54,6 +54,89 @@ export const CONVERSAS_IGNORADAS = {
   groups: true,
 } as const;
 
+/**
+ * A loja do NOWEB é o que deixa LER conversa que já estava no aparelho.
+ *
+ * Sem ela, `GET /chats` devolve 400 e o CRM só conhece quem escrever DEPOIS
+ * do QR. Num escritório isso é o legado inteiro: cliente antigo some da
+ * Central no dia em que a conexão cai ou entra um número novo.
+ *
+ * `fullSync: false` pega ~3 meses. `true` chega perto de um ano e pesa
+ * (sincroniza como o desktop). O primeiro envio fica no recorte curto —
+ * quem precisa de mais reconecta depois de ligar o recorte maior.
+ */
+export const LOJA_NOWEB = { enabled: true, fullSync: false } as const;
+
+/** Teto da agenda. O default do WAHA (100) escondia o resto do aparelho. */
+export const CONTATOS_DA_AGENDA_TETO = 10_000;
+
+function chaveDeContatoDaLoja(item: unknown): string {
+  if (!item || typeof item !== "object") return JSON.stringify(item);
+  const o = item as Record<string, unknown>;
+  if (typeof o.number === "string" && o.number) return `n:${o.number}`;
+  if (typeof o.id === "string" && o.id) return `id:${o.id}`;
+  if (o.id && typeof o.id === "object") {
+    const ser = (o.id as { _serialized?: unknown })._serialized;
+    if (typeof ser === "string" && ser) return `id:${ser}`;
+  }
+  if (typeof o.chatId === "string" && o.chatId) return `id:${o.chatId}`;
+  return JSON.stringify(item);
+}
+
+/** A config que toda sessão nova já nasce com — ignore + loja. */
+export function configPadraoDaSessao(
+  atual?: Record<string, unknown> | null,
+): Record<string, unknown> {
+  const base = atual && typeof atual === "object" ? { ...atual } : {};
+  const nowebAtual =
+    typeof base.noweb === "object" && base.noweb !== null
+      ? { ...(base.noweb as Record<string, unknown>) }
+      : {};
+  return {
+    ...base,
+    ignore: CONVERSAS_IGNORADAS,
+    noweb: { ...nowebAtual, store: { ...LOJA_NOWEB } },
+  };
+}
+
+function ignoreConvergido(config: Record<string, unknown>): boolean {
+  return (
+    typeof config.ignore === "object" &&
+    config.ignore !== null &&
+    Object.entries(CONVERSAS_IGNORADAS).every(
+      ([k, v]) => (config.ignore as Record<string, unknown>)[k] === v,
+    )
+  );
+}
+
+function lojaConvergida(config: Record<string, unknown>): boolean {
+  const noweb = config.noweb;
+  if (!noweb || typeof noweb !== "object") return false;
+  const store = (noweb as Record<string, unknown>).store;
+  if (!store || typeof store !== "object") return false;
+  const s = store as Record<string, unknown>;
+  return s.enabled === LOJA_NOWEB.enabled && s.fullSync === LOJA_NOWEB.fullSync;
+}
+
+export function configDaSessaoJaConvergida(config: Record<string, unknown>): boolean {
+  return ignoreConvergido(config) && lojaConvergida(config);
+}
+
+/**
+ * A loja do aparelho ainda não está ligada — `GET /chats` devolve 400.
+ *
+ * Não é queda de rede: a sessão está de pé, só não guarda histórico. A
+ * correção é nascer (ou reconectar) COM a loja já ligada. Classe própria
+ * para a tela não dizer "WhatsApp caiu" quando o número está conectado.
+ */
+export class WahaLojaIndisponivel extends Error {
+  readonly status = 400;
+  constructor(detalhe: string) {
+    super(detalhe);
+    this.name = "WahaLojaIndisponivel";
+  }
+}
+
 export class WahaClient {
   constructor(
     private readonly baseUrl: string,
@@ -71,7 +154,7 @@ export class WahaClient {
     const createRes = await fetch(`${this.baseUrl}/api/sessions`, {
       method: "POST",
       headers: { "X-Api-Key": this.apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ name, config: { ignore: CONVERSAS_IGNORADAS } }),
+      body: JSON.stringify({ name, config: configPadraoDaSessao() }),
     });
     if (!createRes.ok && createRes.status !== 422 && createRes.status !== 409) {
       const body = await createRes.text().catch(() => "");
@@ -110,6 +193,17 @@ export class WahaClient {
    * Stop a session. Idempotent: 404 (unknown) / 422 / 409 (already stopped)
    * are treated as success so callers can compose reconnect = stop + start.
    */
+  /**
+   * Para e sobe de novo. Sem logout: as credenciais ficam, sem QR.
+   * A loja NOWEB só enche no (re)connect — PUT de config não pede a
+   * agenda de novo. Quem chama é o clique em Atualizar quando a loja
+   * veio com dezenas e o celular é antigo.
+   */
+  async reiniciarSessao(name: string): Promise<void> {
+    await this.stopSession(name);
+    await this.startSession(name);
+  }
+
   async stopSession(name: string): Promise<void> {
     const res = await fetch(
       `${this.baseUrl}/api/sessions/${encodeURIComponent(name)}/stop`,
@@ -199,7 +293,7 @@ export class WahaClient {
         return;
       }
 
-      const config = { ...sessao.config, ignore: CONVERSAS_IGNORADAS };
+      const config = configPadraoDaSessao(sessao.config);
       // Já está como queremos: não reiniciar a sessão à toa. Este caminho roda
       // em TODA reconexão, e um restart desnecessário por rodada seria pior que
       // o gasto que ele evita.
@@ -207,13 +301,7 @@ export class WahaClient {
       // à ORDEM das chaves, então o dia em que o WAHA devolver o mesmo objeto
       // com as chaves noutra sequência, esta guarda passa a dizer "mudou" e a
       // sessão reinicia a cada reconexão — sem que nada tenha mudado.
-      const jaConvergida =
-        typeof sessao.config.ignore === "object" &&
-        sessao.config.ignore !== null &&
-        Object.entries(CONVERSAS_IGNORADAS).every(
-          ([k, v]) => (sessao.config!.ignore as Record<string, unknown>)[k] === v,
-        );
-      if (jaConvergida) return;
+      if (configDaSessaoJaConvergida(sessao.config)) return;
 
       const res = await fetch(url, {
         method: "PUT",
@@ -428,6 +516,147 @@ export class WahaClient {
     }
     return res.json();
   }
+
+  /**
+   * Conversas que o aparelho já tem — só existe com a loja ligada.
+   *
+   * 400 aqui NÃO é "o WhatsApp caiu": é a loja desligada. Classe própria
+   * para a tela pedir um QR, e não um restart do container.
+   */
+  async listChats(session: string, limit = 200, offset = 0): Promise<unknown[]> {
+    const url =
+      `${this.baseUrl}/api/${encodeURIComponent(session)}/chats` +
+      `?limit=${Math.max(1, Math.min(limit, 500))}` +
+      `&offset=${Math.max(0, offset)}`;
+    const res = await fetch(url, { headers: { "X-Api-Key": this.apiKey } });
+    if (res.status === 400) {
+      const body = await res.text().catch(() => "");
+      throw new WahaLojaIndisponivel(body.slice(0, 200));
+    }
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`waha_chats_${res.status}: ${body.slice(0, 200)}`);
+    }
+    return listaDoCorpo(await res.json());
+  }
+
+  /**
+   * Agenda do aparelho — quem está salvo, mesmo sem conversa recente.
+   *
+   * ⚠️ `GET /api/contacts/all` SEM `limit` NÃO devolve a agenda inteira.
+   * A doc do WAHA (Plus/NOWEB) fixa o default em 100. Uma chamada só
+   * deixava o escritório com a primeira página e o botão "Atualizar"
+   * repetia os mesmos 100. 400 = loja desligada. 404 = cai no path
+   * legado `/api/{session}/contacts`.
+   */
+  async listContacts(session: string): Promise<unknown[]> {
+    // 100 = default (e teto prático) do WAHA. Pedir 200 e parar quando
+    // `lote.length < pagina` lia a primeira página e largava o resto.
+    const pagina = 100;
+    const teto = CONTATOS_DA_AGENDA_TETO;
+    const viaAll = await this.listarContatosPaginado(
+      (offset) =>
+        `${this.baseUrl}/api/contacts/all?session=${encodeURIComponent(session)}` +
+        `&limit=${pagina}&offset=${offset}&sortBy=id&sortOrder=asc`,
+      pagina,
+      teto,
+    );
+    if (viaAll !== null) return viaAll;
+
+    return (
+      (await this.listarContatosPaginado(
+        (offset) =>
+          `${this.baseUrl}/api/${encodeURIComponent(session)}/contacts` +
+          `?limit=${pagina}&offset=${offset}`,
+        pagina,
+        teto,
+      )) ?? []
+    );
+  }
+
+  /**
+   * `null` = a rota não existe (404). Array (mesmo vazio) = leu.
+   * Dedup por id: versão velha do WAHA ignora `limit` e devolve a
+   * agenda inteira em cada offset — sem isto virava loop + duplicata.
+   */
+  private async listarContatosPaginado(
+    urlDe: (offset: number) => string,
+    pagina: number,
+    teto: number,
+  ): Promise<unknown[] | null> {
+    const todos: unknown[] = [];
+    const vistos = new Set<string>();
+    let offset = 0;
+    while (offset < teto) {
+      const res = await fetch(urlDe(offset), { headers: { "X-Api-Key": this.apiKey } });
+      if (res.status === 400) {
+        const body = await res.text().catch(() => "");
+        throw new WahaLojaIndisponivel(body.slice(0, 200));
+      }
+      if (res.status === 404) return offset === 0 ? null : todos;
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`waha_contacts_${res.status}: ${body.slice(0, 200)}`);
+      }
+      const lote = listaDoCorpo(await res.json());
+      if (lote.length === 0) break;
+      let novos = 0;
+      for (const item of lote) {
+        const chave = chaveDeContatoDaLoja(item);
+        if (vistos.has(chave)) continue;
+        vistos.add(chave);
+        todos.push(item);
+        novos += 1;
+      }
+      // Avança pelo que VEIO. Se o WAHA capar em 100 e a gente pediu
+      // 200, somar `pagina` pulava gente no meio da agenda.
+      offset += lote.length;
+      if (novos === 0 || lote.length < pagina) break;
+    }
+    return todos;
+  }
+
+  /**
+   * Últimas mensagens de UM chat. `downloadMedia=false`: URL do CDN do
+   * WhatsApp expira; persistir mil mídias velhas no Storage da VPS (1 GB
+   * compartilhado com o resto) é o jeito mais barato de lotar o disco
+   * na primeira conexão.
+   */
+  async listChatMessages(
+    session: string,
+    chatId: string,
+    limit = 200,
+    offset = 0,
+  ): Promise<unknown[]> {
+    const url =
+      `${this.baseUrl}/api/${encodeURIComponent(session)}/chats/` +
+      `${encodeURIComponent(chatId)}/messages` +
+      `?limit=${Math.max(1, Math.min(limit, 200))}` +
+      `&offset=${Math.max(0, offset)}&downloadMedia=false`;
+    const res = await fetch(url, { headers: { "X-Api-Key": this.apiKey } });
+    if (res.status === 400) {
+      const body = await res.text().catch(() => "");
+      throw new WahaLojaIndisponivel(body.slice(0, 200));
+    }
+    if (res.status === 404) return [];
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`waha_msgs_${res.status}: ${body.slice(0, 200)}`);
+    }
+    return listaDoCorpo(await res.json());
+  }
+}
+
+/** GET de lista do WAHA às vezes vem crua, às vezes envelopada. */
+function listaDoCorpo(json: unknown): unknown[] {
+  if (Array.isArray(json)) return json;
+  if (json && typeof json === "object") {
+    const o = json as Record<string, unknown>;
+    for (const k of ["chats", "messages", "contacts", "data"]) {
+      if (Array.isArray(o[k])) return o[k] as unknown[];
+    }
+  }
+  return [];
 }
 
 /**

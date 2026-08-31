@@ -15726,6 +15726,113 @@ update public.calendar_event_types t
    and exists (select 1 from public.user_organizations u
                 where u.organization_id = t.organization_id and u.revoked_at is null);
 
+-- ---- historico do aparelho nao emite evento (migration 0196) ----
+--
+-- Mensagem trazida do aparelho (legado) NÃO é acontecimento novo. Sem esta
+-- guarda, cada conversa antiga vira `message.received` e a IA responde
+-- cliente de meses atrás no dia da conexão.
+create or replace function public.fn_emit_message_event() returns trigger
+    language plpgsql
+    set search_path to 'public', 'pg_temp'
+    as $$
+declare
+  v_event text;
+begin
+  if coalesce(new.metadata->>'historico', '') = 'true' then
+    return new;
+  end if;
+
+  if new.direction = 'inbound' then
+    v_event := 'message.received';
+  else
+    v_event := case new.status
+                 when 'sending' then 'message.sending'
+                 when 'sent' then 'message.sent'
+                 when 'failed' then 'message.failed'
+                 else 'message.outbound'
+               end;
+  end if;
+
+  perform public.fn_log_event(
+    new.organization_id, v_event,
+    jsonb_build_object(
+      'message_id', new.id, 'conversation_id', new.conversation_id,
+      'contact_id', new.contact_id, 'direction', new.direction,
+      'type', new.type, 'status', new.status, 'external_id', new.external_id,
+      'channel_session_id', new.channel_session_id,
+      'body_preview', left(new.body, 280)
+    )
+  );
+  return new;
+end$$;
+
+-- ---- conexao MOOPE (migration 0197) ----
+--
+-- Uma conexão por organização. inbound_key em hash; outbound cifrado
+-- (o CRM precisa do segredo para assinar HMAC de saída). Eventos
+-- inbound com unique (organization_id, external_id).
+create table if not exists public.moope_connections (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  kind text not null check (kind in ('locadora', 'juridico')),
+  partner_webhook_url text,
+  inbound_key_prefix text not null,
+  inbound_key_hash text not null,
+  outbound_secret_enc bytea,
+  status text not null default 'active' check (status in ('active', 'disabled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  created_by_user_id uuid,
+  unique (organization_id),
+  unique (inbound_key_hash)
+);
+
+create table if not exists public.moope_inbound_events (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  connection_id uuid not null references public.moope_connections(id) on delete cascade,
+  external_id text not null,
+  event_type text not null,
+  payload jsonb not null default '{}'::jsonb,
+  processed_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (organization_id, external_id)
+);
+
+create index if not exists idx_moope_inbound_events_org_created
+  on public.moope_inbound_events (organization_id, created_at desc);
+
+alter table public.moope_connections enable row level security;
+alter table public.moope_inbound_events enable row level security;
+
+drop policy if exists "tenant_isolation_moope_connections_all" on public.moope_connections;
+drop policy if exists "tenant_isolation_moope_connections_select" on public.moope_connections;
+create policy "tenant_isolation_moope_connections_select" on public.moope_connections
+  for select using (
+    organization_id in (select public.fn_user_org_ids())
+    or public.fn_is_platform_admin()
+  );
+
+drop policy if exists "tenant_isolation_moope_connections_write" on public.moope_connections;
+create policy "tenant_isolation_moope_connections_write" on public.moope_connections
+  for all using (
+    (organization_id in (select public.fn_user_org_ids())
+      and public.fn_role_at_least(organization_id, 'admin'))
+    or public.fn_is_platform_admin()
+  )
+  with check (
+    (organization_id in (select public.fn_user_org_ids())
+      and public.fn_role_at_least(organization_id, 'admin'))
+    or public.fn_is_platform_admin()
+  );
+
+drop policy if exists "tenant_isolation_moope_inbound_events_all" on public.moope_inbound_events;
+create policy "tenant_isolation_moope_inbound_events_all" on public.moope_inbound_events
+  for select using (
+    (organization_id in (select public.fn_user_org_ids()))
+    or public.fn_is_platform_admin()
+  );
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ ESTE BLOCO É, DE PROPÓSITO, O ÚLTIMO DO ARQUIVO. Apêndice novo entra ANTES

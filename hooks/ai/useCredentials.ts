@@ -19,7 +19,12 @@ export interface CredentialRow {
   api_key_last4: string | null;
   validated_at: string | null;
   validation_error: string | null;
-  models_available: number | null;
+  /**
+   * No banco é `text[]` (os ids). A tela nunca lista os nomes — quem interpola
+   * o array numa frase junta cem ids com vírgula e joga isso no toast. Contagem
+   * via `quantidadeDeModelos`.
+   */
+  models_available: string[] | number | null;
   is_active: boolean;
   created_by: string | null;
   created_at: string;
@@ -46,6 +51,15 @@ export function useCredentialsList(opts?: { initialData?: CredentialRow[] }) {
     },
     initialData: opts?.initialData,
   });
+}
+
+/** Conta sem nunca mostrar o nome do modelo. Array vira length; número fica. */
+export function quantidadeDeModelos(
+  models: CredentialRow["models_available"],
+): number | null {
+  if (typeof models === "number" && Number.isFinite(models)) return models;
+  if (Array.isArray(models)) return models.length;
+  return null;
 }
 
 export function credentialStatus(row: CredentialRow): "validated" | "validating" | "invalid" | "inactive" {

@@ -36,6 +36,14 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/legal/privacy")).toBe(true);
   });
 
+  it("libera as três portas do conector MOOPE, e só elas", () => {
+    expect(isPublicPath("/api/v1/integrations/moope/launch")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/events")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/entrar")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope")).toBe(false);
+    expect(isPublicPath("/api/v1/integrations/moope/launch/x")).toBe(false);
+  });
+
   it("e só esses dois: /legal não é um portão aberto", () => {
     // Entrada larga aqui é furo de auth em toda a aplicação, não só nesta tela.
     expect(isPublicPath("/legal")).toBe(false);

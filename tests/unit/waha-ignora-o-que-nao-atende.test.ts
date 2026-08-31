@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CONVERSAS_IGNORADAS, WahaClient } from "@/lib/waha/client";
+import { CONVERSAS_IGNORADAS, LOJA_NOWEB, WahaClient } from "@/lib/waha/client";
 
 /**
  * O CRM PAGAVA POR CONVERSA QUE ELE MESMO DESCARTA.
@@ -53,9 +53,12 @@ describe("a sessão nasce ignorando o que o CRM não atende", () => {
     espionar({});
     await new WahaClient("http://w", "k").startSession("s1");
     const criacao = chamadas.find((c) => c.url.endsWith("/api/sessions") && c.metodo === "POST");
-    expect((criacao?.corpo as { config?: { ignore?: unknown } })?.config?.ignore).toEqual({
+    const cfg = (criacao?.corpo as { config?: { ignore?: unknown; noweb?: { store?: unknown } } })
+      ?.config;
+    expect(cfg?.ignore).toEqual({
       status: true, broadcast: true, channels: true, groups: true,
     });
+    expect(cfg?.noweb?.store, "sessão nova sem loja nasce sem legado").toEqual(LOJA_NOWEB);
   });
 
   it("os estados são a categoria que mais pesava — não podem sair da lista", () => {
@@ -98,12 +101,28 @@ describe("sessão que JÁ existe é corrigida — sem levar a config junto", () 
     const cfg = (put?.corpo as { config?: Record<string, unknown> })?.config;
     expect(cfg?.webhooks, "o PUT apagou os webhooks da sessão").toEqual(WEBHOOKS);
     expect(cfg?.ignore).toEqual(CONVERSAS_IGNORADAS);
+    expect(cfg?.noweb, "o PUT não ligou a loja — legado continua invisível").toEqual({
+      store: LOJA_NOWEB,
+    });
+  });
+
+  it("sessão só com ignore ainda é reescrita — falta a loja", async () => {
+    const vistos = comSessao({ webhooks: WEBHOOKS, ignore: { ...CONVERSAS_IGNORADAS } });
+    await new WahaClient("http://w", "k").startSession("s1");
+    const put = vistos.find((v) => v.metodo === "PUT");
+    expect(put, "não ligou a loja numa sessão velha").toBeTruthy();
+    const cfg = (put?.corpo as { config?: { noweb?: { store?: unknown } } })?.config;
+    expect(cfg?.noweb?.store).toEqual(LOJA_NOWEB);
   });
 
   it("não reescreve quando já está como queremos", async () => {
     // Este caminho roda em TODA reconexão, e o PUT REINICIA a sessão. Um
     // restart por rodada seria pior que o gasto que ele evita.
-    const vistos = comSessao({ webhooks: WEBHOOKS, ignore: { ...CONVERSAS_IGNORADAS } });
+    const vistos = comSessao({
+      webhooks: WEBHOOKS,
+      ignore: { ...CONVERSAS_IGNORADAS },
+      noweb: { store: { ...LOJA_NOWEB } },
+    });
     await new WahaClient("http://w", "k").startSession("s1");
     expect(vistos.some((v) => v.metodo === "PUT"), "reiniciou a sessão à toa").toBe(false);
   });

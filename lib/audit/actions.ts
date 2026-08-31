@@ -175,6 +175,13 @@ export const AUDIT_ACTIONS = [
   "ai_agent.run_failed",
   "channel.connected",
   "channel.reconnected",
+  // Importação do legado do aparelho. Uma linha por rodada, não por mensagem —
+  // mil linhas de `message.received` no audit seria o mesmo defeito que o
+  // gatilho desta entrega existe para impedir no event_log.
+  "channel.historico_importado",
+  // Fio de UM contato, pedido no dossiê. Distinto do sync da Central, que
+  // só grava a lista e não toca o inbox.
+  "contact.conversa_importada",
   // Duas ações distintas de propósito: `deleted` apagou a linha (canal virgem),
   // `archived` só a escondeu porque conversas/mensagens ainda a referenciam.
   // A auditoria precisa distinguir o que sumiu do que continua no banco.
@@ -386,6 +393,12 @@ export const AUDIT_ACTIONS = [
   "agenda.appointment_created",
   "agenda.appointment_rescheduled",
   "agenda.appointment_cancelled",
+  "moope.connection_created",
+  "moope.connection_updated",
+  "moope.launch_issued",
+  "moope.event_received",
+  // Perfil do negócio trocado em Configurações (locadora, SaaS, advocacia…).
+  "org.perfil_aplicado",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

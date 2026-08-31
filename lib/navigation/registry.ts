@@ -399,14 +399,12 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     healthDot: true,
   },
   {
-    // Não tinha link nenhum no app inteiro: só se chegava digitando a URL.
-    href: "/app/integrations/nuvemshop",
-    label: "Nuvemshop",
-    description: "Conecte a loja para trazer pedidos e clientes para dentro do CRM.",
-    icon: Storefront,
+    href: "/app/integrations/moope",
+    label: "Integração MOOPE",
+    description:
+      "Chave e eventos para a frota ou o Facejus abrirem o CRM e mandarem cadastro.",
+    icon: PuzzlePiece,
     group: "canais",
-    // A página não filtra por papel, mas as Server Actions de conectar e
-    // desconectar exigem admin — mostrar a um viewer seria oferecer botão morto.
     minRole: "admin",
     sidebar: true,
   },
@@ -502,6 +500,17 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "organizacao",
     section: "Sua empresa",
     minRole: "admin",
+  },
+  {
+    href: "/app/settings/perfil",
+    label: "Perfil do negócio",
+    description: "O quadro padrão: locadora, venda do sistema, escritório, clínica…",
+    icon: Storefront,
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "admin",
+    // SEM `sidebar`: mesma razão da Marca — o hub e o ⌘K já acham; mais um
+    // item no menu estoura a dobra (e2e `navegacao.spec.ts`).
   },
   {
     href: "/app/settings/marca",

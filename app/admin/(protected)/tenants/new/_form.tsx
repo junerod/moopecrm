@@ -34,6 +34,9 @@ const formSchema = z.object({
   cnpj: z.string().optional().or(z.literal("")),
   plan: z.enum(["standard", "pro", "enterprise"]),
   owner_email: z.string().email("E-mail inválido"),
+  owner_password: z
+    .string()
+    .refine((v) => v.length === 0 || v.length >= 8, "Mínimo 8 caracteres, ou deixe vazio"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -85,6 +88,7 @@ export function NewTenantForm() {
       cnpj: "",
       plan: "standard",
       owner_email: "",
+      owner_password: "",
     },
   });
 
@@ -123,9 +127,25 @@ export function NewTenantForm() {
         cnpj: values.cnpj || undefined,
         plan: values.plan,
         owner_email: values.owner_email,
+        owner_password: values.owner_password || undefined,
       });
 
-      toast.success("Tenant criado com sucesso!");
+      const dono = result.data.owner;
+      if (dono && "erro" in dono && dono.erro) {
+        toast.error(`Tenant criado, mas o dono não: ${dono.erro}`);
+      } else if (dono?.emailEnviado) {
+        toast.success(
+          dono.senhaDefinidaAqui
+            ? "Tenant criado. A senha inicial foi enviada no e-mail do responsável."
+            : "Tenant criado. O responsável recebeu o e-mail para criar a senha.",
+        );
+      } else {
+        toast.success(
+          dono?.definirSenhaUrl
+            ? "Tenant criado. O e-mail não saiu — copie o link de senha na tela do tenant."
+            : "Tenant criado. Peça ao responsável para entrar com a senha combinada.",
+        );
+      }
       router.push(`/admin/tenants/${result.data.id}`);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -147,7 +167,9 @@ export function NewTenantForm() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Novo Tenant</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Cria um novo tenant com status <em>onboarding</em>.
+          Cria a empresa e o login do responsável. A senha inicial vai no
+          e-mail; se deixar a senha vazia, ele recebe um link para criar a
+          própria.
         </p>
       </div>
 
@@ -264,6 +286,21 @@ export function NewTenantForm() {
               />
               {errors.owner_email && (
                 <p className="text-xs text-error-fg">{errors.owner_email.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="owner_password">Senha inicial do responsável</Label>
+              <Input
+                id="owner_password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Vazio = ele cria a senha pelo e-mail"
+                {...register("owner_password")}
+                aria-invalid={!!errors.owner_password}
+              />
+              {errors.owner_password && (
+                <p className="text-xs text-error-fg">{errors.owner_password.message}</p>
               )}
             </div>
 

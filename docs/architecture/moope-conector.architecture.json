@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Conector MOOPE — um protocolo, dois produtos",
+    "subtitle": "o CRM atende; a frota e o Facejus continuam donos do cadastro",
+    "output": "moope-conector.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "parceiro", "label": "Frota ou Facejus" },
+    { "id": "humano", "label": "O que o operador vê" },
+    { "id": "app", "label": "App" },
+    { "id": "banco", "label": "Banco" }
+  ],
+    "mainPath": ["menu", "launch", "entrar", "inbox"],
+  "nodes": [
+    { "id": "menu", "lane": "parceiro", "col": 0, "type": "frontend", "label": "Menu Abrir CRM", "sublabel": "sem iframe" },
+    { "id": "cadastro", "lane": "parceiro", "col": 2, "type": "database", "label": "Locatário / Cliente", "sublabel": "dono do cadastro" },
+    { "id": "negocio", "lane": "parceiro", "col": 3, "type": "database", "label": "Contrato / Processo", "sublabel": "dono do caso" },
+    { "id": "webhookParceiro", "lane": "parceiro", "col": 5, "type": "api", "label": "Webhook do parceiro", "sublabel": "HMAC de saída" },
+    { "id": "tela", "lane": "humano", "col": 0, "type": "frontend", "label": "Integração MOOPE", "sublabel": "chave uma vez" },
+    { "id": "contatos", "lane": "humano", "col": 2, "type": "frontend", "label": "Aba Contatos", "sublabel": "source=moope" },
+    { "id": "kanban", "lane": "humano", "col": 3, "type": "frontend", "label": "Funil", "sublabel": "Locatários / Processos / Cobrança" },
+    { "id": "inbox", "lane": "humano", "col": 4, "type": "frontend", "label": "Inbox", "sublabel": "só o fio pedido" },
+    { "id": "launch", "lane": "app", "col": 0, "type": "api", "label": "POST /launch", "sublabel": "Bearer · 90s" },
+    { "id": "entrar", "lane": "app", "col": 1, "type": "api", "label": "GET /entrar", "sublabel": "membro já existe" },
+    { "id": "events", "lane": "app", "col": 2, "type": "api", "label": "POST /events", "sublabel": "Bearer · idempotente" },
+    { "id": "outbound", "lane": "app", "col": 5, "type": "service", "label": "handler outbound", "sublabel": "drain do event_log" },
+    { "id": "conexao", "lane": "banco", "col": 0, "type": "database", "label": "moope_connections", "sublabel": "hash + cifra" },
+    { "id": "inboundTbl", "lane": "banco", "col": 2, "type": "database", "label": "moope_inbound_events", "sublabel": "unique org+external_id" },
+    { "id": "contato", "lane": "banco", "col": 2, "type": "database", "label": "contacts", "sublabel": "moope_external_id" },
+    { "id": "card", "lane": "banco", "col": 3, "type": "database", "label": "crm_leads", "sublabel": "source=moope" },
+    { "id": "eventlog", "lane": "banco", "col": 5, "type": "database", "label": "event_log", "sublabel": "retry se o POST falhar" }
+  ],
+  "edges": [
+    { "id": "e0", "from": "tela", "to": "conexao", "label": "cria chave" },
+    { "id": "e1", "from": "menu", "to": "launch", "label": "Bearer + e-mail" },
+    { "id": "e2", "from": "launch", "to": "conexao", "label": "hash da chave" },
+    { "id": "e3", "from": "launch", "to": "entrar", "label": "url 90s" },
+    { "id": "e4", "from": "entrar", "to": "inbox", "label": "sessão se for membro" },
+    { "id": "e5", "from": "cadastro", "to": "events", "label": "person.upserted" },
+    { "id": "e6", "from": "negocio", "to": "events", "label": "contract/process/debt" },
+    { "id": "e7", "from": "events", "to": "inboundTbl", "label": "INSERT ou 23505" },
+    { "id": "e8", "from": "events", "to": "contato", "label": "upsert" },
+    { "id": "e9", "from": "contato", "to": "contatos", "label": "a lista" },
+    { "id": "e10", "from": "events", "to": "card", "label": "upsert no funil" },
+    { "id": "e11", "from": "card", "to": "kanban", "label": "coluna certa" },
+    { "id": "e12", "from": "inbox", "to": "eventlog", "label": "conversation.opened" },
+    { "id": "e13", "from": "card", "to": "eventlog", "label": "lead.stage_changed" },
+    { "id": "e14", "from": "eventlog", "to": "outbound", "label": "drain" },
+    { "id": "e15", "from": "outbound", "to": "webhookParceiro", "label": "HMAC" },
+    { "id": "e16", "from": "webhookParceiro", "to": "cadastro", "label": "há fio" }
+  ]
+}

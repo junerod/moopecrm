@@ -81,6 +81,22 @@ export const PACOTES: readonly PacoteDeFunil[] = [
     },
   },
   {
+    id: "advocacia",
+    comoSeApresenta: "Escritório de advocacia ou Facejus",
+    proposta: {
+      nome: "Novos clientes",
+      etapas: [
+        { nome: "Novo contato", passo: "new" },
+        { nome: "Já respondi", passo: "contacted" },
+        { nome: "Entendendo o caso", passo: "qualifying" },
+        { nome: "Consulta marcada", passo: "qualified" },
+        { nome: "Honorários", passo: "negotiating" },
+        { nome: "Contratou", passo: "won" },
+        { nome: "Não contratou", passo: "lost" },
+      ],
+    },
+  },
+  {
     id: "curso",
     comoSeApresenta: "Curso, mentoria ou infoproduto",
     proposta: {
@@ -93,6 +109,38 @@ export const PACOTES: readonly PacoteDeFunil[] = [
         { nome: "Fechando condições", passo: "negotiating" },
         { nome: "Matriculado", passo: "won" },
         { nome: "Desistiu", passo: "lost" },
+      ],
+    },
+  },
+  {
+    id: "locadora",
+    comoSeApresenta: "Locadora — frota para motorista de app",
+    proposta: {
+      nome: "Locatários",
+      etapas: [
+        { nome: "Novo contato", passo: "new" },
+        { nome: "Já respondi", passo: "contacted" },
+        { nome: "Entendendo a necessidade", passo: "qualifying" },
+        { nome: "Proposta / visita", passo: "qualified" },
+        { nome: "Negociando contrato", passo: "negotiating" },
+        { nome: "Contrato ativo", passo: "won" },
+        { nome: "Não fechou", passo: "lost" },
+      ],
+    },
+  },
+  {
+    id: "saas",
+    comoSeApresenta: "Venda do sistema (SaaS) — para locadoras e outros clientes",
+    proposta: {
+      nome: "Vendas SaaS",
+      etapas: [
+        { nome: "Novo contato", passo: "new" },
+        { nome: "Já respondi", passo: "contacted" },
+        { nome: "Entendendo a operação", passo: "qualifying" },
+        { nome: "Demo / piloto", passo: "qualified" },
+        { nome: "Proposta", passo: "negotiating" },
+        { nome: "Cliente ativo", passo: "won" },
+        { nome: "Não fechou", passo: "lost" },
       ],
     },
   },

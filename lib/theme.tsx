@@ -40,12 +40,17 @@ function applyTheme(resolved: ResolvedTheme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Lê do storage no primeiro render do client (não causa hydration mismatch
-  // porque o inline script no layout já setou o data-theme antes do paint).
-  const [theme, setThemeState] = React.useState<Theme>(() => readStoredTheme());
-  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>(() =>
-    getSystemTheme(),
-  );
+  // O MESMO valor no SSR e no primeiro paint do client. Ler localStorage no
+  // initializer trocava o ícone do ThemeToggle (Moon vs MonitorPlay) e o
+  // React #418 em toda tela autenticada. O script no layout já pintou
+  // `data-theme` no <html>; o React só alinha o estado DEPOIS de hidratar.
+  const [theme, setThemeState] = React.useState<Theme>("system");
+  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>("light");
+
+  React.useEffect(() => {
+    setThemeState(readStoredTheme());
+    setSystemTheme(getSystemTheme());
+  }, []);
 
   // Listener pra mudanças do prefers-color-scheme.
   React.useEffect(() => {

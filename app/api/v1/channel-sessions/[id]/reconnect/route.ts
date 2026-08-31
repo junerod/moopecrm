@@ -39,6 +39,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { createClient } from "@/lib/supabase/server";
+import { puxarHistoricoAposReligamento } from "@/lib/channels/historico";
 import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
 
 export const dynamic = "force-dynamic";
@@ -149,6 +150,10 @@ export async function POST(
       requestId,
       metadata: { waha_session_name: nomeSessao, force },
     });
+
+    // stop+start quase nunca emite outro WORKING. Sem isto, gente nova
+    // no aparelho só aparecia se a conexão caísse de verdade.
+    void puxarHistoricoAposReligamento(activeOrg.orgId, id);
 
     return ok({ id, status: nextStatus, force }, { requestId });
   } catch (err) {

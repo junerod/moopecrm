@@ -21,6 +21,7 @@ import { ackToStatus } from "@/lib/types/messaging";
 import type { WahaEnvelope, WahaPayload } from "@/lib/waha/envelope";
 import { bareWaMessageId, chatIdFromWaMessageId } from "@/lib/waha/message-id";
 import { logger } from "@/lib/logger";
+import { avisarConversaAbertaSeNova } from "@/lib/moope/emitir";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -329,6 +330,22 @@ export function telefoneAlternativoDe(p: WahaPayload): string | null {
  * Upsert atômico de contato pela identidade canônica. Retorna null se a
  * identidade for de grupo ou a RPC falhar.
  */
+/**
+ * Só o contato — sem conversa, sem mensagem. É o que o legado do aparelho
+ * grava na lista: o escritório vê todo mundo, e só importa o fio de quem
+ * vira atendimento.
+ */
+export async function upsertContatoDoHistorico(
+  admin: Admin,
+  orgId: string,
+  chatId: string,
+  notifyName: string | null,
+): Promise<string | null> {
+  const parsed = parseChatId(chatId);
+  if (!ehEnderecavel(parsed)) return null;
+  return upsertContact(admin, orgId, parsed, chatId, notifyName, null);
+}
+
 async function upsertContact(
   admin: Admin,
   orgId: string,
@@ -498,6 +515,7 @@ async function handleInbound(
 
   const conversationId = await upsertConversation(admin, session.organization_id, contactId, session.id);
   if (!conversationId) return;
+  void avisarConversaAbertaSeNova(admin, session.organization_id, conversationId, contactId);
 
   const now = new Date().toISOString();
   const { data: insertedMessage, error: insertErr } = await admin
@@ -769,6 +787,142 @@ async function handleOutboundFromUserPhone(
   }
 }
 
+export type ResultadoIngestaoHistorica =
+  | {
+      kind: "gravou";
+      conversationId: string;
+      direction: "inbound" | "outbound";
+      preview: string;
+      sentAt: string;
+    }
+  | { kind: "dedup" }
+  | { kind: "pulou" };
+
+/**
+ * Grava uma mensagem que JÁ existia no aparelho.
+ *
+ * Mesmo contato, mesma conversa, mesmo `external_id` da ingestão ao vivo —
+ * senão a primeira mensagem nova do cliente duplicaria o fio. A diferença é
+ * o que NÃO roda: sem opt-out, sem nascimento de lead, sem despacho do
+ * agente, sem evento de mídia, sem auditoria por linha. `metadata.historico`
+ * é a marca que o gatilho do banco lê para não emitir `message.received`.
+ */
+export async function ingerirMensagemHistorica(
+  admin: Admin,
+  session: Session,
+  p: WahaPayload,
+  chatIdForcado: string,
+): Promise<ResultadoIngestaoHistorica> {
+  const fromMe = p.fromMe === true;
+  const chatId = (fromMe ? p.to : p.from) || chatIdForcado;
+  if (!chatId || !p.id) return { kind: "pulou" };
+
+  const parsed = parseChatId(chatId);
+  if (parsed.kind === "group") return { kind: "pulou" };
+  const texto = bodyOf(p);
+  if (!texto && !mediaUrlOf(p) && !p.hasMedia) return { kind: "pulou" };
+  if (!ehEnderecavel(parsed)) return { kind: "pulou" };
+
+  const contactId = await upsertContact(
+    admin,
+    session.organization_id,
+    parsed,
+    chatId,
+    notifyNameOf(p),
+    telefoneAlternativoDe(p),
+  );
+  if (!contactId) return { kind: "pulou" };
+
+  const conversationId = await upsertConversation(
+    admin,
+    session.organization_id,
+    contactId,
+    session.id,
+  );
+  if (!conversationId) return { kind: "pulou" };
+
+  const sentAt = p.timestamp ? new Date(p.timestamp * 1000).toISOString() : new Date().toISOString();
+  const direction: "inbound" | "outbound" = fromMe ? "outbound" : "inbound";
+  const { error: insertErr } = await admin
+    .from("messages")
+    .insert({
+      organization_id: session.organization_id,
+      conversation_id: conversationId,
+      channel_session_id: session.id,
+      contact_id: contactId,
+      external_id: p.id,
+      type: resolveMessageType(p),
+      direction,
+      status: fromMe ? "sent" : "delivered",
+      ack: p.ack ?? null,
+      body: texto,
+      media_url: mediaUrlOf(p),
+      media_mime: mediaMimeOf(p),
+      sent_via: "external_device",
+      sent_at: sentAt,
+      delivered_at: fromMe ? null : sentAt,
+      metadata: {
+        raw_type: p.type,
+        ack_name: p.ackName,
+        historico: true,
+        fromMe,
+      },
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (insertErr && insertErr.code !== "23505") {
+    logger.warn("waha.ingest: historico insert failed", {
+      organization_id: session.organization_id,
+      external_id: p.id,
+      detail: insertErr.message.slice(0, 160),
+    });
+    return { kind: "pulou" };
+  }
+  if (insertErr?.code === "23505") return { kind: "dedup" };
+
+  return {
+    kind: "gravou",
+    conversationId,
+    direction,
+    preview: previewFromMessage(p),
+    sentAt,
+  };
+}
+
+/**
+ * Atualiza o preview da conversa SEM fingir mensagem nova.
+ *
+ * `fn_mark_conversation_message` incrementa unread no inbound. Legado que
+ * entra no inbox com 47 não-lidas é o jeito mais barato de o operador achar
+ * que o telefone tocou 47 vezes hoje. Lê o unread, carimba, devolve o valor.
+ */
+export async function carimbarConversaDoHistorico(
+  admin: Admin,
+  organizationId: string,
+  conversationId: string,
+  direction: "inbound" | "outbound",
+  preview: string,
+  at: string,
+): Promise<void> {
+  const { data } = await admin
+    .from("conversations")
+    .select("unread_count_for_assignee")
+    .eq("organization_id", organizationId)
+    .eq("id", conversationId)
+    .maybeSingle();
+  const unreadAntes =
+    typeof data?.unread_count_for_assignee === "number" ? data.unread_count_for_assignee : 0;
+
+  await markConversation(admin, organizationId, conversationId, direction, preview, at);
+
+  await admin
+    .from("conversations")
+    .update({ unread_count_for_assignee: unreadAntes })
+    .eq("organization_id", organizationId)
+    .eq("id", conversationId);
+}
+
 async function handleAck(admin: Admin, session: Session, p: WahaPayload): Promise<void> {
   if (!p.id) return;
   const ack = p.ack ?? 0;
@@ -793,6 +947,8 @@ async function handleAck(admin: Admin, session: Session, p: WahaPayload): Promis
 }
 
 interface SessionStatusRow extends Session {
+  status?: string | null;
+  waha_session_name?: string | null;
   is_warmup_complete: boolean | null;
   warmup_started_at: string | null;
 }
@@ -844,6 +1000,28 @@ async function handleSessionStatus(
       (apelidoRow?.phone_number as string | null) ??
       "sem nome",
   );
+
+  // Toda vez que VOLTA a WORKING: a lista de Contatos tem que refletir o
+  // aparelho. Esperar o cliente mandar mensagem — ou um clique — é o jeito
+  // de o legado sumir no dia em que a conexão cai.
+  const anterior = (session.status ?? "").toUpperCase();
+  const nomeSessao = session.waha_session_name;
+  if (status === "WORKING" && anterior !== "WORKING" && nomeSessao) {
+    void import("@/lib/waha/historico")
+      .then((m) =>
+        m.puxarHistoricoAoConectar(admin, {
+          id: session.id,
+          organization_id: session.organization_id,
+          waha_session_name: nomeSessao,
+        }),
+      )
+      .catch((err) => {
+        logger.warn("waha.ingest: historico automatico falhou", {
+          organization_id: session.organization_id,
+          detail: err instanceof Error ? err.message.slice(0, 160) : "unknown",
+        });
+      });
+  }
 }
 
 /**

@@ -75,13 +75,13 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
   });
 
-  it("desenterra Nuvemshop e Audit Log", () => {
+  it("desenterra Integração MOOPE e Audit Log", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    // Nuvemshop não tinha link nenhum no app; Audit Log só existia via card em
-    // Configurações. Canal oficial não está aqui de propósito: virou aba de
-    // Conexões no PR #105, e Conexões é a porta.
-    expect(screen.getByRole("link", { name: /Nuvemshop/ })).toBeTruthy();
+    // A porta da integração de parceiro é Integração MOOPE. Audit Log só
+    // existia via card em Configurações. Canal oficial não está aqui de
+    // propósito: virou aba de Conexões no PR #105, e Conexões é a porta.
+    expect(screen.getByRole("link", { name: /Integração MOOPE/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Audit Log/ })).toBeTruthy();
   });
 
@@ -93,6 +93,22 @@ describe("Sidebar agrupado", () => {
     // Fora da <nav> que rola.
     const nav = screen.getByRole("navigation", { name: "Navegação principal" });
     expect(nav.contains(config)).toBe(false);
+  });
+
+  it("admin da empresa NÃO vê a porta da plataforma — só o dono do servidor", () => {
+    comoPapel("admin");
+    render(<Sidebar collapsed={false} />);
+    expect(screen.queryByRole("link", { name: /Admin da plataforma/ })).toBeNull();
+  });
+
+  it("o dono do servidor vê Admin da plataforma no rodapé", () => {
+    authRef.user = { is_platform_admin: true };
+    authRef.activeOrg = { orgId: "org-1", name: "Org", role: "admin" };
+    render(<Sidebar collapsed={false} />);
+    const porta = screen.getByRole("link", { name: /Admin da plataforma/ });
+    expect(porta).toHaveAttribute("href", "/admin");
+    const nav = screen.getByRole("navigation", { name: "Navegação principal" });
+    expect(nav.contains(porta)).toBe(false);
   });
 
   it("não deixa cabeçalho órfão quando a permissão esvazia o grupo", () => {

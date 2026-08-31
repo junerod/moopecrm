@@ -3,6 +3,7 @@ import Link from "next/link";
 import { format, formatRelative, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CaretDown, CaretUp, ChatCircle } from "@/lib/ui/icons";
+import { ImportarConversaButton } from "@/components/contacts/ImportarConversaButton";
 import {
   Table,
   TableBody,
@@ -117,7 +118,7 @@ export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
             onSort={onSort}
           />
           <TableHead>Status</TableHead>
-          <TableHead className="w-[52px]">
+          <TableHead className="w-[220px]">
             <span className="sr-only">Conversa</span>
           </TableHead>
         </TableRow>
@@ -160,24 +161,27 @@ export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
               </div>
             </TableCell>
             <TableCell>
-              {c.conversa ? (
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link
-                    href={`/app/inbox?id=${c.conversa.id}`}
-                    title="Abrir conversa no Inbox"
-                    aria-label={`Abrir conversa com ${displayName(c)} no Inbox`}
-                  >
-                    <ChatCircle size={16} weight="regular" aria-hidden />
-                    {c.conversa.unread > 0 && (
-                      <span className="sr-only">{c.conversa.unread} sem ler</span>
-                    )}
-                  </Link>
-                </Button>
-              ) : (
-                <span className="text-muted-foreground text-xs" aria-hidden>
-                  —
-                </span>
-              )}
+              <div className="flex items-center gap-1">
+                {c.conversa && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <Link
+                      href={`/app/inbox?id=${c.conversa.id}`}
+                      title="Abrir conversa no Inbox"
+                      aria-label={`Abrir conversa com ${displayName(c)} no Inbox`}
+                    >
+                      <ChatCircle size={16} weight="regular" aria-hidden />
+                      {c.conversa.unread > 0 && (
+                        <span className="sr-only">{c.conversa.unread} sem ler</span>
+                      )}
+                    </Link>
+                  </Button>
+                )}
+                <ImportarConversaButton
+                  contact={c}
+                  compact
+                  jaTemFio={Boolean(c.conversa)}
+                />
+              </div>
             </TableCell>
           </TableRow>
         ))}

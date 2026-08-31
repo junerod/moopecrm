@@ -29,6 +29,7 @@ function comoPapel(role: ActiveOrg["role"]) {
 afterEach(() => {
   cleanup();
   push.mockClear();
+  authRef.user = { is_platform_admin: false };
   comoPapel("admin");
 });
 
@@ -65,6 +66,21 @@ describe("CommandPalette", () => {
     abrir();
     await user.type(screen.getByRole("combobox"), "audit");
     expect(screen.queryByRole("option", { name: /Audit Log/ })).toBeNull();
+  });
+
+  it("admin da empresa não acha o Admin da plataforma no ⌘K", async () => {
+    const user = userEvent.setup();
+    abrir();
+    await user.type(screen.getByRole("combobox"), "plataforma");
+    expect(screen.queryByRole("option", { name: /Admin da plataforma/ })).toBeNull();
+  });
+
+  it("o dono do servidor acha o Admin da plataforma no ⌘K", async () => {
+    authRef.user = { is_platform_admin: true };
+    const user = userEvent.setup();
+    abrir();
+    await user.type(screen.getByRole("combobox"), "plataforma");
+    expect(screen.getByRole("option", { name: /Admin da plataforma/ })).toBeTruthy();
   });
 
   it("Enter navega para o item destacado", async () => {

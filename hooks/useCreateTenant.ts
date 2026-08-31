@@ -13,6 +13,7 @@ export interface CreateTenantPayload {
   cnpj?: string;
   plan?: "standard" | "pro" | "enterprise";
   owner_email: string;
+  owner_password?: string;
 }
 
 export interface CreateTenantResponse {
@@ -20,6 +21,13 @@ export interface CreateTenantResponse {
     id: string;
     slug: string;
     display_name: string;
+    owner?: {
+      email?: string;
+      emailEnviado?: boolean;
+      senhaDefinidaAqui?: boolean;
+      definirSenhaUrl?: string | null;
+      erro?: string;
+    };
   };
 }
 

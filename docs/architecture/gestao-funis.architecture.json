@@ -16,6 +16,7 @@
   ],
   "mainPath": ["lista", "hooks", "post", "regras", "pipelines"],
   "nodes": [
+    { "id": "perfil", "lane": "humano", "col": 1, "type": "frontend", "label": "/app/settings/perfil", "sublabel": "escolhe o quadro padrão (locadora, SaaS, escritório…)" },
     { "id": "lista", "lane": "humano", "col": 1, "type": "frontend", "label": "/app/kanban (page)", "sublabel": "Server Component · filtra organization_id da org ATIVA" },
     { "id": "client", "lane": "humano", "col": 2, "type": "frontend", "label": "FunisClient", "sublabel": "criar · renomear · ↑↓ · padrão · arquivar" },
     { "id": "hooks", "lane": "humano", "col": 3, "type": "frontend", "label": "usePipelines", "sublabel": "só mutations — a leitura é do servidor" },
@@ -69,7 +70,9 @@
     { "id": "e27", "from": "delete", "to": "pipelines", "label": "is_archived=true (ou delete no caso limpo)" },
     { "id": "e28", "from": "trigger", "to": "pipelines", "label": "toda org nova nasce com 'Pedidos' — a razão de a clínica precisar desta tela" },
     { "id": "e29", "from": "trigger", "to": "stages", "label": "8 etapas de e-commerce" },
-    { "id": "e30", "from": "board", "to": "stages", "label": "as colunas do quadro" }
+    { "id": "e30", "from": "board", "to": "stages", "label": "as colunas do quadro" },
+    { "id": "e31", "from": "perfil", "to": "pipelines", "label": "aplica o pacote; se o padrão tem card, nasce quadro novo" },
+    { "id": "e32", "from": "perfil", "to": "audit", "label": "org.perfil_aplicado" }
   ],
   "cards": [
     {

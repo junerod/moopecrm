@@ -27,9 +27,9 @@ describe("passos visíveis", () => {
     expect(segmentos).not.toContain("connect-nuvemshop");
   });
 
-  it("quem liga a integração vê o passo (a regra não é 'esconder sempre')", () => {
+  it("mesmo com a loja ligada o wizard não oferece Nuvemshop", () => {
     const segmentos = passosVisiveis(COM_LOJA).map((p) => p.segmento);
-    expect(segmentos).toContain("connect-nuvemshop");
+    expect(segmentos).not.toContain("connect-nuvemshop");
   });
 
   it("a ordem é a mesma nos dois casos, menos o passo que não existe", () => {
@@ -63,7 +63,7 @@ describe("próximo passo", () => {
       whatsapp: { status: "WORKING" },
     };
     expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("setup-ai");
-    expect(proximoPasso(s, COM_LOJA)?.segmento).toBe("connect-nuvemshop");
+    expect(proximoPasso(s, COM_LOJA)?.segmento).toBe("setup-ai");
   });
 
   it("passo PULADO conta como resolvido — senão o wizard entra em laço", () => {

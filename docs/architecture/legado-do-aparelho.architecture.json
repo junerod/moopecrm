@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Legado do aparelho — lista ao conectar, fios recentes no inbox",
+    "subtitle": "o recorte recente entra sozinho; o arquivo antigo só sob pedido",
+    "output": "legado-do-aparelho.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o operador vê" },
+    { "id": "app", "label": "App" },
+    { "id": "transporte", "label": "Aparelho / loja" },
+    { "id": "banco", "label": "Banco" }
+  ],
+  "mainPath": ["webhook", "puxar", "contacts", "importar", "inbox"],
+  "nodes": [
+    { "id": "conexoes", "lane": "humano", "col": 0, "type": "frontend", "label": "Central de Conexões", "sublabel": "WORKING puxa sozinho · botão de novo" },
+    { "id": "abaContatos", "lane": "humano", "col": 2, "type": "frontend", "label": "Aba Contatos", "sublabel": "lista + Importar/Atualizar o arquivo" },
+    { "id": "dossie", "lane": "humano", "col": 3, "type": "frontend", "label": "Dossiê do contato", "sublabel": "arquivo inteiro sob pedido" },
+    { "id": "inbox", "lane": "humano", "col": 5, "type": "frontend", "label": "Inbox", "sublabel": "recorte recente + fio pedido" },
+    { "id": "rotaLista", "lane": "app", "col": 1, "type": "api", "label": "POST canal/historico", "sublabel": "admin · lista + recorte" },
+    { "id": "rotaFio", "lane": "app", "col": 3, "type": "api", "label": "POST contato/historico", "sublabel": "agent+ · um fio inteiro" },
+    { "id": "cron", "lane": "app", "col": 0, "type": "service", "label": "cron contatos-do-aparelho", "sublabel": "a cada 5 min · lista + fios novos" },
+    { "id": "puxar", "lane": "app", "col": 1, "type": "service", "label": "puxarHistoricoAoConectar", "sublabel": "agenda + chats + recorte" },
+    { "id": "importar", "lane": "app", "col": 4, "type": "service", "label": "importarConversaDoContato", "sublabel": "sem pos-entrada · sem agente" },
+    { "id": "webhook", "lane": "transporte", "col": 0, "type": "service", "label": "Sessão WORKING", "sublabel": "toda reconexão" },
+    { "id": "loja", "lane": "transporte", "col": 2, "type": "service", "label": "Loja do aparelho", "sublabel": "ligada no create/convergir" },
+    { "id": "contacts", "lane": "banco", "col": 2, "type": "database", "label": "contacts", "sublabel": "lista do legado" },
+    { "id": "messages", "lane": "banco", "col": 4, "type": "database", "label": "messages", "sublabel": "metadata.historico=true" },
+    { "id": "gatilho", "lane": "banco", "col": 5, "type": "service", "label": "fn_emit_message_event", "sublabel": "legado não emite received" },
+    { "id": "eventlog", "lane": "banco", "col": 5, "type": "database", "label": "event_log", "sublabel": "só mensagem nova" }
+  ],
+  "edges": [
+    { "id": "e0", "from": "webhook", "to": "puxar", "label": "ao voltar WORKING" },
+    { "id": "e0b", "from": "cron", "to": "puxar", "label": "número no ar, sozinho" },
+    { "id": "e1", "from": "conexoes", "to": "rotaLista", "label": "já WORKING / clique" },
+    { "id": "e1b", "from": "abaContatos", "to": "rotaLista", "label": "já WORKING" },
+    { "id": "e1c", "from": "inbox", "to": "rotaLista", "label": "ao abrir a fila" },
+    { "id": "e2", "from": "rotaLista", "to": "puxar", "label": "org da sessão" },
+    { "id": "e3", "from": "puxar", "to": "loja", "label": "agenda + chats" },
+    { "id": "e4", "from": "loja", "to": "puxar", "label": "até 2000 1-a-1" },
+    { "id": "e5", "from": "puxar", "to": "contacts", "label": "upsert identidade" },
+    { "id": "e5b", "from": "puxar", "to": "importar", "label": "fio mais novo que o inbox" },
+    { "id": "e6", "from": "contacts", "to": "abaContatos", "label": "a lista que o gestor vê" },
+    { "id": "e6b", "from": "abaContatos", "to": "dossie", "label": "escolhe o arquivo antigo" },
+    { "id": "e7", "from": "dossie", "to": "rotaFio", "label": "importar ou atualizar ESTE" },
+    { "id": "e7b", "from": "abaContatos", "to": "rotaFio", "label": "Atualizar quem já tem fio" },
+    { "id": "e8", "from": "rotaFio", "to": "importar", "label": "org do cookie" },
+    { "id": "e9", "from": "importar", "to": "loja", "label": "mensagens daquele chat" },
+    { "id": "e10", "from": "importar", "to": "messages", "label": "INSERT idempotente" },
+    { "id": "e11", "from": "messages", "to": "inbox", "label": "fio recente / pedido aparece" },
+    { "id": "e12", "from": "messages", "to": "gatilho", "label": "AFTER INSERT" },
+    { "id": "e13", "from": "gatilho", "to": "eventlog", "label": "só se NÃO for legado" },
+    { "id": "e14", "from": "loja", "to": "conexoes", "label": "400 → pede QR de novo", "route": "drop" }
+  ]
+}

@@ -1,66 +1,130 @@
 #!/bin/bash
-# CRM (Deskcomm) — Apache + Let's Encrypt para crm.facejus.com.br
+# CRM — Let's Encrypt + Apache :443 na VPS Facejus.
 #
-# NÃO use o script do Facejus (script_cert.sh). Aquele manda:
-#   /     → :3000  (site Facejus)
-#   /api  → :5178  (API Facejus)
-# O Deskcomm precisa de /api/v1 no próprio Next (3666). Desviar /api
-# quebra login, webhook e o CRM inteiro.
+# Nesta máquina a porta 80 é do Tomcat (/opt/tomcat7). O Apache SÓ escuta 443.
+# O Facejus já emite certificado assim:
+#   certbot certonly --webroot -w /opt/tomcat7/webapps/ROOT -d <host>
+# NÃO use certbot --apache (tenta a :80 e o systemd do Apache está "failed").
+# NÃO use o script_cert.sh do Facejus (desvia /api para :5178).
 #
-# Uso (root, na VPS):
+# Recarregar Apache: apache2ctl graceful   (não systemctl reload)
+#
+# Uso (root):
 #   bash scripts/script-cert-crm.sh
-#   bash scripts/script-cert-crm.sh --skip-certbot   # só HTTP, se o DNS ainda não bateu
-#
-# DNS (Registro.br): crm.facejus.com.br  A  →  147.79.83.207
+#   bash scripts/script-cert-crm.sh --skip-certbot
 set -euo pipefail
 
 NOME_COMPLETO="crm.facejus.com.br"
 DOMINIO_BASE="facejus.com.br"
 CRM_PORT="${CRM_PORT:-3666}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@${DOMINIO_BASE}}"
+WEBROOT="/opt/tomcat7/webapps/ROOT"
+CONFIG_FILE="/etc/apache2/sites-available/${NOME_COMPLETO}.conf"
 SKIP_CERTBOT=0
 [[ "${1:-}" == "--skip-certbot" ]] && SKIP_CERTBOT=1
-
-CONFIG_FILE="/etc/apache2/sites-available/${NOME_COMPLETO}.conf"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Execute como root: sudo bash $0"
   exit 1
 fi
 
-echo "=== CRM — Apache + Let's Encrypt ==="
-echo "Host:   ${NOME_COMPLETO}"
-echo "App:    http://127.0.0.1:${CRM_PORT}/"
-echo "Config: ${CONFIG_FILE}"
+echo "=== CRM — Let's Encrypt (webroot Tomcat) + Apache :443 ==="
+echo "Host:    ${NOME_COMPLETO}"
+echo "App:     http://127.0.0.1:${CRM_PORT}/"
+echo "Webroot: ${WEBROOT}"
 echo ""
 
-echo "[1/6] Módulos Apache..."
+echo "[0/5] Pré-voo (quem tem 80/443)..."
+DONO_80="$(ss -lntp | awk '/:80 /{print; exit}')"
+DONO_443="$(ss -lntp | awk '/:443 /{print; exit}')"
+echo "  :80  → ${DONO_80:-livre}"
+echo "  :443 → ${DONO_443:-livre}"
+
+if echo "${DONO_80}" | grep -q 'apache2'; then
+  echo "ERRO: Apache está na 80. Nesta VPS a 80 é do Tomcat — pare e revise."
+  exit 1
+fi
+if echo "${DONO_80}" | grep -qE 'java|tomcat'; then
+  echo "  OK: porta 80 é do Tomcat. Certbot vai pelo webroot, sem tocar nela."
+elif [[ -n "${DONO_80}" ]]; then
+  echo "  AVISO: 80 ocupada por outro processo. ACME só funciona se esse processo servir ${WEBROOT}."
+else
+  echo "ERRO: nada na 80. Let's Encrypt HTTP-01 precisa do Tomcat servindo o ROOT."
+  exit 1
+fi
+
+if [[ ! -d "${WEBROOT}" ]]; then
+  echo "ERRO: webroot inexistente: ${WEBROOT}"
+  exit 1
+fi
+mkdir -p "${WEBROOT}/.well-known/acme-challenge"
+TOKEN="crm-preflight-$$"
+echo "${TOKEN}" > "${WEBROOT}/.well-known/acme-challenge/${TOKEN}"
+RESPOSTA="$(curl -fsS -m 8 "http://127.0.0.1/.well-known/acme-challenge/${TOKEN}" || true)"
+rm -f "${WEBROOT}/.well-known/acme-challenge/${TOKEN}"
+if [[ "${RESPOSTA}" != "${TOKEN}" ]]; then
+  echo "ERRO: Tomcat na 80 não serviu o webroot ACME."
+  echo "      Esperado: ${TOKEN}"
+  echo "      Obtido:   ${RESPOSTA:-<vazio>}"
+  echo "      Sem isso o certbot não consegue o certificado."
+  exit 1
+fi
+echo "  OK: ACME via Tomcat responde em http://127.0.0.1/.well-known/"
+
+if ! systemctl is-active --quiet apache2; then
+  echo "  AVISO: systemd apache2 não está 'active' (comum aqui)."
+  echo "         Recarregar com apache2ctl graceful, não systemctl reload."
+fi
+
+echo "[1/5] Módulos Apache..."
 a2enmod proxy proxy_http headers rewrite ssl 2>/dev/null || true
 
-echo "[2/6] Firewall 80/443 (a ${CRM_PORT} fica só no localhost)..."
-if command -v ufw >/dev/null 2>&1; then
-  ufw allow 80/tcp 2>/dev/null || true
-  ufw allow 443/tcp 2>/dev/null || true
+echo "[2/5] Certificado Let's Encrypt..."
+if [[ "${SKIP_CERTBOT}" -eq 0 ]]; then
+  if ! command -v certbot >/dev/null 2>&1; then
+    apt update -qq
+    apt install -y certbot
+  fi
+  mkdir -p "${WEBROOT}/.well-known/acme-challenge"
+  certbot certonly --webroot \
+    -w "${WEBROOT}" \
+    -d "${NOME_COMPLETO}" \
+    --non-interactive \
+    --agree-tos \
+    -m "${CERTBOT_EMAIL}" \
+    --keep-until-expiring \
+    || {
+      echo ""
+      echo "  certbot falhou. Teste: echo ok > ${WEBROOT}/.well-known/acme-challenge/ping"
+      echo "  curl -s http://${NOME_COMPLETO}/.well-known/acme-challenge/ping"
+      echo "  Tem que devolver 'ok' (Tomcat na 80 servindo o ROOT)."
+      exit 1
+    }
+else
+  echo "  SSL pulado (--skip-certbot)"
+  if [[ ! -f "/etc/letsencrypt/live/${NOME_COMPLETO}/fullchain.pem" ]]; then
+    echo "  Sem certificado ainda. Rode sem --skip-certbot."
+    exit 1
+  fi
 fi
 
-echo "[3/6] App na ${CRM_PORT}..."
-if ! curl -sf -o /dev/null "http://127.0.0.1:${CRM_PORT}/" 2>/dev/null; then
-  echo "  AVISO: nada responde em :${CRM_PORT}."
-  echo "         O vhost e o certbot podem ser feitos agora; o site só abre depois do pnpm dev."
-fi
-
-echo "[4/6] Gravando ${CONFIG_FILE}..."
-# HTTP só. O certbot acrescenta o :443 e o redirect.
+echo "[3/5] Vhost Apache SÓ na 443 (a 80 fica com o Tomcat)..."
 cat > "${CONFIG_FILE}" << EOF
 # Gerado por scripts/script-cert-crm.sh — $(date -Iseconds)
-# ${NOME_COMPLETO} → Next :${CRM_PORT} (CRM inteiro, inclusive /api)
+# ${NOME_COMPLETO} → Next :${CRM_PORT}
+# Apache somente :443. Porta 80 = Tomcat.
 
-<VirtualHost *:80>
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
     ServerName ${NOME_COMPLETO}
     ServerAdmin webmaster@${DOMINIO_BASE}
 
-    ErrorLog \${APACHE_LOG_DIR}/crm-error.log
-    CustomLog \${APACHE_LOG_DIR}/crm-access.log combined
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/${NOME_COMPLETO}/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/${NOME_COMPLETO}/privkey.pem
+
+    ErrorLog \${APACHE_LOG_DIR}/crm-ssl-error.log
+    CustomLog \${APACHE_LOG_DIR}/crm-ssl-access.log combined
 
     ProxyPreserveHost On
     ProxyRequests Off
@@ -70,50 +134,26 @@ cat > "${CONFIG_FILE}" << EOF
     ProxyPass        / http://127.0.0.1:${CRM_PORT}/ retry=0 timeout=300
     ProxyPassReverse / http://127.0.0.1:${CRM_PORT}/
 
-    RequestHeader set X-Forwarded-Proto "http"
-    RequestHeader set X-Forwarded-Port "80"
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
     RequestHeader set X-Forwarded-For "%{REMOTE_ADDR}s"
 </VirtualHost>
+</IfModule>
 EOF
 
 a2ensite "$(basename "${CONFIG_FILE}")"
 apache2ctl configtest
-systemctl reload apache2
 
-if [[ "${SKIP_CERTBOT}" -eq 0 ]]; then
-  echo "[5/6] Let's Encrypt (certbot --apache)..."
-  if ! command -v certbot >/dev/null 2>&1; then
-    apt update -qq
-    apt install -y certbot python3-certbot-apache
-  fi
-  if ! dig +short "${NOME_COMPLETO}" | grep -q .; then
-    echo "  AVISO: dig não resolveu ${NOME_COMPLETO}. O certbot vai falhar se o DNS não apontar para este IP."
-  fi
-  certbot --apache \
-    -d "${NOME_COMPLETO}" \
-    --non-interactive \
-    --agree-tos \
-    -m "${CERTBOT_EMAIL}" \
-    --redirect \
-    || {
-      echo ""
-      echo "  certbot falhou. Confira: dig +short ${NOME_COMPLETO}"
-      echo "  Tem que ser 147.79.83.207. Depois:"
-      echo "  certbot --apache -d ${NOME_COMPLETO} -m ${CERTBOT_EMAIL} --agree-tos --redirect"
-      echo ""
-    }
-else
-  echo "[5/6] SSL pulado (--skip-certbot)"
-fi
+echo "[4/5] Recarregando Apache (graceful — systemd está 'failed' de propósito)..."
+apache2ctl graceful
 
-echo "[6/6] Reload Apache..."
-systemctl reload apache2
+echo "[5/5] Conferindo certificado..."
+ls -l "/etc/letsencrypt/live/${NOME_COMPLETO}/fullchain.pem"
 
 echo ""
 echo "=== PRONTO ==="
 echo "URL: https://${NOME_COMPLETO}/login"
-echo "O Facejus em :3000 / :5178 não foi tocado."
+echo "O Facejus (:3000/:5178) e o Tomcat (:80) não foram mexidos."
 echo ""
-echo "Teste:"
-echo "  curl -I https://${NOME_COMPLETO}/"
-echo "  curl -s http://127.0.0.1:${CRM_PORT}/api/v1/health"
+echo "O site só abre quando o Next estiver na ${CRM_PORT}:  pnpm dev"
+echo "Teste:  curl -sI https://${NOME_COMPLETO}/"

@@ -74,7 +74,11 @@ export function lerAmbiente(source: FonteDeAmbiente = process.env): AmbienteDaIn
   return {
     chavesDeProvedor,
     gateway: preenchida(source, "AI_GATEWAY_API_KEY"),
-    email: preenchida(source, "RESEND_API_KEY"),
+    email:
+      preenchida(source, "RESEND_API_KEY") ||
+      (preenchida(source, "MAILSERVER_URL") &&
+        preenchida(source, "MAILSERVER_API_KEY") &&
+        preenchida(source, "MAILSERVER_FROM_EMAIL")),
     transporteDeWhatsapp: lerTransporteDeWhatsapp(source),
   };
 }

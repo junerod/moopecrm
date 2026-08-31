@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, MagnifyingGlass, UploadSimple } from "@/lib/ui/icons";
+import { Plus, MagnifyingGlass, UploadSimple, ArrowsClockwise } from "@/lib/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSincronizarContatosDoAparelho } from "@/hooks/channels/useSincronizarContatosDoAparelho";
 import { useContactList } from "@/hooks/contacts/useContactList";
 import { ContactsTable } from "@/components/contacts/ContactsTable";
 import { NewContactDialog } from "@/components/contacts/NewContactDialog";
@@ -24,7 +25,7 @@ const SOURCE_OPTIONS = [
   { value: undefined, label: "Todas as origens" },
   { value: "manual", label: "Manual" },
   { value: "whatsapp", label: "WhatsApp" },
-  { value: "nuvemshop", label: "Nuvemshop" },
+  { value: "moope", label: "MOOPE" },
   { value: "import_csv", label: "Importado (CSV)" },
 ];
 
@@ -37,7 +38,7 @@ export function ContactsListClient() {
   const [source, setSource] = useState<string | undefined>(undefined);
   const [orderBy, setOrderBy] = useState<ContactOrderBy>("last_activity_at");
   const [orderDir, setOrderDir] = useState<"asc" | "desc">("desc");
-  const [limit, setLimit] = useState<number>(25);
+  const [limit, setLimit] = useState<number>(100);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -51,6 +52,8 @@ export function ContactsListClient() {
     [search, tag, source, orderBy, orderDir, limit],
   );
   const q = useContactList(filters);
+  const { whatsappNoAr, atualizando, atualizarAgora } =
+    useSincronizarContatosDoAparelho(true);
 
   const allContacts = useMemo(
     () => q.data?.pages.flatMap((p) => p.data) ?? [],
@@ -81,7 +84,8 @@ export function ContactsListClient() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">Contatos</h1>
           <p className="text-sm text-muted-foreground">
-            Customer 360 — busque, filtre e gerencie contatos.
+            Quem já está no aparelho entra aqui sozinho. A conversa antiga
+            só vem se você importar — ou atualizar — no contato.
           </p>
         </div>
         {/*
@@ -90,6 +94,21 @@ export function ContactsListClient() {
           uma linha de dois botões sem isso comprime os rótulos.
         */}
         <div className="flex shrink-0 items-center gap-2">
+          {whatsappNoAr && (
+            <Button
+              variant="outline"
+              disabled={atualizando}
+              onClick={() => void atualizarAgora()}
+            >
+              <ArrowsClockwise
+                size={16}
+                weight="bold"
+                className={atualizando ? "animate-spin" : undefined}
+                aria-hidden
+              />
+              <span>{atualizando ? "Trazendo…" : "Atualizar do aparelho"}</span>
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <UploadSimple size={16} weight="bold" aria-hidden />
             <span>Importar CSV</span>
@@ -204,6 +223,12 @@ export function ContactsListClient() {
       ) : allContacts.length === 0 ? (
         <Card className="p-2">
           <EmptyContacts />
+          {whatsappNoAr && (
+            <p className="px-6 pb-4 text-center text-sm text-muted-foreground">
+              O WhatsApp está conectado — a lista está vindo do aparelho. Não
+              precisa esperar o cliente escrever.
+            </p>
+          )}
         </Card>
       ) : (
         <>

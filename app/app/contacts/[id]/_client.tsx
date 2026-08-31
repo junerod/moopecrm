@@ -3,6 +3,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ShieldCheck, PencilSimple } from "@/lib/ui/icons";
+import { ImportarConversaButton } from "@/components/contacts/ImportarConversaButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -94,10 +95,16 @@ export function ContactDetailClient({ contactId }: Props) {
           </div>
         </div>
         {!contact.is_anonymized && (
-          <Button variant="outline" onClick={() => setEditOpen(true)} className="shrink-0">
-            <PencilSimple size={16} weight="bold" aria-hidden />
-            <span>Editar</span>
-          </Button>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <ImportarConversaButton
+              contact={contact}
+              jaTemFio={Boolean(contact.conversa)}
+            />
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <PencilSimple size={16} weight="bold" aria-hidden />
+              <span>Editar</span>
+            </Button>
+          </div>
         )}
       </header>
 

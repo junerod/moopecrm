@@ -60,6 +60,14 @@ describe("lerAmbiente", () => {
     // como caminho NORMAL, e não como exceção.
     expect(lerAmbiente({}).email).toBe(false);
     expect(lerAmbiente({ RESEND_API_KEY: "re_x" }).email).toBe(true);
+    expect(
+      lerAmbiente({
+        MAILSERVER_URL: "http://127.0.0.1:3999",
+        MAILSERVER_API_KEY: "k",
+        MAILSERVER_FROM_EMAIL: "info@exemplo.com",
+      }).email,
+    ).toBe(true);
+    expect(lerAmbiente({ MAILSERVER_URL: "http://127.0.0.1:3999" }).email).toBe(false);
   });
 });
 

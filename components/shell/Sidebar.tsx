@@ -3,13 +3,14 @@ import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, Gear } from "@/lib/ui/icons";
+import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, Gear, ShieldCheck } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDot";
 import { VersionFooter } from "@/components/shell/VersionFooter";
 import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
+import { PORTA_DA_PLATAFORMA } from "@/lib/navigation/porta-da-plataforma";
 import { GRUPO_NO_RODAPE, NAV_GROUPS, sidebarGroups } from "@/lib/navigation/registry";
 
 interface SidebarContentProps {
@@ -193,6 +194,24 @@ export function SidebarContent({
           >
             <Gear size={18} aria-hidden />
             {!collapsed && <span className="truncate">{rodape.label}</span>}
+          </Link>
+        )}
+        {user.is_platform_admin && (
+          <Link
+            href={PORTA_DA_PLATAFORMA.href}
+            title={collapsed ? t(PORTA_DA_PLATAFORMA.label) : undefined}
+            aria-current={pathname.startsWith(PORTA_DA_PLATAFORMA.href) ? "page" : undefined}
+            onClick={onNavigate}
+            className={cn(
+              "mb-1 flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
+              pathname.startsWith(PORTA_DA_PLATAFORMA.href)
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              collapsed && "justify-center px-2",
+            )}
+          >
+            <ShieldCheck size={18} aria-hidden />
+            {!collapsed && <span className="truncate">{t(PORTA_DA_PLATAFORMA.label)}</span>}
           </Link>
         )}
         <VersionFooter collapsed={collapsed} onNavigate={onNavigate} />

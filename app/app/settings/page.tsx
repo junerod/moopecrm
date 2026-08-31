@@ -1,5 +1,10 @@
+import Link from "next/link";
+
 import { NavHub } from "@/components/shell/NavHub";
+import { Card } from "@/components/ui/card";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { PORTA_DA_PLATAFORMA } from "@/lib/navigation/porta-da-plataforma";
+import { ShieldCheck } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +36,35 @@ export default async function SettingsHubPage() {
       role={activeOrg?.role ?? null}
       title="Configurações"
       subtitle="Sua conta, os dados da empresa e quem tem acesso ao quê."
-    />
+    >
+      {user.is_platform_admin ? (
+        <section aria-labelledby="hub-instalacao" className="space-y-3">
+          <h2
+            id="hub-instalacao"
+            className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70"
+          >
+            Instalação
+          </h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <Link href={PORTA_DA_PLATAFORMA.href} className="block">
+              <Card className="flex h-full gap-3 p-4 transition-colors hover:border-border-strong">
+                <ShieldCheck
+                  size={20}
+                  weight="regular"
+                  aria-hidden
+                  className="mt-0.5 shrink-0 text-muted-foreground"
+                />
+                <div>
+                  <h3 className="text-sm font-semibold">{PORTA_DA_PLATAFORMA.label}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {PORTA_DA_PLATAFORMA.description}
+                  </p>
+                </div>
+              </Card>
+            </Link>
+          </div>
+        </section>
+      ) : null}
+    </NavHub>
   );
 }

@@ -100,10 +100,8 @@ export function AddCredentialDialog({ open, onOpenChange }: Props) {
         await qc.invalidateQueries({ queryKey: credentialsListQueryKey });
         const fresh = qc.getQueryData<CredentialRow[]>(credentialsListQueryKey);
         const justCreated = fresh?.find((c) => c.id === res.data.id);
-        if (justCreated?.models_available != null) {
-          toast.success(
-            `Validada — ${justCreated.models_available} modelos disponíveis.`,
-          );
+        if (justCreated?.validated_at || justCreated?.models_available != null) {
+          toast.success("Credencial válida.");
         } else if (justCreated?.validation_error) {
           toast.error(`Validação falhou: ${justCreated.validation_error}`);
         }

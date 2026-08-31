@@ -33,7 +33,7 @@
 set -euo pipefail
 
 API="https://api.supabase.com/v1"
-PROJECT_NAME="${1:-DeskcommCRM}"
+PROJECT_NAME="${1:-MOOPE CRM}"
 REGION="${2:-${SUPABASE_REGION:-sa-east-1}}"
 
 c_red() { printf '\033[31m%s\033[0m\n' "$*" >&2; }

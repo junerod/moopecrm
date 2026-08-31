@@ -21,7 +21,7 @@ import type { ActivityType } from "@/lib/leads/activity-vocabulary";
 /**
  * O que esta organização marca. Espelha os nichos que o onboarding já usa
  * (`lib/onboarding/pacotes-de-funil.ts`): clínica, imobiliária, serviços,
- * curso, loja, genérico.
+ * advocacia, curso, loja, genérico.
  */
 export const CATEGORIAS_DE_AGENDAMENTO = [
   "consulta",

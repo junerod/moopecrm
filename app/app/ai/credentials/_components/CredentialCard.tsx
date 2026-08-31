@@ -31,6 +31,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
   credentialStatus,
   credentialsListQueryKey,
+  quantidadeDeModelos,
   type CredentialRow,
 } from "@/hooks/ai/useCredentials";
 
@@ -130,7 +131,7 @@ export function CredentialCard({ credential, canWrite, usageCount }: Props) {
       <dl className="grid grid-cols-2 gap-2 text-xs">
         <div>
           <dt className="text-muted-foreground">Modelos</dt>
-          <dd className="font-mono">{credential.models_available ?? "—"}</dd>
+          <dd className="font-mono">{quantidadeDeModelos(credential.models_available) ?? "—"}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Em uso por</dt>

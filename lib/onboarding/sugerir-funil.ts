@@ -44,9 +44,19 @@ export interface ContextoDoNegocio {
 const PISTAS: Record<string, RegExp> = {
   clinica:
     /\b(cl[ií]nic|consult[óo]ri|dentist|odonto|m[ée]dic|terapeut|psic[óo]log|fisioterap|est[ée]tic|sal[ãa]o|barbear|petshop|veterin[áa]ri|nutricion)/i,
+  // Antes de `imobiliaria`: "aluguel de carro" casaria em `alugu[ée]` e a
+  // locadora nascia com o quadro de imóvel.
+  saas:
+    /\b(saas|software as a service|venda do sistema|revenda do crm|moope crm)\b/i,
+  locadora:
+    /\b(locadora|frota|motorista de app|uber|\b99\b|aluguel de carro|aluguel de ve[ií]culo)/i,
   imobiliaria: /\b(imobili[áa]ri|corret|im[óo]ve|apartament|alugu[ée]|loteament|terren)/i,
+  // Antes de `servicos`: advocacia era engolida por "consultoria/serviço" e o
+  // escritório abria o quadro de orçamento de obra.
+  advocacia:
+    /\b(advocac|advogad|oab|honor[áa]ri|escrit[óo]rio de advoc|banca de advoc|jur[ií]dic|facejus)/i,
   servicos:
-    /\b(ag[êe]nci|consultori|advocac|advogad|contabil|arquitet|engenhar|reform|obra|marcenar|servi[çc]o|manuten[çc]|instala[çc])/i,
+    /\b(ag[êe]nci|consultori|contabil|arquitet|engenhar|reform|obra|marcenar|servi[çc]o|manuten[çc]|instala[çc])/i,
   curso: /\b(curso|mentori|infoprodut|aula|treinament|workshop|escola|ensino|coach)/i,
   loja: /\b(loja|e-?commerce|revend|distribuidor|atacad|varej|vend[oa] produt|boutique|moda)/i,
 };

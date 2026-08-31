@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ok, fail } from "@/lib/api/wrappers";
+import { provisionarDonoDoTenant } from "@/lib/admin/provisionar-dono-do-tenant";
 import { audit } from "@/lib/audit";
 import { randomUUID } from "node:crypto";
 
@@ -28,6 +29,12 @@ const createSchema = z.object({
   cnpj: z.string().optional(),
   plan: z.enum(["standard", "pro", "enterprise"]).default("standard"),
   owner_email: z.string().email(),
+  owner_password: z
+    .string()
+    .min(8, "Senha inicial precisa de pelo menos 8 caracteres")
+    .max(72)
+    .optional()
+    .or(z.literal("")),
 });
 
 // ---------------------------------------------------------------------------
@@ -188,7 +195,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const { display_name, slug, legal_name, cnpj, plan, owner_email } = parsed.data;
+  const { display_name, slug, legal_name, cnpj, plan, owner_email, owner_password } =
+    parsed.data;
   const admin = createAdminClient();
 
   const { data: org, error: insertError } = await admin
@@ -238,8 +246,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  let owner: Awaited<ReturnType<typeof provisionarDonoDoTenant>> | { erro: string };
+  try {
+    owner = await provisionarDonoDoTenant(admin, {
+      orgId: org.id,
+      orgName: org.display_name,
+      email: owner_email,
+      senha: owner_password,
+    });
+  } catch (err) {
+    owner = { erro: err instanceof Error ? err.message : "Não criei o dono deste tenant." };
+  }
+
   return ok(
-    { id: org.id, slug: org.slug, display_name: org.display_name },
+    { id: org.id, slug: org.slug, display_name: org.display_name, owner },
     { status: 201, requestId },
   );
 }

@@ -8,6 +8,9 @@ import type { NextConfig } from "next";
  *  - Initial bundle /app/inbox < 250KB gzipped
  */
 const nextConfig: NextConfig = {
+  // `pnpm dev` atrás de Apache: sem isto o Next 16 bloqueia /_next/* e a
+  // Server Action de login quando o Host é o domínio público, não localhost.
+  allowedDevOrigins: ["crm.facejus.com.br"],
   // Self-host (HostGator): gera .next/standalone pro container Docker (node server.js).
   // Aditivo — não afeta o deploy Vercel.
   output: "standalone",

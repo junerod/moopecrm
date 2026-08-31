@@ -186,6 +186,28 @@ beforeAll(() => {
             (organization_id, contact_id, campo, valor_proposto, expires_at)
             values (v_org, v_contact, 'email', 'rls-invariant@exemplo.test', now() + interval '7 days');
         end if;
+
+        -- migration 0197 — chave do conector. Leitura org-flat; escrita admin.
+        -- O usuário semeado aqui é agent: o controle positivo é o SELECT.
+        if not exists (select 1 from public.moope_connections where organization_id = v_org) then
+          insert into public.moope_connections
+            (organization_id, kind, inbound_key_prefix, inbound_key_hash, status)
+          values (
+            v_org,
+            'locadora',
+            'mop_rls' || substr(replace(v_org::text, '-', ''), 1, 8),
+            md5('rls-moope-' || v_org::text),
+            'active'
+          );
+        end if;
+        if not exists (select 1 from public.moope_inbound_events where organization_id = v_org) then
+          insert into public.moope_inbound_events
+            (organization_id, connection_id, external_id, event_type)
+          select v_org, c.id, 'rls-ext', 'person.upserted'
+            from public.moope_connections c
+           where c.organization_id = v_org
+           limit 1;
+        end if;
       end loop;
     end
     $seed$;
@@ -223,6 +245,9 @@ const TABLES = [
   // sabotada para `... or true` a suíte seguia 31/31 verde num banco em que o vizinho
   // lia e escrevia. É o modo de falha que o aviso acima descreve, encontrado vivo.
   "org_guardrail_layers",
+  // migration 0197 — conector MOOPE. Leitura org-flat (agent lê); escrita admin.
+  "moope_connections",
+  "moope_inbound_events",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a
   // ausência é deliberada: a policy dela exige `manager`, e o usuário semeado
   // aqui é `agent` — o controle positivo falharia por ACERTO, e a "correção"

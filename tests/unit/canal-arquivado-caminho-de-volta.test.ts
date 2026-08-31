@@ -34,6 +34,7 @@ import { reactivateChannelSession } from "@/lib/channels/reactivate";
 import { validateMetaCredentials } from "@/lib/channels/meta/validate-credentials";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { puxarHistoricoAposReligamento } from "@/lib/channels/historico";
 import { getWahaClient } from "@/lib/waha/client";
 import { encryptWebhookSecret } from "@/lib/webhooks/secrets";
 
@@ -52,6 +53,18 @@ vi.mock("@/lib/channels/meta/validate-credentials", () => ({ validateMetaCredent
 vi.mock("@/lib/waha/client", () => ({
   getWahaClient: vi.fn(),
   wahaFriendlyError: (m: string) => m,
+}));
+vi.mock("@/lib/channels/historico", () => ({
+  puxarHistoricoAposReligamento: vi.fn(async () => ({
+    ok: true,
+    progresso: {
+      status: "pronto",
+      iniciado_em: "2026-08-30T00:00:00.000Z",
+      conversas: 0,
+      mensagens: 0,
+      puladas: 0,
+    },
+  })),
 }));
 
 const ORG = "22222222-2222-4222-8222-222222222222";
@@ -437,6 +450,7 @@ describe("POST /api/v1/channel-sessions/[id]/reconnect — canal excluído não 
     expect(waha.stopSession).toHaveBeenCalledWith(NOME_SESSAO);
     expect(waha.startSession).toHaveBeenCalledWith(NOME_SESSAO);
     expect(db.linhas[0]?.status).toBe("STARTING");
+    expect(puxarHistoricoAposReligamento).toHaveBeenCalled();
   });
 
   it("clone sem a migration 0106: reconectar continua funcionando", async () => {

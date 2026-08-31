@@ -11,6 +11,11 @@ import {
   useChannelSessions,
   type ChannelSession,
 } from "@/hooks/channels/useChannelSessions";
+import { useHistoricoDoCanal } from "@/hooks/channels/useHistoricoDoCanal";
+import {
+  forcarProximaSincronizacao,
+  useSincronizarContatosDoAparelho,
+} from "@/hooks/channels/useSincronizarContatosDoAparelho";
 import { usePacingKnobs } from "@/hooks/channels/usePacingKnobs";
 import { AntiBanSheet } from "./AntiBanSheet";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +32,7 @@ import {
   ArrowsClockwise,
   CheckCircle,
   CircleNotch,
+  ClockCounterClockwise,
   Phone,
   Plus,
   ShieldCheck,
@@ -88,6 +94,47 @@ function enumerar(partes: (string | null)[]): string {
   return uteis.length > 0 ? `${uteis.join(", ")} e ${ultimo}` : ultimo;
 }
 
+function LinhaDoHistorico({
+  sessionId,
+  trazendo,
+}: {
+  sessionId: string;
+  trazendo: boolean;
+}) {
+  const { data } = useHistoricoDoCanal(sessionId, true);
+  const h = data?.historico;
+  if (trazendo || h?.status === "rodando") {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        Trazendo os contatos que já estavam no aparelho…
+      </p>
+    );
+  }
+  if (h?.status === "pronto") {
+    const quando = h.terminado_em
+      ? new Date(h.terminado_em).toLocaleString("pt-BR")
+      : null;
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        {(h.contatos ?? 0) === 0
+          ? "Nenhum contato antigo neste número."
+          : `${h.contatos} ${h.contatos === 1 ? "contato" : "contatos"} na lista`}
+        {quando ? ` · ${quando}` : ""}. A conversa só entra no inbox quando você
+        importar no contato. Queda do número puxa a lista de novo.
+      </p>
+    );
+  }
+  if (h?.status === "erro" && h.motivo) {
+    return <p className="text-[11px] text-error-fg">{h.motivo}</p>;
+  }
+  return (
+    <p className="text-[11px] text-muted-foreground">
+      Ao conectar, a lista de Contatos enche sozinha. A conversa só vem quando
+      você importar no dossiê — o inbox não enche sozinho.
+    </p>
+  );
+}
+
 export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean }) {
   const qc = useQueryClient();
   const {
@@ -96,12 +143,14 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
     isError,
     schemaOutdated,
   } = useChannelSessions({ refetchInterval: 10_000 });
+  useSincronizarContatosDoAparelho(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [qr, setQr] = useState<{ sessionId: string; title: string } | null>(null);
   const [antiBanId, setAntiBanId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<ChannelSession | null>(null);
+  const [historicoId, setHistoricoId] = useState<string | null>(null);
   const pacingItems = usePacingKnobs().data?.items ?? [];
 
   const invalidate = useCallback(
@@ -161,6 +210,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       setBusyId(c.id);
       try {
         await apiClient.post(`/api/v1/channel-sessions/${c.id}/reconnect`, {});
+        forcarProximaSincronizacao(c.id);
         invalidate();
         setQr({ sessionId: c.id, title: `Reconectar ${channelLabel(c)}` });
       } catch (err) {
@@ -178,6 +228,44 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       invalidate();
     },
     [invalidate],
+  );
+
+  const handleTrazerHistorico = useCallback(
+    async (c: ChannelSession) => {
+      setHistoricoId(c.id);
+      try {
+        const res = await apiClient.post<{
+          data: {
+            historico: {
+              contatos?: number;
+              conversas: number;
+              mensagens: number;
+              status: string;
+              motivo?: string;
+            };
+          };
+        }>(`/api/v1/channel-sessions/${c.id}/historico`, {}, { timeoutMs: 280_000 });
+        const h = res.data.historico;
+        const n = h.contatos ?? 0;
+        if (h.status === "pronto") {
+          toast.success(
+            n === 0
+              ? "Nenhum contato antigo encontrado neste número."
+              : `Trouxe ${n} ${n === 1 ? "contato" : "contatos"} para a lista. Importe a conversa no dossiê de quem for atender.`,
+          );
+        } else {
+          toast.error(h.motivo ?? "Não foi possível trazer os contatos.");
+        }
+        invalidate();
+        void qc.invalidateQueries({ queryKey: ["channel-historico", c.id] });
+        void qc.invalidateQueries({ queryKey: ["contacts"] });
+      } catch (err) {
+        toast.error(errMsg(err, "Não foi possível trazer os contatos."));
+      } finally {
+        setHistoricoId(null);
+      }
+    },
+    [invalidate, qc],
   );
 
   const handleDeleted = useCallback(() => {
@@ -313,11 +401,32 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     ? `Verificado ${new Date(c.last_health_check_at).toLocaleString("pt-BR")}`
                     : "Ainda não verificado"}
                 </p>
-                <div className="mt-auto flex gap-2">
+                {vivaNoTransporte && c.status === "WORKING" && (
+                  <LinhaDoHistorico
+                    sessionId={c.id}
+                    trazendo={historicoId === c.id}
+                  />
+                )}
+                <div className="mt-auto flex flex-wrap gap-2">
                   {/* Some no canal oficial em vez de aparecer desabilitado: não é
                       indisponibilidade passageira (como o Excluir sem o serviço no
                       ar), é uma ação que não existe para esse canal — e o clique
                       ainda abriria o diálogo de QR, que ele nunca vai ter. */}
+                  {vivaNoTransporte && c.status === "WORKING" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={historicoId === c.id || !wahaConfigured}
+                      onClick={() => handleTrazerHistorico(c)}
+                    >
+                      {historicoId === c.id ? (
+                        <CircleNotch size={14} className="animate-spin" aria-hidden />
+                      ) : (
+                        <ClockCounterClockwise size={14} aria-hidden />
+                      )}
+                      Trazer contatos do aparelho
+                    </Button>
+                  )}
                   {vivaNoTransporte && (
                     <Button
                       variant="outline"

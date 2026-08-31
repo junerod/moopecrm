@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ interface NavHubProps {
   role: Role | null;
   title: string;
   subtitle: string;
+  children?: ReactNode;
 }
 
 /**
@@ -38,7 +40,7 @@ function slug(texto: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export function NavHub({ group, isPlatformAdmin, role, title, subtitle }: NavHubProps) {
+export function NavHub({ group, isPlatformAdmin, role, title, subtitle, children }: NavHubProps) {
   const secoes = hubSections(group, isPlatformAdmin, role);
 
   return (
@@ -74,6 +76,7 @@ export function NavHub({ group, isPlatformAdmin, role, title, subtitle }: NavHub
           </div>
         </section>
       ))}
+      {children}
     </div>
   );
 }

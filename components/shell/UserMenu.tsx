@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useTransition } from "react";
 import { useUser, useAuth } from "@/hooks/auth/AuthProvider";
 import {
@@ -12,7 +13,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { SignOut } from "@/lib/ui/icons";
+import { PORTA_DA_PLATAFORMA } from "@/lib/navigation/porta-da-plataforma";
+import { ShieldCheck, SignOut } from "@/lib/ui/icons";
 
 function initials(name: string | null, email: string): string {
   if (name && name.trim()) {
@@ -43,8 +45,24 @@ export function UserMenu() {
             <div className="flex flex-col">
               <span className="text-sm font-medium">{user.full_name ?? user.email}</span>
               <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              {user.is_platform_admin ? (
+                <span className="mt-1 text-xs font-normal text-muted-foreground">
+                  Dono do servidor
+                </span>
+              ) : null}
             </div>
           </DropdownMenuLabel>
+          {user.is_platform_admin ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={PORTA_DA_PLATAFORMA.href}>
+                  <ShieldCheck size={16} className="mr-2" aria-hidden />
+                  {PORTA_DA_PLATAFORMA.label}
+                </Link>
+              </DropdownMenuItem>
+            </>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={isPending} onClick={() => startTransition(async () => { await signOut(); })}>
             <SignOut size={16} className="mr-2" aria-hidden />

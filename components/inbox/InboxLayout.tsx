@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/AuthProvider";
+import { useSincronizarContatosDoAparelho } from "@/hooks/channels/useSincronizarContatosDoAparelho";
 import { estadoDaJanela, formatarDecorrido } from "@/lib/channels/janela";
 import { JanelaFechadaAviso } from "@/components/inbox/JanelaFechadaAviso";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
@@ -102,6 +103,7 @@ interface InboxLayoutProps {
 export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {}) {
   const { activeOrg } = useAuth();
   const orgId = activeOrg?.orgId ?? null;
+  useSincronizarContatosDoAparelho(Boolean(orgId));
 
   const router = useRouter();
   const pathname = usePathname();

@@ -87,7 +87,72 @@ function classificar(nome: string, mensagem: string): NonNullable<SendResult["er
   return "send_failed";
 }
 
+function mailserverPronto(): { url: string; key: string; from: string } | null {
+  const url = env.MAILSERVER_URL.trim().replace(/\/$/, "");
+  const key = env.MAILSERVER_API_KEY.trim();
+  const from = env.MAILSERVER_FROM_EMAIL.trim();
+  if (!url || !key || !from) return null;
+  return { url, key, from };
+}
+
+function corpoEmTexto(html: string, text?: string): string {
+  if (text && text.trim().length > 0) return text;
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function enviarPeloMailserver(
+  ms: { url: string; key: string; from: string },
+  args: SendArgs,
+): Promise<SendResult> {
+  const destinatarios = (Array.isArray(args.to) ? args.to : [args.to]).map((e) => e.trim());
+  const body = corpoEmTexto(args.html, args.text);
+  try {
+    for (const to of destinatarios) {
+      const res = await fetch(`${ms.url}/enviar-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ms.key,
+        },
+        body: JSON.stringify({
+          subject: args.subject,
+          body,
+          from: ms.from,
+          to,
+        }),
+      });
+      if (!res.ok) {
+        const detalhes = await res.text().catch(() => "");
+        return {
+          ok: false,
+          error: res.status === 429 ? "rate_limited" : "send_failed",
+          details: detalhes.slice(0, 300),
+        };
+      }
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: "send_failed",
+      details: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 export async function sendEmail(args: SendArgs): Promise<SendResult> {
+  const ms = mailserverPronto();
+  if (ms) return enviarPeloMailserver(ms, args);
+
   const client = getClient();
   const from = fromAddress(args.fromName);
 
@@ -141,5 +206,5 @@ export async function sendEmail(args: SendArgs): Promise<SendResult> {
  * mandaria o operador esperar uma mensagem que nunca sai.
  */
 export function isEmailConfigured(): boolean {
-  return getClient() !== null && fromAddress() !== null;
+  return mailserverPronto() !== null || (getClient() !== null && fromAddress() !== null);
 }

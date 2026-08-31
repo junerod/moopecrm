@@ -126,9 +126,15 @@ describe("remetente", () => {
   const ORIGINAIS = {
     key: process.env.RESEND_API_KEY,
     from: process.env.RESEND_FROM_EMAIL,
+    mailUrl: process.env.MAILSERVER_URL,
+    mailKey: process.env.MAILSERVER_API_KEY,
+    mailFrom: process.env.MAILSERVER_FROM_EMAIL,
   };
 
   beforeEach(() => {
+    process.env.MAILSERVER_URL = "";
+    process.env.MAILSERVER_API_KEY = "";
+    process.env.MAILSERVER_FROM_EMAIL = "";
     vi.resetModules();
   });
 
@@ -136,6 +142,9 @@ describe("remetente", () => {
     for (const [chave, valor] of [
       ["RESEND_API_KEY", ORIGINAIS.key],
       ["RESEND_FROM_EMAIL", ORIGINAIS.from],
+      ["MAILSERVER_URL", ORIGINAIS.mailUrl],
+      ["MAILSERVER_API_KEY", ORIGINAIS.mailKey],
+      ["MAILSERVER_FROM_EMAIL", ORIGINAIS.mailFrom],
     ] as const) {
       if (valor === undefined) delete process.env[chave];
       else process.env[chave] = valor;
@@ -171,12 +180,46 @@ describe("remetente", () => {
     expect(sujo).toBe("Acme evil@x.comBcc: vitima@y.com <nao-responda@revenda.com.br>");
   });
 
+  it("mailserver com as três variáveis manda por ele, não pela Resend", async () => {
+    process.env.RESEND_API_KEY = "";
+    process.env.RESEND_FROM_EMAIL = "";
+    process.env.MAILSERVER_URL = "http://mailserver.test";
+    process.env.MAILSERVER_API_KEY = "chave-de-teste";
+    process.env.MAILSERVER_FROM_EMAIL = "info@info.exemplo.com.br";
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ status: "ok" }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { sendEmail, isEmailConfigured } = await import("@/lib/email/resend");
+
+    expect(isEmailConfigured()).toBe(true);
+    const r = await sendEmail({
+      to: "cliente@exemplo.com",
+      subject: "Sua conta",
+      html: "<p>Olá</p>",
+      text: "Olá",
+    });
+    expect(r.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const req = fetchMock.mock.calls[0] as [string, { headers: Record<string, string>; body: string }];
+    expect(req[0]).toBe("http://mailserver.test/enviar-email");
+    expect(req[1].headers["x-api-key"]).toBe("chave-de-teste");
+    expect(JSON.parse(req[1].body)).toEqual({
+      subject: "Sua conta",
+      body: "Olá",
+      from: "info@info.exemplo.com.br",
+      to: "cliente@exemplo.com",
+    });
+    vi.unstubAllGlobals();
+  });
+
   it("chave configurada mas remetente vazio = NÃO CONFIGURADO, não envio quebrado", async () => {
     // É a decisão que joga o fluxo no caminho bom que já existe: `pending_review`
     // no worker de LGPD e o link de aceite na tela do convite. Antes, o domínio
     // herdado fazia a Resend recusar e o operador caçava rede e contêiner.
     process.env.RESEND_API_KEY = "re_chave_valida_de_teste";
     process.env.RESEND_FROM_EMAIL = "";
+    process.env.MAILSERVER_URL = "";
+    process.env.MAILSERVER_API_KEY = "";
+    process.env.MAILSERVER_FROM_EMAIL = "";
     const { sendEmail, isEmailConfigured } = await import("@/lib/email/resend");
 
     expect(isEmailConfigured()).toBe(false);

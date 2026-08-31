@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/auth/AuthProvider";
-import { MagnifyingGlass } from "@/lib/ui/icons";
+import { PORTA_DA_PLATAFORMA } from "@/lib/navigation/porta-da-plataforma";
 import { NAV_GROUPS, searchable, type NavDestination } from "@/lib/navigation/registry";
+import { MagnifyingGlass, ShieldCheck } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -54,10 +55,19 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
   const [busca, setBusca] = useState("");
   const [destacado, setDestacado] = useState(0);
 
-  const visiveis = useMemo(
-    () => searchable(user.is_platform_admin, activeOrg?.role ?? null),
-    [user.is_platform_admin, activeOrg?.role],
-  );
+  const visiveis = useMemo(() => {
+    const doTenant = searchable(user.is_platform_admin, activeOrg?.role ?? null);
+    if (!user.is_platform_admin) return doTenant;
+    const porta: NavDestination = {
+      href: PORTA_DA_PLATAFORMA.href,
+      label: PORTA_DA_PLATAFORMA.label,
+      description: PORTA_DA_PLATAFORMA.description,
+      icon: ShieldCheck,
+      group: "organizacao",
+      section: "Instalação",
+    };
+    return [...doTenant, porta];
+  }, [user.is_platform_admin, activeOrg?.role]);
 
   const resultados = useMemo(() => {
     const termo = normalizar(busca.trim());

@@ -37,8 +37,18 @@ describe("escolher o pacote pelo que o dono escreveu", () => {
     expect(escolherPacotePorTexto("Consultório odontológico").id).toBe("clinica");
     expect(escolherPacotePorTexto("Sou corretor de imóveis").id).toBe("imobiliaria");
     expect(escolherPacotePorTexto("Agência de arquitetura").id).toBe("servicos");
+    expect(escolherPacotePorTexto("Escritório de advocacia").id).toBe("advocacia");
+    expect(escolherPacotePorTexto("Sou advogado trabalhista").id).toBe("advocacia");
+    expect(escolherPacotePorTexto("Facejus jurídico").id).toBe("advocacia");
+    expect(escolherPacotePorTexto("Locadora de carros para motorista de app").id).toBe(
+      "locadora",
+    );
+    expect(escolherPacotePorTexto("Frota para Uber e 99").id).toBe("locadora");
+    expect(escolherPacotePorTexto("aluguel de carro para app").id).toBe("locadora");
     expect(escolherPacotePorTexto("Curso online de inglês").id).toBe("curso");
     expect(escolherPacotePorTexto("Loja de roupas").id).toBe("loja");
+    expect(escolherPacotePorTexto("Venda do sistema para locadoras").id).toBe("saas");
+    expect(escolherPacotePorTexto("MOOPE CRM SaaS").id).toBe("saas");
   });
 
   it("cai no genérico quando não reconhece — nunca em nada", () => {
