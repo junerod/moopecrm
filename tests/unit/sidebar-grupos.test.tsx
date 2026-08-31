@@ -95,6 +95,18 @@ describe("Sidebar agrupado", () => {
     expect(nav.contains(config)).toBe(false);
   });
 
+  it("Ajuda fica no rodapé, logo abaixo de Configurações", () => {
+    comoPapel("viewer");
+    render(<Sidebar collapsed={false} />);
+    const config = screen.getByRole("link", { name: /Configurações/ });
+    const ajuda = screen.getByRole("link", { name: "Ajuda" });
+    expect(ajuda).toHaveAttribute("href", "/app/manual");
+    const nav = screen.getByRole("navigation", { name: "Navegação principal" });
+    expect(nav.contains(ajuda)).toBe(false);
+    const links = screen.getAllByRole("link");
+    expect(links.indexOf(ajuda)).toBe(links.indexOf(config) + 1);
+  });
+
   it("admin da empresa NÃO vê a porta da plataforma — só o dono do servidor", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);

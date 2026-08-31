@@ -29,6 +29,7 @@ ser fonte sem ninguém decidir isso.
 | `retencao-de-historico.architecture.json` | poda do histórico (issue #261) — 16 peças, 18 arestas, 6 faixas; o que sai (`done`/`failed`/`dead` velho), o que tem dono e **não** sai (`pending`/`running`, e `dead` com aviso ainda aberto), e por que o expurgo do audit é uma `security definer` sem seletor de linha em vez de uma porta |
 | `legado-do-aparelho.architecture.json` | legado do aparelho — lista de Contatos + recorte recente no inbox (conectar + cron); arquivo antigo sob pedido no dossiê |
 | `moope-conector.architecture.json` | conector MOOPE — chave + launch 90s + eventos nos dois sentidos (frota e Facejus) |
+| `manual-do-operador.architecture.json` | tela `/app/manual` — índice, busca e as três portas (hub, ⌘K, Inbox vazio) |
 
 > **Esta tabela já apodreceu uma vez:** ela listava 8 mapas quando o disco tinha 9 — faltava
 > `indice-de-atrito`. Nenhum teste lê este README (o gate lê os `.json`), então mapa novo que

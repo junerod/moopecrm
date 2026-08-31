@@ -77,9 +77,22 @@ describe("ApiErrorToast", () => {
     );
   });
 
-  it("calls toast.error with generic message for non-ApiError", () => {
-    showApiError(new Error("oops"));
+  it("mostra a mensagem do Error — 'Erro inesperado' escondia o que quebrou", () => {
+    showApiError(new Error("A lista não carregou a tempo."));
     expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledWith("A lista não carregou a tempo.");
+  });
+
+  it("pedido abortado não vira toast — é refetch, não falha", () => {
+    const abortado = new Error("The operation was aborted.");
+    abortado.name = "AbortError";
+    showApiError(abortado);
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  it("só cai no genérico quando não há o que dizer", () => {
+    showApiError({ weird: true });
     expect(toast.error).toHaveBeenCalledWith("Erro inesperado. Tente novamente.");
   });
 });

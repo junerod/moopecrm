@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Manual do operador — a tela, não o markdown do repo",
+    "subtitle": "quem está perdido acha o capítulo; o Inbox vazio aponta para cá",
+    "output": "manual-do-operador.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o operador vê" },
+    { "id": "app", "label": "App" },
+    { "id": "fonte", "label": "Fonte do texto" }
+  ],
+  "mainPath": ["inbox", "tela", "busca", "conteudo"],
+  "nodes": [
+    { "id": "inbox", "lane": "humano", "col": 0, "type": "frontend", "label": "Inbox vazio", "sublabel": "Como usar o sistema" },
+    { "id": "hub", "lane": "humano", "col": 1, "type": "frontend", "label": "Configurações › Ajuda", "sublabel": "card Manual" },
+    { "id": "cmdk", "lane": "humano", "col": 2, "type": "frontend", "label": "⌘K", "sublabel": "manual, agente, WhatsApp" },
+    { "id": "tela", "lane": "humano", "col": 3, "type": "frontend", "label": "/app/manual", "sublabel": "índice + busca + capítulos" },
+    { "id": "registry", "lane": "app", "col": 1, "type": "config", "label": "NAV_DESTINATIONS", "sublabel": "porta do hub e do ⌘K" },
+    { "id": "busca", "lane": "app", "col": 3, "type": "lib", "label": "buscarCapitulos", "sublabel": "acento e vocabulário extra" },
+    { "id": "conteudo", "lane": "fonte", "col": 3, "type": "lib", "label": "lib/manual/conteudo.ts", "sublabel": "vence na tela se divergir do md" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "inbox", "to": "tela", "label": "botão do empty" },
+    { "id": "e2", "from": "hub", "to": "tela", "label": "card Ajuda" },
+    { "id": "e3", "from": "cmdk", "to": "tela", "label": "escolhe Manual" },
+    { "id": "e4", "from": "registry", "to": "hub", "label": "projeta o card" },
+    { "id": "e5", "from": "registry", "to": "cmdk", "label": "descrição buscável" },
+    { "id": "e6", "from": "tela", "to": "busca", "label": "o que a pessoa digitou" },
+    { "id": "e7", "from": "conteudo", "to": "busca", "label": "título + palavras + blocos" },
+    { "id": "e8", "from": "busca", "to": "tela", "label": "capítulos que restam" },
+    { "id": "e9", "from": "conteudo", "to": "tela", "label": "os dez capítulos" },
+    { "id": "e10", "from": "tela", "to": "inbox", "label": "capítulo WhatsApp — o empty deixa de ser o fim" }
+  ]
+}

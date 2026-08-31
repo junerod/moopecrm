@@ -113,7 +113,9 @@ export function ConversationList({
   if (items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <EmptyInbox />
+        <EmptyInbox
+          secondary={{ label: "Como usar o sistema", href: "/app/manual" }}
+        />
       </div>
     );
   }

@@ -101,7 +101,18 @@ const COPY: Record<string, { variant: Variant; msg?: string }> = {
   agenda_listagem_sem_recorte: { variant: "info" },
 };
 
+function ehAborto(err: unknown): boolean {
+  // Pedido cancelado (troca de aba, refetch, timeout do cliente) não é
+  // "o sistema quebrou". Empilhar "Erro inesperado" nisso ensina a ignorar
+  // vermelho — e esconde o erro de verdade quando ele chega.
+  if (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError") {
+    return true;
+  }
+  return err instanceof Error && err.name === "AbortError";
+}
+
 export function showApiError(err: unknown): void {
+  if (ehAborto(err)) return;
   if (err instanceof ApiError) {
     const entry = COPY[err.code];
     const description = err.requestId ? `ID: ${err.requestId}` : undefined;
@@ -118,6 +129,10 @@ export function showApiError(err: unknown): void {
       return;
     }
     toast.error(err.message || err.code, { description });
+    return;
+  }
+  if (err instanceof Error && err.message.trim()) {
+    toast.error(err.message);
     return;
   }
   toast.error("Erro inesperado. Tente novamente.");

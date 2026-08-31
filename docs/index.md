@@ -38,6 +38,7 @@ de menor precedência e registre.
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | Como contribuir |
 | [`CHANGELOG.md`](../CHANGELOG.md) | Mudanças por versão (SemVer). **Quem roda VPS lê antes de `update.sh`** — mudança que exige ação manual aparece sob "⚠️ Requer atenção" |
 | [`docs/current-state.md`](current-state.md) | **O que está pronto, incompleto e quebrado hoje** |
+| [`docs/manual/README.md`](manual/README.md) | Rascunho em Markdown. **A cara para o operador é a tela** `/app/manual` (Configurações › Como usar). Texto em `lib/manual/conteudo.ts` |
 
 ## 2. Produto e intenção
 

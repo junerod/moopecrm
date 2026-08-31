@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, Gear, ShieldCheck } from "@/lib/ui/icons";
+import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, Gear, Question, ShieldCheck } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -11,7 +11,13 @@ import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDo
 import { VersionFooter } from "@/components/shell/VersionFooter";
 import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
 import { PORTA_DA_PLATAFORMA } from "@/lib/navigation/porta-da-plataforma";
-import { GRUPO_NO_RODAPE, NAV_GROUPS, sidebarGroups } from "@/lib/navigation/registry";
+import {
+  canSee,
+  GRUPO_NO_RODAPE,
+  NAV_DESTINATIONS,
+  NAV_GROUPS,
+  sidebarGroups,
+} from "@/lib/navigation/registry";
 
 interface SidebarContentProps {
   collapsed: boolean;
@@ -43,6 +49,10 @@ export function SidebarContent({
   // 1280x768, ele caía fora da dobra mesmo em telas de 1080px.
   const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE);
   const rodape = NAV_GROUPS.find((g) => g.id === GRUPO_NO_RODAPE)?.hub;
+  const ajuda = NAV_DESTINATIONS.find((d) => d.href === "/app/manual");
+  const mostraAjuda = Boolean(
+    ajuda && canSee(ajuda, user.is_platform_admin, activeOrg?.role ?? null),
+  );
 
   const brand = useMarcaDaInstalacao();
   /**
@@ -196,6 +206,24 @@ export function SidebarContent({
             {!collapsed && <span className="truncate">{rodape.label}</span>}
           </Link>
         )}
+        {mostraAjuda && ajuda ? (
+          <Link
+            href={ajuda.href}
+            title={collapsed ? t("Ajuda") : undefined}
+            aria-current={pathname.startsWith(ajuda.href) ? "page" : undefined}
+            onClick={onNavigate}
+            className={cn(
+              "mb-1 flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
+              pathname.startsWith(ajuda.href)
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              collapsed && "justify-center px-2",
+            )}
+          >
+            <Question size={18} aria-hidden />
+            {!collapsed && <span className="truncate">Ajuda</span>}
+          </Link>
+        ) : null}
         {user.is_platform_admin && (
           <Link
             href={PORTA_DA_PLATAFORMA.href}

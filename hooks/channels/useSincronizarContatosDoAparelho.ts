@@ -35,6 +35,16 @@ export function useSincronizarContatosDoAparelho(enabled: boolean): {
   });
   const [atualizando, setAtualizando] = useState(false);
   const vivo = useRef(true);
+  // A lista muda de IDENTIDADE a cada refetch (mesmo conteúdo). Se o
+  // efeito depender dela, cada invalidate redesenha → recria o callback →
+  // puxa de novo → Maximum update depth no inbox.
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
+  const assinatura = (sessions ?? [])
+    .filter((c) => c.status === "WORKING" && c.waha_session_name)
+    .map((c) => c.id)
+    .sort()
+    .join(",");
 
   useEffect(() => {
     vivo.current = true;
@@ -45,10 +55,11 @@ export function useSincronizarContatosDoAparelho(enabled: boolean): {
 
   const puxar = useCallback(
     async (forcar: boolean) => {
-      if (!enabled || !sessions) return;
+      const lista = sessionsRef.current;
+      if (!enabled || !lista) return;
       const agora = Date.now();
 
-      for (const c of sessions) {
+      for (const c of lista) {
         const chave = `ativo:${c.id}`;
         if (c.status !== "WORKING" || !c.waha_session_name) {
           ultimoPedido.delete(chave);
@@ -58,6 +69,8 @@ export function useSincronizarContatosDoAparelho(enabled: boolean): {
         if (!forcar && ultimo > 0 && agora - ultimo < INTERVALO_MS) continue;
         ultimoPedido.set(chave, agora);
 
+        let contatos = 0;
+        let conversas = 0;
         try {
           const res = await apiClient.post<{
             data?: {
@@ -69,6 +82,8 @@ export function useSincronizarContatosDoAparelho(enabled: boolean): {
               };
             };
           }>(`/api/v1/channel-sessions/${c.id}/historico`, {}, { timeoutMs: 280_000 });
+          contatos = res.data?.historico?.contatos ?? 0;
+          conversas = res.data?.historico?.conversas ?? 0;
           if (forcar) {
             const n = res.data?.historico?.contatos;
             const fios = res.data?.historico?.conversas;
@@ -104,21 +119,25 @@ export function useSincronizarContatosDoAparelho(enabled: boolean): {
             toast.error(err.message || "Não trouxe os contatos do aparelho.");
           }
         } finally {
-          if (vivo.current) {
+          if (!vivo.current) continue;
+          if (forcar || contatos > 0) {
             void qc.invalidateQueries({ queryKey: ["contacts"] });
+          }
+          if (forcar || conversas > 0) {
             void qc.invalidateQueries({ queryKey: ["conversations"] });
             void qc.invalidateQueries({ queryKey: ["conversation-counts"] });
-            void qc.invalidateQueries({ queryKey: ["channel-historico", c.id] });
           }
+          void qc.invalidateQueries({ queryKey: ["channel-historico", c.id] });
         }
       }
     },
-    [enabled, sessions, qc],
+    [enabled, qc],
   );
 
   useEffect(() => {
+    if (!enabled || !assinatura) return;
     void puxar(false);
-  }, [puxar]);
+  }, [enabled, assinatura, puxar]);
 
   const atualizarAgora = useCallback(async () => {
     setAtualizando(true);

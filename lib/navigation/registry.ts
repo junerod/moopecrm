@@ -4,6 +4,7 @@ import { ROLE_RANK, type Role } from "@/lib/auth/types";
 import {
   Bell,
   BookOpen,
+  Question,
   Brain,
   Buildings,
   CalendarBlank,
@@ -553,6 +554,17 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "organizacao",
     section: "Dados e acesso",
     minRole: "admin",
+  },
+  {
+    href: "/app/manual",
+    label: "Como usar",
+    description:
+      "Manual de usuário: como entrar, conectar o WhatsApp, mandar mensagem, criar o atendente automático e um fluxo.",
+    icon: Question,
+    group: "organizacao",
+    section: "Como usar",
+    // SEM sidebar no grupo que rola: a porta no menu é o rodapé, logo abaixo
+    // de Configurações (`Sidebar.tsx`). ⌘K e o Inbox vazio também levam aqui.
   },
 ];
 

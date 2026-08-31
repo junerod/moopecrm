@@ -62,7 +62,12 @@ export function EditContactDialog({ contact, open, onOpenChange }: Props) {
       .filter(Boolean);
 
     const payload: Record<string, unknown> = {};
-    if (values.name?.trim()) payload.name = values.name.trim();
+    if (values.name?.trim()) {
+      payload.name = values.name.trim();
+      // A lista do Inbox lê `display_name` primeiro. Gravar só `name` fazia
+      // o cadastro "pegar" na ficha e a fila continuar Sem nome.
+      payload.display_name = values.name.trim();
+    }
     if (values.email?.trim()) payload.email = values.email.trim();
     if (values.phone_number?.trim()) payload.phone_number = values.phone_number.trim();
     payload.tags = tags;

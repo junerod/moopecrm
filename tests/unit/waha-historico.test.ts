@@ -173,6 +173,17 @@ describe("o gatilho recusa emitir evento de legado", () => {
     const tela = readFileSync(join(process.cwd(), "components/inbox/InboxLayout.tsx"), "utf8");
     expect(tela).toMatch(/useSincronizarContatosDoAparelho/);
   });
+
+  it("o efeito do sync não depende da identidade da lista — senão o inbox entra em loop", () => {
+    const src = readFileSync(
+      join(process.cwd(), "hooks/channels/useSincronizarContatosDoAparelho.ts"),
+      "utf8",
+    );
+    expect(src).toMatch(/sessionsRef/);
+    expect(src).toMatch(/assinatura/);
+    expect(src).not.toMatch(/void puxar\(false\);\s*\}, \[puxar\]/);
+    expect(src).not.toMatch(/\[enabled, sessions, qc\]/);
+  });
 });
 
 function adminComMetadata(
