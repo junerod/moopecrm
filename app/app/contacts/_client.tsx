@@ -18,6 +18,7 @@ import { useContactList } from "@/hooks/contacts/useContactList";
 import { ContactsTable } from "@/components/contacts/ContactsTable";
 import { NewContactDialog } from "@/components/contacts/NewContactDialog";
 import { ImportContactsDialog } from "@/components/contacts/ImportContactsDialog";
+import { IndicadorDeCarga } from "@/components/feedback/IndicadorDeCarga";
 import { EmptyContacts } from "@/components/empty";
 import type { ContactOrderBy } from "@/lib/schemas/contacts";
 
@@ -201,6 +202,11 @@ export function ContactsListClient() {
           </Button>
         )}
       </div>
+
+      <IndicadorDeCarga
+        ativo={(q.isFetching && !q.isLoading && !q.isFetchingNextPage) || atualizando}
+        rotulo={atualizando ? "Trazendo contatos do aparelho…" : "Atualizando contatos…"}
+      />
 
       {q.isLoading ? (
         <div className="space-y-2">

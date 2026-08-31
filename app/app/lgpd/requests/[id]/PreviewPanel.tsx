@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLgpdPreview, type LgpdPreviewCounts } from "@/hooks/useLgpdPreview";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 interface PreviewPanelProps {
   requestId: string;
@@ -85,7 +86,7 @@ export function PreviewPanel({ requestId }: PreviewPanelProps) {
               {/* Contact card */}
               {preview.contact && (
                 <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                  <p className="font-medium">{preview.contact.name ?? preview.contact.display_name ?? "—"}</p>
+                  <p className="font-medium">{rotuloDoContato(preview.contact)}</p>
                   {preview.contact.email && (
                     <p className="text-muted-foreground">{preview.contact.email}</p>
                   )}

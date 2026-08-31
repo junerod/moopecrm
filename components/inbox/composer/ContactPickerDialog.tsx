@@ -17,6 +17,7 @@ import { useContactList } from "@/hooks/contacts/useContactList";
 import { parseDialablePhone, phoneToWhatsappId } from "@/lib/messaging/contact-card";
 import { MagnifyingGlass, UserCircle } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { Contact } from "@/lib/types/contacts";
 
 /** Contato da base ou informado na hora — o que vai no cartão WhatsApp. */
@@ -36,7 +37,7 @@ interface Props {
 }
 
 function displayName(c: Contact): string {
-  return c.display_name ?? c.name ?? c.phone_number ?? "Sem nome";
+  return rotuloDoContato(c);
 }
 
 export function ContactPickerDialog({

@@ -9,6 +9,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { listConversationsQuerySchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
+import { comNomeDoContatoGemeo } from "@/lib/contacts/com-nome-do-contato-gemeo";
 import { comNomeDoAtendente } from "@/lib/users/com-nome-do-atendente";
 
 import { listConversationsHandler } from "./_handler";
@@ -70,7 +71,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     // handler é compartilhado com as tools MCP, que já resolvem o nome por conta
     // própria (`lib/mcp/tools/conversations.ts`) — enriquecer lá faria a mesma
     // leitura duas vezes por chamada do agente.
-    return ok(await comNomeDoAtendente(conversations), {
+    const comAtendente = await comNomeDoAtendente(conversations);
+    return ok(await comNomeDoContatoGemeo(supabase, activeOrg.orgId, comAtendente), {
       requestId,
       meta: { cursor, has_more },
     });

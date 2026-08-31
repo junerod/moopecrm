@@ -13,6 +13,15 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { COLUNAS_DO_ROTULO, completarContatosComGemeo } from "@/lib/contacts/completar-com-gemeo";
+import {
+  contatoDoEmbed,
+  rotuloDoContato,
+  SEM_NOME,
+  telefoneApresentavel,
+  type ContatoNomeavel,
+} from "@/lib/contacts/rotulo-do-contato";
+
 export const ESTADOS_ABERTOS = ["awaiting_human", "awaiting_lead"] as const;
 export const ESTADOS_FECHADOS = ["resolved", "escalated", "cancelled"] as const;
 
@@ -46,11 +55,11 @@ export interface ChamadoDetalhado extends ChamadoDaLista {
 
 const COLUNAS_LISTA =
   "id, title, summary, blocker, status, opened_at, conversation_id, " +
-  "conversations:conversation_id(contacts:contact_id(name, phone_number))";
+  `conversations:conversation_id(contacts:contact_id(${COLUNAS_DO_ROTULO}))`;
 
 const COLUNAS_DETALHE =
   "id, title, summary, blocker, status, source, opened_at, closed_at, conversation_id, " +
-  "conversations:conversation_id(contacts:contact_id(name, phone_number))";
+  `conversations:conversation_id(contacts:contact_id(${COLUNAS_DO_ROTULO}))`;
 
 interface LinhaComContato {
   id: string;
@@ -62,10 +71,20 @@ interface LinhaComContato {
   conversation_id: string;
   source?: string;
   closed_at?: string | null;
-  conversations: { contacts: { name: string | null; phone_number: string | null } | null } | null;
+  conversations:
+    | { contacts: ContatoNomeavel | ContatoNomeavel[] | null }
+    | { contacts: ContatoNomeavel | ContatoNomeavel[] | null }[]
+    | null;
 }
 
-function achatarContato(r: LinhaComContato): ChamadoDaLista {
+function contatoDaLinha(r: LinhaComContato): ContatoNomeavel | null {
+  const conv = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
+  return contatoDoEmbed(conv?.contacts ?? null);
+}
+
+function achatarContato(r: LinhaComContato, contato: ContatoNomeavel | null): ChamadoDaLista {
+  const rotulo = rotuloDoContato(contato);
+  const tel = telefoneApresentavel(contato);
   return {
     id: r.id,
     title: r.title,
@@ -74,8 +93,8 @@ function achatarContato(r: LinhaComContato): ChamadoDaLista {
     status: r.status,
     opened_at: r.opened_at,
     conversation_id: r.conversation_id,
-    contact_name: r.conversations?.contacts?.name ?? null,
-    contact_phone: r.conversations?.contacts?.phone_number ?? null,
+    contact_name: rotulo === SEM_NOME ? null : rotulo,
+    contact_phone: tel || null,
   };
 }
 
@@ -108,8 +127,16 @@ export async function listarChamados(
     .eq("organization_id", organizationId)
     .in("status", ESTADOS_ABERTOS as unknown as string[]);
 
+  const linhas = (data ?? []) as unknown as LinhaComContato[];
+  const brutos = linhas.map(contatoDaLinha).filter((c): c is ContatoNomeavel => c !== null);
+  const completos = await completarContatosComGemeo(supabase, organizationId, brutos);
+  const porId = new Map(completos.filter((c) => c.id).map((c) => [c.id as string, c]));
+
   return {
-    chamados: ((data ?? []) as unknown as LinhaComContato[]).map(achatarContato),
+    chamados: linhas.map((r) => {
+      const c = contatoDaLinha(r);
+      return achatarContato(r, c?.id ? (porId.get(c.id) ?? c) : c);
+    }),
     abertos: count ?? 0,
   };
 }
@@ -138,8 +165,12 @@ export async function lerChamado(
   if (eventsErr) throw new Error(eventsErr.message);
 
   const linha = caseRow as unknown as LinhaComContato;
+  const bruto = contatoDaLinha(linha);
+  const [resolvido] = bruto
+    ? await completarContatosComGemeo(supabase, organizationId, [bruto])
+    : [null];
   return {
-    ...achatarContato(linha),
+    ...achatarContato(linha, resolvido ?? bruto),
     source: linha.source ?? "agent",
     closed_at: linha.closed_at ?? null,
     events: (events ?? []) as EventoDoChamado[],

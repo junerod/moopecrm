@@ -6,6 +6,7 @@ import { TenantBadge } from "@/components/admin/inbox/TenantBadge";
 import { AdminSidePanel } from "./AdminSidePanel";
 import { CircleNotch, Lock } from "@/lib/ui/icons";
 import { Badge } from "@/components/ui/badge";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { Message } from "@/lib/types/messaging";
 
 // ---------------------------------------------------------------------------
@@ -53,7 +54,7 @@ export function AdminThreadClient({ conversationId }: Props) {
   }
 
   const { conversation, organization, contact } = data;
-  const contactName = contact?.name?.trim() || contact?.phone_number || "Sem nome";
+  const contactName = rotuloDoContato(contact);
   const statusVariant = STATUS_VARIANT[conversation.status] ?? "outline";
 
   return (

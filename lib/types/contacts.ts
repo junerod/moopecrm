@@ -22,6 +22,8 @@ export interface Contact {
   tags: string[];
   source: string;
   source_metadata: Record<string, unknown>;
+  /** Identidade opaca do WhatsApp (`123@lid`). Gerada; ausente em contato manual. */
+  wa_lid?: string | null;
   created_at: string;
   updated_at: string;
   last_activity_at: string | null;

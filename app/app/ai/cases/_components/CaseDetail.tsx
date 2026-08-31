@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCase } from "@/hooks/ai/useCases";
 import { STATUS_BADGE_VARIANT, STATUS_LABEL, caseEventLabel } from "@/lib/ai/case-copy";
+import { SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 import { CaseReplyPanel } from "./CaseReplyPanel";
 
 export function CaseDetail({ caseId }: { caseId: string | null }) {
@@ -34,7 +35,7 @@ export function CaseDetail({ caseId }: { caseId: string | null }) {
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold">{data.contact_name ?? "Contato sem nome"}</h2>
+          <h2 className="text-base font-semibold">{data.contact_name ?? SEM_NOME}</h2>
           <p className="text-xs text-muted-foreground">{data.contact_phone ?? "Sem telefone"}</p>
         </div>
         <div className="flex items-center gap-2">

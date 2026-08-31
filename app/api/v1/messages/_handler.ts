@@ -20,6 +20,7 @@ import {
 } from "@/lib/channels";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { conferirDefinicao } from "@/lib/channels/conferir-definicao";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { isMediaPathOwnedBy } from "@/lib/messaging/media/upload-validation";
 import {
   buildVcard,
@@ -368,7 +369,7 @@ export async function sendMessageHandler(
           "Contato sem telefone para envio como cartão.",
         );
       }
-      const displayName = row.display_name ?? row.name ?? row.phone_number;
+      const displayName = rotuloDoContato(row);
       outboundBody = displayName;
       outboundMetadata = {
         ...outboundMetadata,

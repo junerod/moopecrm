@@ -164,6 +164,25 @@ describe("a segunda rede: voltar para a aba", () => {
     expect(fonte).toMatch(/refetchOnWindowFocus: true/);
   });
 
+  it("a rajada do Realtime NÃO vira GET atrás de GET", () => {
+    // Histórico do aparelho e import de mensagens escrevem dezenas de
+    // linhas em segundos. Invalidar na hora deixava o inbox disparando
+    // /conversations sem parar e a tela parada — o operador achava que
+    // tinha travado.
+    for (const f of ["hooks/inbox/useConversationsRealtime.ts", "hooks/inbox/useMessagesRealtime.ts"]) {
+      const fonte = readFileSync(f, "utf8");
+      expect(fonte, `${f} invalidou sem pausa`).toMatch(/invalidarComPausa\(/);
+    }
+  });
+
+  it("refetch com dado na tela TEM sinal — senão parece travado", () => {
+    const lista = readFileSync("components/inbox/ConversationList.tsx", "utf8");
+    const fio = readFileSync("components/inbox/ChatThread.tsx", "utf8");
+    expect(lista).toMatch(/IndicadorDeCarga/);
+    expect(lista).toMatch(/isFetching && !q\.isLoading/);
+    expect(fio).toMatch(/IndicadorDeCarga/);
+  });
+
   it("e o padrão GLOBAL segue desligado — isto é exceção, não virada de chave", () => {
     // Recarregar tudo a cada troca de aba é gasto sem retorno numa tela que
     // muda devagar. O inbox é o oposto, e só ele.

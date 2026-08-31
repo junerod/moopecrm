@@ -5,6 +5,9 @@ import { enderecoDeRetorno, faltaParaConectarOGoogle, googleEstaConfigurado } fr
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 
+import { contatoDoEmbed, rotuloDoContato, SEM_NOME, type ContatoNomeavel } from "@/lib/contacts/rotulo-do-contato";
+import { COLUNAS_DO_ROTULO } from "@/lib/contacts/completar-com-gemeo";
+
 import { AgendaClient } from "./_client";
 
 export const dynamic = "force-dynamic";
@@ -30,10 +33,10 @@ export const dynamic = "force-dynamic";
  * tela dependa de qual das duas o `database.types.ts` do dia declarou.
  */
 function nomeDoContato(
-  c: { name: string | null; display_name: string | null } | { name: string | null; display_name: string | null }[] | null,
+  c: ContatoNomeavel | ContatoNomeavel[] | null,
 ): string | undefined {
-  const alvo = Array.isArray(c) ? c[0] : c;
-  return alvo?.name ?? alvo?.display_name ?? undefined;
+  const rotulo = rotuloDoContato(contatoDoEmbed(c));
+  return rotulo === SEM_NOME ? undefined : rotulo;
 }
 
 export default async function AgendaPage() {
@@ -87,7 +90,7 @@ export default async function AgendaPage() {
     supabase
       .from("calendar_appointments")
       .select(
-        "id, title, starts_at, ends_at, status, owner_user_id, contact_id, event_type_id, location_kind, contacts(name, display_name)",
+        `id, title, starts_at, ends_at, status, owner_user_id, contact_id, event_type_id, location_kind, contacts(${COLUNAS_DO_ROTULO})`,
       )
       .gte("starts_at", inicio.toISOString())
       .lt("starts_at", fim.toISOString())
@@ -137,8 +140,7 @@ export default async function AgendaPage() {
         // morria aqui. `dados-de-mentira.ts` preenche este campo nos 11 cards,
         // então a tela pareceu pronta o tempo todo — e o `?? a.titulo` do
         // histórico transformou a ausência em silêncio, não em erro.
-        // `name` antes de `display_name` segue o precedente do produto
-        // (`app/app/lgpd/requests/[id]/PreviewPanel.tsx`); as duas colunas são
+        // Uma decisão, um lugar (`rotuloDoContato`). As duas colunas são
         // reescritas pelo cascade de LGPD, então nenhuma vaza titular anonimizado.
         quemSeraAtendido: nomeDoContato(a.contacts),
       }))}

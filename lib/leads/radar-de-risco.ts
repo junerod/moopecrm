@@ -16,6 +16,13 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { COLUNAS_DO_ROTULO, completarContatosComGemeo } from "@/lib/contacts/completar-com-gemeo";
+import {
+  contatoDoEmbed,
+  rotuloDoContato,
+  SEM_NOME,
+  type ContatoNomeavel,
+} from "@/lib/contacts/rotulo-do-contato";
 import {
   classifyRisk,
   compareRisk,
@@ -178,7 +185,7 @@ export async function carregaRadarDeRisco(
         .in("contact_id", contactIds),
       admin
         .from("contacts")
-        .select("id, name, display_name")
+        .select(COLUNAS_DO_ROTULO)
         .eq("organization_id", organizationId)
         .in("id", contactIds),
     ]);
@@ -192,8 +199,15 @@ export async function carregaRadarDeRisco(
         convByContact.set(c.contact_id, { id: c.id, assignee_kind: c.assignee_kind ?? null });
       }
     }
-    for (const p of contacts.data ?? []) {
-      nameByContact.set(p.id, p.display_name ?? p.name ?? null);
+    const completos = await completarContatosComGemeo(
+      admin,
+      organizationId,
+      (contacts.data ?? []) as ContatoNomeavel[],
+    );
+    for (const p of completos) {
+      if (!p.id) continue;
+      const rotulo = rotuloDoContato(p);
+      nameByContact.set(p.id, rotulo === SEM_NOME ? null : rotulo);
     }
   }
 
@@ -247,21 +261,34 @@ export async function carregaRadarDeRisco(
   // paridade sem necessidade; acrescentar não arrisca nada.
   const { data: semPasso } = await admin
     .from("demandas")
-    .select("id, contact_id, aberta_em, origem, contacts(display_name)")
+    .select(`id, contact_id, aberta_em, origem, contacts(${COLUNAS_DO_ROTULO})`)
     .eq("organization_id", organizationId)
     .is("fechada_em", null)
     .is("proximo_passo", null)
     .order("aberta_em", { ascending: true })
     .limit(limit);
 
+  const brutosDemanda = (semPasso ?? []).map((d) =>
+    contatoDoEmbed(d.contacts as ContatoNomeavel | ContatoNomeavel[] | null),
+  );
+  const completosDemanda = await completarContatosComGemeo(
+    admin,
+    organizationId,
+    brutosDemanda.filter((c): c is ContatoNomeavel => c !== null),
+  );
+  const porIdDemanda = new Map(
+    completosDemanda.filter((c) => c.id).map((c) => [c.id as string, c]),
+  );
+
   const semProximoPasso: DemandaSemProximoPasso[] = (semPasso ?? []).map((d) => {
-    // O join do PostgREST vem como ARRAY mesmo em relação um-para-um.
-    const rel = d.contacts as unknown as { display_name: string | null }[] | { display_name: string | null } | null;
-    const contato = Array.isArray(rel) ? (rel[0] ?? null) : rel;
+    const contato =
+      porIdDemanda.get(d.contact_id as string) ??
+      contatoDoEmbed(d.contacts as ContatoNomeavel | ContatoNomeavel[] | null);
+    const rotulo = rotuloDoContato(contato);
     return {
       id: d.id as string,
       contact_id: d.contact_id as string,
-      contact_name: contato?.display_name ?? null,
+      contact_name: rotulo === SEM_NOME ? null : rotulo,
       aberta_em: d.aberta_em as string,
       horas_aberta: Math.floor(
         (now.getTime() - new Date(d.aberta_em as string).getTime()) / 3_600_000,

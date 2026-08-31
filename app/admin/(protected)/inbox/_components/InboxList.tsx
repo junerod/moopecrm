@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CircleNotch, MagnifyingGlass } from "@/lib/ui/icons";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -46,7 +47,7 @@ function relativeTime(iso: string | null): string {
 }
 
 function contactName(row: AdminConversationRow): string {
-  return row.contacts?.name?.trim() || row.contacts?.phone_number || "Sem nome";
+  return rotuloDoContato(row.contacts);
 }
 
 // ---------------------------------------------------------------------------

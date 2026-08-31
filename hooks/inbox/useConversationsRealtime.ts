@@ -1,10 +1,11 @@
 "use client";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
 import { useRefetchDeSeguranca } from "@/hooks/realtime/useRefetchDeSeguranca";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { invalidarComPausa } from "@/lib/query/invalidar-com-pausa";
 import type { Conversation } from "@/lib/types/messaging";
 
 export interface ContactSummary {
@@ -26,6 +27,17 @@ export interface ContactSummary {
    * atendimento aparece. Opcional: conversas em cache de antes do campo existir.
    */
   force_human?: boolean | null;
+  /**
+   * O que a ingestão guardou quando a coluna oficial não podia receber
+   * (pushName, telefone que já era de outro cadastro). A lista lê daqui
+   * quando display_name/phone_number estão vazios — senão vira “Sem nome”
+   * para a mesma pessoa que Contatos já mostra.
+   */
+  source_metadata?: {
+    notify_name?: unknown;
+    telefone_em_conflito?: unknown;
+    waha_chat_id?: unknown;
+  } | null;
 }
 
 /**
@@ -93,7 +105,10 @@ export function useConversationsRealtime(
   orgId: string | null,
 ) {
   const qc = useQueryClient();
-  const queryKey = ["conversations", filters] as const;
+  // Identidade estável: array novo a cada render recria o callback da rede
+  // de segurança e reinicia o intervalo de 45s — numa tela que redesenha
+  // o tempo todo, a rede nunca rodava.
+  const queryKey = useMemo(() => ["conversations", filters] as const, [filters]);
 
   const query = useInfiniteQuery({
     queryKey,
@@ -129,7 +144,9 @@ export function useConversationsRealtime(
   });
 
   const onChange = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ["conversations"] });
+    // O histórico do aparelho grava dezenas de conversas em segundos.
+    // Invalidar na hora = GET atrás de GET e tela que parece travada.
+    invalidarComPausa(qc, ["conversations"]);
   }, [qc]);
 
   // G4-01 (visibility_mode): a subscription postgres_changes HERDA a RLS de

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useAtRiskLeads, type AtRiskLead } from "@/hooks/leads/useAtRiskLeads";
+import { SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 import type { RiskBucket } from "@/lib/leads/risk-radar";
 import {
   ArrowRight,
@@ -95,7 +96,7 @@ export function RiskRadarList() {
           <ul className="flex flex-col gap-1">
             {semPasso.slice(0, 8).map((d) => (
               <li key={d.id} className="flex items-baseline justify-between gap-3 text-xs">
-                <span className="truncate">{d.contact_name ?? "Contato sem nome"}</span>
+                <span className="truncate">{d.contact_name ?? SEM_NOME}</span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   aberta há {d.horas_aberta}h
                 </span>

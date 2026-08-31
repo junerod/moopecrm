@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCases, type CaseListItem } from "@/hooks/ai/useCases";
 import { STATUS_BADGE_VARIANT, STATUS_LABEL } from "@/lib/ai/case-copy";
 import { Robot } from "@/lib/ui/icons";
+import { SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 import { cn } from "@/lib/utils";
 import { CaseDetail } from "./CaseDetail";
 
@@ -94,7 +95,7 @@ function CaseRow({
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          {item.contact_name ?? "Contato sem nome"} · {when}
+          {item.contact_name ?? SEM_NOME} · {when}
         </p>
       </button>
     </li>

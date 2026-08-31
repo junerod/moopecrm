@@ -11,6 +11,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { patchConversationSchema, validateRequest } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
+import { comNomeDoContatoGemeo } from "@/lib/contacts/com-nome-do-contato-gemeo";
 import { comNomeDoAtendente } from "@/lib/users/com-nome-do-atendente";
 
 import { getConversationHandler, patchConversationHandler } from "../_handler";
@@ -53,7 +54,10 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     // Mesma razão da listagem: o nome entra na borda HTTP, não no handler que o
     // MCP compartilha. Aqui é UM lookup, não N.
     const [comNome] = await comNomeDoAtendente([conv]);
-    return ok(comNome ?? conv, { requestId });
+    const [comGemeo] = await comNomeDoContatoGemeo(supabase, activeOrg.orgId, [
+      comNome ?? conv,
+    ]);
+    return ok(comGemeo ?? conv, { requestId });
   } catch (err) {
     if (err instanceof ApiError) {
       return fail(err.code, err.message, err.status, { requestId });

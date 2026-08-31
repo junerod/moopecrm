@@ -30,6 +30,7 @@ import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { CaretLeft, IdentificationCard } from "@/lib/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { cn } from "@/lib/utils";
 
 /**
@@ -340,7 +341,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         <div className="min-h-0 flex-1 overflow-hidden">
           <ConversationList
             filters={filters}
-            orgId={orgId}
+            lista={listQ}
             selectedId={selectedId}
             onSelect={handleSelect}
             clientFilter={clientFilter}
@@ -421,7 +422,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
               blockedReason={blockedReason}
               janelaFechada={motivoDaJanela}
               disabled={selectedConversation.status === "closed"}
-              contactName={selectedConversation.contacts?.name ?? null}
+              contactName={rotuloDoContato(contatoDoEmbed(selectedConversation.contacts))}
               respondendo={respondendo}
               onCancelarResposta={() => setRespondendo(null)}
               currentContactId={selectedConversation.contact_id}

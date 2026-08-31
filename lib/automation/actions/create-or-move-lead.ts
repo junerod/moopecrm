@@ -12,6 +12,7 @@ import { registerAction } from "@/lib/automation/actions";
 import type { ActionCtx, ActionResultDetail } from "@/lib/automation/types";
 import type { HandlerCtx } from "@/lib/api/handlers/types";
 import { createLeadHandler, moveLeadHandler } from "@/app/api/v1/leads/_handler";
+import { rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 
 async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise<ActionResultDetail> {
   const pipelineId = typeof config.pipeline_id === "string" ? config.pipeline_id : null;
@@ -42,7 +43,7 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
       const created = await createLeadHandler(ctx.admin, handlerCtx, {
         pipeline_id: pipelineId,
         stage_id: stageId,
-        title: contact.name ?? contact.display_name ?? contact.phone_number ?? "Lead da automação",
+        title: rotuloDoContato(contact) === SEM_NOME ? "Lead da automação" : rotuloDoContato(contact),
         contact_id: contact.id,
         source: "automation",
       } as Parameters<typeof createLeadHandler>[2]);

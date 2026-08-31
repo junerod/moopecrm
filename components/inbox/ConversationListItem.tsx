@@ -8,7 +8,7 @@ import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa } from "@/lib/inbox/comando-da-conversa";
 import { cn } from "@/lib/utils";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
-import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 interface Props {
   conversation: ConversationWithContact;
@@ -89,7 +89,7 @@ export function ConversationListItem({
   mostrarAtendente,
   automaticoDaOrg,
 }: Props) {
-  const c = conversation.contacts ?? null;
+  const c = contatoDoEmbed(conversation.contacts);
   const displayName = rotuloDoContato(c);
   const phoneFallback = c?.phone_number ?? "??";
   const tags = c?.tags ?? [];

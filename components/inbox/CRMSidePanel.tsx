@@ -18,7 +18,7 @@ import { ContactTagsEditor } from "./ContactTagsEditor";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { cn } from "@/lib/utils";
-import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { CadastrarNomeDoContato } from "./CadastrarNomeDoContato";
 
 interface Props {
@@ -229,7 +229,7 @@ function SemLista({
 }
 
 export function CRMSidePanel({ conversation }: Props) {
-  const contact = conversation?.contacts ?? null;
+  const contact = contatoDoEmbed(conversation?.contacts);
   const contactId = contact?.id ?? null;
 
   const [leads, setLeads] = useState<LeadRow[] | null>(null);

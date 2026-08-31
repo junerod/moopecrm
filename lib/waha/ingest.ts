@@ -18,7 +18,7 @@ import { estamparAtribuicaoDoContato } from "@/lib/leads/atribuicao-de-anuncio";
 import { extrairAtribuicaoWaha } from "@/lib/waha/atribuicao-de-anuncio";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { ackToStatus } from "@/lib/types/messaging";
-import type { WahaEnvelope, WahaPayload } from "@/lib/waha/envelope";
+import { nomeDoPayloadWaha, type WahaEnvelope, type WahaPayload } from "@/lib/waha/envelope";
 import { bareWaMessageId, chatIdFromWaMessageId } from "@/lib/waha/message-id";
 import { logger } from "@/lib/logger";
 import { avisarConversaAbertaSeNova } from "@/lib/moope/emitir";
@@ -264,7 +264,7 @@ export function resolveMessageType(p: WahaPayload): string {
 }
 
 function notifyNameOf(p: WahaPayload): string | null {
-  return p._data?.notifyName ?? p._data?.pushName ?? null;
+  return nomeDoPayloadWaha(p);
 }
 
 /** Corpo textual: WAHA nem sempre preenche `body` em cartões de contato NOWEB. */
@@ -340,10 +340,11 @@ export async function upsertContatoDoHistorico(
   orgId: string,
   chatId: string,
   notifyName: string | null,
+  telefoneAlt: string | null = null,
 ): Promise<string | null> {
   const parsed = parseChatId(chatId);
   if (!ehEnderecavel(parsed)) return null;
-  return upsertContact(admin, orgId, parsed, chatId, notifyName, null);
+  return upsertContact(admin, orgId, parsed, chatId, notifyName, telefoneAlt);
 }
 
 async function upsertContact(

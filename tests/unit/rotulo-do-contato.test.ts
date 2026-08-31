@@ -4,7 +4,12 @@ import * as path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ehIdentificadorTecnico, rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
+import {
+  contatoDoEmbed,
+  ehIdentificadorTecnico,
+  rotuloDoContato,
+  SEM_NOME,
+} from "@/lib/contacts/rotulo-do-contato";
 
 /**
  * COMO SE CHAMA ESTA PESSOA NA TELA.
@@ -72,6 +77,41 @@ describe("rotuloDoContato", () => {
     expect(rotuloDoContato(undefined)).toBe(SEM_NOME);
   });
 
+  it("o telefone em conflito no metadata vale mais que 'Sem nome'", () => {
+    // A RPC recusa gravar o número no stub @lid quando ele já é de outro
+    // contato (MOOPE, import). Sem esta leitura o Inbox e Contatos divergem.
+    expect(
+      rotuloDoContato({
+        display_name: null,
+        name: null,
+        phone_number: null,
+        source_metadata: { telefone_em_conflito: "+5531988887777" },
+      }),
+    ).toBe("+5531988887777");
+  });
+
+  it("o pushName guardado em metadata entra quando as colunas estão vazias", () => {
+    expect(
+      rotuloDoContato({
+        display_name: null,
+        name: null,
+        phone_number: null,
+        source_metadata: { notify_name: "Maria da Silva" },
+      }),
+    ).toBe("Maria da Silva");
+  });
+
+  it("o número escondido no waha_chat_id @c.us aparece", () => {
+    expect(
+      rotuloDoContato({
+        display_name: null,
+        name: null,
+        phone_number: null,
+        source_metadata: { waha_chat_id: "5531988887777@c.us" },
+      }),
+    ).toBe("+5531988887777");
+  });
+
   it("não devolve identificador técnico NEM QUANDO é a única coisa que existe", () => {
     // A saída aqui é admitir que não se sabe o nome. Mostrar o `@lid` seria
     // vocabulário de máquina na tela de quem atende — a doença que a spec 16
@@ -79,6 +119,15 @@ describe("rotuloDoContato", () => {
     expect(rotuloDoContato({ display_name: "Contato 543134@lid", name: null, phone_number: null })).toBe(
       SEM_NOME,
     );
+  });
+});
+
+describe("contatoDoEmbed", () => {
+  it("lê o objeto e o array de um — os dois formatos do PostgREST", () => {
+    const pessoa = { display_name: "Ana", phone_number: "+5531911112222" };
+    expect(rotuloDoContato(contatoDoEmbed(pessoa))).toBe("Ana");
+    expect(rotuloDoContato(contatoDoEmbed([pessoa]))).toBe("Ana");
+    expect(rotuloDoContato(contatoDoEmbed([]))).toBe(SEM_NOME);
   });
 });
 
@@ -105,6 +154,25 @@ describe("a sétima cópia não nasce", () => {
     }
 
     expect(reincidentes, `\n${reincidentes.join("\n")}\n`).toEqual([]);
+  });
+
+  it("nenhuma tela volta a escrever 'Contato sem nome' à mão", () => {
+    const arquivos = execFileSync("git", ["ls-files", "app", "components"], { encoding: "utf8" })
+      .split("\n")
+      .filter((f) => /\.(ts|tsx)$/.test(f) && !/\.test\.tsx?$/.test(f));
+    const reincidentes: string[] = [];
+    for (const f of arquivos) {
+      const conteudo = fs.readFileSync(path.join(process.cwd(), f), "utf8");
+      if (conteudo.includes("Contato sem nome")) reincidentes.push(f);
+    }
+    expect(reincidentes, `\n${reincidentes.join("\n")}\n`).toEqual([]);
+  });
+
+  it("a ficha do contato lê o telefone pelo mesmo resolvedor", () => {
+    const fonte = fs.readFileSync("app/app/contacts/[id]/_client.tsx", "utf8");
+    expect(fonte, "a ficha voltou a mostrar só a coluna phone_number").toMatch(
+      /telefoneApresentavel/,
+    );
   });
 
   it("a varredura ENXERGA arquivos — controle positivo", () => {

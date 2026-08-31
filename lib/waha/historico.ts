@@ -72,6 +72,7 @@ export type ClienteDaLoja = Pick<
 > & {
   listContacts?: (session: string) => Promise<unknown[]>;
   reiniciarSessao?: (session: string) => Promise<void>;
+  resolvePhoneForLid?: WahaClient["resolvePhoneForLid"];
 };
 
 export type DepsDoHistorico = {
@@ -164,6 +165,12 @@ function telefoneDoChatId(id: string): string | null {
   if (!baixo.endsWith("@c.us") && !baixo.endsWith("@s.whatsapp.net")) return null;
   const digits = id.replace(/@.*$/, "").replace(/\D/g, "");
   return digits.length >= 8 ? `+${digits}` : null;
+}
+
+function lidDoChatId(id: string): string | null {
+  if (!id.toLowerCase().endsWith("@lid")) return null;
+  const digits = id.replace(/@lid$/i, "").replace(/\D/g, "");
+  return digits.length > 0 ? digits : null;
 }
 
 export function nomeDoChat(item: unknown): string | null {
@@ -671,11 +678,17 @@ export async function puxarHistorico(
     const contatoPorChat = new Map<string, string>();
 
     for (const chat of elegiveis) {
+      let telefone: string | null = null;
+      const lid = lidDoChatId(chat.id);
+      if (lid && cliente.resolvePhoneForLid) {
+        telefone = await cliente.resolvePhoneForLid(sessao.waha_session_name, lid);
+      }
       const id = await upsertContatoDoHistorico(
         admin,
         sessao.organization_id,
         chat.id,
         nomeDoChat(chat.raw),
+        telefone,
       );
       if (id) {
         contatos += 1;

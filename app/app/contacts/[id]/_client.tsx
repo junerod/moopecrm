@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IndicadorDeCarga } from "@/components/feedback/IndicadorDeCarga";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContact } from "@/hooks/contacts/useContact";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -17,7 +18,11 @@ import { EditContactDialog } from "@/components/contacts/EditContactDialog";
 import { AnonymizeDialog } from "@/components/contacts/AnonymizeDialog";
 import { PropostasDeDado } from "@/components/contacts/PropostasDeDado";
 import { ConversaNoDossie } from "@/components/kanban/ConversaNoDossie";
-import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import {
+  rotuloDoContato,
+  SEM_NOME,
+  telefoneApresentavel,
+} from "@/lib/contacts/rotulo-do-contato";
 
 interface Props {
   contactId: string;
@@ -57,9 +62,16 @@ export function ContactDetailClient({ contactId }: Props) {
   // uma das DUAS que ignoravam o telefone: contato com número e sem nome
   // aparecia como "Sem nome" aqui e com o número no inbox.
   const displayName = rotuloDoContato(contact);
+  const telefone = telefoneApresentavel(contact);
+  const notify =
+    typeof contact.source_metadata?.notify_name === "string"
+      ? contact.source_metadata.notify_name.trim()
+      : "";
+  const cadastroVazio = displayName === SEM_NOME && !telefone;
 
   return (
     <div className="space-y-4 p-6">
+      <IndicadorDeCarga ativo={q.isFetching && !q.isLoading} rotulo="Atualizando contato…" />
       {contact.is_anonymized && (
         <div
           role="alert"
@@ -83,8 +95,8 @@ export function ContactDetailClient({ contactId }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight break-words">{displayName}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {contact.email && <span>{contact.email}</span>}
-            {contact.email && contact.phone_number && <span>•</span>}
-            {contact.phone_number && <span>{contact.phone_number}</span>}
+            {contact.email && telefone && <span>•</span>}
+            {telefone && <span>{telefone}</span>}
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
             {contact.tags.map((t) => (
@@ -130,15 +142,22 @@ export function ContactDetailClient({ contactId }: Props) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
+          {cadastroVazio && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              O WhatsApp ainda não entregou nome nem telefone deste contato
+              — a conversa chegou com identidade temporária. Quando o
+              número for conhecido, ele aparece aqui.
+            </p>
+          )}
           <Card className="p-4">
             <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
               <div>
                 <dt className="text-xs uppercase text-muted-foreground">Nome</dt>
-                <dd className="mt-1">{contact.name ?? "—"}</dd>
+                <dd className="mt-1">{contact.name ?? (notify || "—")}</dd>
               </div>
               <div>
                 <dt className="text-xs uppercase text-muted-foreground">Display name</dt>
-                <dd className="mt-1">{contact.display_name ?? "—"}</dd>
+                <dd className="mt-1">{contact.display_name ?? (notify || "—")}</dd>
               </div>
               <div>
                 <dt className="text-xs uppercase text-muted-foreground">Email</dt>
@@ -146,7 +165,7 @@ export function ContactDetailClient({ contactId }: Props) {
               </div>
               <div>
                 <dt className="text-xs uppercase text-muted-foreground">Telefone</dt>
-                <dd className="mt-1">{contact.phone_number ?? "—"}</dd>
+                <dd className="mt-1">{telefone || "—"}</dd>
               </div>
               <div>
                 <dt className="text-xs uppercase text-muted-foreground">Origem</dt>

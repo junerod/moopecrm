@@ -18,7 +18,7 @@ import { comandoDaConversa, ROTULO_DO_MOTIVO } from "@/lib/inbox/comando-da-conv
 import { ReassignDialog } from "@/components/inbox/ReassignDialog";
 import { SnoozeButton } from "@/components/inbox/SnoozeButton";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
-import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 interface Props {
   conversation: ConversationWithContact;
@@ -55,7 +55,7 @@ export function ConversationHeader({ conversation }: Props) {
   const automaticoDaOrg = useAutomaticoAtivo();
   const [reassignOpen, setReassignOpen] = useState(false);
 
-  const c = conversation.contacts ?? null;
+  const c = contatoDoEmbed(conversation.contacts);
   const displayName = rotuloDoContato(c);
   const phone = c?.phone_number ?? null;
   const status = conversation.status;

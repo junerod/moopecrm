@@ -83,6 +83,15 @@ export const wahaPayloadSchema = z.looseObject({
   /** Id da mensagem ORIGINAL nos eventos `message.edited` / `message.revoked`. */
   editedMessageId: texto,
   revokedMessageId: texto,
+  /**
+   * O WAHA documenta o nome no TOPO do payload (`pushName` / `pushname`).
+   * `_data.pushName` é o campo interno do NOWEB — as duas formas convivem, e
+   * ler só a de dentro largava o contato sem nome quando o envelope vinha
+   * no formato documentado.
+   */
+  pushName: texto,
+  notifyName: texto,
+  pushname: texto,
   _data: z.looseObject({
     notifyName: texto,
     pushName: texto,
@@ -111,6 +120,28 @@ export const wahaEnvelopeSchema = z.looseObject({
 
 export type WahaPayload = z.infer<typeof wahaPayloadSchema>;
 export type WahaEnvelope = z.infer<typeof wahaEnvelopeSchema>;
+
+/**
+ * O nome que o WhatsApp mandou neste payload — as três formas que convivem.
+ *
+ * `_data.notifyName` / `_data.pushName` são o NOWEB. O topo (`pushName`,
+ * `pushname`, `notifyName`) é o que a documentação do WAHA descreve. Ler só
+ * um lado gravava o contato sem nome, e o Inbox mostrava “Sem nome”.
+ */
+export function nomeDoPayloadWaha(p: WahaPayload): string | null {
+  const candidatos = [
+    p._data?.notifyName,
+    p._data?.pushName,
+    p.notifyName,
+    p.pushName,
+    p.pushname,
+  ];
+  for (const bruto of candidatos) {
+    const v = (bruto ?? "").trim();
+    if (v !== "") return v;
+  }
+  return null;
+}
 
 /**
  * ─── Por que a conferência acontece em DOIS momentos ────────────────────────

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import type { AdminConversationDetailResponse } from "@/hooks/useAdminConversation";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { Buildings, Phone, ArrowRight } from "@/lib/ui/icons";
 
 interface Props {
@@ -31,7 +32,7 @@ export function AdminSidePanel({ data }: Props) {
               {contact.is_anonymized ? (
                 <span className="italic text-muted-foreground">Contato anonimizado</span>
               ) : (
-                contact.name ?? "Sem nome"
+                rotuloDoContato(contact)
               )}
             </div>
             {contact.phone_number && (

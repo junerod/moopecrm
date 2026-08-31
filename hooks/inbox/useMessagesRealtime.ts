@@ -5,6 +5,7 @@ import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
 import { useRefetchDeSeguranca } from "@/hooks/realtime/useRefetchDeSeguranca";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { invalidarComPausa } from "@/lib/query/invalidar-com-pausa";
 import type { Message } from "@/lib/types/messaging";
 
 interface MessagesResponse {
@@ -55,8 +56,8 @@ export function useMessagesRealtime(conversationId: string | null) {
   });
 
   const onChange = useCallback(() => {
-    if (conversationId) qc.invalidateQueries({ queryKey: ["messages", conversationId] });
-    qc.invalidateQueries({ queryKey: ["conversations"] });
+    if (conversationId) invalidarComPausa(qc, ["messages", conversationId]);
+    invalidarComPausa(qc, ["conversations"]);
   }, [qc, conversationId]);
 
   const { status: realtimeStatus, ultimaEntrega } = useRealtimeChannel({

@@ -20,11 +20,14 @@ import type {
   ContactListQueryParams,
 } from "@/lib/schemas";
 import { contactListQuerySchema } from "@/lib/schemas";
+import { completarContatosComGemeo } from "@/lib/contacts/completar-com-gemeo";
+import { completarIdentidadeLid } from "@/lib/contacts/completar-identidade-lid";
+import { getWahaClient } from "@/lib/waha/client";
 
 type SB = SupabaseClient;
 
 const SELECT_COLS =
-  "id, organization_id, name, display_name, email, email_normalized, phone_number, cpf_hash, birthdate, is_blocked, blocked_reason, is_anonymized, anonymized_at, is_merged_into, merged_at, consent, tags, source, source_metadata, created_at, updated_at, last_activity_at";
+  "id, organization_id, name, display_name, email, email_normalized, phone_number, cpf_hash, birthdate, is_blocked, blocked_reason, is_anonymized, anonymized_at, is_merged_into, merged_at, consent, tags, source, source_metadata, wa_lid, created_at, updated_at, last_activity_at";
 
 const ROLE_RANK: Record<string, number> = {
   viewer: 1,
@@ -174,7 +177,8 @@ export async function listContactsHandler(
     throw new ApiError(500, "internal_error", undefined, ctx.requestId, convErr);
   }
 
-  return { contacts, cursor: nextCursor, has_more: hasMore };
+  const comGemeo = await completarContatosComGemeo(supabase, ctx.organization_id, contacts);
+  return { contacts: comGemeo, cursor: nextCursor, has_more: hasMore };
 }
 
 /**
@@ -308,8 +312,22 @@ export async function getContactHandler(
   }
   const contactWithConversa = enriched[0] ?? contact;
 
+  // Stub @lid: o aparelho às vezes já sabe o número. Só a resposta —
+  // gravar aqui no GET fundiria cadastro no tempo da máquina.
+  const waha = getWahaClient();
+  const comLid = waha
+    ? await completarIdentidadeLid(
+        supabase,
+        ctx.organization_id,
+        contactWithConversa,
+        (sessao, lid) => waha.resolvePhoneForLid(sessao, lid),
+      )
+    : contactWithConversa;
+  const [comGemeo] = await completarContatosComGemeo(supabase, ctx.organization_id, [comLid]);
+  const paraTela = comGemeo ?? comLid;
+
   return {
-    ...contactWithConversa,
+    ...paraTela,
     cpf_available: !!contact.cpf_hash,
     cpf_decrypted: cpfDecrypted,
     cpf_decrypt_denied: cpfDecryptDenied || undefined,

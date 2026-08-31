@@ -2,6 +2,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
+import { chaveDaQuery } from "@/lib/query/invalidar-com-pausa";
+
 /**
  * O REFETCH DE SEGURANÇA — uma peça com três papéis.
  *
@@ -90,12 +92,19 @@ export function useRefetchDeSeguranca<T>({
     assinaturaRef.current = assinatura;
   }, [assinatura]);
 
+  const chave = chaveDaQuery(queryKey);
+  const queryKeyRef = useRef(queryKey);
+  useEffect(() => {
+    queryKeyRef.current = queryKey;
+  }, [queryKey]);
+
   const verificar = useCallback(async () => {
-    const antes = assinaturaRef.current(qc.getQueryData<T>(queryKey));
+    const chaveAtual = queryKeyRef.current;
+    const antes = assinaturaRef.current(qc.getQueryData<T>(chaveAtual));
 
-    await qc.refetchQueries({ queryKey, exact: true });
+    await qc.refetchQueries({ queryKey: chaveAtual, exact: true });
 
-    const depois = assinaturaRef.current(qc.getQueryData<T>(queryKey));
+    const depois = assinaturaRef.current(qc.getQueryData<T>(chaveAtual));
 
     setEstado((prev) => {
       // O CRITÉRIO, em duas perguntas:
@@ -120,9 +129,9 @@ export function useRefetchDeSeguranca<T>({
         ultimaVerificacao: Date.now(),
       };
     });
-    // `ultimaEntrega` é ref (identidade estável): entra na lista por higiene,
-    // sem recriar o callback nem reiniciar o intervalo.
-  }, [qc, queryKey, ultimaEntrega]);
+    // `ultimaEntrega` é ref (identidade estável). `chave` é o JSON da query —
+    // o array `queryKey` nasce novo a cada render e reiniciava este efeito.
+  }, [qc, chave, ultimaEntrega]);
 
   useEffect(() => {
     if (!enabled) return;

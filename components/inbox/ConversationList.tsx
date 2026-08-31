@@ -13,12 +13,14 @@ import {
   type ConversationsFilters,
   type ConversationWithContact,
 } from "@/hooks/inbox/useConversationsRealtime";
+import { IndicadorDeCarga } from "@/components/feedback/IndicadorDeCarga";
 
 interface Props {
   filters: ConversationsFilters;
-  orgId: string | null;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** A mesma query do pai — um canal Realtime, não dois. */
+  lista: ReturnType<typeof useConversationsRealtime>;
   /** Optional client-side filter (e.g. only-unread). */
   clientFilter?: (c: ConversationWithContact) => boolean;
   /** Notifies parent when the visible list changes (used by keyboard nav). */
@@ -27,9 +29,9 @@ interface Props {
 
 export function ConversationList({
   filters,
-  orgId,
   selectedId,
   onSelect,
+  lista: q,
   clientFilter,
   onVisibleChange,
 }: Props) {
@@ -41,8 +43,6 @@ export function ConversationList({
   // NÃO mostrar. Mostrar e sumir depois é pior que aparecer um instante tarde.
   const canais = useChannelSessions().data ?? [];
   const maisDeUmCanal = canais.length > 1;
-
-  const q = useConversationsRealtime(filters, orgId);
 
   // Fila (G5-03): a lista já vem ordenada por tempo de espera (server), então a
   // posição é o índice na lista visível. Só mostramos posição/espera nessa visão.
@@ -122,6 +122,10 @@ export function ConversationList({
 
   return (
     <div className="flex h-full flex-col">
+      <IndicadorDeCarga
+        ativo={q.isFetching && !q.isLoading && !q.isFetchingNextPage}
+        rotulo="Atualizando conversas…"
+      />
       <div className="flex-1 overflow-y-auto">
         {items.map((c, i) => (
           <ConversationListItem

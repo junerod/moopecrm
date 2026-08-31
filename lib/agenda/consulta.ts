@@ -35,6 +35,14 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { COLUNAS_DO_ROTULO } from "@/lib/contacts/completar-com-gemeo";
+import {
+  contatoDoEmbed,
+  rotuloDoContato,
+  SEM_NOME,
+  type ContatoNomeavel,
+} from "@/lib/contacts/rotulo-do-contato";
+
 import { horariosLivres, type ExcecaoDeData, type Slot } from "./horarios-livres";
 import { lerJornadaDoBanco } from "./jornada";
 import {
@@ -374,10 +382,10 @@ export type ResultadoDaLista =
 
 /** O embed do PostgREST vem objeto ou array conforme o gerador de tipos; aceite os dois. */
 function nomeDoContato(
-  c: { name: string | null; display_name: string | null } | { name: string | null; display_name: string | null }[] | null | undefined,
+  c: ContatoNomeavel | ContatoNomeavel[] | null | undefined,
 ): string | null {
-  const alvo = Array.isArray(c) ? c[0] : c;
-  return alvo?.name ?? alvo?.display_name ?? null;
+  const rotulo = rotuloDoContato(contatoDoEmbed(c ?? null));
+  return rotulo === SEM_NOME ? null : rotulo;
 }
 
 export async function listaAgendamentos(
@@ -428,7 +436,7 @@ export async function listaAgendamentos(
   let q = supabase
     .from("calendar_appointments")
     .select(
-      "id, title, starts_at, ends_at, time_zone, status, owner_user_id, contact_id, contacts(name, display_name)",
+      `id, title, starts_at, ends_at, time_zone, status, owner_user_id, contact_id, contacts(${COLUNAS_DO_ROTULO})`,
     )
     .eq("organization_id", organizationId)
     .order("starts_at", { ascending: true })

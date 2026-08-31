@@ -145,7 +145,7 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
       `id, status, contact_id, pointer_id, version_id, current_node_id, next_eval_at, claimed_until,
        started_at, completed_at, updated_at, outcome, cancel_reason, last_error, attempts, max_attempts,
        steps_taken, timing_plan,
-       contacts:contact_id(id, name, display_name, phone_number),
+       contacts:contact_id(id, name, display_name, phone_number, source_metadata),
        followup_flow_pointers:pointer_id(name),
        ai_agents:agent_id(name),
        followup_flow_versions:version_id(graph)`,

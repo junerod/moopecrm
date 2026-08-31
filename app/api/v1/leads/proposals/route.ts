@@ -29,6 +29,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isServiceRoleConfigured } from "@/lib/audit";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { COLUNAS_DO_ROTULO, completarContatosComGemeo } from "@/lib/contacts/completar-com-gemeo";
+import {
+  contatoDoEmbed,
+  rotuloDoContato,
+  SEM_NOME,
+  type ContatoNomeavel,
+} from "@/lib/contacts/rotulo-do-contato";
 
 export const dynamic = "force-dynamic";
 
@@ -102,24 +109,37 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (leadIds.length > 0) {
     const { data: leads, error: leadsErr } = await supabase
       .from("crm_leads")
-      .select("id, title, contact_id, crm_stages(name), contacts(display_name)")
+      .select(`id, title, contact_id, crm_stages(name), contacts(${COLUNAS_DO_ROTULO})`)
       .eq("organization_id", orgId)
       .in("id", leadIds);
     if (leadsErr) return fail("internal", leadsErr.message, 500, { requestId });
 
+    const brutos = (leads ?? []).map((l) =>
+      contatoDoEmbed((l as { contacts?: ContatoNomeavel | ContatoNomeavel[] | null }).contacts ?? null),
+    );
+    const completos = await completarContatosComGemeo(
+      supabase,
+      orgId,
+      brutos.filter((c): c is ContatoNomeavel => c !== null),
+    );
+    const porId = new Map(completos.filter((c) => c.id).map((c) => [c.id as string, c]));
+
     for (const l of (leads ?? []) as unknown as Array<{
       id: string;
       title: string | null;
+      contact_id: string | null;
       crm_stages: { name: string | null } | null;
-      contacts: { display_name: string | null } | null;
+      contacts: ContatoNomeavel | ContatoNomeavel[] | null;
     }>) {
       const proposta = porLead.get(l.id);
       if (!proposta) continue;
+      const contato = (l.contact_id ? porId.get(l.contact_id) : null) ?? contatoDoEmbed(l.contacts);
+      const rotulo = rotuloDoContato(contato);
       pendentes.push({
         lead_id: l.id,
         lead_title: l.title ?? "(sem título)",
         stage_name: l.crm_stages?.name ?? null,
-        contact_name: l.contacts?.display_name ?? null,
+        contact_name: rotulo === SEM_NOME ? null : rotulo,
         next_action: proposta.label,
         seq: proposta.seq,
         proposed_at: proposta.proposed_at,

@@ -453,6 +453,7 @@ describe("puxar o legado", () => {
       "o1",
       "70192801575156@lid",
       "June da agenda",
+      null,
     );
   });
 

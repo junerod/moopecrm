@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { IndicadorDeCarga } from "@/components/feedback/IndicadorDeCarga";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageBubble } from "./MessageBubble";
@@ -196,6 +197,10 @@ export function ChatThread({ conversationId, onResponder }: Props) {
 
   return (
     <div {...sinalDoCanal} className="flex h-full flex-col">
+      <IndicadorDeCarga
+        ativo={q.isFetching && !q.isLoading && !q.isFetchingNextPage}
+        rotulo="Atualizando mensagens…"
+      />
       <div ref={scrollerRef} className="flex-1 overflow-y-auto py-2">
         {q.hasNextPage && (
           <div className="flex justify-center py-2">

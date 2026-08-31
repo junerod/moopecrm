@@ -28,7 +28,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { situacaoDoRetorno } from "@/lib/followup/retorno";
 import { createClient } from "@/lib/supabase/server";
-import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { rotuloDoContato, type ContatoNomeavel } from "@/lib/contacts/rotulo-do-contato";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +66,7 @@ interface ContactRow {
   name: string | null;
   display_name: string | null;
   phone_number: string | null;
+  source_metadata?: ContatoNomeavel["source_metadata"];
 }
 
 function resolveContactName(c: ContactRow | null): string {
@@ -186,7 +187,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .from("followup_enrollments")
     .select(
       `id, pointer_id, contact_id, status, current_node_id, next_eval_at, outcome, updated_at, agent_id,
-       contacts:contact_id(id, name, display_name, phone_number),
+       contacts:contact_id(id, name, display_name, phone_number, source_metadata),
        followup_flow_pointers:pointer_id(name),
        ai_agents:agent_id(name)`,
     )
@@ -210,7 +211,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let promiseQuery = supabase
     .from("cron_jobs")
     .select(
-      "id, contact_id, next_run_at, enabled, cancelled_at, payload, contacts:contact_id(id, name, display_name, phone_number)",
+      "id, contact_id, next_run_at, enabled, cancelled_at, payload, contacts:contact_id(id, name, display_name, phone_number, source_metadata)",
     )
     .eq("organization_id", activeOrg.orgId)
     .eq("kind", "at")
