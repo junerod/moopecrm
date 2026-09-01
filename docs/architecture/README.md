@@ -28,7 +28,7 @@ ser fonte sem ninguém decidir isso.
 | `marca-propria.architecture.json` | marca própria (white-label) — 37 peças, 54 arestas, 6 faixas; a pilha org → instalação → `.env` → padrão, as saídas SEM DOM (`marcaDaSaida`) e a **não-ligação declarada** do PDF de LGPD, que imprime o CONTROLADOR e nunca a marca de quem revende |
 | `retencao-de-historico.architecture.json` | poda do histórico (issue #261) — 16 peças, 18 arestas, 6 faixas; o que sai (`done`/`failed`/`dead` velho), o que tem dono e **não** sai (`pending`/`running`, e `dead` com aviso ainda aberto), e por que o expurgo do audit é uma `security definer` sem seletor de linha em vez de uma porta |
 | `legado-do-aparelho.architecture.json` | legado do aparelho — lista de Contatos + recorte recente no inbox (conectar + cron); arquivo antigo sob pedido no dossiê |
-| `moope-conector.architecture.json` | conector MOOPE — chave + launch 90s + eventos nos dois sentidos (frota e Facejus) |
+| `moope-conector.architecture.json` | conector MOOPE — chave + launch 90s + eventos + GET lookup/retrato (Operador) |
 | `manual-do-operador.architecture.json` | tela `/app/manual` — índice, busca e as três portas (hub, ⌘K, Inbox vazio) |
 
 > **Esta tabela já apodreceu uma vez:** ela listava 8 mapas quando o disco tinha 9 — faltava

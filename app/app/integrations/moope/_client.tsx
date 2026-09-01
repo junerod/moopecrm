@@ -17,11 +17,13 @@ interface Conexao {
   id: string;
   kind: Kind;
   partner_webhook_url: string | null;
+  partner_api_url: string | null;
   inbound_key_prefix: string;
   status: "active" | "disabled";
   public_url: string;
   inbound_key?: string;
   outbound_secret?: string;
+  agente?: { id?: string; status?: string; origem?: string; motivo?: string };
   _warning?: string;
 }
 
@@ -35,6 +37,7 @@ export function MoopeConnectionClient() {
   const qc = useQueryClient();
   const [kindEdit, setKind] = useState<Kind | null>(null);
   const [webhookEdit, setWebhook] = useState<string | null>(null);
+  const [apiUrlEdit, setApiUrl] = useState<string | null>(null);
   const [segredos, setSegredos] = useState<{ inbound?: string; outbound?: string } | null>(null);
   const [pendente, setPendente] = useState(false);
 
@@ -49,6 +52,7 @@ export function MoopeConnectionClient() {
   const conexao = consulta.data ?? null;
   const kind = kindEdit ?? conexao?.kind ?? "locadora";
   const webhook = webhookEdit ?? conexao?.partner_webhook_url ?? "";
+  const apiUrl = apiUrlEdit ?? conexao?.partner_api_url ?? "";
 
   const criar = async () => {
     setPendente(true);
@@ -59,6 +63,7 @@ export function MoopeConnectionClient() {
         body: JSON.stringify({
           kind,
           partner_webhook_url: webhook.trim() || undefined,
+          partner_api_url: apiUrl.trim() || undefined,
         }),
       });
       const json = await res.json();
@@ -66,6 +71,7 @@ export function MoopeConnectionClient() {
       qc.setQueryData(["moope-connection"], data);
       setKind(null);
       setWebhook(null);
+      setApiUrl(null);
       setSegredos({ inbound: data.inbound_key, outbound: data.outbound_secret });
       toast.success("Conexão criada. Salve a chave e o segredo agora.");
     } catch (err) {
@@ -84,6 +90,7 @@ export function MoopeConnectionClient() {
         body: JSON.stringify({
           kind,
           partner_webhook_url: webhook.trim() || "",
+          partner_api_url: apiUrl.trim() || "",
           ...extra,
         }),
       });
@@ -92,6 +99,7 @@ export function MoopeConnectionClient() {
       qc.setQueryData(["moope-connection"], data);
       setKind(null);
       setWebhook(null);
+      setApiUrl(null);
       if (data.inbound_key || data.outbound_secret) {
         setSegredos({
           inbound: data.inbound_key ?? segredos?.inbound,
@@ -180,6 +188,42 @@ export function MoopeConnectionClient() {
               onChange={(e) => setWebhook(e.target.value)}
             />
           </div>
+
+          {kind === "locadora" ? (
+            <div className="space-y-2">
+              <Label htmlFor="api-url">URL da API da locadora</Label>
+              <Input
+                id="api-url"
+                placeholder="https://frota.exemplo"
+                value={apiUrl}
+                onChange={(e) => setApiUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                De onde o atendimento lê cadastro e o link do boleto. Se ficar
+                vazio, usa o domínio do webhook. Sem isto o agente não consulta
+                a locadora.
+              </p>
+            </div>
+          ) : null}
+
+          {conexao?.agente && kind === "locadora" ? (
+            <p className="text-sm text-muted-foreground">
+              Agente Atendimento locadora:{" "}
+              <span className="font-medium text-foreground">
+                {conexao.agente.status === "published"
+                  ? "publicado"
+                  : conexao.agente.status === "draft"
+                    ? "rascunho"
+                    : "ainda não criado"}
+              </span>
+              {conexao.agente.motivo === "no_channel" || conexao.agente.motivo === "sem_chave"
+                ? " — falta canal ou chave de IA; o inbox humano segue igual."
+                : null}
+              {conexao.agente.motivo === "canal_ocupado"
+                ? " — outro agente já atende neste número; este ficou rascunho."
+                : null}
+            </p>
+          ) : null}
 
           <div className="flex flex-wrap gap-2">
             {conexao ? (

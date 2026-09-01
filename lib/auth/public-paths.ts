@@ -15,7 +15,7 @@ export const PUBLIC_PATHS: RegExp[] = [
   /^\/api\/v1\/health$/,
   // Conector MOOPE: Bearer da chave (launch/events) ou token de 90s (entrar).
   // Sem cookie. A rota GET /api/v1/integrations/moope (CRUD) NÃO entra.
-  /^\/api\/v1\/integrations\/moope\/(launch|events|entrar)$/,
+  /^\/api\/v1\/integrations\/moope\/(launch|events|entrar|send|reconcile)$/,
   /^\/api\/v1\/webhooks\//,
   /^\/api\/v1\/cron\//,
   // Heartbeat do agente do host (bearer INTERNAL_SECRET/INTERNAL_CRON_SECRET,

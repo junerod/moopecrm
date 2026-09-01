@@ -12,6 +12,10 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { env } from "@/lib/env";
 import { gerarChaveDeEntrada, gerarSegredoDeSaida } from "@/lib/moope/chave";
+import {
+  garantirAgenteAtendimentoLocadora,
+  NOME_AGENTE_ATENDIMENTO_LOCADORA,
+} from "@/lib/moope/agente-atendimento-locadora";
 import { MOOPE_KINDS } from "@/lib/moope/tipos";
 import { encryptWebhookSecret } from "@/lib/webhooks/secrets";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,16 +24,20 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const COLS =
-  "id, organization_id, kind, partner_webhook_url, inbound_key_prefix, status, created_at, updated_at";
+  "id, organization_id, kind, partner_webhook_url, partner_api_url, inbound_key_prefix, status, created_at, updated_at";
+
+const urlOpcional = z.string().url().optional().or(z.literal(""));
 
 const criarSchema = z.object({
   kind: z.enum(MOOPE_KINDS),
-  partner_webhook_url: z.string().url().optional().or(z.literal("")),
+  partner_webhook_url: urlOpcional,
+  partner_api_url: urlOpcional,
 });
 
 const patchSchema = z.object({
   kind: z.enum(MOOPE_KINDS).optional(),
-  partner_webhook_url: z.string().url().optional().or(z.literal("")).nullable(),
+  partner_webhook_url: urlOpcional.nullable(),
+  partner_api_url: urlOpcional.nullable(),
   status: z.enum(["active", "disabled"]).optional(),
   rotate_inbound: z.boolean().optional(),
   rotate_outbound: z.boolean().optional(),
@@ -39,6 +47,39 @@ function publico(row: Record<string, unknown>) {
   return {
     ...row,
     public_url: env.NEXT_PUBLIC_APP_URL,
+  };
+}
+
+async function agenteDaLocadora(
+  admin: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  kind: unknown,
+  userId: string,
+  criar: boolean,
+): Promise<Record<string, unknown> | undefined> {
+  if (kind !== "locadora") return undefined;
+  if (criar) {
+    try {
+      const r = await garantirAgenteAtendimentoLocadora(admin, orgId, userId);
+      if (!r.ok) return { status: "ausente", motivo: r.motivo };
+      return { id: r.agent_id, status: r.status, origem: r.origem, motivo: r.motivo };
+    } catch {
+      return { status: "ausente", motivo: "falha_ao_criar" };
+    }
+  }
+  const { data } = await admin
+    .from("ai_agents")
+    .select("id, published_version_id")
+    .eq("organization_id", orgId)
+    .eq("name", NOME_AGENTE_ATENDIMENTO_LOCADORA)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (!data) return { status: "ausente" };
+  return {
+    id: (data as { id: string }).id,
+    status: (data as { published_version_id: string | null }).published_version_id
+      ? "published"
+      : "draft",
   };
 }
 
@@ -54,7 +95,16 @@ export async function GET(_req: NextRequest): Promise<Response> {
     .eq("organization_id", authz.org.orgId)
     .maybeSingle();
   if (error) return fail("internal_error", error.message, 500, { requestId });
-  return ok(data ? publico(data as Record<string, unknown>) : null, { requestId });
+  if (!data) return ok(null, { requestId });
+  const admin = createAdminClient();
+  const agente = await agenteDaLocadora(
+    admin,
+    authz.org.orgId,
+    (data as { kind?: string }).kind,
+    authz.user.id,
+    false,
+  );
+  return ok({ ...publico(data as Record<string, unknown>), agente }, { requestId });
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
@@ -99,6 +149,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     body.partner_webhook_url && body.partner_webhook_url.length > 0
       ? body.partner_webhook_url
       : null;
+  const apiUrl =
+    body.partner_api_url && body.partner_api_url.length > 0 ? body.partner_api_url : null;
 
   const { data: created, error } = await admin
     .from("moope_connections")
@@ -106,6 +158,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       organization_id: authz.org.orgId,
       kind: body.kind,
       partner_webhook_url: webhook,
+      partner_api_url: apiUrl,
       inbound_key_prefix: entrada.prefix,
       inbound_key_hash: entrada.hash,
       outbound_secret_enc: enc,
@@ -128,11 +181,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     metadata: { kind: body.kind, prefix: entrada.prefix },
   });
 
+  const agente = await agenteDaLocadora(admin, authz.org.orgId, body.kind, authz.user.id, true);
+
   return ok(
     {
       ...publico(created as Record<string, unknown>),
       inbound_key: entrada.plaintext,
       outbound_secret: saida,
+      agente,
       _warning: "Salve a chave e o segredo agora — eles não serão mostrados novamente.",
     },
     { status: 201, requestId },
@@ -169,6 +225,10 @@ export async function PATCH(req: NextRequest): Promise<Response> {
       body.partner_webhook_url && body.partner_webhook_url.length > 0
         ? body.partner_webhook_url
         : null;
+  }
+  if (body.partner_api_url !== undefined) {
+    patch.partner_api_url =
+      body.partner_api_url && body.partner_api_url.length > 0 ? body.partner_api_url : null;
   }
 
   let inboundPlain: string | undefined;
@@ -213,9 +273,18 @@ export async function PATCH(req: NextRequest): Promise<Response> {
     },
   });
 
+  const agente = await agenteDaLocadora(
+    admin,
+    authz.org.orgId,
+    (updated as { kind?: string }).kind,
+    authz.user.id,
+    true,
+  );
+
   return ok(
     {
       ...publico(updated as Record<string, unknown>),
+      agente,
       ...(inboundPlain ? { inbound_key: inboundPlain } : {}),
       ...(outboundPlain ? { outbound_secret: outboundPlain } : {}),
     },

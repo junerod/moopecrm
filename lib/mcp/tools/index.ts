@@ -46,6 +46,7 @@ import {
 } from "./evolucao";
 import { crmListContactOrders, crmSearchProducts } from "./comercio";
 import { crmListPrivacyRequests } from "./privacidade";
+import { moopeGetRetrato, moopeLookupLocatario } from "./locadora";
 import {
   crmArchiveStage,
   crmCreateStage,
@@ -106,6 +107,8 @@ export const allTools: ReadonlyArray<McpToolDefinition> = [
   crmListContactOrders,
   crmSearchProducts,
   crmListPrivacyRequests,
+  moopeLookupLocatario,
+  moopeGetRetrato,
   // read — organizar a operação (W4)
   crmListStages,
   crmListTags,

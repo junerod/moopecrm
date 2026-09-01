@@ -31,6 +31,15 @@ describe("ehIdentificadorTecnico", () => {
     expect(ehIdentificadorTecnico("558183647258@s.whatsapp.net")).toBe(true);
   });
 
+  it("ponto ou traço sozinho não é nome de gente", () => {
+    expect(ehIdentificadorTecnico(".")).toBe(true);
+    expect(ehIdentificadorTecnico("-")).toBe(true);
+    expect(ehIdentificadorTecnico("...")).toBe(true);
+    expect(rotuloDoContato({ display_name: ".", name: null, phone_number: "+556195524275" })).toBe(
+      "+556195524275",
+    );
+  });
+
   it("reconhece o rótulo que o código antigo inventava", () => {
     // Duas formas conviviam na produção — duas versões do mesmo bug.
     expect(ehIdentificadorTecnico("Contato 900928")).toBe(true);

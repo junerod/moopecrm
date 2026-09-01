@@ -112,6 +112,9 @@ export function telefoneApresentavel(c: ContatoNomeavel | null | undefined): str
 export function ehIdentificadorTecnico(valor: string): boolean {
   const v = valor.trim();
   if (v === "") return true;
+  // PushName lixo que o WhatsApp às vezes grava: ".", "-", "..."
+  // Sem isto o Inbox mostra "Sem nome" ou um ponto no lugar da pessoa.
+  if (/^[\s.\-_–—*•·]+$/.test(v)) return true;
   // Sufixos de endereçamento do WhatsApp em qualquer posição.
   if (/@(lid|c\.us|s\.whatsapp\.net|g\.us)\b/i.test(v)) return true;
   // O rótulo que o código antigo inventava: "Contato " + dígitos, e só isso.

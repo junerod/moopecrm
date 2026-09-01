@@ -46,6 +46,7 @@ describe("launch MOOPE", () => {
 
   it("só aceita deep link do app", () => {
     expect(caminhoDoLaunchEhSeguro("/app/contacts/x")).toBe(true);
+    expect(caminhoDoLaunchEhSeguro("/app/contacts/9")).toBe(true);
     expect(caminhoDoLaunchEhSeguro("/app/inbox?id=1")).toBe(true);
     expect(caminhoDoLaunchEhSeguro("/app/pipeline?lead=1")).toBe(true);
     expect(caminhoDoLaunchEhSeguro("/login")).toBe(false);

@@ -6,6 +6,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
+import { upsertPessoa } from "@/lib/moope/pessoa";
+import { telefoneE164 } from "@/lib/moope/telefone";
 import type {
   DividaDoParceiro,
   MoopeInboundType,
@@ -52,6 +54,14 @@ export async function processarEventoInbound(
   } as never);
 
   if (insErr?.code === "23505") {
+    // O unique é (org, external_id): o locatário 1 só entra uma vez.
+    // person.upserted TEM de atualizar de novo — senão o nono dígito
+    // e o nome do WhatsApp nunca se corrigem no re-save.
+    if (type === "person.upserted") {
+      const pessoa = pessoaDoPayload(payload, externalId);
+      const contactId = await upsertPessoa(admin, orgId, pessoa);
+      return { ok: true, duplicado: true, contact_id: contactId ?? undefined };
+    }
     return { ok: true, duplicado: true };
   }
   if (insErr) {
@@ -120,16 +130,6 @@ export async function processarEventoInbound(
   return { ok: false, motivo: "tipo desconhecido" };
 }
 
-/** O CHECK `contacts_phone_e164_format` recusa o que não é + e dígitos. */
-function telefoneE164(valor: unknown): string | undefined {
-  if (typeof valor !== "string") return undefined;
-  const limpo = valor.trim();
-  if (/^\+\d{8,15}$/.test(limpo)) return limpo;
-  const soDigitos = limpo.replace(/\D/g, "");
-  if (soDigitos.length >= 8 && soDigitos.length <= 15) return `+${soDigitos}`;
-  return undefined;
-}
-
 function emailValido(valor: unknown): string | undefined {
   if (typeof valor !== "string") return undefined;
   const limpo = valor.trim();
@@ -183,85 +183,6 @@ function dividaDoPayload(payload: Record<string, unknown>, fallbackId: string): 
     amount_cents: typeof payload.amount_cents === "number" ? payload.amount_cents : undefined,
     days_late: typeof payload.days_late === "number" ? payload.days_late : undefined,
   };
-}
-
-async function upsertPessoa(
-  admin: SupabaseClient,
-  orgId: string,
-  pessoa: PessoaDoParceiro,
-): Promise<string | null> {
-  if (!pessoa.external_id) return null;
-
-  const { data: porMeta } = await admin
-    .from("contacts")
-    .select("id, display_name, name, phone_number, email, source_metadata")
-    .eq("organization_id", orgId)
-    .eq("source_metadata->>moope_external_id", pessoa.external_id)
-    .maybeSingle();
-
-  let existente = porMeta as {
-    id: string;
-    display_name: string | null;
-    name: string | null;
-    phone_number: string | null;
-    email: string | null;
-    source_metadata: Record<string, unknown> | null;
-  } | null;
-
-  if (!existente && pessoa.phone) {
-    const { data } = await admin
-      .from("contacts")
-      .select("id, display_name, name, phone_number, email, source_metadata")
-      .eq("organization_id", orgId)
-      .eq("phone_number", pessoa.phone)
-      .maybeSingle();
-    existente = (data as typeof existente) ?? null;
-  }
-  if (!existente && pessoa.email) {
-    const { data } = await admin
-      .from("contacts")
-      .select("id, display_name, name, phone_number, email, source_metadata")
-      .eq("organization_id", orgId)
-      .eq("email", pessoa.email)
-      .maybeSingle();
-    existente = (data as typeof existente) ?? null;
-  }
-
-  const meta = {
-    ...(existente?.source_metadata ?? {}),
-    moope_external_id: pessoa.external_id,
-    ...(pessoa.metadata ?? {}),
-  };
-
-  if (existente) {
-    const patch: Record<string, unknown> = { source_metadata: meta, source: "moope" };
-    if (pessoa.name && !existente.display_name && !existente.name) {
-      patch.display_name = pessoa.name;
-      patch.name = pessoa.name;
-    }
-    if (pessoa.phone && !existente.phone_number) patch.phone_number = pessoa.phone;
-    if (pessoa.email && !existente.email) patch.email = pessoa.email;
-    await admin.from("contacts").update(patch as never).eq("id", existente.id).eq("organization_id", orgId);
-    return existente.id;
-  }
-
-  const nome = pessoa.name?.trim() || "Contato MOOPE";
-  const { data: criado, error } = await admin
-    .from("contacts")
-    .insert({
-      organization_id: orgId,
-      name: nome,
-      display_name: nome,
-      phone_number: pessoa.phone ?? null,
-      email: pessoa.email ?? null,
-      source: "moope",
-      source_metadata: meta,
-      tags: [],
-    } as never)
-    .select("id")
-    .single();
-  if (error || !criado) return null;
-  return (criado as { id: string }).id;
 }
 
 async function upsertCard(

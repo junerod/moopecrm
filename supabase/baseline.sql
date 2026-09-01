@@ -15833,6 +15833,41 @@ create policy "tenant_isolation_moope_inbound_events_all" on public.moope_inboun
     or public.fn_is_platform_admin()
   );
 
+-- ---- url da api da locadora (migration 0199) ----
+alter table public.moope_connections
+  add column if not exists partner_api_url text;
+
+comment on column public.moope_connections.partner_api_url is
+  'Base da API do parceiro para GET lookup/retrato. Sem isto, a origem do webhook.';
+
+-- ---- semente da chave de cifra (migration 0198) ----
+-- O .env sozinho não entra no Postgres. Sem esta RPC o app local recusa
+-- gravar segredo (MOOPE, webhook, Google) com 422.
+create or replace function public.fn_seed_oauth_key(p_value text)
+returns boolean
+language plpgsql
+security definer
+set search_path to 'private', 'pg_temp'
+as $$
+begin
+  if p_value is null or length(p_value) < 32 then
+    return false;
+  end if;
+  insert into private.app_secrets (name, value)
+  values ('nuvemshop_oauth_key', p_value)
+  on conflict (name) do nothing;
+  return exists (
+    select 1
+      from private.app_secrets
+     where name = 'nuvemshop_oauth_key'
+       and length(value) >= 32
+  );
+end;
+$$;
+
+revoke execute on function public.fn_seed_oauth_key(text) from public, anon, authenticated;
+grant execute on function public.fn_seed_oauth_key(text) to service_role;
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ ESTE BLOCO É, DE PROPÓSITO, O ÚLTIMO DO ARQUIVO. Apêndice novo entra ANTES

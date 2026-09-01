@@ -32,6 +32,8 @@ export interface MoopeConnectionRow {
   organization_id: string;
   kind: MoopeKind;
   partner_webhook_url: string | null;
+  /** Base da API do parceiro (GET lookup/retrato). Sem isto, a origem do webhook. */
+  partner_api_url: string | null;
   inbound_key_prefix: string;
   inbound_key_hash: string;
   outbound_secret_enc: string | null;

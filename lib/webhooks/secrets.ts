@@ -8,15 +8,51 @@
  * Contrato de erro: encrypt SEM chave configurada retorna null (o caller
  * decide — rotas de escrita respondem 422 com instrução); decrypt que falha
  * retorna null (o caller aplica o precedente WAHA: hmacSkipped, nunca 500).
+ *
+ * A chave do `.env` NÃO entra sozinha no Postgres. O kit da VPS semeia;
+ * o banco local não. Semear aqui, uma vez por processo, é o que deixa
+ * "Criar conexão" gravar o segredo sem o operador colar SQL.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
+
+let semeouNesteProcesso = false;
+
+function chaveDeCifraDoEnv(): string {
+  return (process.env.NUVEMSHOP_OAUTH_ENCRYPTION_KEY ?? "").trim();
+}
+
+/**
+ * Grava `nuvemshop_oauth_key` se ainda não existir. Não sobrescreve —
+ * rotacionar no meio da vida apagaria a leitura do que já está cifrado.
+ */
+export async function garantirChaveDeCifra(admin: SupabaseClient): Promise<void> {
+  if (semeouNesteProcesso) return;
+  const chave = chaveDeCifraDoEnv();
+  if (chave.length < 32) return;
+  const { error } = await admin.rpc("fn_seed_oauth_key" as never, {
+    p_value: chave,
+  } as never);
+  if (error) {
+    logger.warn("[webhooks.secrets] não semeei a chave de cifra no banco", {
+      error: error.message,
+    });
+    return;
+  }
+  semeouNesteProcesso = true;
+}
+
+/** Só o teste — senão um processo de suíte herda a semente da anterior. */
+export function _resetarSementeDeCifraParaTeste(): void {
+  semeouNesteProcesso = false;
+}
 
 /** Cifra um secret. Retorna o bytea (formato hex "\x…" do PostgREST) ou null se a chave estiver ausente/erro. */
 export async function encryptWebhookSecret(
   admin: SupabaseClient,
   plaintext: string,
 ): Promise<string | null> {
+  await garantirChaveDeCifra(admin);
   const { data, error } = await admin.rpc("fn_encrypt_oauth", { plaintext });
   if (error || !data) {
     logger.warn("[webhooks.secrets] encrypt falhou (GUC app.nuvemshop_oauth_key ausente?)", {

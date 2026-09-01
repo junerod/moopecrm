@@ -26,12 +26,17 @@
     { "id": "launch", "lane": "app", "col": 0, "type": "api", "label": "POST /launch", "sublabel": "Bearer · 90s" },
     { "id": "entrar", "lane": "app", "col": 1, "type": "api", "label": "GET /entrar", "sublabel": "membro já existe" },
     { "id": "events", "lane": "app", "col": 2, "type": "api", "label": "POST /events", "sublabel": "Bearer · idempotente" },
+    { "id": "send", "lane": "app", "col": 4, "type": "api", "label": "POST /send", "sublabel": "um locatário · Inbox" },
+    { "id": "reconcile", "lane": "app", "col": 4, "type": "api", "label": "POST /reconcile", "sublabel": "gêmeo LID · sem fundir" },
     { "id": "outbound", "lane": "app", "col": 5, "type": "service", "label": "handler outbound", "sublabel": "drain do event_log" },
     { "id": "conexao", "lane": "banco", "col": 0, "type": "database", "label": "moope_connections", "sublabel": "hash + cifra" },
     { "id": "inboundTbl", "lane": "banco", "col": 2, "type": "database", "label": "moope_inbound_events", "sublabel": "unique org+external_id" },
     { "id": "contato", "lane": "banco", "col": 2, "type": "database", "label": "contacts", "sublabel": "moope_external_id" },
     { "id": "card", "lane": "banco", "col": 3, "type": "database", "label": "crm_leads", "sublabel": "source=moope" },
-    { "id": "eventlog", "lane": "banco", "col": 5, "type": "database", "label": "event_log", "sublabel": "retry se o POST falhar" }
+    { "id": "eventlog", "lane": "banco", "col": 5, "type": "database", "label": "event_log", "sublabel": "retry se o POST falhar" },
+    { "id": "apiLocadora", "lane": "parceiro", "col": 6, "type": "api", "label": "GET lookup / retrato", "sublabel": "HMAC de saída · só leitura" },
+    { "id": "agente", "lane": "humano", "col": 6, "type": "frontend", "label": "Atendimento locadora", "sublabel": "Conversador fala · Operador lê" },
+    { "id": "tools", "lane": "app", "col": 6, "type": "service", "label": "tools do Operador", "sublabel": "lookup + retrato" }
   ],
   "edges": [
     { "id": "e0", "from": "tela", "to": "conexao", "label": "cria chave" },
@@ -43,6 +48,11 @@
     { "id": "e6", "from": "negocio", "to": "events", "label": "contract/process/debt" },
     { "id": "e7", "from": "events", "to": "inboundTbl", "label": "INSERT ou 23505" },
     { "id": "e8", "from": "events", "to": "contato", "label": "upsert" },
+    { "id": "e25", "from": "cadastro", "to": "send", "label": "boleto / acesso" },
+    { "id": "e26", "from": "send", "to": "inbox", "label": "outbound" },
+    { "id": "e27", "from": "contato", "to": "send", "label": "moope_external_id" },
+    { "id": "e28", "from": "cadastro", "to": "reconcile", "label": "varrer gêmeos" },
+    { "id": "e29", "from": "reconcile", "to": "contato", "label": "cola id no LID" },
     { "id": "e9", "from": "contato", "to": "contatos", "label": "a lista" },
     { "id": "e10", "from": "events", "to": "card", "label": "upsert no funil" },
     { "id": "e11", "from": "card", "to": "kanban", "label": "coluna certa" },
@@ -50,6 +60,14 @@
     { "id": "e13", "from": "card", "to": "eventlog", "label": "lead.stage_changed" },
     { "id": "e14", "from": "eventlog", "to": "outbound", "label": "drain" },
     { "id": "e15", "from": "outbound", "to": "webhookParceiro", "label": "HMAC" },
-    { "id": "e16", "from": "webhookParceiro", "to": "cadastro", "label": "há fio" }
+    { "id": "e16", "from": "webhookParceiro", "to": "cadastro", "label": "há fio" },
+    { "id": "e17", "from": "tela", "to": "agente", "label": "cria se kind=locadora" },
+    { "id": "e18", "from": "inbox", "to": "agente", "label": "1 agente no canal" },
+    { "id": "e19", "from": "agente", "to": "tools", "label": "Operador depois de falar" },
+    { "id": "e20", "from": "tools", "to": "apiLocadora", "label": "GET assinado" },
+    { "id": "e21", "from": "apiLocadora", "to": "cadastro", "label": "não cria, não cobra" },
+    { "id": "e22", "from": "conexao", "to": "tools", "label": "URL + HMAC" },
+    { "id": "e23", "from": "tools", "to": "contato", "label": "instantâneo na ficha" },
+    { "id": "e24", "from": "contato", "to": "agente", "label": "link no mesmo fio" }
   ]
 }

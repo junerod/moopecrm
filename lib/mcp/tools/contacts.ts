@@ -18,6 +18,40 @@ import { CAMPOS_PROPONIVEIS, proporDadoDoContato } from "@/lib/contacts/proposta
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { audit } from "@/lib/audit";
 
+/** Instantâneo que o Operador gravou. Sem isto o Conversador inventa placa/boleto. */
+export function locadoraDaFicha(meta: unknown): {
+  identificada: boolean;
+  moope_external_id: string | null;
+  placa: string | null;
+  contrato_status: string | null;
+  faixa: string | null;
+  amount_cents: number | null;
+  days_late: number | null;
+  link_para_enviar: string | null;
+} | null {
+  if (!meta || typeof meta !== "object") return null;
+  const m = meta as Record<string, unknown>;
+  const id = typeof m.moope_external_id === "string" ? m.moope_external_id : null;
+  const snap = m.retrato_locadora && typeof m.retrato_locadora === "object"
+    ? (m.retrato_locadora as Record<string, unknown>)
+    : null;
+  if (!id && !snap) return null;
+  const texto = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const inteiro = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const link =
+    texto(snap?.boleto_url) ?? texto(snap?.invoice_url) ?? texto(snap?.portal_url);
+  return {
+    identificada: Boolean(id),
+    moope_external_id: id,
+    placa: texto(snap?.placa),
+    contrato_status: texto(snap?.contrato_status),
+    faixa: texto(snap?.faixa),
+    amount_cents: inteiro(snap?.amount_cents),
+    days_late: inteiro(snap?.days_late),
+    link_para_enviar: link,
+  };
+}
+
 const searchInputShape = {
   query: z.string().min(1).max(200).describe("Termo de busca (nome, email ou telefone)."),
   limit: z.number().int().min(1).max(50).default(10),
@@ -100,6 +134,7 @@ export const crmGetContact: McpToolDefinition<typeof getInputShape> = {
       cpf_available: contact.cpf_available,
       created_at: contact.created_at,
       last_activity_at: contact.last_activity_at,
+      locadora: locadoraDaFicha(contact.source_metadata),
     };
   },
 };

@@ -60,7 +60,9 @@ Authorization: Bearer mop_…
 | `process.changed` | card no funil Processos + link |
 | `debt.changed` | atividade na timeline + move no funil Cobrança se `faixa` cruzar |
 
-`external_id` é único por organização. Reenvio devolve `{ duplicado: true }` e não cria card de novo.
+`external_id` é único por organização. Reenvio de `contract`/`debt` devolve `{ duplicado: true }` e não cria card de novo.
+
+Reenvio de `person.upserted` **atualiza o contato**: casa o telefone com/sem o nono dígito, cola o `moope_external_id` no fio que já tem `wa_lid`, e **não apaga** o nome do WhatsApp. O nome da locadora fica em `source_metadata.moope_name`. Não funde cadastro.
 
 Não abre inbox e não acorda o agente. Pessoa nova aparece em Contatos; conversa só se alguém importar ou o WhatsApp chegar.
 
@@ -121,6 +123,83 @@ POST no webhook do parceiro. Header `X-Moope-Signature: sha256=<hex>` do body UT
 | `contact.updated` | telefone/nome que o CRM descobriu (quando emitido) |
 
 Se o webhook falhar, a linha fica no `event_log` e o drain tenta de novo.
+
+## Disparo da locadora (um locatário)
+
+O operador clica na locadora (boleto / acesso). A locadora gera o **link**.
+O CRM entrega o **texto** no WhatsApp já pareado.
+
+```
+POST /api/v1/integrations/moope/send
+Authorization: Bearer mop_…
+```
+
+```json
+{
+  "external_id": "9",
+  "phone": "+5561999999999",
+  "body": "texto curto com o link já gerado",
+  "idempotency_key": "fatura:9:token-ou-dia"
+}
+```
+
+| status | significado |
+|--------|-------------|
+| 200 | `{ message_id, conversation_id }` — aparece no Inbox. Reenvio da mesma chave: `{ duplicado: true }` |
+| 404 | `person.upserted` ainda não chegou. Não cria contato. |
+| 409 | contato bloqueou / STOP |
+| 422 | canal exige modelo e a janela de 24h está fechada |
+| 429 | pacing — `Retry-After` |
+| 503 | nenhum canal WORKING, ou o envio falhou |
+
+Um POST = um destinatário. Sem array. Não acorda o agente. Sem Twilio.
+
+Se a ficha da locadora e o fio do WhatsApp forem o **mesmo celular com/sem o nono dígito**, o envio vai no contato que já tem `wa_lid` / `wa_identity`. Não funde cadastro. Sem isso o WAHA marca `sent` no número “certo no papel” e o chip real não recebe.
+
+## Varrer gêmeos (nono dígito)
+
+A locadora chama depois de um lote de cadastros, ou o operador dispara uma vez.
+
+```
+POST /api/v1/integrations/moope/reconcile
+Authorization: Bearer mop_…
+```
+
+Resposta: `{ total, ajustados }`. Cola o id da locadora no contato com LID. Não funde. Não manda mensagem.
+
+## O que a locadora chama (resumo)
+
+| Quando | Endpoint | Efeito |
+|--------|----------|--------|
+| Cadastrou / editou locatário | `POST /events` `person.upserted` | Contato no CRM (ou cola no fio WhatsApp) |
+| Quer mandar texto | `POST /send` | WhatsApp do número pareado, Inbox |
+| Ajustar fichas já importadas | `POST /reconcile` | Só identidade; sem mensagem |
+
+## O CRM lê a locadora (leva 2)
+
+O CRM chama a locadora. Não é o JWT do operador. Não é `mop_` na query.
+A credencial é o **segredo de saída** da conexão (o mesmo HMAC da leva 1).
+
+```
+GET {URL_DA_API}/api/crm/locatario?phone=+5511…
+GET {URL_DA_API}/api/crm/locatario?cpf=11ou14digitos
+GET {URL_DA_API}/api/crm/locatario/:id/retrato
+X-Moope-Signature: sha256=<hmac de "GET\n" + path + query>
+```
+
+`URL_DA_API` é o campo **URL da API da locadora** na Integração MOOPE; se vazio, a origem do webhook.
+
+| status | significado |
+|--------|-------------|
+| 200 lookup | `{ locatario_id, nome, contrato_status }` — campos que já existem |
+| 404 | não é cliente. Não criar locatário. |
+| 409 | dois cadastros. Não chutar. |
+| 401 | sem credencial / HMAC inválido |
+| 5xx | CRM devolve “locadora indisponível” e passa para humano |
+
+Retrato: nome, telefone, e-mail, contrato ativo (placa/título), faixa + `amount_cents` + `days_late`, `portal_url` / `boleto_url` / `invoice_url` **se já existirem**. Sem POST Asaas. Sem marcar pago. Sem Twilio.
+
+Estas rotas ainda nascem no repo da locadora. Sem elas o CRM falha fechado e o inbox humano segue igual.
 
 ## O que não fazer
 
