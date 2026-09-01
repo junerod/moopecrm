@@ -399,6 +399,7 @@ export const AUDIT_ACTIONS = [
   "moope.event_received",
   "moope.message_sent",
   "moope.reconcile",
+  "moope.tenant_provisioned",
   // Perfil do negócio trocado em Configurações (locadora, SaaS, advocacia…).
   "org.perfil_aplicado",
 ] as const;

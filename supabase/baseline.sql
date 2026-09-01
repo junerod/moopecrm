@@ -15840,6 +15840,17 @@ alter table public.moope_connections
 comment on column public.moope_connections.partner_api_url is
   'Base da API do parceiro para GET lookup/retrato. Sem isto, a origem do webhook.';
 
+-- ---- id da locadora no provisionamento (migration 0200) ----
+alter table public.moope_connections
+  add column if not exists partner_tenant_id text;
+
+comment on column public.moope_connections.partner_tenant_id is
+  'userid da locadora que pediu este tenant. Unique quando preenchido.';
+
+create unique index if not exists uniq_moope_connections_partner_tenant
+  on public.moope_connections (partner_tenant_id)
+  where partner_tenant_id is not null;
+
 -- ---- semente da chave de cifra (migration 0198) ----
 -- O .env sozinho não entra no Postgres. Sem esta RPC o app local recusa
 -- gravar segredo (MOOPE, webhook, Google) com 422.

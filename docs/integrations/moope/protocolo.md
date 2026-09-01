@@ -167,10 +167,43 @@ Authorization: Bearer mop_…
 
 Resposta: `{ total, ajustados }`. Cola o id da locadora no contato com LID. Não funde. Não manda mensagem.
 
+## Provisionar tenant (sem colar chave)
+
+A locadora **não** cola `mop_`. O backend dela chama isto **uma vez** (admin da conta). O CRM cria organização isolada, dono (mesmo e-mail), funis Locatários/Cobrança, conexão e devolve a chave.
+
+Não é a chave `mop_`. É o `MOOPE_PROVISION_SECRET` da **instalação** do CRM (env). Sem ele a rota responde 503. Mínimo 16 caracteres.
+
+```
+POST /api/v1/integrations/moope/provision
+Authorization: Bearer <MOOPE_PROVISION_SECRET>
+```
+
+```json
+{
+  "partner_tenant_id": "9",
+  "display_name": "Locadora Norte",
+  "owner_email": "dona@locadora.com",
+  "partner_webhook_url": "https://frota.exemplo/api/crm/events/9",
+  "partner_api_url": "https://frota.exemplo"
+}
+```
+
+| status | significado |
+|--------|-------------|
+| 201 | Tenant novo. `inbound_key` e `outbound_secret` vêm no JSON — gravar já. |
+| 200 | Já existia. Sem plaintext, a menos que `rotate_keys: true`. |
+| 401 | Segredo de provisionamento errado |
+| 503 | Env vazio nesta instalação |
+
+O que **não** nasce sozinho: o WhatsApp. O operador ainda lê o QR em Canais → Conexões. Sem o número, Inbox e funil já servem; disparo não sai.
+
+Reenvio com o mesmo `partner_tenant_id` não cria segunda organização.
+
 ## O que a locadora chama (resumo)
 
 | Quando | Endpoint | Efeito |
 |--------|----------|--------|
+| Admin liga a integração | `POST /provision` | Tenant + chave; locadora grava, não cola |
 | Cadastrou / editou locatário | `POST /events` `person.upserted` | Contato no CRM (ou cola no fio WhatsApp) |
 | Quer mandar texto | `POST /send` | WhatsApp do número pareado, Inbox |
 | Ajustar fichas já importadas | `POST /reconcile` | Só identidade; sem mensagem |

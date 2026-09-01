@@ -28,6 +28,7 @@
     { "id": "events", "lane": "app", "col": 2, "type": "api", "label": "POST /events", "sublabel": "Bearer · idempotente" },
     { "id": "send", "lane": "app", "col": 4, "type": "api", "label": "POST /send", "sublabel": "um locatário · Inbox" },
     { "id": "reconcile", "lane": "app", "col": 4, "type": "api", "label": "POST /reconcile", "sublabel": "gêmeo LID · sem fundir" },
+    { "id": "provision", "lane": "app", "col": 0, "type": "api", "label": "POST /provision", "sublabel": "nasce o tenant" },
     { "id": "outbound", "lane": "app", "col": 5, "type": "service", "label": "handler outbound", "sublabel": "drain do event_log" },
     { "id": "conexao", "lane": "banco", "col": 0, "type": "database", "label": "moope_connections", "sublabel": "hash + cifra" },
     { "id": "inboundTbl", "lane": "banco", "col": 2, "type": "database", "label": "moope_inbound_events", "sublabel": "unique org+external_id" },
@@ -40,6 +41,8 @@
   ],
   "edges": [
     { "id": "e0", "from": "tela", "to": "conexao", "label": "cria chave" },
+    { "id": "e30", "from": "menu", "to": "provision", "label": "Ativar CRM" },
+    { "id": "e31", "from": "provision", "to": "conexao", "label": "org + mop_" },
     { "id": "e1", "from": "menu", "to": "launch", "label": "Bearer + e-mail" },
     { "id": "e2", "from": "launch", "to": "conexao", "label": "hash da chave" },
     { "id": "e3", "from": "launch", "to": "entrar", "label": "url 90s" },

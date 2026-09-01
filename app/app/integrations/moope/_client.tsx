@@ -127,8 +127,9 @@ export function MoopeConnectionClient() {
           <CardHeader>
             <CardTitle>Mostre isto uma vez</CardTitle>
             <CardDescription>
-              A chave vai no Authorization do outro sistema. O segredo assina o
-              webhook que o CRM manda. Depois some da tela.
+              Copie e cole na locadora (Empresa → MOOPE CRM), ou use o
+              provisionamento automático — aí a locadora já grava sozinha.
+              Depois some da tela.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
@@ -225,6 +226,11 @@ export function MoopeConnectionClient() {
             </p>
           ) : null}
 
+          <p className="text-xs text-muted-foreground">
+            A chave mop_ só aparece ao criar ou ao clicar em Nova chave.
+            Tem botão Copiar. O caminho sem cola é a locadora chamar
+            POST /provision (segredo da instalação).
+          </p>
           <div className="flex flex-wrap gap-2">
             {conexao ? (
               <>

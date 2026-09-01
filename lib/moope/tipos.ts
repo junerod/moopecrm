@@ -34,6 +34,8 @@ export interface MoopeConnectionRow {
   partner_webhook_url: string | null;
   /** Base da API do parceiro (GET lookup/retrato). Sem isto, a origem do webhook. */
   partner_api_url: string | null;
+  /** userid da locadora que pediu este tenant via /provision. */
+  partner_tenant_id?: string | null;
   inbound_key_prefix: string;
   inbound_key_hash: string;
   outbound_secret_enc: string | null;

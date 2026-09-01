@@ -226,6 +226,7 @@ aplica.
 | `20260830140000` | `0197_moope_connections` | **Conector MOOPE: uma conexão por organização e idempotência de evento inbound.** Tabela irmã de `tenant_integrations` (não reabre o CHECK `provider` da Nuvemshop). `inbound_key_hash` SHA256 (plaintext uma vez); `outbound_secret_enc` cifrado porque o CRM precisa assinar HMAC de saída. `moope_inbound_events` com `unique (organization_id, external_id)` — sem isto o reenvio do Asaas/Facejus duplica o card. Leitura org-flat; escrita admin (`fn_role_at_least`). A cifra continua na GUC `app.nuvemshop_oauth_key`. |
 | `20260831160000` | `0198_semente_da_chave_de_cifra` | **O `.env` não entra sozinho no Postgres.** `fn_encrypt_oauth` lê `private.app_secrets`; o kit da VPS semeia, o Supabase local não. Sem a linha, criar conexão MOOPE (e o resto que cifra) devolve 422. `fn_seed_oauth_key` grava a chave do env se ainda não houver — `on conflict do nothing`, porque trocar invalidaria o que já está cifrado. Só `service_role`. |
 | `20260831200000` | `0199_moope_partner_api_url` | **URL da API da locadora**, distinta do webhook de eventos. O CRM chama GET lookup/retrato nesta base (ou na origem do webhook, se o campo estiver vazio). Sem POST Asaas e sem chave na query. |
+| `20260901140000` | `0200_moope_partner_tenant_id` | **userid da locadora na conexão.** O POST /provision reabre o mesmo tenant na segunda chamada em vez de nascer outro. Unique parcial (só quando preenchido). |
 
 ## Reproducibility
 

@@ -203,3 +203,26 @@ Retrato só-leitura (faturas, OS, vistoria) + lookup por telefone +
 auth de serviço. Isso que o agente usa para “manda o boleto”. Sem a
 leva 1 estável, essa API não tem id para casar.
 ```
+
+---
+
+## Leva seguinte — um clique, sem colar mop_
+
+O CRM já tem `POST /api/v1/integrations/moope/provision` (produção depois
+do deploy). A locadora **não cola chave**. O backend chama com o
+`MOOPE_PROVISION_SECRET` da instalação (env da locadora = o mesmo do CRM).
+
+Na tela Empresa → MOOPE CRM, botão **Ativar CRM** (só admin):
+
+1. POST `{CRM}/api/v1/integrations/moope/provision` com
+   `partner_tenant_id` = userid, `display_name` = nome da empresa,
+   `owner_email` = e-mail do admin, webhook e api_url desta locadora.
+2. Grava a resposta (`inbound_key`, `outbound_secret`, `public_url`) em
+   `crm_moope_config`. Não mostre a chave na tela depois.
+3. Segunda vez: 200 sem chave nova. `rotate_keys: true` só se pedirem
+   outra chave.
+
+Sem o secret no env da locadora, o botão explica: falta o segredo da
+instalação. Não invente mop_ no cliente.
+
+O operador ainda pareia o WhatsApp no CRM (QR). Isso não automatiza.

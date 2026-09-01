@@ -74,6 +74,12 @@ const schema = z.object({
   INTERNAL_SECRET: required("INTERNAL_SECRET"),
   /** Optional dedicated secret for cron endpoints (S-06.07 onwards). */
   INTERNAL_CRON_SECRET: z.string().optional().default(""),
+  /**
+   * Segredo da locadora para POST /integrations/moope/provision.
+   * Sem isto (ou com menos de 16 chars) a rota devolve 503 — instalação
+   * antiga não quebra. Não é a chave mop_; mop_ nasce DEPOIS do provision.
+   */
+  MOOPE_PROVISION_SECRET: z.string().optional().default(""),
 
   /**
    * Retenção do arquivo do corpo cru dos webhooks (`webhook_events_log`).
