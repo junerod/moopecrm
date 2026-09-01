@@ -397,6 +397,8 @@ export const AUDIT_ACTIONS = [
   "moope.connection_updated",
   "moope.launch_issued",
   "moope.event_received",
+  "moope.message_sent",
+  "moope.reconcile",
   // Perfil do negócio trocado em Configurações (locadora, SaaS, advocacia…).
   "org.perfil_aplicado",
 ] as const;
