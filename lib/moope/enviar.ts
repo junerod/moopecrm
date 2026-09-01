@@ -14,6 +14,11 @@ import { estadoDaJanela } from "@/lib/channels/janela";
 import { phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { ensureConversation } from "@/lib/automation/start-conversation";
 import { parseDialablePhone } from "@/lib/messaging/contact-card";
+import {
+  avaliarDisparoProativo,
+  registrarDisparoNoLedger,
+  type FreioDoDisparo,
+} from "@/lib/moope/pacing-do-disparo";
 
 export const MOOPE_SEND_ENDPOINT = "moope:send";
 
@@ -43,6 +48,16 @@ export type ResultadoEnvioMoope =
 export type EnviarDeps = {
   enviarMensagem?: typeof sendMessageHandler;
   agora?: Date;
+  avaliarDisparo?: (
+    admin: SupabaseClient,
+    orgId: string,
+    sessionId: string,
+    provider: string,
+    agora: Date,
+  ) => Promise<FreioDoDisparo>;
+  registrarDisparo?: typeof registrarDisparoNoLedger;
+  /** Teste: sessão já resolvida. Produção lê channel_sessions WORKING. */
+  sessao?: { id: string; provider: string };
 };
 
 type Contato = {
@@ -113,13 +128,25 @@ export async function enviarPeloCrm(
     };
   }
 
-  const sessao = await acharSessaoWorking(admin, orgId);
+  const sessao = deps.sessao ?? (await acharSessaoWorking(admin, orgId));
   if (!sessao) {
     return {
       ok: false,
       status: 503,
       code: "internal_error",
       message: "Nenhum WhatsApp ligado nesta organização.",
+    };
+  }
+
+  const avaliar = deps.avaliarDisparo ?? avaliarDisparoProativo;
+  const freio = await avaliar(admin, orgId, sessao.id, sessao.provider, agora);
+  if (!freio.ok) {
+    return {
+      ok: false,
+      status: 429,
+      code: "rate_limited",
+      message: freio.message,
+      retry_after: freio.retry_after,
     };
   }
 
@@ -175,6 +202,8 @@ export async function enviarPeloCrm(
 
   const traduzido = traduzirDesfecho(mensagem, conversaId);
   if (traduzido.ok) {
+    const registrar = deps.registrarDisparo ?? registrarDisparoNoLedger;
+    await registrar(admin, orgId, sessao.id, agora);
     await gravarIdempotencia(admin, orgId, pedido, traduzido);
   }
   return traduzido;

@@ -43,6 +43,8 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/v1/integrations/moope/send")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/reconcile")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/provision")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/channel")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/ia-credencial")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope/launch/x")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope/send/x")).toBe(false);

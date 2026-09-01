@@ -10,10 +10,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { provisionarDonoDoTenant } from "@/lib/admin/provisionar-dono-do-tenant";
 import { env } from "@/lib/env";
 import { gerarChaveDeEntrada, gerarSegredoDeSaida } from "@/lib/moope/chave";
+import { garantirAgenteAtendimentoLocadora } from "@/lib/moope/agente-atendimento-locadora";
 import { aplicarPerfilLocadora } from "@/lib/onboarding/perfil-locadora";
 import { encryptWebhookSecret } from "@/lib/webhooks/secrets";
 
 export const PISO_DO_SEGREDO_DE_PROVISION = 16;
+
+/** Senha do dono NOVO. Conta existente não é resetada. O CRM exige troca no 1º login. */
+export const SENHA_INICIAL_LOCADORA = "12345678";
 
 export type PedidoDeProvisionamento = {
   partner_tenant_id: string;
@@ -34,11 +38,36 @@ export type ResultadoDeProvisionamento = {
   outbound_secret?: string;
   criado_agora: boolean;
   chaves_novas: boolean;
+  owner_novo: boolean;
+  senha_inicial_definida: boolean;
   proximo: string;
+  agente?: {
+    ok: boolean;
+    status?: string;
+    origem?: string;
+    motivo?: string;
+  };
 };
 
 const PROXIMO =
   "Parear o WhatsApp em Canais → Conexões. Sem o número, o Inbox fica pronto e o disparo não sai.";
+
+async function comAgente(
+  admin: SupabaseClient,
+  orgId: string,
+  userId: string,
+  base: ResultadoDeProvisionamento,
+): Promise<ResultadoDeProvisionamento> {
+  try {
+    const r = await garantirAgenteAtendimentoLocadora(admin, orgId, userId);
+    return {
+      ...base,
+      agente: { ok: r.ok, status: r.status, origem: r.origem, motivo: r.motivo },
+    };
+  } catch {
+    return { ...base, agente: { ok: false, status: "ausente", motivo: "falha_ao_criar" } };
+  }
+}
 
 export function slugDoTenantParceiro(partnerTenantId: string): string {
   const limpo = partnerTenantId.replace(/[^a-zA-Z0-9]+/g, "").slice(0, 20);
@@ -129,7 +158,7 @@ async function reabrir(
   ja: NonNullable<Awaited<ReturnType<typeof acharPorParceiro>>>,
   pedido: PedidoDeProvisionamento,
 ): Promise<ResultadoDeProvisionamento> {
-  await garantirDonoEPerfil(admin, ja.organization_id, pedido);
+  const dono = await garantirDonoEPerfil(admin, ja.organization_id, pedido);
   if (!ja.connection_id) {
     const chaves = await gravarConexao(admin, {
       organizationId: ja.organization_id,
@@ -138,7 +167,7 @@ async function reabrir(
       apiUrl: pedido.partner_api_url,
       userId: null,
     });
-    return {
+    return comAgente(admin, ja.organization_id, dono.userId, {
       organization_id: ja.organization_id,
       slug: ja.slug,
       display_name: ja.display_name,
@@ -148,13 +177,15 @@ async function reabrir(
       outbound_secret: chaves.saida,
       criado_agora: false,
       chaves_novas: true,
+      owner_novo: dono.criadoAgora,
+      senha_inicial_definida: dono.senhaDefinidaAqui,
       proximo: PROXIMO,
-    };
+    });
   }
 
   if (pedido.rotate_keys) {
     const chaves = await rotacionarConexao(admin, ja.connection_id, ja.organization_id);
-    return {
+    return comAgente(admin, ja.organization_id, dono.userId, {
       organization_id: ja.organization_id,
       slug: ja.slug,
       display_name: ja.display_name,
@@ -164,11 +195,13 @@ async function reabrir(
       outbound_secret: chaves.saida,
       criado_agora: false,
       chaves_novas: true,
+      owner_novo: dono.criadoAgora,
+      senha_inicial_definida: dono.senhaDefinidaAqui,
       proximo: PROXIMO,
-    };
+    });
   }
 
-  return {
+  return comAgente(admin, ja.organization_id, dono.userId, {
     organization_id: ja.organization_id,
     slug: ja.slug,
     display_name: ja.display_name,
@@ -176,8 +209,10 @@ async function reabrir(
     inbound_key_prefix: ja.inbound_key_prefix ?? "",
     criado_agora: false,
     chaves_novas: false,
+    owner_novo: dono.criadoAgora,
+    senha_inicial_definida: dono.senhaDefinidaAqui,
     proximo: PROXIMO,
-  };
+  });
 }
 
 async function nascer(
@@ -190,6 +225,7 @@ async function nascer(
     .from("organizations")
     .insert({
       display_name: pedido.display_name.trim(),
+      legal_name: pedido.display_name.trim(),
       slug,
       status: "active",
       onboarded_at: new Date().toISOString(),
@@ -205,7 +241,7 @@ async function nascer(
   }
 
   const orgId = (org as { id: string }).id;
-  await garantirDonoEPerfil(admin, orgId, pedido);
+  const dono = await garantirDonoEPerfil(admin, orgId, pedido);
 
   const chaves = await gravarConexao(admin, {
     organizationId: orgId,
@@ -215,7 +251,7 @@ async function nascer(
     userId: null,
   });
 
-  return {
+  return comAgente(admin, orgId, dono.userId, {
     organization_id: orgId,
     slug: String((org as { slug: string }).slug),
     display_name: String((org as { display_name: string }).display_name),
@@ -225,19 +261,22 @@ async function nascer(
     outbound_secret: chaves.saida,
     criado_agora: true,
     chaves_novas: true,
+    owner_novo: dono.criadoAgora,
+    senha_inicial_definida: dono.senhaDefinidaAqui,
     proximo: PROXIMO,
-  };
+  });
 }
 
 async function garantirDonoEPerfil(
   admin: SupabaseClient,
   orgId: string,
   pedido: PedidoDeProvisionamento,
-): Promise<void> {
-  await provisionarDonoDoTenant(admin, {
+): Promise<{ criadoAgora: boolean; senhaDefinidaAqui: boolean; userId: string }> {
+  const dono = await provisionarDonoDoTenant(admin, {
     orgId,
     orgName: pedido.display_name.trim(),
     email: pedido.owner_email,
+    senha: SENHA_INICIAL_LOCADORA,
   });
   try {
     await aplicarPerfilLocadora(admin, orgId);
@@ -253,6 +292,7 @@ async function garantirDonoEPerfil(
     } as never)
     .eq("id", orgId)
     .is("onboarded_at", null);
+  return { criadoAgora: dono.criadoAgora, senhaDefinidaAqui: dono.senhaDefinidaAqui, userId: dono.userId };
 }
 
 async function slugLivre(admin: SupabaseClient, base: string): Promise<string> {

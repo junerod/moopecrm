@@ -85,16 +85,18 @@ export async function provisionarDonoDoTenant(
     userId = jaTinha.id;
   } else {
     const senha = senhaNova.length >= 8 ? senhaNova : randomBytes(24).toString("base64url");
+    const senhaFoiDefinida = senhaNova.length >= 8;
     const { data, error } = await admin.auth.admin.createUser({
       email,
       password: senha,
       email_confirm: true,
       user_metadata: { full_name: args.orgName },
+      app_metadata: senhaFoiDefinida ? { must_change_password: true } : {},
     });
     if (error || !data.user) throw new Error(`criar dono: ${error?.message ?? "sem usuário"}`);
     userId = data.user.id;
     criadoAgora = true;
-    senhaDefinidaAqui = senhaNova.length >= 8;
+    senhaDefinidaAqui = senhaFoiDefinida;
     if (!senhaDefinidaAqui) {
       const { data: link, error: erroLink } = await admin.auth.admin.generateLink({
         type: "recovery",

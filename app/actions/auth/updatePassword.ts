@@ -4,8 +4,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { resetPasswordSchema, type ResetPasswordInput } from "@/lib/auth/schemas";
 import { audit } from "@/lib/audit";
+import { precisaTrocarSenhaInicial } from "@/lib/auth/senha-inicial";
 
 export type UpdatePasswordResult = {
   ok: false;
@@ -83,6 +85,15 @@ export async function updatePassword(
       userAgent,
     });
     return { ok: false, error: "update_failed" };
+  }
+
+  if (precisaTrocarSenhaInicial(user)) {
+    const admin = createAdminClient();
+    const { data: atual } = await admin.auth.admin.getUserById(user.id);
+    const prev = (atual?.user?.app_metadata ?? {}) as Record<string, unknown>;
+    await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: { ...prev, must_change_password: false },
+    });
   }
 
   await audit({

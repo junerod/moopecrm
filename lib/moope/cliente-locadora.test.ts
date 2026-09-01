@@ -69,6 +69,14 @@ describe("lookupLocatario", () => {
     expect(r).toEqual({ ok: false, codigo: "sem_integracao" });
   });
 
+  it("placa válida chama a locadora", async () => {
+    const fetchFn = vi.fn(async () => new Response("{}", { status: 404 }));
+    const r = await lookupLocatario(adminCom(CONN) as never, "org-1", { placa: "mkp-3423" }, { fetchFn });
+    expect(r).toEqual({ ok: false, codigo: "nao_encontrado" });
+    const [url] = fetchFn.mock.calls[0] as [string];
+    expect(url).toContain("placa=MKP3423");
+  });
+
   it("telefone inválido não chama a locadora", async () => {
     const fetchFn = vi.fn();
     const r = await lookupLocatario(adminCom(CONN) as never, "org-1", { phone: "abc" }, { fetchFn });

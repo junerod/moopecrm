@@ -9,6 +9,10 @@ import {
   reactivateChannelSession,
   type ChannelReactivationActor,
 } from "@/lib/channels/reactivate";
+import {
+  declaracaoDoNumeroSchema,
+  gravarDeclaracaoDoNumero,
+} from "@/lib/channels/idade-do-numero";
 import { getWahaClient } from "@/lib/waha/client";
 import { createClient } from "@/lib/supabase/server";
 
@@ -140,12 +144,32 @@ export async function POST(req: Request) {
   if (!waha) return fail("waha_not_configured", "Suba o Docker (docker compose up -d waha) e tente novamente.", 503);
   const sessionName = defaultSessionName(activeOrg.orgId);
 
+  let raw: unknown = {};
+  try {
+    raw = await req.json();
+  } catch {
+    raw = {};
+  }
+  const parsed = declaracaoDoNumeroSchema.safeParse(raw ?? {});
+  const declaracao = parsed.success ? parsed.data : { numero_ja_em_uso: false };
+
   // 1) Make sure we have a row in channel_sessions.
   const channelSessionId = await ensureChannelSession(activeOrg.orgId, sessionName, {
     userId: user.id,
     requestId,
     metadata: { provider: CHANNEL_PROVIDER_WAHA, origin: "onboarding" },
   });
+
+  const supabase = await createClient();
+  const gravou = await gravarDeclaracaoDoNumero(
+    supabase,
+    activeOrg.orgId,
+    channelSessionId,
+    declaracao,
+  );
+  if (gravou.error) {
+    return fail("internal_error", gravou.error.message, 500, { requestId });
+  }
 
   // 1b) `?restart=1` = pedido explícito de QR novo. O start sozinho não resolve
   // uma sessão FAILED: o WAHA responde 422 ("already exists") e o usuário fica

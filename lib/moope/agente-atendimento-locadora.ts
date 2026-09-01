@@ -18,14 +18,17 @@ import { carregarConexaoLocadora } from "@/lib/moope/cliente-locadora";
 export const NOME_AGENTE_ATENDIMENTO_LOCADORA = "Atendimento locadora";
 
 export const VOZ_ATENDIMENTO_LOCADORA =
-  "Você atende locatários desta locadora no WhatsApp.\n" +
-  "1) Se o telefone já identificou o cadastro, não peça CPF.\n" +
-  "2) Se não identificou, peça UMA chave: CPF ou telefone. Uma vez.\n" +
-  "3) Identificou: pode falar 2ª via (só com o link que o sistema trouxer), " +
-  "situação do contrato/placa, e passar para um atendente.\n" +
-  "4) Sem cadastro, sem link, ou dúvida de dinheiro/acordo: passe para humano.\n" +
-  "5) Nunca invente valor, placa, boleto ou vencimento.\n" +
-  "6) Nunca diga que mexeu no sistema / CRM / funil.";
+  "Você atende o WhatsApp da locadora. Fale curto. NUNCA invente valor, placa, boleto, link ou lista de carro.\n" +
+  "TODA conversa: moope_get_atendimento e lookup pelo telefone (locatário, depois investidor).\n" +
+  "ACHOU locatário: menu só se ela ainda não pediu nada (texto `menu` do MOOPE). Pedido (boleto, contrato, CRLV, socorro, troca): retrato e só o que vier em `pode`. Sem link / socorro / troca / arquivo → humano.\n" +
+  "ACHOU investidor: retrato do investidor. Portal e último período. Sem PDF.\n" +
+  "DISSE que é locatário/investidor mas o telefone não casou: peça CPF ou placa UMA vez. Depois disso, se não achar, humano.\n" +
+  "NÃO ACHOU e NÃO disse que é cliente: NÃO mande o menu. NÃO peça CPF. Pode ser fornecedor, financeiro ou suporte.\n" +
+  "Siga `desconhecido` do atendimento:\n" +
+  "- passar: não escreva. crm_request_human_handoff agora.\n" +
+  "- perguntar: uma frase (Quer falar com a equipe?). Se sim ou silêncio, handoff.\n" +
+  "- oferta: só se pediu alugar, moope_listar_oferta. Qualquer outro assunto: igual passar.\n" +
+  "Não diga que mexeu em CRM, funil ou sistema.";
 
 export type OrigemDoAgente = "existente" | "adaptado" | "criado";
 export type StatusDoAgente = "published" | "draft";
@@ -122,7 +125,7 @@ async function resolverPublicacao(
   } catch {
     return { publicar: false, motivo: "no_channel", canalId: null, provider: "anthropic", modelId: null, credentialId: null };
   }
-  const [canal] = canais;
+  const canal = canais.find((c) => c.status === "WORKING") || canais[0];
   if (!canal) {
     return { publicar: false, motivo: "no_channel", canalId: null, provider: "anthropic", modelId: null, credentialId: null };
   }
@@ -230,14 +233,16 @@ export async function garantirAgenteAtendimentoLocadora(
     .is("archived_at", null)
     .maybeSingle();
   if (porNome) {
-    return {
-      ok: true,
-      agent_id: (porNome as { id: string }).id,
-      status: (porNome as { published_version_id: string | null }).published_version_id
-        ? "published"
-        : "draft",
-      origem: "existente",
-    };
+    const { data: maxRow } = await admin
+      .from("ai_agent_versions")
+      .select("version_number")
+      .eq("agent_id", (porNome as { id: string }).id)
+      .eq("organization_id", orgId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const next = ((maxRow as { version_number?: number } | null)?.version_number ?? 0) + 1;
+    return gravarVersao(admin, orgId, userId, (porNome as { id: string }).id, next, "existente");
   }
 
   const { data: def } = await admin

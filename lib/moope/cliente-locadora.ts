@@ -39,6 +39,7 @@ export interface RetratoLocatario {
   telefone: string | null;
   email: string | null;
   placa: string | null;
+  veiculo_modelo: string | null;
   contrato_titulo: string | null;
   contrato_status: string | null;
   faixa: string | null;
@@ -47,10 +48,67 @@ export interface RetratoLocatario {
   portal_url: string | null;
   boleto_url: string | null;
   invoice_url: string | null;
+  documentos: string[];
+  pode: string[];
+}
+
+export interface ScriptAtendimento {
+  menu: string | null;
+  papeis: string[];
+  identificar_por: string[];
+  locatario_pode: string[];
+  investidor_pode: string[];
+  lead_pode: string[];
+  desconhecido: "passar" | "perguntar" | "oferta";
+  desconhecido_fazer: string | null;
+}
+
+export interface OfertaItem {
+  modelo: string;
+  marca: string | null;
+  ano: number | null;
+  placa: string | null;
+}
+
+export interface LookupInvestidor {
+  investidor_id: string;
+  nome: string;
+}
+
+export interface RetratoInvestidor {
+  investidor_id: string;
+  nome: string;
+  telefone: string | null;
+  ultimo_periodo: string | null;
+  portal_url: string | null;
+  pode: string[];
 }
 
 export type ResultadoLookup = ({ ok: true } & LookupLocatario) | FalhaLocadora;
 export type ResultadoRetrato = ({ ok: true } & RetratoLocatario) | FalhaLocadora;
+export type ResultadoAtendimento = ({ ok: true } & ScriptAtendimento) | FalhaLocadora;
+export type ResultadoOferta = ({ ok: true; itens: OfertaItem[] } ) | FalhaLocadora;
+export type ResultadoLookupInvestidor = ({ ok: true } & LookupInvestidor) | FalhaLocadora;
+export type ResultadoRetratoInvestidor = ({ ok: true } & RetratoInvestidor) | FalhaLocadora;
+
+function placaNormalizada(valor: unknown): string | undefined {
+  if (typeof valor !== "string") return undefined;
+  const s = valor.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return s.length >= 6 && s.length <= 8 ? s : undefined;
+}
+
+function listaTexto(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean);
+}
+
+function corpoData(json: unknown): Record<string, unknown> {
+  const body = (json ?? {}) as Record<string, unknown>;
+  if (body.data && typeof body.data === "object" && !Array.isArray(body.data)) {
+    return body.data as Record<string, unknown>;
+  }
+  return body;
+}
 
 export function urlDaApiDaLocadora(conn: Pick<MoopeConnectionRow, "partner_api_url" | "partner_webhook_url">): string | null {
   const explicita = conn.partner_api_url?.trim();
@@ -160,7 +218,7 @@ function inteiro(v: unknown): number | null {
 export async function lookupLocatario(
   admin: SupabaseClient,
   orgId: string,
-  chave: { phone?: unknown; cpf?: unknown },
+  chave: { phone?: unknown; cpf?: unknown; placa?: unknown },
   deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
 ): Promise<ResultadoLookup> {
   const prep = await prepararChamada(admin, orgId);
@@ -168,19 +226,19 @@ export async function lookupLocatario(
 
   const phone = telefoneE164(chave.phone);
   const cpf = cpfOuCnpjDigitos(chave.cpf);
-  if (!phone && !cpf) return { ok: false, codigo: "entrada_invalida" };
+  const placa = placaNormalizada(chave.placa);
+  if (!phone && !cpf && !placa) return { ok: false, codigo: "entrada_invalida" };
 
   const url = new URL("/api/crm/locatario", `${prep.base}/`);
   if (phone) url.searchParams.set("phone", phone);
-  else if (cpf) url.searchParams.set("cpf", cpf);
+  if (cpf) url.searchParams.set("cpf", cpf);
+  if (placa) url.searchParams.set("placa", placa);
 
   const res = await getLocadora(url, prep.secret, deps);
   if (res.status !== 200) {
     return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
   }
-  const body = (res.json ?? {}) as Record<string, unknown>;
-  const data =
-    body.data && typeof body.data === "object" ? (body.data as Record<string, unknown>) : body;
+  const data = corpoData(res.json);
   const id = texto(data.locatario_id);
   const nome = texto(data.nome);
   if (!id || !nome) return { ok: false, codigo: "indisponivel", detalhe: "retrato_incompleto" };
@@ -209,9 +267,7 @@ export async function getRetratoLocatario(
   if (res.status !== 200) {
     return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
   }
-  const body = (res.json ?? {}) as Record<string, unknown>;
-  const data =
-    body.data && typeof body.data === "object" ? (body.data as Record<string, unknown>) : body;
+  const data = corpoData(res.json);
   const nome = texto(data.nome) ?? "";
   return {
     ok: true,
@@ -220,6 +276,7 @@ export async function getRetratoLocatario(
     telefone: telefoneE164(data.telefone) ?? texto(data.telefone),
     email: texto(data.email),
     placa: texto(data.placa),
+    veiculo_modelo: texto(data.veiculo_modelo),
     contrato_titulo: texto(data.contrato_titulo) ?? texto(data.title),
     contrato_status: texto(data.contrato_status),
     faixa: texto(data.faixa),
@@ -228,5 +285,113 @@ export async function getRetratoLocatario(
     portal_url: texto(data.portal_url),
     boleto_url: texto(data.boleto_url),
     invoice_url: texto(data.invoice_url),
+    documentos: listaTexto(data.documentos),
+    pode: listaTexto(data.pode),
+  };
+}
+
+export async function getAtendimento(
+  admin: SupabaseClient,
+  orgId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoAtendimento> {
+  const prep = await prepararChamada(admin, orgId);
+  if (!prep.ok) return prep;
+  const url = new URL("/api/crm/atendimento", `${prep.base}/`);
+  const res = await getLocadora(url, prep.secret, deps);
+  if (res.status !== 200) {
+    return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
+  }
+  const data = corpoData(res.json);
+  return {
+    ok: true,
+    menu: texto(data.menu),
+    papeis: listaTexto(data.papeis),
+    identificar_por: listaTexto(data.identificar_por),
+    locatario_pode: listaTexto(data.locatario_pode),
+    investidor_pode: listaTexto(data.investidor_pode),
+    lead_pode: listaTexto(data.lead_pode),
+    desconhecido:
+      data.desconhecido === "perguntar" || data.desconhecido === "oferta"
+        ? data.desconhecido
+        : "passar",
+    desconhecido_fazer: texto(data.desconhecido_fazer),
+  };
+}
+
+export async function listarOferta(
+  admin: SupabaseClient,
+  orgId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoOferta> {
+  const prep = await prepararChamada(admin, orgId);
+  if (!prep.ok) return prep;
+  const url = new URL("/api/crm/oferta", `${prep.base}/`);
+  const res = await getLocadora(url, prep.secret, deps);
+  if (res.status !== 200) {
+    return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
+  }
+  const body = (res.json ?? {}) as Record<string, unknown>;
+  const raw = Array.isArray(body.data) ? body.data : Array.isArray(body) ? body : [];
+  const itens: OfertaItem[] = raw
+    .filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object")
+    .map((r) => ({
+      modelo: texto(r.modelo) ?? "Veículo",
+      marca: texto(r.marca),
+      ano: inteiro(r.ano),
+      placa: texto(r.placa),
+    }));
+  return { ok: true, itens };
+}
+
+export async function lookupInvestidor(
+  admin: SupabaseClient,
+  orgId: string,
+  chave: { phone?: unknown; cpf?: unknown },
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoLookupInvestidor> {
+  const prep = await prepararChamada(admin, orgId);
+  if (!prep.ok) return prep;
+  const phone = telefoneE164(chave.phone);
+  const cpf = cpfOuCnpjDigitos(chave.cpf);
+  if (!phone && !cpf) return { ok: false, codigo: "entrada_invalida" };
+  const url = new URL("/api/crm/investidor", `${prep.base}/`);
+  if (phone) url.searchParams.set("phone", phone);
+  if (cpf) url.searchParams.set("cpf", cpf);
+  const res = await getLocadora(url, prep.secret, deps);
+  if (res.status !== 200) {
+    return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
+  }
+  const data = corpoData(res.json);
+  const id = texto(data.investidor_id);
+  const nome = texto(data.nome);
+  if (!id || !nome) return { ok: false, codigo: "indisponivel", detalhe: "retrato_incompleto" };
+  return { ok: true, investidor_id: id, nome };
+}
+
+export async function getRetratoInvestidor(
+  admin: SupabaseClient,
+  orgId: string,
+  investidorId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoRetratoInvestidor> {
+  const prep = await prepararChamada(admin, orgId);
+  if (!prep.ok) return prep;
+  const id = investidorId.trim();
+  if (!id) return { ok: false, codigo: "entrada_invalida" };
+  const url = new URL(`/api/crm/investidor/${encodeURIComponent(id)}/retrato`, `${prep.base}/`);
+  const res = await getLocadora(url, prep.secret, deps);
+  if (res.status !== 200) {
+    return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
+  }
+  const data = corpoData(res.json);
+  return {
+    ok: true,
+    investidor_id: texto(data.investidor_id) ?? id,
+    nome: texto(data.nome) ?? "",
+    telefone: telefoneE164(data.telefone) ?? texto(data.telefone),
+    ultimo_periodo: texto(data.ultimo_periodo),
+    portal_url: texto(data.portal_url),
+    pode: listaTexto(data.pode),
   };
 }

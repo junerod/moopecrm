@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { safeNext } from "@/lib/auth/safe-next";
+import { precisaTrocarSenhaInicial } from "@/lib/auth/senha-inicial";
 
 import { createClient } from "@/lib/supabase/server";
 import { audit } from "@/lib/audit";
@@ -107,6 +108,10 @@ export async function verifyMfa(code: string, next?: string): Promise<VerifyMfaR
     ip,
     userAgent,
   });
+
+  if (precisaTrocarSenhaInicial(user)) {
+    redirect("/login/reset?primeiro=1");
+  }
 
   redirect(safeNext(next, "/app/inbox"));
 }

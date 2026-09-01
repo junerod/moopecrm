@@ -7,6 +7,8 @@ import { z } from "zod";
  */
 export const createChannelSchema = z.object({
   display_name: z.string().trim().min(1).max(80).optional(),
+  /** Chip já atende (pula aquecimento) ou é novo. Sem isto o motor assume 20/dia. */
+  numero_ja_em_uso: z.boolean().optional(),
 });
 
 export type CreateChannelInput = z.infer<typeof createChannelSchema>;

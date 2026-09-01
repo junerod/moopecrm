@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { safeNext } from "@/lib/auth/safe-next";
+import { precisaTrocarSenhaInicial } from "@/lib/auth/senha-inicial";
 
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema, type LoginInput } from "@/lib/auth/schemas";
@@ -105,6 +106,10 @@ export async function signInWithPassword(
     ip,
     userAgent,
   });
+
+  if (precisaTrocarSenhaInicial(data.user)) {
+    redirect("/login/reset?primeiro=1");
+  }
 
   // Server-side redirect ensures fresh session cookie is sent to browser.
   redirect(safeNext(next, "/app/inbox"));

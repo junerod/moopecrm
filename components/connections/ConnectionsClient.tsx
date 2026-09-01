@@ -18,6 +18,7 @@ import {
 } from "@/hooks/channels/useSincronizarContatosDoAparelho";
 import { usePacingKnobs } from "@/hooks/channels/usePacingKnobs";
 import { AntiBanSheet } from "./AntiBanSheet";
+import { PerguntaIdadeDoNumero } from "./PerguntaIdadeDoNumero";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -148,6 +149,8 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   const [creating, setCreating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [qr, setQr] = useState<{ sessionId: string; title: string } | null>(null);
+  const [perguntandoIdade, setPerguntandoIdade] = useState(false);
+  const [idadeNovaConexao, setIdadeNovaConexao] = useState<boolean | null>(null);
   const [antiBanId, setAntiBanId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<ChannelSession | null>(null);
   const [historicoId, setHistoricoId] = useState<string | null>(null);
@@ -184,13 +187,15 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
     void runHealthCheck(sessions);
   }, [sessions, runHealthCheck]);
 
-  const handleConnectNew = useCallback(async () => {
+  const handleConnectNew = useCallback(async (numeroJaEmUso: boolean) => {
     setCreating(true);
     try {
       const res = await apiClient.post<{ data: ChannelSession }>(
         "/api/v1/channel-sessions",
-        {},
+        { numero_ja_em_uso: numeroJaEmUso },
       );
+      setPerguntandoIdade(false);
+      setIdadeNovaConexao(null);
       invalidate();
       setQr({ sessionId: res.data.id, title: "Conectar novo WhatsApp" });
     } catch (err) {
@@ -307,7 +312,14 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
               Atualizar saúde
             </Button>
           )}
-          <Button size="sm" disabled={creating || !wahaConfigured} onClick={handleConnectNew}>
+          <Button
+            size="sm"
+            disabled={creating || !wahaConfigured}
+            onClick={() => {
+              setIdadeNovaConexao(null);
+              setPerguntandoIdade(true);
+            }}
+          >
             {creating ? (
               <CircleNotch size={14} className="animate-spin" aria-hidden />
             ) : (
@@ -464,6 +476,37 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
             );
           })}
         </div>
+      )}
+
+      {perguntandoIdade && (
+        <Dialog
+          open
+          onOpenChange={(o) => {
+            if (!o && !creating) {
+              setPerguntandoIdade(false);
+              setIdadeNovaConexao(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Antes do código</DialogTitle>
+              <DialogDescription>
+                Isso decide se o número começa devagar ou já manda no ritmo de quem já atende.
+              </DialogDescription>
+            </DialogHeader>
+            <PerguntaIdadeDoNumero valor={idadeNovaConexao} onEscolher={setIdadeNovaConexao} />
+            <Button
+              disabled={creating || idadeNovaConexao === null}
+              onClick={() => {
+                if (idadeNovaConexao === null) return;
+                void handleConnectNew(idadeNovaConexao);
+              }}
+            >
+              {creating ? "Preparando…" : "Continuar e ver o código"}
+            </Button>
+          </DialogContent>
+        </Dialog>
       )}
 
       <AntiBanSheet

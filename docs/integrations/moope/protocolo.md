@@ -154,6 +154,72 @@ Authorization: Bearer mop_…
 
 Um POST = um destinatário. Sem array. Não acorda o agente. Sem Twilio.
 
+## Estado do número (a locadora lê antes do lote)
+
+A locadora pergunta **antes** de despejar 200 boletos. O CRM responde se o
+chip está aquecendo, quantos cabem hoje e se a janela está aberta. O `/send`
+continua sendo o freio — isto só evita a locadora descobrir no 21º 429.
+
+```
+GET /api/v1/integrations/moope/channel
+Authorization: Bearer mop_…
+```
+
+```json
+{
+  "data": {
+    "ready": true,
+    "phase": "ready",
+    "status": "WORKING",
+    "warmup": {
+      "skipped": true,
+      "age_days": 1400,
+      "cap_today": null,
+      "sent_today": 12,
+      "remaining_today": 488
+    },
+    "daily_limit": 500,
+    "window": {
+      "start_hour": 7,
+      "end_hour": 22,
+      "timezone": "America/Sao_Paulo",
+      "allow_sunday": true,
+      "open": true
+    },
+    "proactive_gap_seconds": 5,
+    "can_send_now": true,
+    "retry_after": null
+  }
+}
+```
+
+| `phase` | significado |
+|---------|-------------|
+| `no_channel` | WhatsApp ainda não pareado. Não manda. |
+| `warming` | Chip novo. `warmup.remaining_today` é o teto de hoje (20 no dia 1). O resto espera. |
+| `ready` | Já aquecido ou formado. Vale `daily_limit` e o intervalo de 5s. |
+
+`can_send_now: false` + `retry_after` = espera esses segundos (noite, teto ou ritmo).
+401 sem chave. Sem cookie.
+
+### Lote (100 boletos no dia 5)
+
+O CRM é o **freio do número**. A locadora é a **fila**. Não invertam.
+
+1. A locadora **não** dispara 100 POSTs juntos. Um worker, um `/send`, espera
+   `Retry-After` (ou 5s). Sem isso o CRM devolve 429 e o WAHA nem é chamado.
+2. O CRM aplica o pacing **proativo** (piso 5s + jitter, janela 7h–22h,
+   warm-up, teto do número). Resposta no Inbox continua em 1,2s.
+3. Texto **não pode ser idêntico**. Três aberturas no mínimo
+   (“Sua fatura de setembro…”, “O boleto deste mês…”, “Segue o link para
+   pagar…”). Mesmo link, frase diferente.
+4. Número novo: no máximo o degrau do dia (20 no começo). 100 boletos num
+   chip pareado ontem **não cabem** — espalhe em dias ou use Twilio.
+5. STOP / bloqueado = 409. Tira da fila. Não insiste.
+
+100 clientes × ~5s ≈ 9 minutos dentro da janela. É o desenho. Rajada de
+2 minutos é o que a Meta lê como spam.
+
 Se a ficha da locadora e o fio do WhatsApp forem o **mesmo celular com/sem o nono dígito**, o envio vai no contato que já tem `wa_lid` / `wa_identity`. Não funde cadastro. Sem isso o WAHA marca `sent` no número “certo no papel” e o chip real não recebe.
 
 ## Varrer gêmeos (nono dígito)
@@ -205,6 +271,7 @@ Reenvio com o mesmo `partner_tenant_id` não cria segunda organização.
 |--------|----------|--------|
 | Admin liga a integração | `POST /provision` | Tenant + chave; locadora grava, não cola |
 | Cadastrou / editou locatário | `POST /events` `person.upserted` | Contato no CRM (ou cola no fio WhatsApp) |
+| Antes do lote | `GET /channel` | Aquecendo? Quantos cabem hoje? Pode mandar agora? |
 | Quer mandar texto | `POST /send` | WhatsApp do número pareado, Inbox |
 | Ajustar fichas já importadas | `POST /reconcile` | Só identidade; sem mensagem |
 

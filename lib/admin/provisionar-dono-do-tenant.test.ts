@@ -76,6 +76,11 @@ describe("provisionar dono do tenant", () => {
     expect(r.criadoAgora).toBe(true);
     expect(r.senhaDefinidaAqui).toBe(true);
     expect(r.emailEnviado).toBe(true);
+    expect(db.auth.admin.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        app_metadata: { must_change_password: true },
+      }),
+    );
     expect(db.auth.admin.generateLink).not.toHaveBeenCalled();
     expect(db.inserts[0]).toMatchObject({
       user_id: "user-novo",

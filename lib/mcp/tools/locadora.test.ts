@@ -60,6 +60,9 @@ describe("tools da locadora — o modelo lê código, não exception", () => {
       portal_url: null,
       boleto_url: "https://asaas.exemplo/b/1",
       invoice_url: null,
+      veiculo_modelo: "Onix",
+      documentos: [],
+      pode: ["boleto"],
     });
     const r = (await moopeGetRetrato.handler({ locatario_id: "loc-1" }, ctx as never)) as {
       tem_link: boolean;

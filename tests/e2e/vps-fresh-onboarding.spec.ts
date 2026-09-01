@@ -155,6 +155,7 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
     // sobe a sessão; antes ela subia sozinha na montagem da tela, e quem tinha
     // conta oficial entrava pelo caminho errado sem ter sido perguntado.
     await page.getByTestId("forma-qr").locator("input").click();
+    await page.getByTestId("idade-ja-em-uso").locator("input").click();
 
     // sem banner de "WAHA não está configurado"
     // O nome do transporte saiu da tela: o aviso agora fala do "WhatsApp desta

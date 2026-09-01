@@ -1,10 +1,6 @@
 /**
  * Capacidades da locadora — só leitura do cadastro que JÁ existe lá.
- * Falam com o humano que configura o agente. O texto do modelo vive no handler.
- *
- * Fora do pacote "atender" de propósito: ligar Atender no Conversador não
- * pode entregar lookup ao papel que FALA. O agente "Atendimento locadora"
- * põe estas duas só em `operator_tool_ids`.
+ * Fora do pacote "atender": o Conversador não fala com estas tools.
  */
 import { declararTools } from "./tipos";
 
@@ -14,7 +10,7 @@ export const TOOLS_LOCADORA = declararTools([
     category: "read",
     rotulo: "Identificar locatário",
     explicacao:
-      "Confere se o telefone ou o CPF já é cadastro desta locadora. Não cria cliente novo: se não achar, devolve que não é locatário.",
+      "Confere se o telefone, o CPF ou a placa já é cadastro desta locadora. Não cria cliente novo.",
     oQueToca: "Cadastro da locadora",
     risco: "seguro",
     pacotes: ["organizar"],
@@ -24,8 +20,45 @@ export const TOOLS_LOCADORA = declararTools([
     category: "read",
     rotulo: "Ver situação do locatário",
     explicacao:
-      "Mostra placa, contrato, atraso e o link de boleto ou portal que a locadora já tem. Não gera cobrança e não marca nada como pago.",
+      "Mostra placa, contrato, atraso, documentos e o link de boleto ou portal que a locadora já tem.",
     oQueToca: "Contrato e cobrança da locadora",
+    risco: "seguro",
+    pacotes: ["organizar"],
+  },
+  {
+    name: "moope_get_atendimento",
+    category: "read",
+    rotulo: "Menu do WhatsApp",
+    explicacao:
+      "Busca o menu que a locadora editou no MOOPE (Textos do WhatsApp). O bot manda esse texto na entrada.",
+    oQueToca: "Textos da locadora",
+    risco: "seguro",
+    pacotes: ["organizar"],
+  },
+  {
+    name: "moope_listar_oferta",
+    category: "read",
+    rotulo: "Veículos disponíveis",
+    explicacao: "Lista carros livres para quem quer alugar. Sem inventar preço ou fechar contrato.",
+    oQueToca: "Frota disponível",
+    risco: "seguro",
+    pacotes: ["organizar"],
+  },
+  {
+    name: "moope_lookup_investidor",
+    category: "read",
+    rotulo: "Identificar investidor",
+    explicacao: "Confere se o telefone ou o CPF é investidor desta locadora. Não cria cadastro.",
+    oQueToca: "Cadastro de investidores",
+    risco: "seguro",
+    pacotes: ["organizar"],
+  },
+  {
+    name: "moope_get_retrato_investidor",
+    category: "read",
+    rotulo: "Portal do investidor",
+    explicacao: "Link do portal e último período de fechamento. Não envia PDF nem valor inventado.",
+    oQueToca: "Portal do investidor",
     risco: "seguro",
     pacotes: ["organizar"],
   },

@@ -46,7 +46,14 @@ import {
 } from "./evolucao";
 import { crmListContactOrders, crmSearchProducts } from "./comercio";
 import { crmListPrivacyRequests } from "./privacidade";
-import { moopeGetRetrato, moopeLookupLocatario } from "./locadora";
+import {
+  moopeGetAtendimento,
+  moopeGetRetrato,
+  moopeGetRetratoInvestidor,
+  moopeListarOferta,
+  moopeLookupInvestidor,
+  moopeLookupLocatario,
+} from "./locadora";
 import {
   crmArchiveStage,
   crmCreateStage,
@@ -109,6 +116,10 @@ export const allTools: ReadonlyArray<McpToolDefinition> = [
   crmListPrivacyRequests,
   moopeLookupLocatario,
   moopeGetRetrato,
+  moopeGetAtendimento,
+  moopeListarOferta,
+  moopeLookupInvestidor,
+  moopeGetRetratoInvestidor,
   // read — organizar a operação (W4)
   crmListStages,
   crmListTags,

@@ -54,8 +54,14 @@ export const KNOB_BOUNDS = {
   hourEnd: 24,
 } as const;
 
+/**
+ * Disparo proativo (boleto, aviso). O /send da locadora usa o MAIOR
+ * entre isto e o throttle do canal. 100 textos iguais a 1,2s é spam.
+ */
+export const PROACTIVE_THROTTLE_MS = 5000;
+
 export const PACING_DEFAULTS: PacingKnobs = {
-  throttleMs: 1200, // 1 msg / 1,2s
+  throttleMs: 1200, // 1 msg / 1,2s — resposta no fio (agente / humano)
   jitterMaxMs: 800,
   windowStartHour: 7, // janela 7h-22h
   windowEndHour: 22,

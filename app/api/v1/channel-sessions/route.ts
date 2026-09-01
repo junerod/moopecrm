@@ -14,6 +14,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
+import { gravarDeclaracaoDoNumero } from "@/lib/channels/idade-do-numero";
 import { createChannelSchema } from "@/lib/schemas/channels";
 import { createClient } from "@/lib/supabase/server";
 import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
@@ -115,6 +116,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("internal_error", insErr?.message ?? "channel_session_insert_failed", 500, { requestId });
   }
 
+  const gravou = await gravarDeclaracaoDoNumero(supabase, activeOrg.orgId, created.id, {
+    numero_ja_em_uso: parsed.data.numero_ja_em_uso ?? false,
+  });
+  if (gravou.error) {
+    await supabase
+      .from("channel_sessions")
+      .delete()
+      .eq("organization_id", activeOrg.orgId)
+      .eq("id", created.id);
+    return fail("internal_error", gravou.error.message, 500, { requestId });
+  }
+
   try {
     await waha.startSession(sessionName);
   } catch (err) {
@@ -134,8 +147,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     resourceType: "channel_session",
     resourceId: created.id,
     requestId,
-    metadata: { waha_session_name: sessionName },
+    metadata: {
+      waha_session_name: sessionName,
+      numero_ja_em_uso: parsed.data.numero_ja_em_uso ?? false,
+    },
   });
 
-  return ok(created, { requestId, status: 201 });
+  const { data: salvo } = await supabase
+    .from("channel_sessions")
+    .select(CHANNEL_COLUMNS)
+    .eq("id", created.id)
+    .eq("organization_id", activeOrg.orgId)
+    .maybeSingle();
+
+  return ok(salvo ?? created, { requestId, status: 201 });
 }

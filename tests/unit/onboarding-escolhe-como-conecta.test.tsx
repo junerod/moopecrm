@@ -64,7 +64,7 @@ beforeEach(() => {
   chamadas = [];
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: unknown, init?: { method?: string }) => {
+    vi.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
       chamadas.push(`${init?.method ?? "GET"} ${String(url)}`);
       return {
         ok: true,
@@ -115,15 +115,28 @@ describe("o passo do telefone pergunta como a pessoa já usa o número", () => {
     expect(chamadasDeSessao()).toEqual([]);
   });
 
-  it("escolher o código no celular é o que sobe a sessão", async () => {
+  it("escolher o código ainda NÃO sobe a sessão — falta dizer se o número já atende", async () => {
     montar();
-    expect(chamadasDeSessao()).toEqual([]);
-
     fireEvent.click(screen.getByTestId("forma-qr").querySelector("input")!);
+
+    await waitFor(() => expect(screen.getByTestId("pergunta-idade-do-numero")).toBeTruthy());
+    expect(chamadasDeSessao()).toEqual([]);
+  });
+
+  it("dizer que o número já atende é o que sobe a sessão, com a declaração", async () => {
+    montar();
+    fireEvent.click(screen.getByTestId("forma-qr").querySelector("input")!);
+    await waitFor(() => expect(screen.getByTestId("idade-ja-em-uso")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("idade-ja-em-uso").querySelector("input")!);
 
     await waitFor(() => {
       expect(chamadasDeSessao().some((c) => c.startsWith("POST"))).toBe(true);
     });
+    const post = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => String(c[0]).includes("/onboarding/whatsapp/session") && c[1]?.method === "POST",
+    );
+    expect(post?.[1]?.body).toBe(JSON.stringify({ numero_ja_em_uso: true }));
   });
 
   it("escolher conta oficial leva ao canal oficial, e NÃO cria sessão de código", async () => {

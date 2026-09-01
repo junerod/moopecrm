@@ -226,4 +226,39 @@ describe("enviarPeloCrm", () => {
     expect(enviarMensagem).not.toHaveBeenCalled();
   });
 
+  it("freio do número devolve 429 e não fala no WhatsApp", async () => {
+    const enviarMensagem = vi.fn();
+    const avaliarDisparo = vi.fn(async () => ({
+      ok: false as const,
+      retry_after: 5,
+      message: "O número ainda está no intervalo de segurança.",
+    }));
+    const contatos = contactsAdmin({
+      porMeta: { id: "ct-1", phone_number: "+5561", is_blocked: false },
+    });
+    const admin = {
+      from: (tabela: string) => {
+        if (tabela === "idempotency_keys") {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  eq: () => ({ maybeSingle: async () => ({ data: null }) }),
+                }),
+              }),
+            }),
+          };
+        }
+        return contatos.from(tabela);
+      },
+    };
+    const r = await enviarPeloCrm(admin as never, "org", pedido(), "req-1", {
+      enviarMensagem,
+      avaliarDisparo,
+      sessao: { id: "s1", provider: "waha" },
+    });
+    expect(r).toMatchObject({ ok: false, status: 429, retry_after: 5 });
+    expect(enviarMensagem).not.toHaveBeenCalled();
+  });
+
 });

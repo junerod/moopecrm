@@ -37,7 +37,8 @@ export function isAiGatewayConfigured(): boolean {
   return (
     Boolean(env.AI_GATEWAY_API_KEY) ||
     Boolean(env.OPENROUTER_API_KEY) ||
-    Boolean(env.ANTHROPIC_API_KEY)
+    Boolean(env.ANTHROPIC_API_KEY) ||
+    Boolean(env.OPENAI_API_KEY)
   );
 }
 

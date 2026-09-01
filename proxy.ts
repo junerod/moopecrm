@@ -3,6 +3,7 @@ import { cookieSecure } from "@/lib/supabase/cookie-secure";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { isPublicPath } from "@/lib/auth/public-paths";
+import { precisaTrocarSenhaInicial } from "@/lib/auth/senha-inicial";
 import {
   verifyImpersonateCookieEdge,
   IMPERSONATE_COOKIE_NAME_EDGE,
@@ -62,6 +63,18 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user && precisaTrocarSenhaInicial(user) && !pathname.startsWith("/login/reset")) {
+    if (pathname.startsWith("/api/")) {
+      return new NextResponse(
+        JSON.stringify({
+          error: { code: "must_change_password", message: "Troque a senha inicial antes de continuar." },
+        }),
+        { status: 403, headers: { "content-type": "application/json", "x-request-id": requestId } },
+      );
+    }
+    return NextResponse.redirect(new URL("/login/reset?primeiro=1", request.url));
+  }
 
   if (!user) {
     // API routes must respond with JSON envelope (contract: {error:{code,message}})
