@@ -125,7 +125,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     resourceType: "ai_provider_credential",
     resourceId: guardado.ok ? guardado.id : "existente",
     requestId,
-    metadata: { provider, last4: guardado.last4 },
+    metadata: { provider, last4 },
   });
 
   return ok(
