@@ -2,7 +2,7 @@
  * POST /api/v1/integrations/moope/send
  *
  * Um locatário, uma mensagem, no WhatsApp já pareado. Bearer mop_…
- * Não acorda o agente. Sem array de destinatários.
+ * Sem ficha: cria na hora e manda. Não acorda o agente. Sem array.
  */
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";

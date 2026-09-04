@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensureConversation } from "@/lib/automation/start-conversation";
 import { phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { parseDialablePhone } from "@/lib/messaging/contact-card";
+import { escolherFichaDoTelefone } from "@/lib/moope/pessoa";
 
 type Admin = SupabaseClient;
 
@@ -26,17 +27,23 @@ async function findContactByPhoneVariants(
   admin: Admin,
   orgId: string,
   rawPhone: string,
-): Promise<{ id: string; phone_number: string } | null> {
+): Promise<{ id: string; phone_number: string | null } | null> {
   const variantes = phoneLookupVariants(rawPhone);
   if (variantes.length === 0) return null;
   const { data } = await admin
     .from("contacts")
-    .select("id, phone_number")
+    .select("id, phone_number, wa_identity, wa_lid")
     .eq("organization_id", orgId)
     .in("phone_number", variantes)
-    .limit(1)
-    .maybeSingle();
-  return data ?? null;
+    .is("is_merged_into", null);
+  const rows =
+    (data as Array<{
+      id: string;
+      phone_number: string | null;
+      wa_identity: string | null;
+      wa_lid: string | null;
+    }> | null) ?? [];
+  return escolherFichaDoTelefone(rows, rawPhone);
 }
 
 async function resolveContactId(

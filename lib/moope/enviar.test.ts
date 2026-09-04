@@ -62,18 +62,39 @@ describe("escolherDestinoDoEnvio", () => {
     wa_lid: "235587596492898",
   };
 
+  const soIdentidadeTelefone = {
+    id: "ct-sem-9",
+    phone_number: "+556196715985",
+    is_blocked: false,
+    wa_identity: "phone:+556196715985",
+    wa_lid: null,
+  };
+
   it("ficha da locadora cede ao gêmeo que já tem LID", () => {
-    expect(escolherDestinoDoEnvio([locadora, whatsapp])?.id).toBe("ct-wa");
+    expect(escolherDestinoDoEnvio([locadora, whatsapp], locadora.phone_number)?.id).toBe(
+      "ct-wa",
+    );
   });
 
   it("bloqueio de qualquer ficha do par vence", () => {
     expect(
-      escolherDestinoDoEnvio([{ ...locadora, is_blocked: true }, whatsapp])?.is_blocked,
+      escolherDestinoDoEnvio([{ ...locadora, is_blocked: true }, whatsapp], locadora.phone_number)
+        ?.is_blocked,
     ).toBe(true);
   });
 
   it("sem gêmeo do WhatsApp segue na ficha da locadora", () => {
-    expect(escolherDestinoDoEnvio([locadora])?.id).toBe("ct-mop");
+    expect(escolherDestinoDoEnvio([locadora], locadora.phone_number)?.id).toBe("ct-mop");
+  });
+
+  it("gêmeo só com wa_identity phone: não rouba o número com o 9", () => {
+    expect(
+      escolherDestinoDoEnvio([locadora, soIdentidadeTelefone], locadora.phone_number)?.id,
+    ).toBe("ct-mop");
+  });
+
+  it("sem ficha do telefone pedido e sem LID → null, para criar com o 9", () => {
+    expect(escolherDestinoDoEnvio([soIdentidadeTelefone], locadora.phone_number)).toBeNull();
   });
 });
 
@@ -110,7 +131,7 @@ function contactsAdmin(opts: {
 describe("acharContato", () => {
   it("prefere moope_external_id e não cria linha", async () => {
     const admin = contactsAdmin({
-      porMeta: { id: "ct-1", phone_number: "+5561", is_blocked: false },
+      porMeta: { id: "ct-1", phone_number: "+5561999999999", is_blocked: false },
     });
     const c = await acharContato(admin as never, "org", "9", "+5561999999999");
     expect(c?.id).toBe("ct-1");
@@ -133,41 +154,120 @@ describe("acharContato", () => {
     expect(c?.id).toBe("ct-wa");
   });
 
-  it("sem ficha devolve null — 404, não inventa contato", async () => {
+  it("sem ficha devolve null — quem manda cria a ficha", async () => {
     const admin = contactsAdmin({ porMeta: null, porFone: [] });
     const c = await acharContato(admin as never, "org", "9", "+5561999999999");
     expect(c).toBeNull();
   });
 });
 
+function adminSemIdempotencia(contatos: { from: (t: string) => unknown }) {
+  return {
+    from: (tabela: string) => {
+      if (tabela === "idempotency_keys") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => ({ maybeSingle: async () => ({ data: null }) }),
+              }),
+            }),
+          }),
+          insert: async () => ({ error: null }),
+        };
+      }
+      if (tabela === "conversations") {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => ({ data: null }),
+          insert: () => ({
+            select: () => ({
+              single: async () => ({ data: { id: "cv-1" }, error: null }),
+            }),
+          }),
+        };
+        return chain;
+      }
+      return contatos.from(tabela);
+    },
+  };
+}
+
 describe("enviarPeloCrm", () => {
-  it("sem contato cria a ficha; se a criação falhar, 404 e não envia", async () => {
+  it("telefone inválido → 422 e não cria ficha", async () => {
+    const enviarMensagem = vi.fn();
+    const criarPessoa = vi.fn();
+    const r = await enviarPeloCrm(
+      { from: () => { throw new Error("não deveria ler banco"); } } as never,
+      "org",
+      { ...pedido(), phone: "abc" },
+      "req-1",
+      { enviarMensagem, criarPessoa },
+    );
+    expect(r).toMatchObject({ ok: false, status: 422 });
+    expect(criarPessoa).not.toHaveBeenCalled();
+    expect(enviarMensagem).not.toHaveBeenCalled();
+  });
+
+  it("sem contato cria a ficha; se a criação falhar, 503 e não envia", async () => {
     const enviarMensagem = vi.fn();
     const criarPessoa = vi.fn(async () => null);
     const contatos = contactsAdmin({ porMeta: null, porFone: [] });
-    const admin = {
-      from: (tabela: string) => {
-        if (tabela === "idempotency_keys") {
-          return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({
-                  eq: () => ({ maybeSingle: async () => ({ data: null }) }),
-                }),
-              }),
-            }),
-          };
-        }
-        return contatos.from(tabela);
-      },
-    };
-    const r = await enviarPeloCrm(admin as never, "org", pedido(), "req-1", {
-      enviarMensagem,
-      criarPessoa,
-    });
-    expect(criarPessoa).toHaveBeenCalled();
-    expect(r).toMatchObject({ ok: false, status: 404 });
+    const r = await enviarPeloCrm(
+      adminSemIdempotencia(contatos) as never,
+      "org",
+      pedido(),
+      "req-1",
+      { enviarMensagem, criarPessoa },
+    );
+    expect(criarPessoa).toHaveBeenCalledWith(
+      expect.anything(),
+      "org",
+      expect.objectContaining({ phone: "+5561999999999", external_id: "9" }),
+    );
+    expect(r).toMatchObject({ ok: false, status: 503 });
+    if (!r.ok) expect(r.message).not.toMatch(/person\.upserted/);
     expect(enviarMensagem).not.toHaveBeenCalled();
+  });
+
+  it("número fora da agenda: cria ficha com o 9 e manda", async () => {
+    const enviarMensagem = vi.fn(async () => ({ id: "m-novo", status: "sent" }));
+    const criarPessoa = vi.fn(async () => "ct-novo");
+    const registrarDisparo = vi.fn(async () => undefined);
+    const contatos = contactsAdmin({ porMeta: null, porFone: [] });
+    const r = await enviarPeloCrm(
+      adminSemIdempotencia(contatos) as never,
+      "org",
+      { ...pedido(), phone: "+5561996715985" },
+      "req-1",
+      {
+        enviarMensagem,
+        criarPessoa,
+        registrarDisparo,
+        avaliarDisparo: async () => ({ ok: true }),
+        sessao: { id: "s1", provider: "canal" },
+        estadoJanela: () => ({ tipo: "sem_restricao" }),
+      },
+    );
+    expect(criarPessoa).toHaveBeenCalledWith(
+      expect.anything(),
+      "org",
+      expect.objectContaining({ phone: "+5561996715985" }),
+    );
+    expect(r).toEqual({
+      ok: true,
+      status: 200,
+      message_id: "m-novo",
+      conversation_id: "cv-1",
+    });
+    expect(enviarMensagem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ actor: { type: "webhook_source", id: "moope-send" } }),
+      expect.objectContaining({ conversation_id: "cv-1", type: "text", body: pedido().body }),
+    );
   });
 
   it("contato bloqueado → 409 sem enviar", async () => {
@@ -239,7 +339,7 @@ describe("enviarPeloCrm", () => {
       message: "O número ainda está no intervalo de segurança.",
     }));
     const contatos = contactsAdmin({
-      porMeta: { id: "ct-1", phone_number: "+5561", is_blocked: false },
+      porMeta: { id: "ct-1", phone_number: "+5561999999999", is_blocked: false },
     });
     const admin = {
       from: (tabela: string) => {
@@ -260,7 +360,8 @@ describe("enviarPeloCrm", () => {
     const r = await enviarPeloCrm(admin as never, "org", pedido(), "req-1", {
       enviarMensagem,
       avaliarDisparo,
-      sessao: { id: "s1", provider: "waha" },
+      sessao: { id: "s1", provider: "canal" },
+      estadoJanela: () => ({ tipo: "sem_restricao" as const }),
     });
     expect(r).toMatchObject({ ok: false, status: 429, retry_after: 5 });
     expect(enviarMensagem).not.toHaveBeenCalled();

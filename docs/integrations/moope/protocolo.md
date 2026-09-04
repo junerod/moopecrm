@@ -146,13 +146,16 @@ Authorization: Bearer mop_…
 | status | significado |
 |--------|-------------|
 | 200 | `{ message_id, conversation_id }` — aparece no Inbox. Reenvio da mesma chave: `{ duplicado: true }` |
-| 404 | `person.upserted` ainda não chegou. Não cria contato. |
 | 409 | contato bloqueou / STOP |
-| 422 | canal exige modelo e a janela de 24h está fechada |
+| 422 | telefone inválido, ou canal exige modelo e a janela de 24h está fechada |
 | 429 | pacing — `Retry-After` |
-| 503 | nenhum canal WORKING, ou o envio falhou |
+| 503 | nenhum canal WORKING, falha ao criar a ficha, ou o envio falhou |
 
 Um POST = um destinatário. Sem array. Não acorda o agente. Sem Twilio.
+Sem ficha no CRM, cria na hora (o mesmo `person.upserted`) e manda no
+número do POST, **com o 9**. Não devolve 404 pedindo upsert antes.
+Só usa o gêmeo com `wa_lid` quando for a mesma pessoa (variantes do
+nono dígito). Canal sem restrição de janela: texto livre.
 
 ## Estado do número (a locadora lê antes do lote)
 
@@ -272,7 +275,7 @@ Reenvio com o mesmo `partner_tenant_id` não cria segunda organização.
 | Admin liga a integração | `POST /provision` | Tenant + chave; locadora grava, não cola |
 | Cadastrou / editou locatário | `POST /events` `person.upserted` | Contato no CRM (ou cola no fio WhatsApp) |
 | Antes do lote | `GET /channel` | Aquecendo? Quantos cabem hoje? Pode mandar agora? |
-| Quer mandar texto | `POST /send` | WhatsApp do número pareado, Inbox |
+| Quer mandar texto | `POST /send` | Cria a ficha se faltar; manda no número do POST (com o 9); Inbox |
 | Ajustar fichas já importadas | `POST /reconcile` | Só identidade; sem mensagem |
 
 ## O CRM lê a locadora (leva 2)

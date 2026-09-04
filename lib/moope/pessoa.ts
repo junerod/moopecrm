@@ -7,9 +7,10 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { phoneLookupVariants } from "@/lib/channels/phone-variants";
+import { phoneLookupVariants, samePhone } from "@/lib/channels/phone-variants";
 import { temNomeApresentavel } from "@/lib/contacts/rotulo-do-contato";
 import { parseDialablePhone } from "@/lib/messaging/contact-card";
+import { telefoneE164 } from "@/lib/moope/telefone";
 import type { PessoaDoParceiro } from "@/lib/moope/tipos";
 
 export const COLUNAS_PESSOA =
@@ -38,17 +39,49 @@ export function variantesDeTelefone(...brutos: Array<string | null | undefined>)
   return [...vistos];
 }
 
-/** Fio do WhatsApp vence a ficha que a locadora criou com o 9 a mais. */
-export function escolherDestinoDaPessoa(candidatos: FichaContato[]): FichaContato | null {
+/** Linked ID de verdade — `phone:+55…` não conta. */
+export function temLidWhatsapp(c: {
+  wa_lid?: string | null;
+  wa_identity?: string | null;
+}): boolean {
+  return Boolean(c.wa_lid) || Boolean(c.wa_identity?.startsWith("lid:"));
+}
+
+type FichaDeDestino = {
+  phone_number?: string | null;
+  wa_lid?: string | null;
+  wa_identity?: string | null;
+  is_merged_into?: string | null;
+};
+
+/**
+ * Gêmeo com LID da mesma pessoa (nono dígito) vence.
+ * Sem LID, só a ficha do telefone pedido — não a variante sem o 9.
+ * Sem os dois, null: quem chama cria a ficha com o número recebido.
+ */
+export function escolherFichaDoTelefone<T extends FichaDeDestino>(
+  candidatos: T[],
+  telefonePedido: string,
+): T | null {
   const vivos = candidatos.filter((c) => !c.is_merged_into);
   if (vivos.length === 0) return null;
-  return (
-    vivos.find((c) => Boolean(c.wa_lid)) ??
-    vivos.find((c) => c.wa_identity?.startsWith("lid:")) ??
-    vivos.find((c) => Boolean(c.wa_identity)) ??
-    vivos[0] ??
-    null
+  const pedido = telefoneE164(telefonePedido) ?? telefonePedido;
+  const comLid = vivos.find(
+    (c) => temLidWhatsapp(c) && (!c.phone_number || samePhone(c.phone_number, pedido)),
   );
+  if (comLid) return comLid;
+  return vivos.find((c) => c.phone_number === pedido) ?? null;
+}
+
+/** Fio com LID vence a ficha que a locadora criou com o 9. Sem LID, o telefone do POST. */
+export function escolherDestinoDaPessoa(
+  candidatos: FichaContato[],
+  telefonePedido?: string,
+): FichaContato | null {
+  const vivos = candidatos.filter((c) => !c.is_merged_into);
+  if (vivos.length === 0) return null;
+  if (telefonePedido) return escolherFichaDoTelefone(vivos, telefonePedido);
+  return vivos.find((c) => temLidWhatsapp(c)) ?? vivos[0] ?? null;
 }
 
 export function patchDaPessoa(
@@ -81,7 +114,7 @@ export async function upsertPessoa(
   if (!pessoa.external_id) return null;
 
   const candidatos = await listarCandidatos(admin, orgId, pessoa);
-  const destino = escolherDestinoDaPessoa(candidatos);
+  const destino = escolherDestinoDaPessoa(candidatos, pessoa.phone);
 
   if (!destino) {
     const nome = pessoa.name?.trim() || "Contato MOOPE";

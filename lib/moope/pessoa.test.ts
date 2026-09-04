@@ -43,11 +43,18 @@ describe("variantesDeTelefone", () => {
 
 describe("escolherDestinoDaPessoa", () => {
   it("ficha da locadora cede ao gêmeo com LID", () => {
-    expect(escolherDestinoDaPessoa([locadora, whatsapp])?.id).toBe("ct-wa");
+    expect(escolherDestinoDaPessoa([locadora, whatsapp], locadora.phone_number)?.id).toBe(
+      "ct-wa",
+    );
   });
 
   it("sem WhatsApp fica na ficha da locadora", () => {
-    expect(escolherDestinoDaPessoa([locadora])?.id).toBe("ct-mop");
+    expect(escolherDestinoDaPessoa([locadora], locadora.phone_number)?.id).toBe("ct-mop");
+  });
+
+  it("gêmeo só com phone: não recebe o cadastro — quem chama cria com o 9", () => {
+    const semLid = { ...whatsapp, wa_lid: null, wa_identity: "phone:+556196715985" };
+    expect(escolherDestinoDaPessoa([semLid], locadora.phone_number)).toBeNull();
   });
 });
 

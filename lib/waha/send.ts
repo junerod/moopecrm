@@ -57,6 +57,7 @@ export function resolveWahaChatId(input: ResolveWahaChatIdInput): string | null 
   // não lê a coluna nova (e que, por definição, é de contato sem telefone).
   if (input.waLid) return `${input.waLid}@lid`;
   if (input.waIdentity?.startsWith("lid:")) return `${input.waIdentity.slice(4)}@lid`;
+  // Só dígitos: o 9 do celular BR fica. Não "normalizar" para a variante sem o 9.
   if (input.phoneNumber) return `${input.phoneNumber.replace(/\D/g, "")}@c.us`;
   return null;
 }

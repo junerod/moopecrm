@@ -117,6 +117,18 @@ describe("resolveWahaChatId — o canal de uma conversa viva não muda", () => {
     ).toBe("70192801575156@lid");
   });
 
+  it("celular BR com o 9 vira @c.us com o 9 — não tira o nono", () => {
+    expect(
+      resolveWahaChatId({
+        isGroup: false,
+        groupChatId: null,
+        phoneNumber: "+5561996715985",
+        waIdentity: null,
+        waLid: null,
+      }),
+    ).toBe("5561996715985@c.us");
+  });
+
   it("contato SEM lid continua indo por @c.us", () => {
     expect(
       resolveWahaChatId({

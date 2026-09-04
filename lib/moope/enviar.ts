@@ -10,7 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendMessageHandler } from "@/app/api/v1/messages/_handler";
 import { ApiError } from "@/lib/api/types";
 import { queryTolerantToMissingArchived } from "@/lib/channels/archived";
-import { estadoDaJanela } from "@/lib/channels/janela";
+import { estadoDaJanela, type EstadoDaJanela } from "@/lib/channels/janela";
 import { phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { ensureConversation } from "@/lib/automation/start-conversation";
 import { parseDialablePhone } from "@/lib/messaging/contact-card";
@@ -19,7 +19,7 @@ import {
   registrarDisparoNoLedger,
   type FreioDoDisparo,
 } from "@/lib/moope/pacing-do-disparo";
-import { upsertPessoa } from "@/lib/moope/pessoa";
+import { escolherFichaDoTelefone, upsertPessoa } from "@/lib/moope/pessoa";
 import { telefoneE164 } from "@/lib/moope/telefone";
 
 export const MOOPE_SEND_ENDPOINT = "moope:send";
@@ -41,7 +41,7 @@ export type ResultadoEnvioMoope =
     }
   | {
       ok: false;
-      status: 404 | 409 | 422 | 429 | 503;
+      status: 409 | 422 | 429 | 503;
       code: string;
       message: string;
       retry_after?: number;
@@ -61,6 +61,12 @@ export type EnviarDeps = {
   /** Teste: sessão já resolvida. Produção lê channel_sessions WORKING. */
   sessao?: { id: string; provider: string };
   criarPessoa?: typeof upsertPessoa;
+  /** Teste: janela já decidida. Produção consulta o canal da sessão. */
+  estadoJanela?: (
+    provider: string | null | undefined,
+    lastInboundAt: string | null,
+    agora: Date,
+  ) => EstadoDaJanela;
 };
 
 type Contato = {
@@ -85,19 +91,18 @@ function variantesDeTelefone(...brutos: Array<string | null | undefined>): strin
 }
 
 /**
- * Entre fichas da mesma pessoa (nono dígito BR), manda no fio que o WhatsApp
- * já conhece. Não funde cadastro. Bloqueio de qualquer ficha do par vence.
+ * Entre fichas da mesma pessoa (nono dígito BR), manda no fio com LID.
+ * Sem LID, o telefone do POST (com o 9). Bloqueio de qualquer ficha do par vence.
+ * `wa_identity` `phone:` sem LID não rouba o destino.
  */
-export function escolherDestinoDoEnvio(candidatos: Contato[]): Contato | null {
+export function escolherDestinoDoEnvio(
+  candidatos: Contato[],
+  telefonePedido: string,
+): Contato | null {
   if (candidatos.length === 0) return null;
   const bloqueado = candidatos.find((c) => c.is_blocked);
   if (bloqueado) return bloqueado;
-  return (
-    candidatos.find((c) => Boolean(c.wa_lid)) ??
-    candidatos.find((c) => Boolean(c.wa_identity)) ??
-    candidatos[0] ??
-    null
-  );
+  return escolherFichaDoTelefone(candidatos, telefonePedido);
 }
 
 export async function enviarPeloCrm(
@@ -110,27 +115,43 @@ export async function enviarPeloCrm(
   const enviar = deps.enviarMensagem ?? sendMessageHandler;
   const agora = deps.agora ?? new Date();
 
+  const fone = telefoneE164(pedido.phone);
+  if (!fone) {
+    return {
+      ok: false,
+      status: 422,
+      code: "validation_failed",
+      message: "Telefone inválido. Use E.164 com o 9 do celular BR.",
+    };
+  }
+
   const cached = await lerIdempotencia(admin, orgId, pedido.idempotency_key);
   if (cached) return { ok: true, status: 200, ...cached, deduplicado: true };
 
-  let contato = await acharContato(admin, orgId, pedido.external_id, pedido.phone);
+  let contato = await acharContato(admin, orgId, pedido.external_id, fone);
   if (!contato) {
     const criar = deps.criarPessoa ?? upsertPessoa;
-    const fone = telefoneE164(pedido.phone);
-    await criar(admin, orgId, {
+    const id = await criar(admin, orgId, {
       external_id: pedido.external_id,
       phone: fone,
-      name: fone || pedido.phone,
+      name: fone,
     });
-    contato = await acharContato(admin, orgId, pedido.external_id, pedido.phone);
-  }
-  if (!contato) {
-    return {
-      ok: false,
-      status: 404,
-      code: "not_found",
-      message: "Contato ainda não chegou. Mande person.upserted antes de enviar.",
-    };
+    if (!id) {
+      return {
+        ok: false,
+        status: 503,
+        code: "internal_error",
+        message: "Não consegui criar a ficha deste número. Tente de novo.",
+      };
+    }
+    contato =
+      (await acharContato(admin, orgId, pedido.external_id, fone)) ?? {
+        id,
+        phone_number: fone,
+        is_blocked: false,
+        wa_identity: null,
+        wa_lid: null,
+      };
   }
   if (contato.is_blocked) {
     return {
@@ -170,7 +191,8 @@ export async function enviarPeloCrm(
     .eq("id", conversaId)
     .eq("organization_id", orgId)
     .maybeSingle();
-  const janela = estadoDaJanela(
+  const janelaFn = deps.estadoJanela ?? estadoDaJanela;
+  const janela = janelaFn(
     sessao.provider,
     (conv as { last_inbound_at: string | null } | null)?.last_inbound_at ?? null,
     agora,
@@ -253,7 +275,7 @@ export async function acharContato(
   const porId = new Map<string, Contato>();
   if (porMeta) porId.set((porMeta as Contato).id, porMeta as Contato);
   for (const row of porFone) porId.set(row.id, row);
-  return escolherDestinoDoEnvio([...porId.values()]);
+  return escolherDestinoDoEnvio([...porId.values()], phone);
 }
 
 async function acharSessaoWorking(
