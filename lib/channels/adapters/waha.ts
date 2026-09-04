@@ -9,7 +9,10 @@ import { wahaContactPayload } from "@/lib/waha/contact-card";
 import { fetchWahaMedia } from "@/lib/messaging/media/waha-source";
 import { getWahaClient } from "@/lib/waha/client";
 import { wahaSendPlanFor } from "@/lib/waha/media-send";
-import { resolveWhatsappIdForContactCard } from "@/lib/waha/resolve-contact-whatsapp-id";
+import {
+  destinoDeEnvioWaha,
+  resolveWhatsappIdForContactCard,
+} from "@/lib/waha/resolve-contact-whatsapp-id";
 import { bareWaMessageId, parseWahaMessageId } from "@/lib/waha/message-id";
 import { resolveWahaChatId } from "@/lib/waha/send";
 import type { FetchedMedia } from "@/lib/messaging/media/types";
@@ -180,6 +183,8 @@ export const wahaAdapter: ChannelAdapter = {
     // caminho de TEXTO — os outros dois não citam: o WAHA aceita `reply_to` só
     // no `sendText`, e mandá-lo nos outros seria pedir para a API ignorar em
     // silêncio, que é como se perde uma feature sem ninguém notar.
+    const destino = await destinoDeEnvioWaha(client, envelope.sessionRef, envelope.to);
+
     let res: unknown;
     if (envelope.kind === "contact" && envelope.contact) {
       const resolvedId = await resolveWhatsappIdForContactCard(
@@ -192,17 +197,17 @@ export const wahaAdapter: ChannelAdapter = {
         envelope.contact.phoneNumber,
         resolvedId ?? envelope.contact.whatsappId,
       );
-      res = await client.sendContactVcard(envelope.sessionRef, envelope.to, [contact]);
+      res = await client.sendContactVcard(envelope.sessionRef, destino, [contact]);
     } else if (envelope.media) {
       res = await client.sendMedia(
         envelope.sessionRef,
-        envelope.to,
+        destino,
         wahaSendPlanFor(envelope.kind, envelope.media),
       );
     } else {
       res = await client.sendMessage(
         envelope.sessionRef,
-        envelope.to,
+        destino,
         envelope.body ?? "",
         // A citação é enfeite da conversa, nunca condição de envio: quando não
         // há, o envio segue igual. Ver `OutboundEnvelope.replyToExternalId`.

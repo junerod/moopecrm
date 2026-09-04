@@ -27,6 +27,72 @@ export function whatsappIdFromCheckResult(r: WahaCheckExistsResult): string | nu
   return digits.length >= 8 && digits.length <= 15 ? digits : null;
 }
 
+/**
+ * JID que o transporte deve usar no envio.
+ *
+ * `chatId` vence `pn`: no BR o WhatsApp devolve o nono canônico em `chatId`
+ * (`556196715985@c.us`) mesmo quando o CRM gravou o número com o 9. Mandar no
+ * `@c.us` do cadastro faz o canal aceitar (id 3EB0…) e o celular nunca recebe.
+ */
+export function chatIdFromCheckResult(r: WahaCheckExistsResult): string | null {
+  if (r.chatId?.includes("@")) return r.chatId;
+  if (r.pn?.includes("@")) return r.pn;
+  const digits = whatsappIdFromCheckResult(r);
+  return digits ? `${digits}@c.us` : null;
+}
+
+export type DestinoCanonico = {
+  /** Pelo menos uma variante respondeu sem erro. */
+  consultou: boolean;
+  existe: boolean;
+  chatId: string | null;
+};
+
+/**
+ * Pergunta ao canal qual JID entrega neste número (variantes do nono dígito).
+ * Sem consulta (rede/API fora) → `consultou: false` — quem chama não reescreve.
+ */
+export async function resolveCanonicalSendChatId(
+  client: WahaClient,
+  session: string,
+  phone: string,
+): Promise<DestinoCanonico> {
+  const tried = new Set<string>();
+  let consultou = false;
+  for (const variant of phoneLookupVariants(phone)) {
+    const digits = variant.replace(/\D/g, "");
+    if (!digits || tried.has(digits)) continue;
+    tried.add(digits);
+    try {
+      const r = await client.checkContactExists(session, digits);
+      consultou = true;
+      if (r.numberExists) {
+        const chatId = chatIdFromCheckResult(r);
+        if (chatId) return { consultou: true, existe: true, chatId };
+      }
+    } catch {
+      // próxima variante; se nenhuma responder, quem chama mantém o destino original
+    }
+  }
+  return { consultou, existe: false, chatId: null };
+}
+
+/**
+ * `@lid` e grupo ficam. `@c.us` vira o JID que o WhatsApp reconhece
+ * (medido: +5561996715985 → 556196715985@c.us). Sem consulta, o destino original.
+ */
+export async function destinoDeEnvioWaha(
+  client: WahaClient,
+  session: string,
+  to: string,
+): Promise<string> {
+  if (!to.endsWith("@c.us")) return to;
+  const digits = to.slice(0, -"@c.us".length).replace(/\D/g, "");
+  if (!digits) return to;
+  const canon = await resolveCanonicalSendChatId(client, session, `+${digits}`);
+  return canon.chatId ?? to;
+}
+
 /** Consulta WAHA; null = não achou ou falhou (caller usa fallback). */
 export async function resolveWhatsappIdForContactCard(
   client: WahaClient,
