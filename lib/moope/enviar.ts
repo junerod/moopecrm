@@ -1,7 +1,8 @@
 /**
  * Disparo da locadora no WhatsApp do CRM — um locatário, um POST.
  *
- * Sem contato: cria a ficha na hora (mesmo person.upserted) e manda.
+ * Só manda se já existe fio com mensagem neste chip. Número frio
+ * (ficha nova, agenda, cadastro) não sai — o primeiro toque é no celular.
  * Não acorda o agente. Não é campanha. Reusa sendMessageHandler.
  */
 import { createHash } from "node:crypto";
@@ -19,8 +20,17 @@ import {
   registrarDisparoNoLedger,
   type FreioDoDisparo,
 } from "@/lib/moope/pacing-do-disparo";
-import { escolherFichaDoTelefone, upsertPessoa } from "@/lib/moope/pessoa";
+import { escolherFichaDoTelefone } from "@/lib/moope/pessoa";
 import { telefoneE164 } from "@/lib/moope/telefone";
+import {
+  ESPERA_RESTRICAO_DE_ALCANCE_S,
+  MENSAGEM_RESTRICAO_DE_ALCANCE,
+  ehRestricaoDeAlcance,
+} from "@/lib/waha/restricao-de-alcance";
+
+export const CODIGO_SEM_CONVERSA = "conversation_required";
+export const MENSAGEM_SEM_CONVERSA =
+  "Este número ainda não conversou no WhatsApp da empresa. Mande o primeiro recado pelo celular do chip. Depois o aviso sai daqui.";
 
 export const MOOPE_SEND_ENDPOINT = "moope:send";
 
@@ -60,13 +70,19 @@ export type EnviarDeps = {
   registrarDisparo?: typeof registrarDisparoNoLedger;
   /** Teste: sessão já resolvida. Produção lê channel_sessions WORKING. */
   sessao?: { id: string; provider: string };
-  criarPessoa?: typeof upsertPessoa;
   /** Teste: janela já decidida. Produção consulta o canal da sessão. */
   estadoJanela?: (
     provider: string | null | undefined,
     lastInboundAt: string | null,
     agora: Date,
   ) => EstadoDaJanela;
+  /** Teste: conversa já resolvida. Produção exige last_message_at. */
+  acharConversa?: (
+    admin: SupabaseClient,
+    orgId: string,
+    contactIds: string[],
+    sessionId: string,
+  ) => Promise<{ id: string; contact_id: string } | null>;
 };
 
 type Contato = {
@@ -128,30 +144,15 @@ export async function enviarPeloCrm(
   const cached = await lerIdempotencia(admin, orgId, pedido.idempotency_key);
   if (cached) return { ok: true, status: 200, ...cached, deduplicado: true };
 
-  let contato = await acharContato(admin, orgId, pedido.external_id, fone);
+  const fichas = await listarFichasDoDisparo(admin, orgId, pedido.external_id, fone);
+  const contato = escolherDestinoDoEnvio(fichas, fone);
   if (!contato) {
-    const criar = deps.criarPessoa ?? upsertPessoa;
-    const id = await criar(admin, orgId, {
-      external_id: pedido.external_id,
-      phone: fone,
-      name: fone,
-    });
-    if (!id) {
-      return {
-        ok: false,
-        status: 503,
-        code: "internal_error",
-        message: "Não consegui criar a ficha deste número. Tente de novo.",
-      };
-    }
-    contato =
-      (await acharContato(admin, orgId, pedido.external_id, fone)) ?? {
-        id,
-        phone_number: fone,
-        is_blocked: false,
-        wa_identity: null,
-        wa_lid: null,
-      };
+    return {
+      ok: false,
+      status: 409,
+      code: CODIGO_SEM_CONVERSA,
+      message: MENSAGEM_SEM_CONVERSA,
+    };
   }
   if (contato.is_blocked) {
     return {
@@ -172,6 +173,22 @@ export async function enviarPeloCrm(
     };
   }
 
+  const acharFio = deps.acharConversa ?? acharConversaComMensagem;
+  const fio = await acharFio(
+    admin,
+    orgId,
+    fichas.map((f) => f.id),
+    sessao.id,
+  );
+  if (!fio) {
+    return {
+      ok: false,
+      status: 409,
+      code: CODIGO_SEM_CONVERSA,
+      message: MENSAGEM_SEM_CONVERSA,
+    };
+  }
+
   const avaliar = deps.avaliarDisparo ?? avaliarDisparoProativo;
   const freio = await avaliar(admin, orgId, sessao.id, sessao.provider, agora);
   if (!freio.ok) {
@@ -184,7 +201,7 @@ export async function enviarPeloCrm(
     };
   }
 
-  const conversaId = await ensureConversation(admin, orgId, contato.id, sessao.id);
+  const conversaId = await ensureConversation(admin, orgId, fio.contact_id, sessao.id);
   const { data: conv } = await admin
     .from("conversations")
     .select("last_inbound_at")
@@ -244,12 +261,12 @@ export async function enviarPeloCrm(
   return traduzido;
 }
 
-export async function acharContato(
+export async function listarFichasDoDisparo(
   admin: SupabaseClient,
   orgId: string,
   externalId: string,
   phone: string,
-): Promise<Contato | null> {
+): Promise<Contato[]> {
   const { data: porMeta } = await admin
     .from("contacts")
     .select(COLUNAS_CONTATO)
@@ -275,7 +292,50 @@ export async function acharContato(
   const porId = new Map<string, Contato>();
   if (porMeta) porId.set((porMeta as Contato).id, porMeta as Contato);
   for (const row of porFone) porId.set(row.id, row);
-  return escolherDestinoDoEnvio([...porId.values()], phone);
+  return [...porId.values()];
+}
+
+export async function acharContato(
+  admin: SupabaseClient,
+  orgId: string,
+  externalId: string,
+  phone: string,
+): Promise<Contato | null> {
+  return escolherDestinoDoEnvio(await listarFichasDoDisparo(admin, orgId, externalId, phone), phone);
+}
+
+export function conversaTemMensagem(row: {
+  last_message_at?: string | null;
+  last_inbound_at?: string | null;
+  last_outbound_at?: string | null;
+}): boolean {
+  return Boolean(row.last_message_at || row.last_inbound_at || row.last_outbound_at);
+}
+
+export async function acharConversaComMensagem(
+  admin: SupabaseClient,
+  orgId: string,
+  contactIds: string[],
+  sessionId: string,
+): Promise<{ id: string; contact_id: string } | null> {
+  if (contactIds.length === 0) return null;
+  const { data } = await admin
+    .from("conversations")
+    .select("id, contact_id, last_message_at, last_inbound_at, last_outbound_at")
+    .eq("organization_id", orgId)
+    .eq("channel_session_id", sessionId)
+    .in("contact_id", contactIds)
+    .order("last_message_at", { ascending: false, nullsFirst: false })
+    .limit(8);
+  const rows = (data ?? []) as Array<{
+    id: string;
+    contact_id: string;
+    last_message_at?: string | null;
+    last_inbound_at?: string | null;
+    last_outbound_at?: string | null;
+  }>;
+  const comMensagem = rows.find(conversaTemMensagem);
+  return comMensagem ? { id: comMensagem.id, contact_id: comMensagem.contact_id } : null;
 }
 
 async function acharSessaoWorking(
@@ -327,6 +387,15 @@ export function traduzirDesfecho(
   }
 
   const codigo = `${mensagem.error_code ?? ""} ${mensagem.error_message ?? ""} ${mensagem.metadata?.queued_reason ?? ""}`.toLowerCase();
+  if (ehRestricaoDeAlcance(codigo)) {
+    return {
+      ok: false,
+      status: 429,
+      code: "rate_limited",
+      message: MENSAGEM_RESTRICAO_DE_ALCANCE,
+      retry_after: ESPERA_RESTRICAO_DE_ALCANCE_S,
+    };
+  }
   if (/429|rate|pacing|throttl/.test(codigo)) {
     return {
       ok: false,

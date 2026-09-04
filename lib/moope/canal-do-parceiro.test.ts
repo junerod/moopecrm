@@ -95,4 +95,39 @@ describe("montarRetratoDoCanal", () => {
     expect(r.can_send_now).toBe(false);
     expect(r.retry_after).toBeGreaterThan(60);
   });
+
+  it("FAILED agora pouco: some o QR e pede espera — parear na hora piora", () => {
+    const r = montarRetratoDoCanal({
+      status: "FAILED",
+      knobs: PACING_DEFAULTS,
+      knobsRow: VAZIO,
+      sentToday: 0,
+      numberActivatedAt: null,
+      lastSentAt: null,
+      lastStatusChangeAt: new Date("2026-09-05T12:00:00Z"),
+      dailyLimit: 250,
+      banRisk: true,
+      agora: COMERCIAL,
+    });
+    expect(r.connected).toBe(false);
+    expect(r.needs_qr).toBe(false);
+    expect(r.can_soft_reconnect).toBe(false);
+    expect(r.pairing_wait_seconds).toBe(5 * 60 * 60);
+  });
+
+  it("FAILED sem carimbo ainda pede QR — clone velho não inventa espera", () => {
+    const r = montarRetratoDoCanal({
+      status: "FAILED",
+      knobs: PACING_DEFAULTS,
+      knobsRow: VAZIO,
+      sentToday: 0,
+      numberActivatedAt: null,
+      lastSentAt: null,
+      dailyLimit: 250,
+      banRisk: true,
+      agora: COMERCIAL,
+    });
+    expect(r.needs_qr).toBe(true);
+    expect(r.pairing_wait_seconds).toBeNull();
+  });
 });

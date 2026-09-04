@@ -9,6 +9,7 @@ import { wahaContactPayload } from "@/lib/waha/contact-card";
 import { fetchWahaMedia } from "@/lib/messaging/media/waha-source";
 import { getWahaClient } from "@/lib/waha/client";
 import { wahaSendPlanFor } from "@/lib/waha/media-send";
+import { ehRestricaoDeAlcance } from "@/lib/waha/restricao-de-alcance";
 import {
   destinosDeEnvioWaha,
   resolveWhatsappIdForContactCard,
@@ -218,8 +219,10 @@ export const wahaAdapter: ChannelAdapter = {
           );
         }
         ultimoErro = null;
+        break;
       } catch (err) {
         ultimoErro = err;
+        if (ehRestricaoDeAlcance(err)) break;
       }
     }
     if (ultimoErro && res === undefined) throw ultimoErro;

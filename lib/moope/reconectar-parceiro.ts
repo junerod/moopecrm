@@ -5,11 +5,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { queryTolerantToMissingArchived } from "@/lib/channels/archived";
+import { esperaAposQueda, fraseEsperaPareamento } from "@/lib/channels/pareamento-cooldown";
 import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
 
 export type ReconectarParceiroOut =
   | { ok: true; status: string; skipped?: "already_working" | "starting" }
-  | { ok: false; motivo: string; error: string };
+  | { ok: false; motivo: string; error: string; retry_after?: number };
 
 export async function reconectarCanalDoParceiro(
   admin: SupabaseClient,
@@ -23,6 +24,15 @@ export async function reconectarCanalDoParceiro(
   if (st === "WORKING") return { ok: true, status: "WORKING", skipped: "already_working" };
   if (st === "STARTING") return { ok: true, status: "STARTING", skipped: "starting" };
   if (st === "FAILED" || st === "SCAN_QR_CODE") {
+    const espera = esperaAposQueda(st, sessao.lastStatusChangeAt);
+    if (espera.esperar && espera.until) {
+      return {
+        ok: false,
+        motivo: "espera_pareamento",
+        error: fraseEsperaPareamento(espera.until),
+        retry_after: espera.waitSeconds,
+      };
+    }
     return {
       ok: false,
       motivo: "precisa_qr",
@@ -59,12 +69,12 @@ export async function reconectarCanalDoParceiro(
 async function acharSessaoWaha(
   admin: SupabaseClient,
   orgId: string,
-): Promise<{ id: string; nome: string; status: string } | null> {
+): Promise<{ id: string; nome: string; status: string; lastStatusChangeAt: string | null } | null> {
   const { data } = await queryTolerantToMissingArchived(
     () =>
       admin
         .from("channel_sessions")
-        .select("id, status, waha_session_name, archived_at")
+        .select("id, status, waha_session_name, last_status_change_at, archived_at")
         .eq("organization_id", orgId)
         .is("archived_at", null)
         .not("waha_session_name", "is", null)
@@ -74,14 +84,24 @@ async function acharSessaoWaha(
     () =>
       admin
         .from("channel_sessions")
-        .select("id, status, waha_session_name")
+        .select("id, status, waha_session_name, last_status_change_at")
         .eq("organization_id", orgId)
         .not("waha_session_name", "is", null)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
   );
-  const row = data as { id?: string; status?: string; waha_session_name?: string | null } | null;
+  const row = data as {
+    id?: string;
+    status?: string;
+    waha_session_name?: string | null;
+    last_status_change_at?: string | null;
+  } | null;
   if (!row?.id || !row.waha_session_name) return null;
-  return { id: row.id, nome: row.waha_session_name, status: String(row.status || "") };
+  return {
+    id: row.id,
+    nome: row.waha_session_name,
+    status: String(row.status || ""),
+    lastStatusChangeAt: row.last_status_change_at ?? null,
+  };
 }

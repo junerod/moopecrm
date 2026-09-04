@@ -42,6 +42,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { createClient } from "@/lib/supabase/server";
 import { puxarHistoricoAposReligamento } from "@/lib/channels/historico";
+import { esperaAposQueda, fraseEsperaPareamento } from "@/lib/channels/pareamento-cooldown";
 import { deveDescartarCredencial } from "@/lib/channels/reconectar";
 import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
 
@@ -85,13 +86,14 @@ export async function POST(
   // arquivado, e exigir a coluna aqui derrubaria a reconexão inteira — que é o
   // socorro de quem está com o número fora do ar.
   const { data: sessionRaw } = await queryTolerantToMissingArchived(
-    () => buscar(`id, waha_session_name, status, ${ARCHIVED_AT}`),
-    () => buscar("id, waha_session_name, status"),
+    () => buscar(`id, waha_session_name, status, last_status_change_at, ${ARCHIVED_AT}`),
+    () => buscar("id, waha_session_name, status, last_status_change_at"),
   );
   const session = sessionRaw as {
     id: string;
     waha_session_name: string | null;
     status?: string | null;
+    last_status_change_at?: string | null;
     archived_at?: string | null;
   } | null;
   if (!session) return fail("not_found", "Canal não encontrado.", 404, { requestId });
@@ -126,6 +128,18 @@ export async function POST(
       503,
       { requestId },
     );
+  }
+
+  const descartaria = deveDescartarCredencial(session.status, force);
+  if (descartaria) {
+    const espera = esperaAposQueda(session.status, session.last_status_change_at);
+    if (espera.esperar && espera.until) {
+      return fail("channel_pairing_wait", fraseEsperaPareamento(espera.until), 409, {
+        requestId,
+        details: { retry_after: espera.waitSeconds },
+        headers: { "Retry-After": String(espera.waitSeconds) },
+      });
+    }
   }
 
   try {

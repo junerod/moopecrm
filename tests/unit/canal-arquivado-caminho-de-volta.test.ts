@@ -468,6 +468,27 @@ describe("POST /api/v1/channel-sessions/[id]/reconnect — canal excluído não 
     expect(db.linhas[0]?.status).toBe("STARTING");
   });
 
+  it("FAILED recém-caído recusa o QR — parear na hora estica a pena do WhatsApp", async () => {
+    authOk();
+    makeDb({
+      sessions: [
+        canalQr({
+          status: "FAILED",
+          last_status_change_at: new Date().toISOString(),
+        }),
+      ],
+    });
+    const waha = transporteOk();
+    const { POST } = await import("@/app/api/v1/channel-sessions/[id]/reconnect/route");
+    const res = await POST(req(), ctx());
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("channel_pairing_wait");
+    expect(waha.stopSession).not.toHaveBeenCalled();
+    expect(waha.logoutSession).not.toHaveBeenCalled();
+    expect(waha.startSession).not.toHaveBeenCalled();
+  });
+
   it("clone sem a migration 0106: reconectar continua funcionando", async () => {
     authOk();
     makeDb({ sessions: [canalQr({ status: "STOPPED" })], semColunaArquivada: true });

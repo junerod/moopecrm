@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   acharContato,
+  conversaTemMensagem,
   escolherDestinoDoEnvio,
   enviarPeloCrm,
   traduzirDesfecho,
@@ -25,6 +26,24 @@ describe("traduzirDesfecho do disparo MOOPE", () => {
       message_id: "m1",
       conversation_id: "c1",
     });
+  });
+
+  it("463 / tctoken vira 429 e manda esperar — não é queda de canal", () => {
+    const r = traduzirDesfecho(
+      {
+        id: "m1",
+        status: "failed",
+        error_code: "waha_error",
+        error_message: "waha_500: error 463: account restricted or missing tctoken",
+      },
+      "c1",
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.status).toBe(429);
+      expect(r.message).toMatch(/não reconecte/i);
+      expect(r.retry_after).toBe(6 * 60 * 60);
+    }
   });
 
   it("pacing vira 429", () => {
@@ -154,7 +173,7 @@ describe("acharContato", () => {
     expect(c?.id).toBe("ct-wa");
   });
 
-  it("sem ficha devolve null — quem manda cria a ficha", async () => {
+  it("sem ficha devolve null", async () => {
     const admin = contactsAdmin({ porMeta: null, porFone: [] });
     const c = await acharContato(admin as never, "org", "9", "+5561999999999");
     expect(c).toBeNull();
@@ -196,48 +215,77 @@ function adminSemIdempotencia(contatos: { from: (t: string) => unknown }) {
   };
 }
 
+describe("conversaTemMensagem", () => {
+  it("ficha vazia não conta como fio", () => {
+    expect(conversaTemMensagem({})).toBe(false);
+    expect(conversaTemMensagem({ last_message_at: null })).toBe(false);
+  });
+
+  it("qualquer ponta com data vale", () => {
+    expect(conversaTemMensagem({ last_inbound_at: "2026-09-01T12:00:00Z" })).toBe(true);
+    expect(conversaTemMensagem({ last_outbound_at: "2026-09-01T12:00:00Z" })).toBe(true);
+    expect(conversaTemMensagem({ last_message_at: "2026-09-01T12:00:00Z" })).toBe(true);
+  });
+});
+
 describe("enviarPeloCrm", () => {
-  it("telefone inválido → 422 e não cria ficha", async () => {
+  it("telefone inválido → 422 e não lê ficha", async () => {
     const enviarMensagem = vi.fn();
-    const criarPessoa = vi.fn();
     const r = await enviarPeloCrm(
       { from: () => { throw new Error("não deveria ler banco"); } } as never,
       "org",
       { ...pedido(), phone: "abc" },
       "req-1",
-      { enviarMensagem, criarPessoa },
+      { enviarMensagem },
     );
     expect(r).toMatchObject({ ok: false, status: 422 });
-    expect(criarPessoa).not.toHaveBeenCalled();
     expect(enviarMensagem).not.toHaveBeenCalled();
   });
 
-  it("sem contato cria a ficha; se a criação falhar, 503 e não envia", async () => {
+  it("sem ficha → 409 e não manda — primeiro toque é no celular", async () => {
     const enviarMensagem = vi.fn();
-    const criarPessoa = vi.fn(async () => null);
     const contatos = contactsAdmin({ porMeta: null, porFone: [] });
     const r = await enviarPeloCrm(
       adminSemIdempotencia(contatos) as never,
       "org",
       pedido(),
       "req-1",
-      { enviarMensagem, criarPessoa },
+      { enviarMensagem },
     );
-    expect(criarPessoa).toHaveBeenCalledWith(
-      expect.anything(),
-      "org",
-      expect.objectContaining({ phone: "+5561999999999", external_id: "9" }),
-    );
-    expect(r).toMatchObject({ ok: false, status: 503 });
-    if (!r.ok) expect(r.message).not.toMatch(/person\.upserted/);
+    expect(r).toMatchObject({ ok: false, status: 409, code: "conversation_required" });
+    if (!r.ok) expect(r.message).toMatch(/celular do chip/i);
     expect(enviarMensagem).not.toHaveBeenCalled();
   });
 
-  it("número fora da agenda: cria ficha com o 9 e manda", async () => {
+  it("ficha sem conversa → 409 e não manda", async () => {
+    const enviarMensagem = vi.fn();
+    const acharConversa = vi.fn(async () => null);
+    const contatos = contactsAdmin({
+      porMeta: { id: "ct-1", phone_number: "+5561999999999", is_blocked: false },
+    });
+    const r = await enviarPeloCrm(
+      adminSemIdempotencia(contatos) as never,
+      "org",
+      pedido(),
+      "req-1",
+      {
+        enviarMensagem,
+        acharConversa,
+        sessao: { id: "s1", provider: "canal" },
+        avaliarDisparo: async () => ({ ok: true }),
+      },
+    );
+    expect(r).toMatchObject({ ok: false, status: 409, code: "conversation_required" });
+    expect(enviarMensagem).not.toHaveBeenCalled();
+  });
+
+  it("já tem fio: manda nesse conversation_id", async () => {
     const enviarMensagem = vi.fn(async () => ({ id: "m-novo", status: "sent" }));
-    const criarPessoa = vi.fn(async () => "ct-novo");
     const registrarDisparo = vi.fn(async () => undefined);
-    const contatos = contactsAdmin({ porMeta: null, porFone: [] });
+    const acharConversa = vi.fn(async () => ({ id: "cv-1", contact_id: "ct-1" }));
+    const contatos = contactsAdmin({
+      porMeta: { id: "ct-1", phone_number: "+5561996715985", is_blocked: false },
+    });
     const r = await enviarPeloCrm(
       adminSemIdempotencia(contatos) as never,
       "org",
@@ -245,17 +293,12 @@ describe("enviarPeloCrm", () => {
       "req-1",
       {
         enviarMensagem,
-        criarPessoa,
+        acharConversa,
         registrarDisparo,
         avaliarDisparo: async () => ({ ok: true }),
         sessao: { id: "s1", provider: "canal" },
         estadoJanela: () => ({ tipo: "sem_restricao" }),
       },
-    );
-    expect(criarPessoa).toHaveBeenCalledWith(
-      expect.anything(),
-      "org",
-      expect.objectContaining({ phone: "+5561996715985" }),
     );
     expect(r).toEqual({
       ok: true,
@@ -360,6 +403,7 @@ describe("enviarPeloCrm", () => {
     const r = await enviarPeloCrm(admin as never, "org", pedido(), "req-1", {
       enviarMensagem,
       avaliarDisparo,
+      acharConversa: async () => ({ id: "cv-1", contact_id: "ct-1" }),
       sessao: { id: "s1", provider: "canal" },
       estadoJanela: () => ({ tipo: "sem_restricao" as const }),
     });

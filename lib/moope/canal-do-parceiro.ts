@@ -18,6 +18,7 @@ import {
   type ChannelKnobsRow,
 } from "@/lib/ai/pacing-knobs";
 import { queryTolerantToMissingArchived } from "@/lib/channels/archived";
+import { esperaAposQueda } from "@/lib/channels/pareamento-cooldown";
 import { capabilitiesOf } from "@/lib/channels/capabilities";
 import type { ChannelProvider } from "@/lib/channels/types";
 import {
@@ -54,18 +55,27 @@ export type RetratoDoCanal = {
   connected: boolean;
   needs_qr: boolean;
   can_soft_reconnect: boolean;
+  /** Segundos até o WhatsApp aceitar QR de novo. Null = pode parear (ou não precisa). */
+  pairing_wait_seconds: number | null;
 };
 
-function flagsDoStatus(status: string | null): {
+function flagsDoStatus(
+  status: string | null,
+  pairingWaitSeconds: number | null = null,
+): {
   connected: boolean;
   needs_qr: boolean;
   can_soft_reconnect: boolean;
+  pairing_wait_seconds: number | null;
 } {
   const st = String(status || "").toUpperCase();
+  const esperando = pairingWaitSeconds != null && pairingWaitSeconds > 0;
   return {
     connected: st === "WORKING",
-    needs_qr: st === "FAILED" || st === "SCAN_QR_CODE",
+    // QR na hora da queda estica a pena. A locadora some o botão enquanto espera.
+    needs_qr: (st === "FAILED" || st === "SCAN_QR_CODE") && !esperando,
     can_soft_reconnect: st === "STOPPED",
+    pairing_wait_seconds: esperando ? pairingWaitSeconds : null,
   };
 }
 
@@ -76,6 +86,7 @@ export function montarRetratoDoCanal(input: {
   sentToday: number;
   numberActivatedAt: Date | null;
   lastSentAt: Date | null;
+  lastStatusChangeAt?: Date | string | null;
   dailyLimit: number | null;
   banRisk: boolean;
   agora: Date;
@@ -104,14 +115,14 @@ export function montarRetratoDoCanal(input: {
       : Math.min(capToday ?? Infinity, input.dailyLimit ?? Infinity);
   const remaining = teto === null || !Number.isFinite(teto) ? null : Math.max(0, teto - input.sentToday);
 
+  const pairingWait = esperaAposQueda(input.status, input.lastStatusChangeAt, input.agora);
+
   if (!input.status) {
     return {
       ready: false,
       phase: "no_channel",
       status: null,
-      connected: false,
-      needs_qr: false,
-      can_soft_reconnect: false,
+      ...flagsDoStatus(null),
       warmup: {
         skipped: false,
         age_days: 0,
@@ -153,7 +164,7 @@ export function montarRetratoDoCanal(input: {
     ready: phase === "ready",
     phase,
     status: input.status,
-    ...flagsDoStatus(input.status),
+    ...flagsDoStatus(input.status, pairingWait.esperar ? pairingWait.waitSeconds : null),
     warmup: {
       skipped,
       age_days: ageDays,
@@ -195,10 +206,11 @@ export async function retratoDoCanalDaOrg(
       agora,
     });
     if (!caiu) return base;
+    const wait = esperaAposQueda(caiu.status, caiu.lastStatusChangeAt, agora);
     return {
       ...base,
       status: caiu.status,
-      ...flagsDoStatus(caiu.status),
+      ...flagsDoStatus(caiu.status, wait.esperar ? wait.waitSeconds : null),
     };
   }
 
@@ -268,12 +280,12 @@ async function acharSessaoWorking(
 async function acharSessaoMaisRecente(
   admin: SupabaseClient,
   orgId: string,
-): Promise<{ id: string; status: string } | null> {
+): Promise<{ id: string; status: string; lastStatusChangeAt: string | null } | null> {
   const { data } = await queryTolerantToMissingArchived(
     () =>
       admin
         .from("channel_sessions")
-        .select("id, status, archived_at, waha_session_name")
+        .select("id, status, last_status_change_at, archived_at, waha_session_name")
         .eq("organization_id", orgId)
         .is("archived_at", null)
         .not("waha_session_name", "is", null)
@@ -283,14 +295,18 @@ async function acharSessaoMaisRecente(
     () =>
       admin
         .from("channel_sessions")
-        .select("id, status, waha_session_name")
+        .select("id, status, last_status_change_at, waha_session_name")
         .eq("organization_id", orgId)
         .not("waha_session_name", "is", null)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
   );
-  const row = data as { id?: string; status?: string } | null;
+  const row = data as { id?: string; status?: string; last_status_change_at?: string | null } | null;
   if (!row?.id) return null;
-  return { id: row.id, status: String(row.status || "") };
+  return {
+    id: row.id,
+    status: String(row.status || ""),
+    lastStatusChangeAt: row.last_status_change_at ?? null,
+  };
 }

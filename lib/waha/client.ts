@@ -450,7 +450,10 @@ export class WahaClient {
       // "nada", e a API não tem por que ser gentil com isso.
       body: JSON.stringify({ session, chatId, text, ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
-    if (!res.ok) throw new Error(`waha_${res.status}`);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`waha_${res.status}: ${body.slice(0, 200)}`);
+    }
     return res.json();
   }
 

@@ -22,8 +22,18 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const out = await reconectarCanalDoParceiro(admin, conexao.organization_id);
   if (!out.ok) {
-    const status = out.motivo === "precisa_qr" ? 409 : out.motivo === "sem_canal" ? 404 : 502;
-    return fail("channel_reconnect_failed", out.error, status, { requestId });
+    const status =
+      out.motivo === "espera_pareamento" || out.motivo === "precisa_qr"
+        ? 409
+        : out.motivo === "sem_canal"
+          ? 404
+          : 502;
+    const code = out.motivo === "espera_pareamento" ? "channel_pairing_wait" : "channel_reconnect_failed";
+    return fail(code, out.error, status, {
+      requestId,
+      details: out.retry_after != null ? { retry_after: out.retry_after } : undefined,
+      headers: out.retry_after != null ? { "Retry-After": String(out.retry_after) } : undefined,
+    });
   }
   return ok({ status: out.status, skipped: out.skipped || null }, { requestId });
 }

@@ -78,9 +78,9 @@ export async function resolveCanonicalSendChatId(
 }
 
 /**
- * Destinos de envio, na ordem: JID canônico do canal (se houver), depois
- * cada variante do nono dígito. `@lid` e grupo ficam sozinhos.
- * Quem chama MANDA em todos — um JID some, o outro entrega.
+ * Um destino só. Mandar nas duas grafias do 9 é dois primeiros contatos
+ * no aparelho pareado — o WhatsApp lê como spam e derruba a sessão.
+ * Consultou e tem JID canônico → esse. Senão o `to` que veio.
  */
 export async function destinosDeEnvioWaha(
   client: WahaClient,
@@ -90,22 +90,8 @@ export async function destinosDeEnvioWaha(
   if (!to.endsWith("@c.us")) return [to];
   const digits = to.slice(0, -"@c.us".length).replace(/\D/g, "");
   if (!digits) return [to];
-  const phone = `+${digits}`;
-  const canon = await resolveCanonicalSendChatId(client, session, phone);
-  const vistos = new Set<string>();
-  const lista: string[] = [];
-  const push = (jid: string) => {
-    if (!jid || vistos.has(jid)) return;
-    vistos.add(jid);
-    lista.push(jid);
-  };
-  if (canon.chatId) push(canon.chatId);
-  push(to);
-  for (const v of phoneLookupVariants(phone)) {
-    const d = v.replace(/\D/g, "");
-    if (d) push(`${d}@c.us`);
-  }
-  return lista.length > 0 ? lista : [to];
+  const canon = await resolveCanonicalSendChatId(client, session, `+${digits}`);
+  return [canon.chatId ?? to];
 }
 
 /** Primeiro destino (canônico se o canal respondeu). Compatível com quem só manda um. */

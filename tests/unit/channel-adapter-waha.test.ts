@@ -17,7 +17,7 @@ const WAHA_BASE = 'http://localhost:3030';
 function stubWaha(response: unknown) {
   vi.stubEnv('WAHA_API_BASE_URL', WAHA_BASE);
   vi.stubEnv('WAHA_API_KEY', 'hash123');
-  const fetchMock = vi.fn().mockResolvedValue(Response.json(response));
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(Response.json(response)));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
@@ -116,8 +116,9 @@ describe('adapter WAHA', () => {
     });
 
     expect(res).toEqual({ externalId: 'ABC123' });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const envios = fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/sendText'));
+    expect(envios).toHaveLength(1);
+    const [url, init] = envios[0] as [string, RequestInit];
     expect(url).toBe(`${WAHA_BASE}/api/sendText`);
     expect(JSON.parse(String(init.body))).toEqual({
       session: 'default',
@@ -138,7 +139,9 @@ describe('adapter WAHA', () => {
     });
 
     expect(res).toEqual({ externalId: 'VOICE1' });
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const envios = fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/sendVoice'));
+    expect(envios).toHaveLength(1);
+    const [url, init] = envios[0] as [string, RequestInit];
     expect(url).toBe(`${WAHA_BASE}/api/sendVoice`);
     expect(JSON.parse(String(init.body))).toEqual({
       session: 'default',

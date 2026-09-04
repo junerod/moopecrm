@@ -146,16 +146,21 @@ Authorization: Bearer mop_…
 | status | significado |
 |--------|-------------|
 | 200 | `{ message_id, conversation_id }` — aparece no Inbox. Reenvio da mesma chave: `{ duplicado: true }` |
-| 409 | contato bloqueou / STOP |
+| 409 `conversation_required` | **não há fio com mensagem** neste chip. Mostre `error.message` ao operador. Não marque enviado. Não reconecte. O primeiro recado é no celular do WhatsApp. |
+| 409 `state_conflict` | contato bloqueou / STOP |
 | 422 | telefone inválido, ou canal exige modelo e a janela de 24h está fechada |
-| 429 | pacing — `Retry-After` |
-| 503 | nenhum canal WORKING, falha ao criar a ficha, ou o envio falhou |
+| 429 | pacing / alcance — `Retry-After`. Não reconecte. |
+| 503 | nenhum canal WORKING, ou o envio falhou |
 
 Um POST = um destinatário. Sem array. Não acorda o agente. Sem Twilio.
-Sem ficha no CRM, cria na hora (o mesmo `person.upserted`) e manda no
-número do POST, **com o 9**. Não devolve 404 pedindo upsert antes.
-Só usa o gêmeo com `wa_lid` quando for a mesma pessoa (variantes do
-nono dígito). Canal sem restrição de janela: texto livre.
+**Só manda se já existe conversa com mensagem** (inbound ou outbound) neste
+WhatsApp. Sem fio: 409, não cria ficha, não dispara. Cadastro na locadora
+não conta. Só usa o gêmeo com `wa_lid` quando for a mesma pessoa (variantes
+do nono dígito). Canal sem restrição de janela: texto livre.
+
+Catálogo dos modelos já aprovados no Twilio da locadora (corpo + variáveis,
+para recriar no Zernio sem copiar SID):
+[`templates-twilio-para-zernio.md`](templates-twilio-para-zernio.md).
 
 ## Estado do número (a locadora lê antes do lote)
 
@@ -191,7 +196,11 @@ Authorization: Bearer mop_…
     },
     "proactive_gap_seconds": 5,
     "can_send_now": true,
-    "retry_after": null
+    "retry_after": null,
+    "connected": true,
+    "needs_qr": false,
+    "can_soft_reconnect": false,
+    "pairing_wait_seconds": null
   }
 }
 ```
@@ -203,7 +212,10 @@ Authorization: Bearer mop_…
 | `ready` | Já aquecido ou formado. Vale `daily_limit` e o intervalo de 5s. |
 
 `can_send_now: false` + `retry_after` = espera esses segundos (noite, teto ou ritmo).
+`pairing_wait_seconds` > 0 = o WhatsApp pediu espera depois da queda. **Não mostre “Parear de novo”** e não chame `POST /channel/reconnect` — QR nessa janela estica a pena (costuma ser 6 horas). `needs_qr` fica falso enquanto essa espera vale.
 401 sem chave. Sem cookie.
+
+`POST /send` que toma 463 / tctoken devolve **429** `rate_limited` com a mesma ideia: espere, não reconecte. Não é canal caído.
 
 ### Lote (100 boletos no dia 5)
 
@@ -275,7 +287,7 @@ Reenvio com o mesmo `partner_tenant_id` não cria segunda organização.
 | Admin liga a integração | `POST /provision` | Tenant + chave; locadora grava, não cola |
 | Cadastrou / editou locatário | `POST /events` `person.upserted` | Contato no CRM (ou cola no fio WhatsApp) |
 | Antes do lote | `GET /channel` | Aquecendo? Quantos cabem hoje? Pode mandar agora? |
-| Quer mandar texto | `POST /send` | Cria a ficha se faltar; manda no número do POST (com o 9); Inbox |
+| Quer mandar texto | `POST /send` | Só se já tem fio; senão 409 `conversation_required` |
 | Ajustar fichas já importadas | `POST /reconcile` | Só identidade; sem mensagem |
 
 ## O CRM lê a locadora (leva 2)

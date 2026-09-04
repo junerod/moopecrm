@@ -71,7 +71,7 @@ describe("resolveCanonicalSendChatId", () => {
     expect(client.checkContactExists).toHaveBeenCalledTimes(1);
   });
 
-  it("lista canônico + as duas grafias do 9 — envia mesmo se uma falhar", async () => {
+  it("consulta ok: um destino só — o JID canônico", async () => {
     const client = {
       checkContactExists: vi.fn().mockResolvedValue({
         numberExists: true,
@@ -79,18 +79,15 @@ describe("resolveCanonicalSendChatId", () => {
       }),
     };
     const lista = await destinosDeEnvioWaha(client as never, "s1", "5561996715985@c.us");
-    expect(lista[0]).toBe("556196715985@c.us");
-    expect(lista).toContain("5561996715985@c.us");
-    expect(lista).toHaveLength(2);
+    expect(lista).toEqual(["556196715985@c.us"]);
   });
 
-  it("sem consulta ainda monta as duas grafias e não trava o envio", async () => {
+  it("consulta falhou: um destino só — o que veio, sem inventar o gêmeo", async () => {
     const client = {
       checkContactExists: vi.fn().mockRejectedValue(new Error("rede")),
     };
     const lista = await destinosDeEnvioWaha(client as never, "s1", "5561996715985@c.us");
-    expect(lista).toContain("5561996715985@c.us");
-    expect(lista).toContain("556196715985@c.us");
+    expect(lista).toEqual(["5561996715985@c.us"]);
   });
 
   it("consulta falhou em todas as variantes → não afirma que não existe", async () => {
