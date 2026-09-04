@@ -72,7 +72,7 @@ export function AdminShell({ userEmail, children }: AdminShellProps) {
         <div className="flex flex-1">
           <AdminSidebar userEmail={userEmail} />
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-            <SheetContent side="left" className="w-72 max-w-[85vw] gap-0 p-0 lg:hidden">
+            <SheetContent side="left" className="w-72 max-w-[85vw] gap-0 border-accent-900 bg-accent-950 p-0 text-white lg:hidden [&>button]:text-white">
               <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
               <AdminSidebar userEmail={userEmail} variant="mobile" />
             </SheetContent>

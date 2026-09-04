@@ -61,16 +61,16 @@ export function AdminSidebar({ userEmail, variant = "desktop" }: AdminSidebarPro
   return (
     <aside
       className={cn(
-        "flex flex-col border-r bg-card",
+        "flex flex-col border-r border-accent-900 bg-accent-950 text-white",
         isMobile ? "h-full w-full" : "hidden w-60 shrink-0 lg:flex",
       )}
     >
-      <div className="flex h-14 items-center border-b px-4">
+      <div className="flex h-14 items-center border-b border-white/10 px-4">
         <div className="flex flex-col">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs uppercase tracking-wider text-accent-300/80">
             {marca.name}
           </span>
-          <span className="text-sm font-semibold tracking-tight">Admin Plataforma</span>
+          <span className="text-sm font-semibold tracking-tight text-white">Admin Plataforma</span>
         </div>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label="Navegação plataforma">
@@ -84,10 +84,10 @@ export function AdminSidebar({ userEmail, variant = "desktop" }: AdminSidebarPro
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  ? "bg-accent text-accent-foreground shadow-sm"
+                  : "text-white/75 hover:bg-white/10 hover:text-white",
               )}
             >
               <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
@@ -96,15 +96,15 @@ export function AdminSidebar({ userEmail, variant = "desktop" }: AdminSidebarPro
           );
         })}
       </nav>
-      <div className="space-y-2 border-t p-3">
+      <div className="space-y-2 border-t border-white/10 p-3">
         <Link
           href="/app"
-          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white"
         >
           <ArrowRight size={14} aria-hidden />
           <span>Voltar pra app</span>
         </Link>
-        <p className="truncate px-2 text-xs text-muted-foreground" title={userEmail}>
+        <p className="truncate px-2 text-xs text-white/45" title={userEmail}>
           {userEmail}
         </p>
       </div>

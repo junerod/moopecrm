@@ -31,7 +31,7 @@ export default async function PublicLayout({ children }: { children: React.React
   const marca = await marcaDaSaida(null);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+    <div className="flex min-h-screen items-center justify-center bg-accent-950 p-6">
       <div className="w-full max-w-sm space-y-6">
         {marca.logoUrl && (
           <div className="flex justify-center">
@@ -56,11 +56,13 @@ export default async function PublicLayout({ children }: { children: React.React
               data-testid="logo-da-fachada"
               src={marca.logoUrl}
               alt={marca.nome}
-              className="h-10 w-auto max-w-[12rem] object-contain"
+              className="h-16 w-auto max-w-[14rem] object-contain"
             />
           </div>
         )}
-        {children}
+        <div className="rounded-2xl bg-surface px-6 py-7 shadow-2xl ring-1 ring-white/10">
+          {children}
+        </div>
       </div>
     </div>
   );

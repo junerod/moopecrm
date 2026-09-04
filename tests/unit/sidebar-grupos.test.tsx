@@ -145,6 +145,12 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: /Inbox/ })).toBeTruthy();
   });
 
+  it("pinta a trilha com o stop escuro da marca, não com o cinza da superfície", () => {
+    comoPapel("admin");
+    const { container } = render(<Sidebar collapsed={false} />);
+    expect(container.querySelector("aside")?.className).toMatch(/bg-accent-950/);
+  });
+
   it("marca a rota atual com aria-current", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);

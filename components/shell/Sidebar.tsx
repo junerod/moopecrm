@@ -26,6 +26,21 @@ interface SidebarContentProps {
 }
 
 /**
+ * Trilha da marca: fundo no stop escuro da rampa (`accent-950`) e item ativo
+ * no accent. Não é cor crua — quem pintou a instalação (ciano, navy, sage)
+ * pinta o menu junto. Cinza `bg-card` deixava a marca só no botão e o menu
+ * parecia de outro produto.
+ */
+function classeDoItemDaTrilha(ativo: boolean): string {
+  return cn(
+    "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
+    ativo
+      ? "bg-accent text-accent-foreground shadow-sm"
+      : "text-white/75 hover:bg-white/10 hover:text-white",
+  );
+}
+
+/**
  * Navegação principal, agrupada por objetivo.
  *
  * Não decide nada: `sidebarGroups()` (lib/navigation/registry.ts) resolve quais
@@ -87,7 +102,12 @@ export function SidebarContent({
 
   return (
     <>
-      <div className={cn("flex items-center border-b px-4 h-14", collapsed ? "justify-center" : "justify-start")}>
+      <div
+        className={cn(
+          "flex h-14 items-center border-b border-white/10 px-4",
+          collapsed ? "justify-center" : "justify-start",
+        )}
+      >
         {logo && !collapsed ? (
           // <img> em vez de next/image de propósito: a URL vem de quem hospeda
           // (banco ou .env), e next/image exige allowlist de domínios fechada em
@@ -98,15 +118,15 @@ export function SidebarContent({
           <img
             src={logo}
             alt={nome}
-            className="h-7 w-auto max-w-[10rem] object-contain"
+            className="h-10 w-auto max-w-[11rem] object-contain"
           />
         ) : (
-          <span className={cn("font-semibold tracking-tight", collapsed && "sr-only")}>
+          <span className={cn("font-semibold tracking-tight text-white", collapsed && "sr-only")}>
             {nome}
           </span>
         )}
         {collapsed && (
-          <span aria-hidden className="text-lg font-bold text-primary">
+          <span aria-hidden className="text-lg font-bold text-accent">
             {/* Spread e não `[0]`: nome começando com emoji ou acento composto
                 quebraria no meio do code point. Mesma regra de `resolveBranding`
                 — a inicial precisa acompanhar o nome que a barra mostra, senão
@@ -123,11 +143,11 @@ export function SidebarContent({
               {/* Colapsado, o sidebar tem 64px: seis rótulos ali seriam ilegíveis.
                   Vira um filete separador, que preserva o agrupamento sem texto. */}
               {collapsed ? (
-                <div aria-hidden className="mx-2 border-t first:hidden" />
+                <div aria-hidden className="mx-2 border-t border-white/10 first:hidden" />
               ) : (
                 <h2
                   id={tituloId}
-                  className="px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60"
+                  className="px-3 text-[10px] font-medium uppercase tracking-wider text-accent-300/80"
                 >
                   {t(group.label)}
                 </h2>
@@ -143,13 +163,7 @@ export function SidebarContent({
                         title={collapsed ? t(item.label) : undefined}
                         aria-current={isActive ? "page" : undefined}
                         onClick={onNavigate}
-                        className={cn(
-                          "relative flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
-                          isActive
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                          collapsed && "justify-center px-2",
-                        )}
+                        className={cn(classeDoItemDaTrilha(isActive), collapsed && "justify-center px-2")}
                       >
                         <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
                         {!collapsed && <span className="truncate">{t(item.label)}</span>}
@@ -170,10 +184,7 @@ export function SidebarContent({
                       aria-current={pathname === group.hub.href ? "page" : undefined}
                       onClick={onNavigate}
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
-                        pathname === group.hub.href
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                        classeDoItemDaTrilha(pathname === group.hub.href),
                         collapsed && "justify-center px-2",
                       )}
                     >
@@ -187,7 +198,7 @@ export function SidebarContent({
           );
         })}
       </nav>
-      <div className="border-t p-2">
+      <div className="border-t border-white/10 p-2">
         {rodape && (
           <Link
             href={rodape.href}
@@ -195,10 +206,8 @@ export function SidebarContent({
             aria-current={pathname.startsWith(rodape.href) ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
-              "mb-1 flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
-              pathname.startsWith(rodape.href)
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              "mb-1",
+              classeDoItemDaTrilha(pathname.startsWith(rodape.href)),
               collapsed && "justify-center px-2",
             )}
           >
@@ -213,10 +222,8 @@ export function SidebarContent({
             aria-current={pathname.startsWith(ajuda.href) ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
-              "mb-1 flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
-              pathname.startsWith(ajuda.href)
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              "mb-1",
+              classeDoItemDaTrilha(pathname.startsWith(ajuda.href)),
               collapsed && "justify-center px-2",
             )}
           >
@@ -231,10 +238,8 @@ export function SidebarContent({
             aria-current={pathname.startsWith(PORTA_DA_PLATAFORMA.href) ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
-              "mb-1 flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
-              pathname.startsWith(PORTA_DA_PLATAFORMA.href)
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              "mb-1",
+              classeDoItemDaTrilha(pathname.startsWith(PORTA_DA_PLATAFORMA.href)),
               collapsed && "justify-center px-2",
             )}
           >
@@ -249,7 +254,7 @@ export function SidebarContent({
             onClick={() => startTransition(() => toggleSidebar(collapsed))}
             disabled={isPending}
             className={cn(
-              "flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/60 hover:bg-white/10 hover:text-white",
               collapsed && "justify-center px-2",
             )}
             aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
@@ -286,7 +291,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         //
         // `shrink-0` porque item de flex encolhe por padrão, e uma barra de 60
         // espremida para caber é o mesmo defeito por outro caminho.
-        "sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r bg-card transition-[width] duration-200",
+        "sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r border-accent-900 bg-accent-950 transition-[width] duration-200",
         collapsed ? "w-16" : "w-60",
       )}
     >
