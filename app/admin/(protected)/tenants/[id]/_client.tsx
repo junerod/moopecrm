@@ -16,8 +16,8 @@ export function TenantOverviewClient({ id }: TenantOverviewClientProps) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-32 w-full rounded-lg" />
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-lg" />
           ))}
         </div>
@@ -34,7 +34,7 @@ export function TenantOverviewClient({ id }: TenantOverviewClientProps) {
     );
   }
 
-  const { organization, counts, integrations } = data.data;
+  const { organization, counts } = data.data;
 
   return (
     <div className="space-y-6">
@@ -46,7 +46,6 @@ export function TenantOverviewClient({ id }: TenantOverviewClientProps) {
         <TenantOverview
           organization={organization}
           counts={counts}
-          integrations={integrations}
         />
         <TenantActions
           organizationId={organization.id}

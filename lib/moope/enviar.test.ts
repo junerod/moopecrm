@@ -141,8 +141,9 @@ describe("acharContato", () => {
 });
 
 describe("enviarPeloCrm", () => {
-  it("sem contato → 404 e não chama o envio", async () => {
+  it("sem contato cria a ficha; se a criação falhar, 404 e não envia", async () => {
     const enviarMensagem = vi.fn();
+    const criarPessoa = vi.fn(async () => null);
     const contatos = contactsAdmin({ porMeta: null, porFone: [] });
     const admin = {
       from: (tabela: string) => {
@@ -160,7 +161,11 @@ describe("enviarPeloCrm", () => {
         return contatos.from(tabela);
       },
     };
-    const r = await enviarPeloCrm(admin as never, "org", pedido(), "req-1", { enviarMensagem });
+    const r = await enviarPeloCrm(admin as never, "org", pedido(), "req-1", {
+      enviarMensagem,
+      criarPessoa,
+    });
+    expect(criarPessoa).toHaveBeenCalled();
     expect(r).toMatchObject({ ok: false, status: 404 });
     expect(enviarMensagem).not.toHaveBeenCalled();
   });

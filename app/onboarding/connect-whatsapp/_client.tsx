@@ -8,6 +8,7 @@ import { skipWhatsapp, markWhatsappConfigured } from "@/app/actions/onboarding/s
 import { CanalOficialClient } from "@/components/connections/CanalOficialClient";
 import { CanalParceiroClient } from "@/components/connections/CanalParceiroClient";
 import { PerguntaIdadeDoNumero } from "@/components/connections/PerguntaIdadeDoNumero";
+import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 
 interface Props {
   wahaConfigured: boolean;
@@ -173,44 +174,49 @@ function VoltarParaEscolha({ onVoltar }: { onVoltar: () => void }) {
 function Saidas({ status, sessionName }: { status: Status; sessionName: string }) {
   const [pending, startTransition] = useTransition();
   return (
-    <div className="flex flex-wrap gap-2 pt-2">
-      <Button
-        type="button"
-        variant="outline"
-        disabled={pending}
-        onClick={() =>
-          startTransition(async () => {
-            try {
-              await skipWhatsapp();
-            } catch (err) {
-              if (isRedirectError(err)) throw err;
-              toast.error("Falha ao pular: " + String(err));
-            }
-          })
-        }
-      >
-        Pular por enquanto
-      </Button>
-      <Button
-        type="button"
-        disabled={pending || status === "WORKING"}
-        onClick={() =>
-          startTransition(async () => {
-            try {
-              await markWhatsappConfigured(
-                sessionName,
-                status === "WORKING" ? "WORKING" : "configured",
-              );
-            } catch (err) {
-              if (isRedirectError(err)) throw err;
-              toast.error("Falha ao marcar passo: " + String(err));
-            }
-          })
-        }
-      >
-        Conectei em outro lugar
-      </Button>
-    </div>
+    <AcoesDoPasso
+      segmento="connect-whatsapp"
+      pular={
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              try {
+                await skipWhatsapp();
+              } catch (err) {
+                if (isRedirectError(err)) throw err;
+                toast.error("Falha ao pular: " + String(err));
+              }
+            })
+          }
+        >
+          Pular por enquanto
+        </Button>
+      }
+      avancar={
+        <Button
+          type="button"
+          disabled={pending || status === "WORKING"}
+          onClick={() =>
+            startTransition(async () => {
+              try {
+                await markWhatsappConfigured(
+                  sessionName,
+                  status === "WORKING" ? "WORKING" : "configured",
+                );
+              } catch (err) {
+                if (isRedirectError(err)) throw err;
+                toast.error("Falha ao marcar passo: " + String(err));
+              }
+            })
+          }
+        >
+          Conectei em outro lugar
+        </Button>
+      }
+    />
   );
 }
 

@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  passoAnterior,
   passosVisiveis,
   proximoPasso,
   resumoDoOnboarding,
@@ -84,6 +85,24 @@ describe("próximo passo", () => {
       team: { invites_sent: 0, skipped: true },
     };
     expect(proximoPasso(s, SEM_LOJA)).toBeNull();
+  });
+});
+
+describe("passo anterior", () => {
+  it("o primeiro passo não tem para onde voltar", () => {
+    expect(passoAnterior("welcome", SEM_LOJA)).toBeNull();
+  });
+
+  it("volta pelo passo visível de verdade — não pela loja fantasma", () => {
+    expect(passoAnterior("setup-ai", SEM_LOJA)?.segmento).toBe("connect-whatsapp");
+    expect(passoAnterior("funil", SEM_LOJA)?.segmento).toBe("setup-ai");
+    expect(passoAnterior("testar", SEM_LOJA)?.segmento).toBe("funil");
+    expect(passoAnterior("invite-team", SEM_LOJA)?.segmento).toBe("testar");
+    expect(passoAnterior("connect-whatsapp", SEM_LOJA)?.segmento).toBe("welcome");
+  });
+
+  it("na tela final volta para o último passo do wizard", () => {
+    expect(passoAnterior("done", SEM_LOJA)?.segmento).toBe("invite-team");
   });
 });
 

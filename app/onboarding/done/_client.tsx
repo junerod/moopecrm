@@ -8,6 +8,7 @@ import { finishOnboarding } from "@/app/actions/onboarding/finishOnboarding";
 import type { ItemDoResumo } from "@/lib/onboarding/passos";
 import type { PecaDoSistema } from "@/lib/onboarding/o-que-mais-existe";
 import { CheckCircle, Warning } from "@/lib/ui/icons";
+import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 
 export function DoneClient({
   itens,
@@ -121,20 +122,23 @@ export function DoneClient({
         </ul>
       </section>
 
-      <div className="flex justify-center">
-        <Button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              const res = await finishOnboarding();
-              if (res && !res.ok) toast.error(`Falha: ${res.error}`);
-            })
-          }
-        >
-          {pending ? "Finalizando..." : "Começar a usar"}
-        </Button>
-      </div>
+      <AcoesDoPasso
+        segmento="done"
+        avancar={
+          <Button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const res = await finishOnboarding();
+                if (res && !res.ok) toast.error(`Falha: ${res.error}`);
+              })
+            }
+          >
+            {pending ? "Finalizando..." : "Começar a usar"}
+          </Button>
+        }
+      />
     </div>
   );
 }

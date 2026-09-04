@@ -1,8 +1,8 @@
 /**
  * Disparo da locadora no WhatsApp do CRM — um locatário, um POST.
  *
- * Não cria contato (person.upserted tem que ter chegado). Não acorda o agente.
- * Não é campanha. Reusa sendMessageHandler.
+ * Sem contato: cria a ficha na hora (mesmo person.upserted) e manda.
+ * Não acorda o agente. Não é campanha. Reusa sendMessageHandler.
  */
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -19,6 +19,8 @@ import {
   registrarDisparoNoLedger,
   type FreioDoDisparo,
 } from "@/lib/moope/pacing-do-disparo";
+import { upsertPessoa } from "@/lib/moope/pessoa";
+import { telefoneE164 } from "@/lib/moope/telefone";
 
 export const MOOPE_SEND_ENDPOINT = "moope:send";
 
@@ -58,6 +60,7 @@ export type EnviarDeps = {
   registrarDisparo?: typeof registrarDisparoNoLedger;
   /** Teste: sessão já resolvida. Produção lê channel_sessions WORKING. */
   sessao?: { id: string; provider: string };
+  criarPessoa?: typeof upsertPessoa;
 };
 
 type Contato = {
@@ -110,7 +113,17 @@ export async function enviarPeloCrm(
   const cached = await lerIdempotencia(admin, orgId, pedido.idempotency_key);
   if (cached) return { ok: true, status: 200, ...cached, deduplicado: true };
 
-  const contato = await acharContato(admin, orgId, pedido.external_id, pedido.phone);
+  let contato = await acharContato(admin, orgId, pedido.external_id, pedido.phone);
+  if (!contato) {
+    const criar = deps.criarPessoa ?? upsertPessoa;
+    const fone = telefoneE164(pedido.phone);
+    await criar(admin, orgId, {
+      external_id: pedido.external_id,
+      phone: fone,
+      name: fone || pedido.phone,
+    });
+    contato = await acharContato(admin, orgId, pedido.external_id, pedido.phone);
+  }
   if (!contato) {
     return {
       ok: false,

@@ -184,6 +184,10 @@ describe("o passo do telefone pergunta como a pessoa já usa o número", () => {
 
     // c2f88e83: um aviso correto que nasceu sem botão prendeu quem instalava
     // sem chave. A pergunta é um estado novo, e estados novos precisam de saída.
+    expect(screen.getByRole("link", { name: /voltar/i })).toHaveAttribute(
+      "href",
+      "/onboarding/welcome",
+    );
     expect(screen.getByRole("button", { name: /pular por enquanto/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /conectei em outro lugar/i })).toBeTruthy();
   });

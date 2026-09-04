@@ -33,8 +33,8 @@ export function TenantActions({
 
   return (
     <>
-      <div className="rounded-lg border bg-card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="rounded-2xl border border-border/80 bg-card p-6 space-y-4">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Ações
         </h2>
 

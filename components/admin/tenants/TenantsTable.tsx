@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Buildings } from "@/lib/ui/icons";
 import type { AdminTenantRow } from "@/hooks/useAdminTenants";
+import { formatarData } from "./datas";
 
 // ---------------------------------------------------------------------------
 // Status badge
@@ -55,15 +56,6 @@ function StatusBadge({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-  }).format(new Date(iso));
-}
-
 function extractCount(
   arr: Array<{ count: number }> | null | undefined,
 ): number {
@@ -89,7 +81,7 @@ export function TenantsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            {["Slug", "Nome", "CNPJ", "Status", "Users", "Conversas", "Criado em", ""].map(
+            {["Slug", "Nome", "CNPJ", "Status", "Usuários", "Conversas", "Entrou em", ""].map(
               (h) => (
                 <TableHead key={h}>{h}</TableHead>
               ),
@@ -151,9 +143,9 @@ export function TenantsTable({
               <TableHead>Nome</TableHead>
               <TableHead className="w-[130px]">CNPJ</TableHead>
               <TableHead className="w-[110px]">Status</TableHead>
-              <TableHead className="w-[70px] text-right">Users</TableHead>
+              <TableHead className="w-[70px] text-right">Usuários</TableHead>
               <TableHead className="w-[90px] text-right">Conversas</TableHead>
-              <TableHead className="w-[90px]">Criado em</TableHead>
+              <TableHead className="w-[120px]">Entrou em</TableHead>
               <TableHead className="w-[60px]" />
             </TableRow>
           </TableHeader>
@@ -175,7 +167,7 @@ export function TenantsTable({
                   {extractCount(row.conversations_count)}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {formatDate(row.created_at)}
+                  {formatarData(row.created_at)}
                 </TableCell>
                 <TableCell>
                   <Link

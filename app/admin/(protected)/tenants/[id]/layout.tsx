@@ -41,8 +41,6 @@ interface TabItem {
 const TABS: TabItem[] = [
   { label: "Visão Geral", href: "", disabled: false },
   { label: "Saúde", href: "/health", disabled: false },
-  { label: "Equipe", href: "/team", disabled: true },
-  { label: "Uso", href: "/usage", disabled: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -86,22 +84,20 @@ export default async function TenantDetailLayout({
       </Link>
 
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {org?.display_name ?? id}
-          </h1>
-          {org?.slug && (
-            <code className="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">
-              {org.slug}
-            </code>
-          )}
-          {org?.status && (
-            <Badge variant={STATUS_VARIANTS[org.status] ?? "neutral"}>
-              {STATUS_LABELS[org.status] ?? org.status}
-            </Badge>
-          )}
-        </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {org?.display_name ?? id}
+        </h1>
+        {org?.slug && (
+          <code className="rounded-md bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">
+            {org.slug}
+          </code>
+        )}
+        {org?.status && (
+          <Badge variant={STATUS_VARIANTS[org.status] ?? "neutral"}>
+            {STATUS_LABELS[org.status] ?? org.status}
+          </Badge>
+        )}
       </div>
 
       {/* Sub-nav */}

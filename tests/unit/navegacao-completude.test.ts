@@ -43,7 +43,7 @@ const NAV_ALLOWLIST: Record<string, string> = {
   "/app/settings/atualizacao":
     "porta é o rodapé de versão (VersionFooter), que aparece justamente quando há versão nova — melhor que um card fixo. Além disso é só do dono do servidor (is_platform_admin), papel que o registro não modela",
   "/app/integrations/nuvemshop":
-    "Nuvemshop saiu da cara do operador; a página fica por links salvos e pelo schema inerte, sem porta nova. A porta é Integração MOOPE",
+    "A página só redireciona para Integração MOOPE. Sem porta própria: a loja não aparece em tela nenhuma.",
 };
 
 /** Deriva as rotas estáticas a partir dos arquivos de página que existem. */

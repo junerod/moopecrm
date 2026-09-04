@@ -17,6 +17,7 @@ import {
 import { sendOnboardingInvites } from "@/app/actions/onboarding/sendOnboardingInvites";
 import { ROLES, type Role } from "@/lib/schemas/team";
 import { ROTULO_DO_PAPEL } from "@/lib/auth/types";
+import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 
 export function InviteTeamForm() {
   const [emailsRaw, setEmailsRaw] = useState("");
@@ -129,22 +130,30 @@ export function InviteTeamForm() {
               </li>
             ))}
           </ul>
-          <div className="flex sm:justify-end">
-            <Button type="button" onClick={() => (window.location.href = "/onboarding")} className="w-full sm:w-auto">
-              Continuar
-            </Button>
-          </div>
+          <AcoesDoPasso
+            segmento="invite-team"
+            avancar={
+              <Button type="button" onClick={() => (window.location.href = "/onboarding")}>
+                Continuar
+              </Button>
+            }
+          />
         </div>
       )}
 
-      <div className="flex flex-wrap justify-between gap-2 pt-2">
-        <Button type="button" variant="ghost" disabled={pending} onClick={() => submit(true)}>
-          Pular por enquanto
-        </Button>
-        <Button type="button" disabled={pending} onClick={() => submit(false)}>
-          {pending ? "Enviando..." : "Enviar convites"}
-        </Button>
-      </div>
+      <AcoesDoPasso
+        segmento="invite-team"
+        pular={
+          <Button type="button" variant="ghost" disabled={pending} onClick={() => submit(true)}>
+            Pular por enquanto
+          </Button>
+        }
+        avancar={
+          <Button type="button" disabled={pending} onClick={() => submit(false)}>
+            {pending ? "Enviando..." : "Enviar convites"}
+          </Button>
+        }
+      />
     </div>
   );
 }

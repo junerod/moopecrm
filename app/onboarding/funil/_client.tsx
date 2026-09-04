@@ -10,6 +10,7 @@ import { explicacaoDoPasso } from "@/lib/leads/agent-mapping";
 import { MAX_ETAPAS, MIN_ETAPAS, type PropostaDeFunil } from "@/lib/onboarding/proposta-de-funil";
 import { PACOTES } from "@/lib/onboarding/pacotes-de-funil";
 import type { Sugestao } from "@/lib/onboarding/sugerir-funil";
+import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 
 /**
  * O quadro proposto, editável antes de existir.
@@ -228,40 +229,43 @@ export function QuadroClient({
       {/* `flex-wrap`: com o aviso "Dê um nome..." mais os dois botões, a linha
           passava de 320-375px sem margem nenhuma — este é o rodapé de
           navegação do wizard, o botão que a pessoa mais precisa achar. */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={pending}
-          onClick={() => startTransition(async () => void (await pularQuadro()))}
-        >
-          Pular por enquanto
-        </Button>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {semNome ? (
-            <span className="text-xs text-amber-700 dark:text-amber-500">
-              Dê um nome à coluna em branco.
-            </span>
-          ) : null}
-        <Button
-          type="button"
-          disabled={pending || semNome}
-          onClick={() =>
-            startTransition(async () => {
-              const fd = new FormData();
-              fd.set("quadro", JSON.stringify(quadro));
-              fd.set("origem", origem);
-              const res = await aplicarQuadro(fd);
-              // Sucesso redireciona no servidor; só o desfecho ruim volta.
-              if (res && !res.ok) toast.error(res.erro);
-            })
-          }
-        >
-          {pending ? "Salvando..." : "Usar este quadro"}
-        </Button>
-        </div>
-      </div>
+      <AcoesDoPasso
+        segmento="funil"
+        pular={
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => startTransition(async () => void (await pularQuadro()))}
+          >
+            Pular por enquanto
+          </Button>
+        }
+        avancar={
+          <div className="flex flex-wrap items-center gap-3">
+            {semNome ? (
+              <span className="text-xs text-amber-700 dark:text-amber-500">
+                Dê um nome à coluna em branco.
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              disabled={pending || semNome}
+              onClick={() =>
+                startTransition(async () => {
+                  const fd = new FormData();
+                  fd.set("quadro", JSON.stringify(quadro));
+                  fd.set("origem", origem);
+                  const res = await aplicarQuadro(fd);
+                  if (res && !res.ok) toast.error(res.erro);
+                })
+              }
+            >
+              {pending ? "Salvando..." : "Usar este quadro"}
+            </Button>
+          </div>
+        }
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { createDefaultAgent, skipAi } from "@/app/actions/onboarding/createDefau
 import type { PromptTemplate } from "@/lib/schemas/onboarding";
 import { cn } from "@/lib/utils";
 import { PROVEDOR_POR_ID } from "@/lib/ai/pontos/provedores";
+import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 
 /**
  * O jeito de falar, não o "estilo de prompt".
@@ -330,20 +331,24 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={pending}
-          onClick={() => startTransition(() => void skipAi())}
-          className="w-full sm:w-auto"
-        >
-          Pular a configuração do agente por agora
-        </Button>
-        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-          {pending ? "Criando..." : "Criar e continuar"}
-        </Button>
-      </div>
+      <AcoesDoPasso
+        segmento="setup-ai"
+        pular={
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => startTransition(() => void skipAi())}
+          >
+            Pular a configuração do agente por agora
+          </Button>
+        }
+        avancar={
+          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+            {pending ? "Criando..." : "Criar e continuar"}
+          </Button>
+        }
+      />
     </form>
   );
 }

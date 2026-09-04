@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { randomUUID } from "node:crypto";
+import { inicioDoMesUtc } from "@/components/admin/tenants/datas";
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/admin/tenants/[id]
@@ -55,11 +56,9 @@ export async function GET(
     conversationsRes,
     messagesRes,
     leadsRes,
-    ordersRes,
     lgpdRes,
     aiRes,
-    wahaRes,
-    integrationRes,
+    sessionsRes,
   ] = await Promise.all([
     admin
       .from("user_organizations")
@@ -78,10 +77,6 @@ export async function GET(
       .select("*", { count: "exact", head: true })
       .eq("organization_id", id),
     admin
-      .from("orders")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", id),
-    admin
       .from("lgpd_requests")
       .select("*", { count: "exact", head: true })
       .eq("organization_id", id)
@@ -96,51 +91,33 @@ export async function GET(
       .not("status", "in", "(completed,failed)"),
     // `llm_calls` e não `ai_invocations`: a migration 0130 deixou a segunda sem
     // nenhum escritor (`lib/ai/log-invocation.ts` passou a gravar na primeira).
-    // Lendo a tabela morta, este contador viraria ZERO em 30 dias para todo
-    // tenant — com o dinheiro saindo. É o mesmo sintoma que a 0130 veio matar.
+    // A janela é o mês corrente (a mesma de `fn_gasto_de_ia_do_mes`), não os
+    // últimos 30 dias — a ficha do tenant mostra o mês por extenso.
     admin
       .from("llm_calls")
       .select("*", { count: "exact", head: true })
       .eq("organization_id", id)
-      .gte(
-        "created_at",
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      ),
+      .gte("created_at", inicioDoMesUtc()),
     admin
       .from("channel_sessions")
-      .select("*", { count: "exact", head: true })
+      .select("id, status")
       .eq("organization_id", id),
-    admin
-      .from("tenant_integrations")
-      // `connected_at` não existe: a linha passa a existir quando a integração
-      // é conectada, então `created_at` é essa mesma data com o nome real.
-      .select("id, provider, status, created_at")
-      .eq("organization_id", id)
-      .eq("provider", "nuvemshop")
-      .limit(1),
   ]);
 
+  const sessoes = (sessionsRes.data ?? []) as Array<{
+    id: string;
+    status: string | null;
+  }>;
   const counts = {
     user_count: usersRes.count ?? 0,
     conversations_count: conversationsRes.count ?? 0,
     messages_count: messagesRes.count ?? 0,
     leads_count: leadsRes.count ?? 0,
-    orders_count: ordersRes.count ?? 0,
     lgpd_requests_pending: lgpdRes.count ?? 0,
-    ai_invocations_30d: aiRes.count ?? 0,
-    waha_sessions_count: wahaRes.count ?? 0,
-  };
-
-  const nuvemshopIntegration =
-    integrationRes.data && integrationRes.data.length > 0
-      ? integrationRes.data[0]
-      : null;
-
-  const integrations = {
-    nuvemshop_status: nuvemshopIntegration?.status ?? null,
-    // Nome de SAÍDA preservado: é o que TenantOverview já lê. Só a coluna de
-    // origem estava errada.
-    nuvemshop_connected_at: nuvemshopIntegration?.created_at ?? null,
+    ai_invocations_do_mes: aiRes.count ?? 0,
+    whatsapp_sessions_count: sessoes.length,
+    whatsapp_sessions_working: sessoes.filter((s) => s.status === "WORKING")
+      .length,
   };
 
   // Audit lightweight — fire-and-forget
@@ -156,5 +133,5 @@ export async function GET(
     metadata: { tenant_slug: org.slug },
   });
 
-  return ok({ organization: org, counts, integrations }, { requestId });
+  return ok({ organization: org, counts }, { requestId });
 }

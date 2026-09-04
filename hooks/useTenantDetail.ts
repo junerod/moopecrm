@@ -26,22 +26,16 @@ export interface TenantCounts {
   conversations_count: number;
   messages_count: number;
   leads_count: number;
-  orders_count: number;
   lgpd_requests_pending: number;
-  ai_invocations_30d: number;
-  waha_sessions_count: number;
-}
-
-export interface TenantIntegrations {
-  nuvemshop_status: string | null;
-  nuvemshop_connected_at: string | null;
+  ai_invocations_do_mes: number;
+  whatsapp_sessions_count: number;
+  whatsapp_sessions_working: number;
 }
 
 export interface TenantDetailResponse {
   data: {
     organization: TenantOrganization;
     counts: TenantCounts;
-    integrations: TenantIntegrations;
   };
 }
 

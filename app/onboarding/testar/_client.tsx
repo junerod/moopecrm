@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { marcarTesteFeito, pularTeste } from "@/app/actions/onboarding/marcarTeste";
+import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 
 interface Props {
   nome: string | null;
@@ -165,38 +166,37 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
         </div>
       )}
 
-      <div className="flex flex-wrap justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={pending}
-          onClick={() => startTransition(() => void pularTeste())}
-        >
-          Pular
-        </Button>
-        <Button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              // `respondeu` guarda a diferença entre "vi funcionando" e "passei
-              // por aqui" — é o que o resumo final usa para não dizer que está
-              // tudo certo quando ninguém viu nada.
-              //
-              // A action redireciona no servidor (o `redirect` do Next lança),
-              // então só chega aqui quem falhou antes disso.
-              try {
-                await marcarTesteFeito(desfecho?.tipo === "resposta");
-              } catch (err) {
-                if (err instanceof Error && err.message.startsWith("NEXT_REDIRECT")) throw err;
-                toast.error("Não consegui salvar este passo.");
-              }
-            })
-          }
-        >
-          Continuar
-        </Button>
-      </div>
+      <AcoesDoPasso
+        segmento="testar"
+        pular={
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => startTransition(() => void pularTeste())}
+          >
+            Pular
+          </Button>
+        }
+        avancar={
+          <Button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                try {
+                  await marcarTesteFeito(desfecho?.tipo === "resposta");
+                } catch (err) {
+                  if (err instanceof Error && err.message.startsWith("NEXT_REDIRECT")) throw err;
+                  toast.error("Não consegui salvar este passo.");
+                }
+              })
+            }
+          >
+            Continuar
+          </Button>
+        }
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { acceptWelcome } from "@/app/actions/onboarding/acceptWelcome";
 import { Cartao } from "@/app/onboarding/_components/Cartao";
+import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -158,11 +159,14 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
           </span>
         </label>
 
-        <div className="flex sm:justify-end">
-          <Button type="submit" disabled={pending || !accepted} className="w-full sm:w-auto">
-            {pending ? "Salvando..." : "Continuar"}
-          </Button>
-        </div>
+        <AcoesDoPasso
+          segmento="welcome"
+          avancar={
+            <Button type="submit" disabled={pending || !accepted} className="w-full sm:w-auto">
+              {pending ? "Salvando..." : "Continuar"}
+            </Button>
+          }
+        />
       </Cartao>
     </form>
   );

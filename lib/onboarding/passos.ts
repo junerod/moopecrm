@@ -127,6 +127,24 @@ export function proximoPasso(
   return passosVisiveis(ctx).find((p) => !p.cumprido(state)) ?? null;
 }
 
+/**
+ * O passo imediatamente atrás do que está na tela.
+ *
+ * Sem isto o wizard só tinha Pular e Continuar — quem errava o ramo ou
+ * pulava o WhatsApp sem querer não tinha como voltar, só avançar. `done`
+ * não é um PASSOS: fica depois do último visível.
+ */
+export function passoAnterior(
+  segmentoAtual: string,
+  ctx: ContextoDoPasso,
+): PassoDoOnboarding | null {
+  const visiveis = passosVisiveis(ctx);
+  if (segmentoAtual === "done") return visiveis[visiveis.length - 1] ?? null;
+  const i = visiveis.findIndex((p) => p.segmento === segmentoAtual);
+  if (i <= 0) return null;
+  return visiveis[i - 1] ?? null;
+}
+
 export interface ItemDoResumo {
   segmento: string;
   rotulo: string;
