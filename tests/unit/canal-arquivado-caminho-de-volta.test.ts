@@ -439,7 +439,22 @@ describe("POST /api/v1/channel-sessions/[id]/reconnect — canal excluído não 
     expect(db.escritas).toEqual([]);
   });
 
-  it("canal ativo reconecta normalmente (a guarda não engoliu o caminho bom)", async () => {
+  it("canal ativo STOPPED reconecta no modo suave (sem logout)", async () => {
+    authOk();
+    const db = makeDb({ sessions: [canalQr({ status: "STOPPED" })] });
+    const waha = transporteOk();
+    const { POST } = await import("@/app/api/v1/channel-sessions/[id]/reconnect/route");
+    const res = await POST(req(), ctx());
+
+    expect(res.status).toBe(200);
+    expect(waha.stopSession).toHaveBeenCalledWith(NOME_SESSAO);
+    expect(waha.logoutSession).not.toHaveBeenCalled();
+    expect(waha.startSession).toHaveBeenCalledWith(NOME_SESSAO);
+    expect(db.linhas[0]?.status).toBe("STARTING");
+    expect(puxarHistoricoAposReligamento).toHaveBeenCalled();
+  });
+
+  it("canal ativo FAILED descarta a credencial — senão o start reaproveita arquivo morto", async () => {
     authOk();
     const db = makeDb({ sessions: [canalQr({ status: "FAILED" })] });
     const waha = transporteOk();
@@ -448,14 +463,14 @@ describe("POST /api/v1/channel-sessions/[id]/reconnect — canal excluído não 
 
     expect(res.status).toBe(200);
     expect(waha.stopSession).toHaveBeenCalledWith(NOME_SESSAO);
+    expect(waha.logoutSession).toHaveBeenCalledWith(NOME_SESSAO);
     expect(waha.startSession).toHaveBeenCalledWith(NOME_SESSAO);
     expect(db.linhas[0]?.status).toBe("STARTING");
-    expect(puxarHistoricoAposReligamento).toHaveBeenCalled();
   });
 
   it("clone sem a migration 0106: reconectar continua funcionando", async () => {
     authOk();
-    makeDb({ sessions: [canalQr({ status: "FAILED" })], semColunaArquivada: true });
+    makeDb({ sessions: [canalQr({ status: "STOPPED" })], semColunaArquivada: true });
     const waha = transporteOk();
     const { POST } = await import("@/app/api/v1/channel-sessions/[id]/reconnect/route");
     const res = await POST(req(), ctx());

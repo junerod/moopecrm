@@ -43,8 +43,7 @@ describe("o que mais existe", () => {
   });
 
   it("apresenta a peça pelo que ela FAZ, não pelo nome técnico do menu", () => {
-    // "Inbox", "Kanban", "Follow-ups", "Alertas" são os rótulos do menu — quem
-    // instalou o sistema há dez minutos não reconhece nenhum deles.
+    // Nomes técnicos de menu não entram aqui: a peça é apresentada pelo que faz.
     const tecnicos = /^(inbox|kanban|follow-?ups?|alertas|radar|propostas)$/i;
     const crus = PECAS.filter((p) => tecnicos.test(p.comoChamar.trim()));
     expect(crus.map((p) => p.comoChamar)).toEqual([]);

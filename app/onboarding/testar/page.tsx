@@ -33,11 +33,14 @@ export default async function TestarPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Veja ele atender</h2>
-        <p className="text-sm text-muted-foreground">
-          Escreva como se fosse um cliente. Nada é enviado pelo WhatsApp — é só um
-          ensaio, entre você e ele.
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">
+          Teste o agente com uma conversa de mentira
+        </h2>
+        <p className="text-sm leading-relaxed text-zinc-400">
+          Escreva como se fosse um cliente. Nada sai no WhatsApp de verdade — é um
+          ensaio. Se o agente ainda não tem chave de IA, pule e siga: o funil e o
+          time já estão prontos.
         </p>
       </header>
       <TestarClient

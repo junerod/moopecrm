@@ -42,10 +42,15 @@ export default async function SetupAiPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Treine seu funcionário</h2>
-        <p className="text-sm text-muted-foreground">
-          Quem ele é, como fala e o que pode prometer. Dá para mudar tudo depois.
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">
+          Treine um agente de IA para trabalhar por você
+        </h2>
+        <p className="text-sm leading-relaxed text-zinc-400">
+          Ele responde no WhatsApp com o jeito da sua empresa. Para pensar, precisa
+          de uma chave de uma empresa de IA (Anthropic, OpenAI ou outra). Se ainda
+          não contratou, pule — o funil e o WhatsApp funcionam sem isso, e dá para
+          voltar depois.
         </p>
       </header>
       {/*

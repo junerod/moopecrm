@@ -85,24 +85,24 @@ export function QuadroClient({
       */}
       {sugestao.origem === "ia" ? (
         <p className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
-          Seu funcionário montou este quadro olhando o que você me contou sobre o
-          negócio. Ajuste o que quiser.
+          Seu agente de IA montou este quadro olhando o que você contou sobre o
+          negócio. Ajuste o que quiser — as colunas são o funil que ele vai usar.
         </p>
       ) : (
         <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
           <p>
-            Não consegui pedir uma sugestão para o seu funcionário agora
+            Não consegui pedir uma sugestão ao seu agente de IA agora
             {sugestao.porque ? <> — {sugestao.porque}</> : null}. Comecei por um
             quadro pronto de <strong>{sugestao.pacote.comoSeApresenta}</strong>.
           </p>
           <p className="text-xs text-muted-foreground">
-            Isso não trava nada: escolha outro modelo abaixo ou ajuste as colunas
-            na mão. Dá para mudar tudo depois, quando quiser.
+            Os quadros prontos continuam aqui: escolha outro abaixo ou ajuste as
+            colunas na mão. Dá para mudar tudo depois, quando quiser.
           </p>
         </div>
       )}
 
-      <div className="space-y-3 rounded-lg border bg-background p-6">
+      <div className="space-y-3 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="nome_do_quadro">
             Nome do quadro
@@ -135,8 +135,8 @@ export function QuadroClient({
                   />
                   <p className="text-xs text-muted-foreground">
                     {explicacao
-                      ? `Ele move o cliente para cá quando ${explicacao}.`
-                      : "Coluna que só vocês movem — ele não mexe nesta."}
+                      ? `O agente move o cliente para cá quando ${explicacao}.`
+                      : "Coluna que só vocês movem — o agente não mexe nesta."}
                   </p>
                 </div>
                 {/*

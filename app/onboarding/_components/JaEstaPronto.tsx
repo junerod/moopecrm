@@ -1,4 +1,5 @@
 import type { RetratoDaInstalacao } from "@/lib/instalacao/retrato";
+import { CheckCircle, Warning } from "@/lib/ui/icons";
 
 /**
  * A primeira coisa que a pessoa lê no wizard: o que ela JÁ tem.
@@ -52,26 +53,34 @@ export function JaEstaPronto({ retrato }: { retrato: RetratoDaInstalacao }) {
   return (
     <section
       aria-labelledby="ja-pronto"
-      className="rounded-lg border bg-background p-5"
+      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-xl shadow-black/20"
     >
-      <h3 id="ja-pronto" className="text-sm font-medium">
+      <h3 id="ja-pronto" className="text-sm font-medium text-white">
         Você já instalou o sistema. Isto aqui já está de pé:
       </h3>
-      <ul className="mt-3 space-y-1.5 text-sm">
+      <ul className="mt-4 space-y-2.5 text-sm">
         {itens.map((it) => (
-          <li key={it.texto} className="flex items-start gap-2">
-            <span
-              aria-hidden
-              className={
-                "mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full " +
-                (it.pronto ? "bg-emerald-500" : "bg-amber-500")
-              }
-            />
-            <span className={it.pronto ? "" : "text-muted-foreground"}>{it.texto}</span>
+          <li key={it.texto} className="flex items-start gap-3">
+            {it.pronto ? (
+              <CheckCircle
+                size={18}
+                weight="fill"
+                className="mt-0.5 shrink-0 text-emerald-400"
+                aria-hidden
+              />
+            ) : (
+              <Warning
+                size={18}
+                weight="fill"
+                className="mt-0.5 shrink-0 text-amber-400"
+                aria-hidden
+              />
+            )}
+            <span className={it.pronto ? "text-zinc-100" : "text-amber-200/90"}>{it.texto}</span>
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-4 text-xs text-zinc-500">
         {faltando === 0
           ? "Agora é montar quem vai atender por você."
           : "O que falta a gente resolve nos próximos passos."}

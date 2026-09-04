@@ -32,6 +32,9 @@ describe("montarRetratoDoCanal", () => {
     expect(r.phase).toBe("no_channel");
     expect(r.ready).toBe(false);
     expect(r.can_send_now).toBe(false);
+    expect(r.connected).toBe(false);
+    expect(r.needs_qr).toBe(false);
+    expect(r.can_soft_reconnect).toBe(false);
     expect(r.warmup.remaining_today).toBe(0);
   });
 
@@ -50,6 +53,7 @@ describe("montarRetratoDoCanal", () => {
     expect(r.phase).toBe("ready");
     expect(r.ready).toBe(true);
     expect(r.can_send_now).toBe(true);
+    expect(r.connected).toBe(true);
     expect(r.warmup.skipped).toBe(true);
     expect(r.warmup.cap_today).toBeNull();
     expect(r.warmup.remaining_today).toBe(488);

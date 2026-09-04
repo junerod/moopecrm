@@ -103,6 +103,10 @@ describe("o passo do telefone pergunta como a pessoa já usa o número", () => {
     expect(screen.getByTestId("forma-qr")).toBeTruthy();
     expect(screen.getByTestId("forma-oficial")).toBeTruthy();
     expect(screen.getByTestId("forma-parceiro")).toBeTruthy();
+    // O QR já vem marcado — é o caminho de quase todo mundo — mas o código
+    // em si só aparece depois de a pessoa dizer se o número já atende.
+    expect(screen.getByTestId("forma-qr").getAttribute("data-marcada")).toBe("sim");
+    expect(screen.getByTestId("pergunta-idade-do-numero")).toBeTruthy();
 
     // O código não pode estar na tela antes de alguém escolher lê-lo.
     expect(screen.queryByAltText(/código qr/i)).toBeNull();

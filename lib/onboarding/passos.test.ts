@@ -108,11 +108,13 @@ describe("resumo final", () => {
   });
 
   it("os rótulos nomeiam PEÇAS do funcionário, não telas do sistema", () => {
-    // A moldura do redesenho. Um passo chamado "IA" não diz o que vai
-    // acontecer ali; "Treinar" diz.
+    // A moldura do redesenho. Um passo chamado só "IA" não diz o que vai
+    // acontecer ali; o rótulo nomeia a peça (WhatsApp, agente, funil).
     const rotulos = resumoDoOnboarding(VAZIO, SEM_LOJA).map((i) => i.rotulo);
-    expect(rotulos).toContain("O telefone dele");
-    expect(rotulos).toContain("Treinar");
+    expect(rotulos).toContain("WhatsApp");
+    expect(rotulos).toContain("Agente de IA");
+    expect(rotulos).toContain("O funil");
+    expect(rotulos).toContain("Testar o agente");
     expect(rotulos).not.toContain("IA");
   });
 });

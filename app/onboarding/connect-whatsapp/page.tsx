@@ -21,11 +21,13 @@ export default async function ConnectWhatsappPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Dê um telefone a ele</h2>
-        <p className="text-sm text-muted-foreground">
-          É por este número que ele vai atender seus clientes. Se você conecta pelo
-          celular, tenha ele por perto.
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">
+          Conecte o WhatsApp da empresa
+        </h2>
+        <p className="text-sm leading-relaxed text-zinc-400">
+          O jeito mais comum é ler o código QR com o celular — já vem selecionado.
+          Tenha o aparelho por perto. Dá para pular e conectar depois.
         </p>
       </header>
       <ConnectWhatsappClient

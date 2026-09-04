@@ -27,7 +27,7 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
   const [carregando, setCarregando] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const funcionario = nome ?? "seu funcionário";
+  const funcionario = nome ?? "seu agente";
 
   // Três estados possíveis, e nenhum deles pode virar uma tela vazia: sem
   // agente (a pessoa pulou o treinamento), agente em rascunho (não tem versão
@@ -87,8 +87,8 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
   return (
     <div className="space-y-4">
       {semAgente && (
-        <div className="rounded-lg border bg-background p-6" role="status">
-          <p className="text-sm font-medium">Você ainda não montou seu funcionário.</p>
+        <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6" role="status">
+          <p className="text-sm font-medium">Você ainda não montou seu agente.</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Sem ninguém treinado, não há o que testar. Dá para voltar ao passo anterior
             agora ou fazer isso depois, em IA › Agentes.
@@ -97,7 +97,7 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
       )}
 
       {rascunho && (
-        <div className="rounded-lg border bg-background p-6" role="status">
+        <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6" role="status">
           <p className="text-sm font-medium">
             {funcionario} está como <strong>rascunho</strong> — ainda não foi para o ar.
           </p>
@@ -109,7 +109,7 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
       )}
 
       {!semAgente && !rascunho && (
-        <div className="space-y-4 rounded-lg border bg-background p-6">
+        <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
           <div className="space-y-2">
             <Label htmlFor="mensagem">Escreva como se fosse um cliente</Label>
             <Textarea

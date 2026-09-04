@@ -39,10 +39,11 @@ export function FlowsList({ initialData, canWrite }: Props) {
       <>
         <Card className="flex flex-col items-center gap-3 p-10 text-center">
           <FlowArrow size={36} aria-hidden className="text-text-muted" />
-          <h2 className="font-medium">Nenhum fluxo de follow-up ainda</h2>
+          <h2 className="font-medium">Nenhuma automação ainda</h2>
           <p className="max-w-sm text-sm text-text-muted">
-            Follow-ups reengajam contatos automaticamente após silêncio, mudança de
-            etapa ou fim de conversa — sem depender de alguém lembrar de mandar mensagem.
+            Monte um fluxo para o sistema voltar a falar sozinho quando o cliente
+            sumir, mudar de etapa ou encerrar a conversa — sem depender de alguém
+            lembrar de mandar mensagem.
           </p>
           {canWrite && <div className="mt-1">{newFlowButton}</div>}
         </Card>

@@ -67,7 +67,7 @@ export function InviteTeamForm() {
   };
 
   return (
-    <div className="space-y-4 rounded-lg border bg-background p-6">
+    <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
       <div className="space-y-2">
         <Label htmlFor="emails">E-mail de quem vai trabalhar com ele</Label>
         <Textarea

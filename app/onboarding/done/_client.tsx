@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { finishOnboarding } from "@/app/actions/onboarding/finishOnboarding";
 import type { ItemDoResumo } from "@/lib/onboarding/passos";
 import type { PecaDoSistema } from "@/lib/onboarding/o-que-mais-existe";
+import { CheckCircle, Warning } from "@/lib/ui/icons";
 
 export function DoneClient({
   itens,
@@ -19,27 +20,35 @@ export function DoneClient({
   const pendentes = itens.filter((i) => !i.feito);
 
   return (
-    <div className="space-y-6 rounded-lg border bg-background p-6">
+    <div className="space-y-6 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
       <div className="space-y-1 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight">Tudo pronto!</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">Tudo pronto!</h2>
+        <p className="text-sm text-zinc-400">
           {pendentes.length === 0
-            ? "Seu funcionário está montado. Daqui em diante é só acompanhar."
-            : "Seu funcionário já está de pé. O que ficou para depois continua te esperando."}
+            ? "Sua operação está montada. Daqui em diante é acompanhar o que chega."
+            : "O essencial já está de pé. O que ficou para depois continua te esperando."}
         </p>
       </div>
 
-      <ul className="mx-auto max-w-sm space-y-2 text-left text-sm">
+      <ul className="mx-auto max-w-sm space-y-2.5 text-left text-sm">
         {itens.map((it) => (
-          <li key={it.segmento} className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className={
-                "inline-block h-2 w-2 rounded-full " +
-                (it.feito ? "bg-emerald-500" : "bg-muted-foreground/30")
-              }
-            />
-            <span className={it.feito ? "" : "text-muted-foreground"}>
+          <li key={it.segmento} className="flex items-center gap-3">
+            {it.feito ? (
+              <CheckCircle
+                size={18}
+                weight="fill"
+                className="shrink-0 text-emerald-400"
+                aria-hidden
+              />
+            ) : it.pulado ? (
+              <Warning size={18} weight="fill" className="shrink-0 text-amber-400" aria-hidden />
+            ) : (
+              <span
+                aria-hidden
+                className="inline-block h-4 w-4 shrink-0 rounded-full border border-zinc-600"
+              />
+            )}
+            <span className={it.feito ? "text-zinc-100" : "text-zinc-500"}>
               {it.rotulo}
               {/*
                 "Pulado" é escolha da pessoa; "ainda não" é o que ela não
@@ -61,10 +70,10 @@ export function DoneClient({
         ficava por conta da curiosidade — e quase ninguém volta para explorar
         menu.
       */}
-      <section className="space-y-3 border-t pt-6">
+      <section className="space-y-3 border-t border-white/10 pt-6">
         <div>
-          <h3 className="text-sm font-medium">O que mais tem aqui</h3>
-          <p className="text-xs text-muted-foreground">
+          <h3 className="text-sm font-medium text-white">O que mais tem aqui</h3>
+          <p className="text-xs text-zinc-500">
             Você não precisa mexer em nada disso agora. É só para saber que existe.
           </p>
         </div>
@@ -82,23 +91,23 @@ export function DoneClient({
         */}
         <ul className="grid gap-2 sm:grid-cols-2">
           {pecas.map((p) => (
-            <li key={p.href} className="rounded-md border p-3">
-              <a href={p.href} className="text-sm font-medium underline-offset-2 hover:underline">
+            <li key={p.href} className="rounded-xl border border-white/10 bg-zinc-950/50 p-3">
+              <a href={p.href} className="text-sm font-medium text-accent underline-offset-2 hover:underline">
                 {p.comoChamar}
               </a>
-              <span className="ml-1 text-xs text-muted-foreground">({p.label})</span>
-              <p className="mt-1 text-xs text-muted-foreground">{p.porQue}</p>
+              <span className="ml-1 text-xs text-zinc-500">({p.label})</span>
+              <p className="mt-1 text-xs text-zinc-500">{p.porQue}</p>
 
               <details className="group mt-2">
-                <summary className="cursor-pointer list-none text-xs text-muted-foreground underline underline-offset-2">
+                <summary className="cursor-pointer list-none text-xs text-zinc-500 underline underline-offset-2">
                   Como funciona
                 </summary>
                 <ol className="mt-2 space-y-1.5">
                   {p.comoFunciona.map((passo, i) => (
-                    <li key={passo} className="flex gap-2 text-xs text-muted-foreground">
+                    <li key={passo} className="flex gap-2 text-xs text-zinc-500">
                       <span
                         aria-hidden
-                        className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px]"
+                        className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-white/15 text-[10px]"
                       >
                         {i + 1}
                       </span>

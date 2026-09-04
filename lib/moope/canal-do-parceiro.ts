@@ -51,7 +51,23 @@ export type RetratoDoCanal = {
   proactive_gap_seconds: number;
   can_send_now: boolean;
   retry_after: number | null;
+  connected: boolean;
+  needs_qr: boolean;
+  can_soft_reconnect: boolean;
 };
+
+function flagsDoStatus(status: string | null): {
+  connected: boolean;
+  needs_qr: boolean;
+  can_soft_reconnect: boolean;
+} {
+  const st = String(status || "").toUpperCase();
+  return {
+    connected: st === "WORKING",
+    needs_qr: st === "FAILED" || st === "SCAN_QR_CODE",
+    can_soft_reconnect: st === "STOPPED",
+  };
+}
 
 export function montarRetratoDoCanal(input: {
   status: string | null;
@@ -93,6 +109,9 @@ export function montarRetratoDoCanal(input: {
       ready: false,
       phase: "no_channel",
       status: null,
+      connected: false,
+      needs_qr: false,
+      can_soft_reconnect: false,
       warmup: {
         skipped: false,
         age_days: 0,
@@ -134,6 +153,7 @@ export function montarRetratoDoCanal(input: {
     ready: phase === "ready",
     phase,
     status: input.status,
+    ...flagsDoStatus(input.status),
     warmup: {
       skipped,
       age_days: ageDays,
@@ -162,7 +182,8 @@ export async function retratoDoCanalDaOrg(
 ): Promise<RetratoDoCanal> {
   const sessao = await acharSessaoWorking(admin, orgId);
   if (!sessao) {
-    return montarRetratoDoCanal({
+    const caiu = await acharSessaoMaisRecente(admin, orgId);
+    const base = montarRetratoDoCanal({
       status: null,
       knobs: PACING_DEFAULTS,
       knobsRow: null,
@@ -173,6 +194,12 @@ export async function retratoDoCanalDaOrg(
       banRisk: true,
       agora,
     });
+    if (!caiu) return base;
+    return {
+      ...base,
+      status: caiu.status,
+      ...flagsDoStatus(caiu.status),
+    };
   }
 
   const knobs = await lerKnobs(admin, orgId, sessao.id);
@@ -236,4 +263,34 @@ async function acharSessaoWorking(
     status: string;
     daily_message_limit: number | null;
   } | null) ?? null;
+}
+
+async function acharSessaoMaisRecente(
+  admin: SupabaseClient,
+  orgId: string,
+): Promise<{ id: string; status: string } | null> {
+  const { data } = await queryTolerantToMissingArchived(
+    () =>
+      admin
+        .from("channel_sessions")
+        .select("id, status, archived_at, waha_session_name")
+        .eq("organization_id", orgId)
+        .is("archived_at", null)
+        .not("waha_session_name", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    () =>
+      admin
+        .from("channel_sessions")
+        .select("id, status, waha_session_name")
+        .eq("organization_id", orgId)
+        .not("waha_session_name", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+  );
+  const row = data as { id?: string; status?: string } | null;
+  if (!row?.id) return null;
+  return { id: row.id, status: String(row.status || "") };
 }

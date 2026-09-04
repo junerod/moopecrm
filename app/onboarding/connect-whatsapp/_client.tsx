@@ -125,8 +125,10 @@ function Escolha({
     <label
       data-testid={`forma-${valor}`}
       data-marcada={marcada ? "sim" : "nao"}
-      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-        marcada ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+        marcada
+          ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+          : "border-white/10 hover:border-accent/40 hover:bg-white/5"
       }`}
     >
       <input
@@ -135,7 +137,7 @@ function Escolha({
         value={valor}
         checked={marcada}
         onChange={() => onEscolher(valor)}
-        className="mt-1 h-4 w-4 shrink-0 accent-primary"
+        className="mt-1 h-4 w-4 shrink-0 accent-accent"
         aria-label={titulo}
       />
       <span className="space-y-1">
@@ -218,7 +220,7 @@ export function ConnectWhatsappClient({
   oficialPodeReceber,
 }: Props) {
   const [pending, startTransition] = useTransition();
-  const [forma, setForma] = useState<Forma | null>(null);
+  const [forma, setForma] = useState<Forma>("qr");
   const [numeroJaEmUso, setNumeroJaEmUso] = useState<boolean | null>(null);
   const [info, setInfo] = useState<SessionInfo>({ status: "INIT", session: sessionName });
   const [qrTick, setQrTick] = useState(0);
@@ -346,50 +348,18 @@ export function ConnectWhatsappClient({
 
   const showQr = wahaConfigured && status === "SCAN_QR_CODE";
 
-  // A PERGUNTA. Enquanto ninguém respondeu, nada é criado e nada é pedido —
-  // é o único estado em que esta tela não tem efeito colateral nenhum.
-  if (forma === null) {
-    return (
-      <div className="space-y-4 rounded-lg border bg-background p-6">
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-medium">Como você já usa esse número?</legend>
-          <p className="text-xs text-muted-foreground">
-            Existe mais de um jeito de ter WhatsApp para empresa, e cada um conecta
-            de um jeito. Se você nunca ouviu falar dos outros dois, é o primeiro.
-          </p>
-          <div className="grid gap-2">
-            <Escolha
-              valor="qr"
-              atual={forma}
-              titulo="Leio um código com o celular"
-              corpo="É assim para quase todo mundo. Você abre o WhatsApp no celular que vai atender e aponta para um código que aparece aqui."
-              onEscolher={setForma}
-            />
-            <Escolha
-              valor="oficial"
-              atual={forma}
-              titulo="Tenho conta oficial na Meta"
-              corpo="Você cadastrou o número na Meta e tem as credenciais em mãos. Não usa o celular para conectar."
-              onEscolher={setForma}
-            />
-            <Escolha
-              valor="parceiro"
-              atual={forma}
-              titulo="Contrato de um provedor parceiro"
-              corpo="Uma empresa parceira cuida do seu WhatsApp e te deu uma chave de acesso."
-              onEscolher={setForma}
-            />
-          </div>
-        </fieldset>
-        <Saidas status={status} sessionName={sessionName} />
-      </div>
-    );
-  }
-
+  // A PERGUNTA. O QR já vem marcado — é o caminho de quase todo mundo — mas a
+  // sessão só sobe quando a pessoa diz se o número já atende. Marcar o padrão
+  // não cria canal: o efeito continua preso à idade.
   if (forma === "oficial" || forma === "parceiro") {
     return (
-      <div className="space-y-4 rounded-lg border bg-background p-6">
-        <VoltarParaEscolha onVoltar={() => setForma(null)} />
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
+        <VoltarParaEscolha
+          onVoltar={() => {
+            setForma("qr");
+            setNumeroJaEmUso(null);
+          }}
+        />
 
         {forma === "oficial" && !oficialPodeReceber && (
           <div className="rounded-md border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-100">
@@ -417,13 +387,37 @@ export function ConnectWhatsappClient({
 
   if (numeroJaEmUso === null) {
     return (
-      <div className="space-y-4 rounded-lg border bg-background p-6">
-        <VoltarParaEscolha
-          onVoltar={() => {
-            setForma(null);
-            setNumeroJaEmUso(null);
-          }}
-        />
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
+        <fieldset className="space-y-3">
+          <legend className="text-sm font-medium">Como você já usa esse número?</legend>
+          <p className="text-xs text-zinc-500">
+            O código com o celular já vem selecionado. Os outros dois caminhos
+            existem se você já tem conta oficial ou um provedor parceiro.
+          </p>
+          <div className="grid gap-2">
+            <Escolha
+              valor="qr"
+              atual={forma}
+              titulo="Leio um código com o celular"
+              corpo="É assim para quase todo mundo. Você abre o WhatsApp no celular que vai atender e aponta para um código que aparece aqui."
+              onEscolher={setForma}
+            />
+            <Escolha
+              valor="oficial"
+              atual={forma}
+              titulo="Tenho conta oficial na Meta"
+              corpo="Você cadastrou o número na Meta e tem as credenciais em mãos. Não usa o celular para conectar."
+              onEscolher={setForma}
+            />
+            <Escolha
+              valor="parceiro"
+              atual={forma}
+              titulo="Contrato de um provedor parceiro"
+              corpo="Uma empresa parceira cuida do seu WhatsApp e te deu uma chave de acesso."
+              onEscolher={setForma}
+            />
+          </div>
+        </fieldset>
         <PerguntaIdadeDoNumero valor={numeroJaEmUso} onEscolher={setNumeroJaEmUso} />
         <Saidas status={status} sessionName={sessionName} />
       </div>
@@ -431,10 +425,10 @@ export function ConnectWhatsappClient({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border bg-background p-6">
+    <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
       <VoltarParaEscolha
         onVoltar={() => {
-          setForma(null);
+          setForma("qr");
           setNumeroJaEmUso(null);
         }}
       />

@@ -27,12 +27,14 @@ export default async function FunilPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Onde ele organiza seus clientes</h2>
-        <p className="text-sm text-muted-foreground">
-          Cada cliente vira um cartão que anda por essas colunas. Ele mesmo move o
-          cartão conforme a conversa avança — por isso cada coluna diz também
-          quando ele deve usá-la.
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">
+          Monte o funil da sua operação
+        </h2>
+        <p className="text-sm leading-relaxed text-zinc-400">
+          Cada cliente vira um cartão nessas colunas. O agente de IA usa este
+          funil para saber em que passo cada pessoa está. Dá para ajustar os
+          nomes agora ou depois.
         </p>
       </header>
       <QuadroClient atual={atual} sugestao={sugestao} />

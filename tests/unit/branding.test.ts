@@ -256,7 +256,7 @@ const MARCA_CONGELADA: Record<string, EntradaDeMarca> = {
   "app/layout.tsx": {
     categoria: "INFRA",
     motivo:
-      "chave de localStorage do tema, lida no script anti-flash. Renomear faz todo mundo voltar ao tema claro no próximo acesso — e o par com lib/theme.tsx tem de mudar junto",
+      "chave de localStorage do tema, lida no script anti-flash. Renomear faz o par com lib/theme.tsx divergir — e o par com lib/theme.tsx tem de mudar junto",
     marcas: ["deskcomm-theme"],
   },
   "lib/theme.tsx": {

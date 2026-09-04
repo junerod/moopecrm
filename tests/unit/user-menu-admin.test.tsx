@@ -18,9 +18,6 @@ vi.mock("@/hooks/auth/AuthProvider", () => ({
   useUser: () => userRef.current,
   useAuth: () => ({ signOut: vi.fn() }),
 }));
-vi.mock("@/components/theme/theme-toggle", () => ({
-  ThemeToggle: () => null,
-}));
 
 afterEach(cleanup);
 

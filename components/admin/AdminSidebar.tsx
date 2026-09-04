@@ -66,12 +66,25 @@ export function AdminSidebar({ userEmail, variant = "desktop" }: AdminSidebarPro
       )}
     >
       <div className="flex h-14 items-center border-b border-white/10 px-4">
-        <div className="flex flex-col">
-          <span className="text-xs uppercase tracking-wider text-accent-300/80">
-            {marca.name}
-          </span>
-          <span className="text-sm font-semibold tracking-tight text-white">Admin Plataforma</span>
-        </div>
+        {marca.logoUrl ? (
+          // Mesmo <img> da barra do tenant: URL vem do banco/.env, next/image
+          // exigiria allowlist fechada em build e recusaria o domínio do operador.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={marca.logoUrl}
+            alt={marca.name}
+            className="h-9 w-auto max-w-[11rem] object-contain"
+          />
+        ) : (
+          <div className="flex flex-col">
+            <span className="text-xs uppercase tracking-wider text-accent-300/80">
+              {marca.name}
+            </span>
+            <span className="text-sm font-semibold tracking-tight text-white">
+              Admin Plataforma
+            </span>
+          </div>
+        )}
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label="Navegação plataforma">
         {NAV_ITEMS.map((item) => {

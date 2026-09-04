@@ -139,7 +139,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   // ---- Atendimento — onde o operador passa o dia ----
   {
     href: "/app/inbox",
-    label: "Inbox",
+    label: "Caixa de entrada",
     description: "As conversas de WhatsApp, com você e a IA atendendo lado a lado.",
     icon: Inbox,
     group: "atendimento",
@@ -260,8 +260,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   },
   {
     href: "/app/ai/followups",
-    label: "Follow-ups",
-    description: "Como o agente retoma uma conversa que esfriou, para nenhuma morrer no silêncio.",
+    label: "Voltar a falar",
+    description: "Automação: se o cliente para de responder, o sistema manda uma mensagem na hora certa.",
     icon: FlowArrow,
     group: "ia",
     section: "Montar o agente",

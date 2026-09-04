@@ -131,4 +131,6 @@ export {
   GoogleLogo,
   MapPin,
   ArrowsOutSimple,
+  // onboarding: ramo do negócio
+  Car,
 } from "@phosphor-icons/react/dist/ssr";

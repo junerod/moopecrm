@@ -99,13 +99,17 @@ export function InteligenciaDele({ inicial }: { inicial: EstadoDaChave }) {
 
   if (!temChave) {
     return (
-      <section className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-5">
+      <section className="space-y-3 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-5">
         <div>
-          <h3 className="text-sm font-medium">Ele ainda não tem cérebro</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Seu funcionário pensa com a inteligência artificial que você contratar.
-            A instalação não trouxe nenhuma chave — cole a sua aqui e ele já nasce
-            funcionando.
+          <h3 className="text-sm font-medium text-amber-100">Ele ainda não tem cérebro</h3>
+          <p className="mt-1 text-sm text-zinc-300">
+            O agente pensa com a inteligência artificial que você contratar — OpenAI,
+            Anthropic ou outra. Você cria uma conta lá, gera uma chave secreta e cola
+            aqui. Sem a chave ele existe, mas não responde sozinho.
+          </p>
+          <p className="mt-2 text-sm text-zinc-400">
+            Locadoras provisionadas já ganham um agente pronto. Se você quer
+            primeiro o funil e o WhatsApp, pule a configuração por agora.
           </p>
         </div>
 
@@ -173,7 +177,7 @@ export function InteligenciaDele({ inicial }: { inicial: EstadoDaChave }) {
   }
 
   return (
-    <section className="space-y-1 rounded-lg border bg-background p-5">
+    <section className="space-y-1 rounded-2xl border border-white/10 bg-zinc-900/70 p-5">
       <h3 className="text-sm font-medium">
         O cérebro dele: {chave.rotulo}
         {chave.final ? (

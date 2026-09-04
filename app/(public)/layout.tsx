@@ -56,7 +56,7 @@ export default async function PublicLayout({ children }: { children: React.React
               data-testid="logo-da-fachada"
               src={marca.logoUrl}
               alt={marca.nome}
-              className="h-16 w-auto max-w-[14rem] object-contain"
+              className="h-20 w-auto max-w-[20rem] object-contain"
             />
           </div>
         )}

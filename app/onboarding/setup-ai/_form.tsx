@@ -103,7 +103,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
         });
       }}
     >
-      <div className="space-y-5 rounded-lg border bg-background p-6">
+      <div className="space-y-5 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 shadow-xl shadow-black/30">
         <div className="space-y-2">
           <Label htmlFor="name">Como ele vai se chamar</Label>
           <Input
@@ -127,8 +127,10 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
               <label
                 key={j.id}
                 className={cn(
-                  "flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors",
-                  jeito === j.id ? "border-primary bg-primary/5" : "hover:bg-muted/40",
+                  "flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors",
+                  jeito === j.id
+                    ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                    : "border-white/10 hover:border-accent/40 hover:bg-white/5",
                 )}
               >
                 <input
@@ -177,7 +179,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
         exatamente essa.
       */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <section className="rounded-lg border bg-background p-4">
+        <section className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
           <h3 className="text-sm font-medium">Ele já vem sabendo</h3>
           <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
             {capacidades.map((c) => (
@@ -185,7 +187,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
             ))}
           </ul>
         </section>
-        <section className="rounded-lg border bg-background p-4">
+        <section className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
           <h3 className="text-sm font-medium">E nunca vai fazer</h3>
           <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
             {conferencias.map((c) => (
@@ -328,16 +330,17 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
         </div>
       )}
 
-      <div className="flex flex-wrap justify-between gap-2">
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           disabled={pending}
           onClick={() => startTransition(() => void skipAi())}
+          className="w-full sm:w-auto"
         >
-          Pular
+          Pular a configuração do agente por agora
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
           {pending ? "Criando..." : "Criar e continuar"}
         </Button>
       </div>

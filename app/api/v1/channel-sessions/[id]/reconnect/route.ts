@@ -14,8 +14,10 @@
  *    credencial e o pareamento recomeça do zero.
  *
  * O padrão é o modo suave de propósito: forçar logout sempre custaria um
- * reescaneamento a cada queda passageira. A UI só oferece o `force` depois que
- * o modo suave falhou.
+ * reescaneamento a cada queda passageira. Se o espelho (ou o WAHA) já está
+ * FAILED, o clique em Reconectar descarta sozinho — o modo suave nessa
+ * situação é o buraco do QR que nunca vem. A UI ainda oferece `{ force }`
+ * explícito para o caso em que o status ainda não atualizou.
  *
  * Canal EXCLUÍDO (arquivado) é recusado, não reconectado: subir a sessão de novo
  * no transporte devolveria um canal que recebe e não entrega nada — o webhook, o
@@ -40,6 +42,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { createClient } from "@/lib/supabase/server";
 import { puxarHistoricoAposReligamento } from "@/lib/channels/historico";
+import { deveDescartarCredencial } from "@/lib/channels/reconectar";
 import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
 
 export const dynamic = "force-dynamic";
@@ -82,12 +85,13 @@ export async function POST(
   // arquivado, e exigir a coluna aqui derrubaria a reconexão inteira — que é o
   // socorro de quem está com o número fora do ar.
   const { data: sessionRaw } = await queryTolerantToMissingArchived(
-    () => buscar(`id, waha_session_name, ${ARCHIVED_AT}`),
-    () => buscar("id, waha_session_name"),
+    () => buscar(`id, waha_session_name, status, ${ARCHIVED_AT}`),
+    () => buscar("id, waha_session_name, status"),
   );
   const session = sessionRaw as {
     id: string;
     waha_session_name: string | null;
+    status?: string | null;
     archived_at?: string | null;
   } | null;
   if (!session) return fail("not_found", "Canal não encontrado.", 404, { requestId });
@@ -126,9 +130,19 @@ export async function POST(
 
   try {
     await waha.stopSession(nomeSessao);
-    // Só no modo forçado: descartar a credencial é irreversível — obriga a
-    // reescanear o QR mesmo que ela ainda estivesse boa.
-    if (force) await waha.logoutSession(nomeSessao);
+    // FAILED no espelho (ou `{ force: true }` na tela): a credencial já foi
+    // recusada. Sem logout o start reaproveita o arquivo morto e a sessão
+    // volta para FAILED sem nunca emitir QR.
+    let descartar = deveDescartarCredencial(session.status, force);
+    if (!descartar) {
+      try {
+        const noAr = await waha.getSessionQr(nomeSessao);
+        descartar = deveDescartarCredencial(noAr.status, false);
+      } catch {
+        // Transporte mudo: segue o modo suave — não inventa logout.
+      }
+    }
+    if (descartar) await waha.logoutSession(nomeSessao);
     const remote = (await waha.startSession(nomeSessao)) as { status?: string };
     const nextStatus = remote.status ?? "STARTING";
     await supabase
@@ -148,14 +162,14 @@ export async function POST(
       resourceType: "channel_session",
       resourceId: id,
       requestId,
-      metadata: { waha_session_name: nomeSessao, force },
+      metadata: { waha_session_name: nomeSessao, force: descartar },
     });
 
     // stop+start quase nunca emite outro WORKING. Sem isto, gente nova
     // no aparelho só aparecia se a conexão caísse de verdade.
     void puxarHistoricoAposReligamento(activeOrg.orgId, id);
 
-    return ok({ id, status: nextStatus, force }, { requestId });
+    return ok({ id, status: nextStatus, force: descartar }, { requestId });
   } catch (err) {
     return fail("waha_error", wahaFriendlyError(err), 502, { requestId });
   }

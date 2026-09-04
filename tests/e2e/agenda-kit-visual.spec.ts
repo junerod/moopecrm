@@ -17,6 +17,18 @@ const ESPERA = 60_000;
 
 const VITRINE = "/vitrine-agenda";
 
+/** A vitrine ainda troca de tema para medir as duas paletas. O produto não. */
+async function irParaTema(page: Page, alvo: "light" | "dark"): Promise<void> {
+  const atual = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+  if (atual === alvo) return;
+  await page.getByTestId("alternar-tema").click();
+  await expect
+    .poll(async () => page.evaluate(() => document.documentElement.getAttribute("data-theme")), {
+      timeout: ESPERA,
+    })
+    .toBe(alvo);
+}
+
 /**
  * A vitrine não toca banco, mas EXIGE SESSÃO — e essa distinção custou uma
  * medição do maestro para aparecer.
@@ -381,14 +393,7 @@ test.describe("kit visual da Agenda", () => {
     const relatorio: string[] = [];
 
     for (const tema of ["claro", "escuro"] as const) {
-      if (tema === "escuro") {
-        await page.getByTestId("alternar-tema").click();
-        await expect
-          .poll(async () => page.evaluate(() => document.documentElement.getAttribute("data-theme")), {
-            timeout: ESPERA,
-          })
-          .toBe("dark");
-      }
+      await irParaTema(page, tema === "escuro" ? "dark" : "light");
 
       const m = await medirTrilhas(page);
       relatorio.push(
@@ -466,14 +471,7 @@ test.describe("kit visual da Agenda", () => {
 
     const medido = { claro: 0, escuro: 0 };
     for (const tema of ["claro", "escuro"] as const) {
-      if (tema === "escuro") {
-        await page.getByTestId("alternar-tema").click();
-        await expect
-          .poll(async () => page.evaluate(() => document.documentElement.getAttribute("data-theme")), {
-            timeout: ESPERA,
-          })
-          .toBe("dark");
-      }
+      await irParaTema(page, tema === "escuro" ? "dark" : "light");
       medido[tema] = (await medirTrilhas(page)).menorDistancia;
     }
 
@@ -609,6 +607,7 @@ test.describe("kit visual da Agenda", () => {
   test("evidência visual: claro, escuro e celular", async () => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await expect(page.getByTestId("grade-da-agenda")).toBeVisible({ timeout: ESPERA });
+    await irParaTema(page, "light");
     await page.screenshot({ path: "evidence/calendario/kit-visual-claro.png", fullPage: true });
 
     // O painel ABERTO, em foto própria. Nos screenshots de página inteira ele
@@ -625,17 +624,12 @@ test.describe("kit visual da Agenda", () => {
     );
     await painelDaFoto.screenshot({ path: "evidence/calendario/painel-coluna-aberta.png" });
 
-    await page.getByTestId("alternar-tema").click();
-    await expect
-      .poll(async () => page.evaluate(() => document.documentElement.getAttribute("data-theme")), {
-        timeout: ESPERA,
-      })
-      .toBe("dark");
+    await irParaTema(page, "dark");
     await page.screenshot({ path: "evidence/calendario/kit-visual-escuro.png", fullPage: true });
 
     // 390px é o iPhone que o dono da clínica tem no bolso.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByTestId("alternar-tema").click();
+    await irParaTema(page, "light");
     await expect(page.getByTestId("grade-da-agenda")).toBeVisible({ timeout: ESPERA });
     await page.screenshot({ path: "evidence/calendario/kit-visual-celular.png", fullPage: true });
 

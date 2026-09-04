@@ -154,6 +154,10 @@ describe("a marca não diverge entre o SSR e a hidratação", () => {
     expect(noServidor).toContain(`alt="${MARCA_DO_BANCO.name}"`);
     // E o `<span>` de texto — o outro lado da troca de tipo — não está junto.
     expect(noServidor).not.toContain(`>${MARCA_DO_BANCO.name}</span>`);
+
+    const admin = renderComAmbiente(undefined, <AdminSidebar userEmail="dono@exemplo.test" />);
+    expect(admin).toContain(`src="${MARCA_DO_BANCO.logoUrl}"`);
+    expect(admin).toContain(`alt="${MARCA_DO_BANCO.name}"`);
   });
 });
 

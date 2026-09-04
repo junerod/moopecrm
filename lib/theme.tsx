@@ -19,18 +19,20 @@ type ThemeContextValue = {
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 
 function readStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "dark";
   try {
     const v = window.localStorage.getItem(STORAGE_KEY);
+    // `light` só vale no meio da sessão (a vitrine da agenda troca para
+    // medir contraste). No carregamento o script do layout já gravou `dark`.
     if (v === "light" || v === "dark" || v === "system") return v;
   } catch {
     // localStorage indisponível (modo privado, sandbox) — segue com default.
   }
-  return "system";
+  return "dark";
 }
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "light";
+  if (typeof window === "undefined") return "dark";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -44,8 +46,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // initializer trocava o ícone do ThemeToggle (Moon vs MonitorPlay) e o
   // React #418 em toda tela autenticada. O script no layout já pintou
   // `data-theme` no <html>; o React só alinha o estado DEPOIS de hidratar.
-  const [theme, setThemeState] = React.useState<Theme>("system");
-  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>("light");
+  const [theme, setThemeState] = React.useState<Theme>("dark");
+  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>("dark");
 
   React.useEffect(() => {
     setThemeState(readStoredTheme());
@@ -62,7 +64,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
-  const resolvedTheme: ResolvedTheme = theme === "system" ? systemTheme : theme;
+  const resolvedTheme: ResolvedTheme = theme === "system" ? systemTheme : theme === "light" ? "light" : "dark";
 
   // Aplica no DOM sempre que o tema efetivo muda.
   React.useEffect(() => {
@@ -81,7 +83,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggle = React.useCallback(() => {
     setThemeState((current) => {
       const currentResolved =
-        current === "system" ? getSystemTheme() : current;
+        current === "system" ? getSystemTheme() : current === "light" ? "light" : "dark";
       const next: Theme = currentResolved === "dark" ? "light" : "dark";
       try {
         window.localStorage.setItem(STORAGE_KEY, next);

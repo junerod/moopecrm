@@ -33,13 +33,13 @@ export interface QuadroAtual {
 }
 
 /**
- * A versão publicada do funcionário criado no passo anterior.
+ * A versão publicada do agente criado no passo anterior.
  *
  * A sugestão sai DAQUI e não de uma configuração própria: é a chave que a pessoa
  * acabou de confirmar, e uma sugestão que funcionasse com outro modelo esconderia
  * justamente o defeito que ela precisa descobrir agora.
  */
-async function cerebroDoFuncionario(
+async function cerebroDoAgente(
   admin: ReturnType<typeof createAdminClient>,
   orgId: string,
 ): Promise<{ provider: string; model: string; apiKey: string } | { erro: string }> {
@@ -54,7 +54,7 @@ async function cerebroDoFuncionario(
   if (!versionId) {
     // Quem pulou o passo de treinar, ou ficou com o agente em rascunho por não
     // ter número, chega aqui sem cérebro. Não é erro: é o quadro pronto.
-    return { erro: "seu funcionário ainda não está no ar" };
+    return { erro: "o agente ainda não está no ar" };
   }
 
   const { data: versao } = await admin
@@ -63,11 +63,11 @@ async function cerebroDoFuncionario(
     .eq("id", versionId)
     .eq("organization_id", orgId)
     .maybeSingle();
-  if (!versao) return { erro: "não achei a configuração do seu funcionário" };
+  if (!versao) return { erro: "não achei a configuração do agente" };
 
   const provider = String(versao.provider ?? "");
   const model = String(versao.model ?? "");
-  if (!provider || !model) return { erro: "seu funcionário está sem modelo definido" };
+  if (!provider || !model) return { erro: "o agente está sem modelo definido" };
 
   // Mesma ordem do turno de produção e do ensaio: a credencial cadastrada vence,
   // e na falta dela vale a chave que veio na instalação.
@@ -138,7 +138,7 @@ export async function dadosDoPasso(orgId: string, negocio: string): Promise<Dado
   }
 
   const ctx = { nome: negocio, oQueFaz };
-  const cerebro = await cerebroDoFuncionario(admin, orgId);
+  const cerebro = await cerebroDoAgente(admin, orgId);
 
   if ("erro" in cerebro) {
     return {

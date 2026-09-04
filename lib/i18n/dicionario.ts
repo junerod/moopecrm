@@ -42,7 +42,7 @@ export const DICIONARIO: Traducoes = {
   Organização: { es: "Organización" },
 
   // ─── Navegação (a barra lateral, presente em toda tela) ───
-  Inbox: { es: "Inbox" },
+  "Caixa de entrada": { es: "Bandeja de entrada" },
   Agenda: { es: "Agenda" },
   Radar: { es: "Radar" },
   "Respostas rápidas": { es: "Respuestas rápidas" },
@@ -56,7 +56,7 @@ export const DICIONARIO: Traducoes = {
   "Etapas do funil": { es: "Etapas del embudo" },
   "Tipos de agendamento": { es: "Tipos de cita" },
   Agentes: { es: "Agentes" },
-  "Follow-ups": { es: "Seguimientos" },
+  "Voltar a falar": { es: "Volver a hablar" },
   Roteadores: { es: "Enrutadores" },
   "Ver tudo em IA": { es: "Ver todo en IA" },
   Conexões: { es: "Conexiones" },

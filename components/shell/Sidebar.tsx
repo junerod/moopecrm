@@ -118,7 +118,7 @@ export function SidebarContent({
           <img
             src={logo}
             alt={nome}
-            className="h-10 w-auto max-w-[11rem] object-contain"
+            className="h-9 w-auto max-w-[12rem] object-contain"
           />
         ) : (
           <span className={cn("font-semibold tracking-tight text-white", collapsed && "sr-only")}>

@@ -5,6 +5,7 @@ import { branding } from "@/lib/branding";
 import { createClient } from "@/lib/supabase/server";
 import { lerRetratoDaInstalacao } from "@/lib/instalacao/retrato";
 import { JaEstaPronto } from "../_components/JaEstaPronto";
+import { CabecalhoDoPasso } from "../_components/Cartao";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +19,10 @@ export default async function WelcomePage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Boas-vindas ao {branding().name}</h2>
-        <p className="text-sm text-muted-foreground">
-          Vamos montar quem vai atender seus clientes — e onde ele vai trabalhar.
-        </p>
-      </header>
+      <CabecalhoDoPasso
+        titulo={`Boas-vindas ao ${branding().name}`}
+        subtitulo="Em poucos passos o WhatsApp da empresa passa a atender com funil, time e — quando você quiser — um agente de IA."
+      />
 
       <JaEstaPronto retrato={retrato} />
 

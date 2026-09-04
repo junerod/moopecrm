@@ -217,7 +217,7 @@ test.describe("o wizard monta um funcionário", () => {
     await login(page);
     await page.waitForURL(/\/onboarding\/setup-ai/, { timeout: 30_000 });
 
-    await expect(page.getByRole("heading", { name: /treine seu funcionário/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /treine um agente de ia/i })).toBeVisible();
     // As duas listas que não pedem configuração nenhuma.
     await expect(page.getByText(/ele já vem sabendo/i)).toBeVisible();
     await expect(page.getByText(/e nunca vai fazer/i)).toBeVisible();
@@ -281,8 +281,8 @@ test.describe("o wizard monta um funcionário", () => {
     // o que deixa o assistente incapaz de mover um card.
     const colunas = page.locator('input[aria-label^="Nome da coluna"]');
     expect(await colunas.count()).toBeGreaterThanOrEqual(4);
-    await expect(corpo).toContainText(/Ele move o cliente para cá quando fechou negócio/i);
-    await expect(corpo).toContainText(/Ele move o cliente para cá quando não fechou/i);
+    await expect(corpo).toContainText(/O agente move o cliente para cá quando fechou negócio/i);
+    await expect(corpo).toContainText(/O agente move o cliente para cá quando não fechou/i);
 
     // As colunas de desfecho não podem ser removidas: sem elas o banco recusa o
     // quadro inteiro, e descobrir isso no clique de salvar seria pior.

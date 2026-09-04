@@ -47,17 +47,17 @@ export const CAPITULOS: readonly Capitulo[] = [
       {
         tipo: "passos",
         itens: [
-          "Seu negócio — o que a empresa faz, o nome e o fuso. Isto decide o quadro que vem depois.",
-          "O telefone dele — conectar o WhatsApp pelo QR, ou pular e conectar depois em Canais › Conexões.",
-          "Treinar — cria o primeiro agente. Se a instalação não tem chave de inteligência, a tela pede a chave aqui.",
-          "Onde ele organiza — o quadro de clientes. Locadora ganha Locatários e Cobrança; escritório ganha Novos clientes e Processos.",
-          "Ver ele atender — um ensaio. Nada sai no WhatsApp de verdade.",
-          "Quem trabalha com ele — convites. Se o e-mail da instalação não estiver configurado, a tela mostra o link para copiar; ela não finge que o convite saiu.",
+          "Seu negócio — o nome e o ramo (locadora, advocacia ou outros). O fuso fica em Brasília. Isto decide o quadro que vem depois.",
+          "WhatsApp — conectar pelo QR (já vem selecionado), ou pular e conectar depois em Canais › Conexões.",
+          "Agente de IA — cria o primeiro agente. Precisa de uma chave contratada com uma empresa de IA. Dá para pular e configurar depois.",
+          "O funil — o quadro de clientes. Locadora ganha Locatários e Cobrança; escritório ganha Novos clientes e Processos.",
+          "Testar o agente — um ensaio. Nada sai no WhatsApp de verdade.",
+          "Seu time — convites. Se o e-mail da instalação não estiver configurado, a tela mostra o link para copiar; ela não finge que o convite saiu.",
         ],
       },
       {
         tipo: "p",
-        texto: "No fim, Começar a usar abre o Inbox. Verificação em duas etapas não é obrigatória. Quem quiser liga em Configurações › Segurança.",
+        texto: "No fim, Começar a usar abre a Caixa de entrada. Verificação em duas etapas não é obrigatória. Quem quiser liga em Configurações › Segurança.",
       },
       {
         tipo: "aviso",
@@ -108,7 +108,7 @@ export const CAPITULOS: readonly Capitulo[] = [
       {
         tipo: "passos",
         itens: [
-          "Atendimento › Inbox.",
+          "Atendimento › Caixa de entrada.",
           "À esquerda, a lista. Clique numa conversa.",
           "Embaixo, o campo de texto. Escreva e aperte Enter, ou o botão Enviar.",
           "Atalho A, ou o botão Assumir: você fica com a conversa e o automático cala a boca.",
@@ -219,12 +219,12 @@ export const CAPITULOS: readonly Capitulo[] = [
     blocos: [
       {
         tipo: "p",
-        texto: "Na tela isto se chama Follow-ups: o sistema volta a falar sozinho depois de um silêncio, quando o card muda de coluna, ou quando o atendente automático pede ajuda. Precisa ser gerente ou administrador.",
+        texto: "Na tela isto se chama Voltar a falar: o sistema manda mensagem sozinho depois de um silêncio, quando o card muda de coluna, ou quando o atendente automático pede ajuda. Precisa ser gerente ou administrador.",
       },
       {
         tipo: "passos",
         itens: [
-          "Agente de IA › Follow-ups, aba Fluxos.",
+          "Agente de IA › Voltar a falar, aba Fluxos.",
           "Novo fluxo → nome → Criar fluxo.",
           "Monte o quadro com as peças da paleta e ligue as caixas. Todo caminho precisa chegar num Fim.",
           "No gatilho, escolha quando começa.",
@@ -275,9 +275,9 @@ export const CAPITULOS: readonly Capitulo[] = [
         tipo: "tabela",
         cabecalho: ["Quero…", "Onde"],
         linhas: [
-          ["Ver quem falou agora", "Inbox"],
+          ["Ver quem falou agora", "Caixa de entrada"],
           ["Ver quem esfriou", "Radar"],
-          ["Responder mais rápido", "Respostas rápidas, depois / no Inbox"],
+          ["Responder mais rápido", "Respostas rápidas, depois / na Caixa de entrada"],
           ["Mover o cliente no quadro", "Funis → arrastar o card"],
           ["Ver se a inteligência travou", "Ver tudo em IA › Execuções; Alertas"],
           ["Ver gasto do mês", "Ver tudo em IA › Uso e orçamento"],

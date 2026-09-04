@@ -49,9 +49,9 @@ export function Stepper({ passos }: { passos: PassoVisivel[] }) {
             <div
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-medium",
-                isActive && "border-primary bg-primary text-primary-foreground",
-                !isActive && p.cumprido && "border-primary/40 bg-primary/10 text-primary",
-                !isActive && !p.cumprido && "border-muted-foreground/20 text-muted-foreground",
+                isActive && "border-accent bg-accent text-accent-foreground shadow-md shadow-accent/40",
+                !isActive && p.cumprido && "border-emerald-400/50 bg-emerald-500/20 text-emerald-300",
+                !isActive && !p.cumprido && "border-zinc-600 text-zinc-500",
               )}
             >
               {i + 1}
@@ -66,7 +66,7 @@ export function Stepper({ passos }: { passos: PassoVisivel[] }) {
             <span
               className={cn(
                 "sr-only mt-1 truncate sm:not-sr-only",
-                isActive ? "font-medium text-foreground" : "text-muted-foreground",
+                isActive ? "font-medium text-white" : "text-zinc-500",
               )}
             >
               {p.rotulo}

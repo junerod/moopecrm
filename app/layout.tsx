@@ -117,9 +117,11 @@ export const viewport: Viewport = {
   themeColor: coresDaBarraDoNavegador(REGUA_DO_PRODUTO),
 };
 
-// Inline FOUC-prevention. Conteúdo é string literal estática (zero input do usuário),
-// portanto seguro. Lê localStorage + prefers-color-scheme antes do primeiro paint.
-const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem('deskcomm-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var r=(s==='dark'||s==='light')?s:((s==='system'||!s)&&d?'dark':'light');document.documentElement.setAttribute('data-theme',r);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+// Inline FOUC-prevention. O produto tem um tema só — o escuro. Quem tinha
+// `light` gravado (o seletor antigo) é migrado aqui, antes do primeiro paint,
+// senão a tela branca pisca e some. A vitrine da agenda ainda pode pedir o
+// claro via `setTheme` depois de hidratar; um F5 volta ao escuro.
+const THEME_INIT_SCRIPT = `(function(){try{localStorage.setItem('deskcomm-theme','dark');}catch(e){}document.documentElement.setAttribute('data-theme','dark');})();`;
 
 /**
  * Motivos já registrados neste processo. `EstiloDaMarca` roda em TODA
@@ -276,7 +278,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      data-theme="light"
+      data-theme="dark"
       suppressHydrationWarning
       className={`${atkinson.variable} ${plexMono.variable}`}
     >

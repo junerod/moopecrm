@@ -33,10 +33,11 @@ export default async function FollowupFlowsPage() {
     <div className="flex h-full flex-col gap-6 p-6">
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Follow-ups</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Voltar a falar</h1>
           <p className="text-sm text-text-muted">
-            Fluxos automáticos de reengajamento — silêncio, mudança de etapa ou fim
-            de conversa disparam mensagens sem intervenção manual.
+            É uma automação: se o cliente para de responder, o sistema manda uma
+            mensagem na hora certa. Se ele responder ou pedir para parar, o retorno
+            para.
           </p>
         </div>
       </header>

@@ -7,10 +7,11 @@ export default function InviteTeamPage() {
   const emailReady = isEmailConfigured();
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Quem trabalha com ele</h2>
-        <p className="text-sm text-muted-foreground">
-          Seu funcionário não trabalha sozinho: quando ele passar uma conversa adiante, é uma dessas pessoas que atende.
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">Chame quem atende com você</h2>
+        <p className="text-sm leading-relaxed text-zinc-400">
+          Quando o agente (ou você) passar uma conversa adiante, é uma dessas
+          pessoas que continua. Dá para pular e convidar depois.
         </p>
       </header>
       {!emailReady ? (
