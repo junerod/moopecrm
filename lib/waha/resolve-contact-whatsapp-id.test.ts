@@ -4,6 +4,7 @@ import { wahaContactPayload } from "@/lib/waha/contact-card";
 import {
   chatIdFromCheckResult,
   destinoDeEnvioWaha,
+  destinosDeEnvioWaha,
   resolveCanonicalSendChatId,
   resolveWhatsappIdForContactCard,
   whatsappIdFromCheckResult,
@@ -68,6 +69,28 @@ describe("resolveCanonicalSendChatId", () => {
       "235587596492898@lid",
     );
     expect(client.checkContactExists).toHaveBeenCalledTimes(1);
+  });
+
+  it("lista canônico + as duas grafias do 9 — envia mesmo se uma falhar", async () => {
+    const client = {
+      checkContactExists: vi.fn().mockResolvedValue({
+        numberExists: true,
+        chatId: "556196715985@c.us",
+      }),
+    };
+    const lista = await destinosDeEnvioWaha(client as never, "s1", "5561996715985@c.us");
+    expect(lista[0]).toBe("556196715985@c.us");
+    expect(lista).toContain("5561996715985@c.us");
+    expect(lista).toHaveLength(2);
+  });
+
+  it("sem consulta ainda monta as duas grafias e não trava o envio", async () => {
+    const client = {
+      checkContactExists: vi.fn().mockRejectedValue(new Error("rede")),
+    };
+    const lista = await destinosDeEnvioWaha(client as never, "s1", "5561996715985@c.us");
+    expect(lista).toContain("5561996715985@c.us");
+    expect(lista).toContain("556196715985@c.us");
   });
 
   it("consulta falhou em todas as variantes → não afirma que não existe", async () => {

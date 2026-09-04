@@ -78,19 +78,44 @@ export async function resolveCanonicalSendChatId(
 }
 
 /**
- * `@lid` e grupo ficam. `@c.us` vira o JID que o WhatsApp reconhece
- * (medido: +5561996715985 → 556196715985@c.us). Sem consulta, o destino original.
+ * Destinos de envio, na ordem: JID canônico do canal (se houver), depois
+ * cada variante do nono dígito. `@lid` e grupo ficam sozinhos.
+ * Quem chama MANDA em todos — um JID some, o outro entrega.
  */
+export async function destinosDeEnvioWaha(
+  client: WahaClient,
+  session: string,
+  to: string,
+): Promise<string[]> {
+  if (!to.endsWith("@c.us")) return [to];
+  const digits = to.slice(0, -"@c.us".length).replace(/\D/g, "");
+  if (!digits) return [to];
+  const phone = `+${digits}`;
+  const canon = await resolveCanonicalSendChatId(client, session, phone);
+  const vistos = new Set<string>();
+  const lista: string[] = [];
+  const push = (jid: string) => {
+    if (!jid || vistos.has(jid)) return;
+    vistos.add(jid);
+    lista.push(jid);
+  };
+  if (canon.chatId) push(canon.chatId);
+  push(to);
+  for (const v of phoneLookupVariants(phone)) {
+    const d = v.replace(/\D/g, "");
+    if (d) push(`${d}@c.us`);
+  }
+  return lista.length > 0 ? lista : [to];
+}
+
+/** Primeiro destino (canônico se o canal respondeu). Compatível com quem só manda um. */
 export async function destinoDeEnvioWaha(
   client: WahaClient,
   session: string,
   to: string,
 ): Promise<string> {
-  if (!to.endsWith("@c.us")) return to;
-  const digits = to.slice(0, -"@c.us".length).replace(/\D/g, "");
-  if (!digits) return to;
-  const canon = await resolveCanonicalSendChatId(client, session, `+${digits}`);
-  return canon.chatId ?? to;
+  const lista = await destinosDeEnvioWaha(client, session, to);
+  return lista[0] ?? to;
 }
 
 /** Consulta WAHA; null = não achou ou falhou (caller usa fallback). */

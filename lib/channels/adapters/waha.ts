@@ -10,7 +10,7 @@ import { fetchWahaMedia } from "@/lib/messaging/media/waha-source";
 import { getWahaClient } from "@/lib/waha/client";
 import { wahaSendPlanFor } from "@/lib/waha/media-send";
 import {
-  destinoDeEnvioWaha,
+  destinosDeEnvioWaha,
   resolveWhatsappIdForContactCard,
 } from "@/lib/waha/resolve-contact-whatsapp-id";
 import { bareWaMessageId, parseWahaMessageId } from "@/lib/waha/message-id";
@@ -183,37 +183,46 @@ export const wahaAdapter: ChannelAdapter = {
     // caminho de TEXTO — os outros dois não citam: o WAHA aceita `reply_to` só
     // no `sendText`, e mandá-lo nos outros seria pedir para a API ignorar em
     // silêncio, que é como se perde uma feature sem ninguém notar.
-    const destino = await destinoDeEnvioWaha(client, envelope.sessionRef, envelope.to);
+    const destinos = await destinosDeEnvioWaha(client, envelope.sessionRef, envelope.to);
 
     let res: unknown;
-    if (envelope.kind === "contact" && envelope.contact) {
-      const resolvedId = await resolveWhatsappIdForContactCard(
-        client,
-        envelope.sessionRef,
-        envelope.contact.phoneNumber,
-      );
-      const contact = wahaContactPayload(
-        envelope.contact.fullName,
-        envelope.contact.phoneNumber,
-        resolvedId ?? envelope.contact.whatsappId,
-      );
-      res = await client.sendContactVcard(envelope.sessionRef, destino, [contact]);
-    } else if (envelope.media) {
-      res = await client.sendMedia(
-        envelope.sessionRef,
-        destino,
-        wahaSendPlanFor(envelope.kind, envelope.media),
-      );
-    } else {
-      res = await client.sendMessage(
-        envelope.sessionRef,
-        destino,
-        envelope.body ?? "",
-        // A citação é enfeite da conversa, nunca condição de envio: quando não
-        // há, o envio segue igual. Ver `OutboundEnvelope.replyToExternalId`.
-        envelope.replyToExternalId,
-      );
+    let ultimoErro: unknown = null;
+    for (const destino of destinos) {
+      try {
+        if (envelope.kind === "contact" && envelope.contact) {
+          const resolvedId = await resolveWhatsappIdForContactCard(
+            client,
+            envelope.sessionRef,
+            envelope.contact.phoneNumber,
+          );
+          const contact = wahaContactPayload(
+            envelope.contact.fullName,
+            envelope.contact.phoneNumber,
+            resolvedId ?? envelope.contact.whatsappId,
+          );
+          res = await client.sendContactVcard(envelope.sessionRef, destino, [contact]);
+        } else if (envelope.media) {
+          res = await client.sendMedia(
+            envelope.sessionRef,
+            destino,
+            wahaSendPlanFor(envelope.kind, envelope.media),
+          );
+        } else {
+          res = await client.sendMessage(
+            envelope.sessionRef,
+            destino,
+            envelope.body ?? "",
+            // A citação é enfeite da conversa, nunca condição de envio: quando não
+            // há, o envio segue igual. Ver `OutboundEnvelope.replyToExternalId`.
+            envelope.replyToExternalId,
+          );
+        }
+        ultimoErro = null;
+      } catch (err) {
+        ultimoErro = err;
+      }
     }
+    if (ultimoErro && res === undefined) throw ultimoErro;
 
     return { externalId: parseWahaMessageId(res) };
   },
