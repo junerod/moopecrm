@@ -127,6 +127,8 @@ describe("voz do agente", () => {
   it("texto de loja do onboarding é o que se adapta", () => {
     expect(promptEhPadraoDeLoja("Você atende os clientes de Loja X. Fale de forma")).toBe(true);
     expect(promptEhPadraoDeLoja(VOZ_ATENDIMENTO_LOCADORA)).toBe(false);
+    expect(VOZ_ATENDIMENTO_LOCADORA).toMatch(/moope_listar_oferta/);
+    expect(VOZ_ATENDIMENTO_LOCADORA).toMatch(/página de ofertas|ALUGADO/);
   });
 });
 

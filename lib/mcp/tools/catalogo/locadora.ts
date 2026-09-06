@@ -39,8 +39,9 @@ export const TOOLS_LOCADORA = declararTools([
     name: "moope_listar_oferta",
     category: "read",
     rotulo: "Veículos disponíveis",
-    explicacao: "Lista carros livres para quem quer alugar. Sem inventar preço ou fechar contrato.",
-    oQueToca: "Frota disponível",
+    explicacao:
+      "Lista a frota da página de ofertas: preço se existir, elétrico, opcionais e tarja ALUGADO. Sem inventar valor ou fechar contrato.",
+    oQueToca: "Página de ofertas da locadora",
     risco: "seguro",
     pacotes: ["organizar"],
   },

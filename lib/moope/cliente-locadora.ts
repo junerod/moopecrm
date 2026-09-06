@@ -61,6 +61,7 @@ export interface ScriptAtendimento {
   lead_pode: string[];
   desconhecido: "passar" | "perguntar" | "oferta";
   desconhecido_fazer: string | null;
+  oferta_fazer: string | null;
 }
 
 export interface OfertaItem {
@@ -68,6 +69,14 @@ export interface OfertaItem {
   marca: string | null;
   ano: number | null;
   placa: string | null;
+  valor_diario: number | null;
+  valor_semanal: number | null;
+  valor_mensal: number | null;
+  status: string | null;
+  propulsao: string | null;
+  eletrico: boolean;
+  opcionais: string | null;
+  foto_url: string | null;
 }
 
 export interface LookupInvestidor {
@@ -215,6 +224,12 @@ function inteiro(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+function dinheiro(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
 export async function lookupLocatario(
   admin: SupabaseClient,
   orgId: string,
@@ -316,6 +331,7 @@ export async function getAtendimento(
         ? data.desconhecido
         : "passar",
     desconhecido_fazer: texto(data.desconhecido_fazer),
+    oferta_fazer: texto(data.oferta_fazer),
   };
 }
 
@@ -323,10 +339,19 @@ export async function listarOferta(
   admin: SupabaseClient,
   orgId: string,
   deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+  filtros: { visao?: string; propulsao?: string } = {},
 ): Promise<ResultadoOferta> {
   const prep = await prepararChamada(admin, orgId);
   if (!prep.ok) return prep;
   const url = new URL("/api/crm/oferta", `${prep.base}/`);
+  const visao = String(filtros.visao || "").trim().toLowerCase();
+  const propulsao = String(filtros.propulsao || "").trim().toLowerCase();
+  if (visao === "disponiveis" || visao === "todos" || visao === "alugados_fim") {
+    url.searchParams.set("visao", visao);
+  }
+  if (propulsao === "eletrico" || propulsao === "combustao" || propulsao === "hibrido") {
+    url.searchParams.set("propulsao", propulsao);
+  }
   const res = await getLocadora(url, prep.secret, deps);
   if (res.status !== 200) {
     return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
@@ -335,12 +360,23 @@ export async function listarOferta(
   const raw = Array.isArray(body.data) ? body.data : Array.isArray(body) ? body : [];
   const itens: OfertaItem[] = raw
     .filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object")
-    .map((r) => ({
-      modelo: texto(r.modelo) ?? "Veículo",
-      marca: texto(r.marca),
-      ano: inteiro(r.ano),
-      placa: texto(r.placa),
-    }));
+    .map((r) => {
+      const status = String(texto(r.status) || "DISPONIVEL").toUpperCase();
+      return {
+        modelo: texto(r.modelo) ?? "Veículo",
+        marca: texto(r.marca),
+        ano: inteiro(r.ano),
+        placa: texto(r.placa),
+        valor_diario: dinheiro(r.valor_diario),
+        valor_semanal: dinheiro(r.valor_semanal),
+        valor_mensal: dinheiro(r.valor_mensal),
+        status: status === "ALUGADO" || status === "RESERVADO" ? status : "DISPONIVEL",
+        propulsao: texto(r.propulsao),
+        eletrico: r.eletrico === true || texto(r.propulsao) === "eletrico",
+        opcionais: texto(r.opcionais),
+        foto_url: texto(r.foto_url),
+      };
+    });
   return { ok: true, itens };
 }
 

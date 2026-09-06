@@ -2,7 +2,7 @@
  * Tools do Operador — ler a locadora. O Conversador não vê estes nomes.
  *
  * Sem conexão / sem URL / 5xx: devolve código, não lança. O inbox não quebra.
- * Lookup 404 não cria cadastro. Retrato não chama Asaas nem Twilio.
+ * Lookup 404 não cria cadastro. Retrato não chama Asaas nem API de mensagens.
  */
 import { z } from "zod";
 
@@ -144,6 +144,7 @@ export const moopeGetAtendimento: McpToolDefinition<typeof emptyShape> = {
       lead_pode: r.lead_pode,
       desconhecido: r.desconhecido,
       desconhecido_fazer: r.desconhecido_fazer,
+      oferta_fazer: r.oferta_fazer,
       aviso:
         r.desconhecido === "passar"
           ? "Sem cadastro: não responda. Handoff. Menu só para locatário identificado."
@@ -152,25 +153,40 @@ export const moopeGetAtendimento: McpToolDefinition<typeof emptyShape> = {
   },
 };
 
-export const moopeListarOferta: McpToolDefinition<typeof emptyShape> = {
+const ofertaShape = {
+  propulsao: z
+    .enum(["eletrico", "combustao", "hibrido"])
+    .optional()
+    .describe("Só se a pessoa pediu elétrico, combustão ou híbrido."),
+  visao: z
+    .enum(["disponiveis", "todos", "alugados_fim"])
+    .optional()
+    .describe("Deixe vazio: usa a visão da página de ofertas da locadora."),
+};
+
+export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
   name: "moope_listar_oferta",
   description:
-    "Lista veículos DISPONÍVEIS para quem quer alugar (modelo, ano, placa). Sem valor inventado. " +
-    "Lista vazia = não tem carro agora — passe para a equipe.",
-  inputSchema: {},
+    "Lista a frota da página de ofertas (modelo, ano, preços se existirem, opcionais, se é elétrico, se está ALUGADO). " +
+    "Quem veio da página de ofertas ou pediu carro/alugar/valores: chame e liste TODOS os itens. Não invente preço. " +
+    "Item ALUGADO: diga que está alugado e ofereça avisar quando liberar. Lista vazia = passe para a equipe.",
+  inputSchema: ofertaShape,
   category: "read",
   requiresRole: "agent",
   requiresScope: "mcp:read",
-  handler: async (_input, ctx) => {
-    const r = await listarOferta(ctx.supabase, ctx.organizationId);
+  handler: async (input, ctx) => {
+    const r = await listarOferta(ctx.supabase, ctx.organizationId, {}, {
+      visao: input.visao,
+      propulsao: input.propulsao,
+    });
     if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined, "lead");
     return {
       encontrado: r.itens.length > 0,
       itens: r.itens,
       aviso:
         r.itens.length > 0
-          ? "Pode listar modelo e ano. Depois pergunte se quer que a equipe reserve. Não fecha contrato."
-          : "Nenhum veículo disponível. Não invente. Passe para a equipe.",
+          ? "Liste todos. Preço e opcionais só se vierem no item. ALUGADO: não ofereça para hoje. Depois pergunte se quer a equipe. Não fecha contrato."
+          : "Nenhum veículo nesta lista. Não invente. Passe para a equipe.",
     };
   },
 };
