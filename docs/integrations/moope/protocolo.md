@@ -152,14 +152,27 @@ Authorization: Bearer mop_…
 | 429 | pacing / alcance — `Retry-After`. Não reconecte. |
 | 503 | nenhum canal WORKING, ou o envio falhou |
 
-Um POST = um destinatário. Sem array. Não acorda o agente. Sem Twilio.
-**Só manda se já existe conversa com mensagem** (inbound ou outbound) neste
-WhatsApp. Sem fio: 409, não cria ficha, não dispara. Cadastro na locadora
-não conta. Só usa o gêmeo com `wa_lid` quando for a mesma pessoa (variantes
-do nono dígito). Canal sem restrição de janela: texto livre.
+Um POST = um destinatário. Sem array. Não acorda o agente. A locadora **não**
+chama o provedor de mensagens — só o CRM.
 
-Catálogo dos modelos já aprovados no Twilio da locadora (corpo + variáveis,
-para recriar no Zernio sem copiar SID):
+Canal com risco de ban (QR): **só manda se já existe conversa com mensagem**.
+Sem fio: 409, não cria ficha. Canal que exige modelo: `template.name` (SID
+aprovado) + `template.values` (`"1"`, `"2"`…). Sem modelo e sem janela: 422.
+
+```json
+{
+  "external_id": "9",
+  "phone": "+5561999999999",
+  "template": {
+    "name": "HXd98a1057377e2b1723f537b444443986",
+    "language": "pt_BR",
+    "values": { "1": "04/09/2026 as 15:00", "2": "Trocar oleo do Onix" }
+  },
+  "idempotency_key": "aviso:9:hoje"
+}
+```
+
+Catálogo dos modelos já aprovados (corpo + variáveis):
 [`templates-twilio-para-zernio.md`](templates-twilio-para-zernio.md).
 
 ## Estado do número (a locadora lê antes do lote)
@@ -287,7 +300,7 @@ Reenvio com o mesmo `partner_tenant_id` não cria segunda organização.
 | Admin liga a integração | `POST /provision` | Tenant + chave; locadora grava, não cola |
 | Cadastrou / editou locatário | `POST /events` `person.upserted` | Contato no CRM (ou cola no fio WhatsApp) |
 | Antes do lote | `GET /channel` | Aquecendo? Quantos cabem hoje? Pode mandar agora? |
-| Quer mandar texto | `POST /send` | Só se já tem fio; senão 409 `conversation_required` |
+| Quer mandar texto | `POST /send` | QR: só com fio (409 senão). API de mensagens: `template` + variáveis |
 | Ajustar fichas já importadas | `POST /reconcile` | Só identidade; sem mensagem |
 
 ## O CRM lê a locadora (leva 2)

@@ -18,7 +18,10 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { CHANNEL_PROVIDER_ZERNIO } from "./capabilities";
+import { CHANNEL_PROVIDER_TWILIO, CHANNEL_PROVIDER_ZERNIO } from "./capabilities";
+import { resolveTwilioCreds, twilioDigits } from "./twilio/credentials";
+import { ingestTwilioInbound } from "./twilio/ingest";
+import { verifyTwilioSignature } from "./twilio/webhook";
 import { sincronizarSaudeDaConexao } from "./health";
 import {
   atualizarEspelhoDoTemplate,
@@ -49,6 +52,8 @@ export interface InboundWebhookInput {
   headers: Headers;
   /** Segredo já decifrado pela rota, ou null quando não foi possível. */
   secret: string | null;
+  /** URL pública que o provedor chamou — alguns assinam o URL, não só o corpo. */
+  requestUrl?: string;
 }
 
 export type InboundWebhookOutcome =
@@ -70,7 +75,7 @@ export type InboundWebhookOutcome =
  * trabalho — e respondido sem nomear provider do lado de fora.
  */
 export function acceptsInboundWebhook(provider: string): boolean {
-  return provider === CHANNEL_PROVIDER_ZERNIO;
+  return provider === CHANNEL_PROVIDER_ZERNIO || provider === CHANNEL_PROVIDER_TWILIO;
 }
 
 export async function handleInboundWebhook(
@@ -82,6 +87,8 @@ export async function handleInboundWebhook(
   switch (provider) {
     case CHANNEL_PROVIDER_ZERNIO:
       return zernioInbound(admin, input);
+    case CHANNEL_PROVIDER_TWILIO:
+      return twilioInbound(admin, input);
     default:
       // Token de um canal que não entra por aqui. É configuração trocada, não
       // ataque — mas processar seria ler o payload com o parser errado.
@@ -192,6 +199,33 @@ async function zernioInbound(
     organizationId: input.session.organization_id,
     channelSessionId: input.session.id,
     payload,
+  });
+  return { ok: true, body: { ...r } };
+}
+
+async function twilioInbound(
+  admin: SupabaseClient,
+  input: InboundWebhookInput,
+): Promise<InboundWebhookOutcome> {
+  const fromDigits = twilioDigits(input.session.phone_number ?? "");
+  const creds = await resolveTwilioCreds(admin, {
+    organizationId: input.session.organization_id,
+    fromDigits,
+  });
+  if (!creds) {
+    return { ok: false, code: "unauthorized", message: "hosted_token_unavailable" };
+  }
+  const assinatura = input.headers.get("x-twilio-signature");
+  if (
+    !verifyTwilioSignature(input.rawBody, assinatura, creds.authToken, input.requestUrl ?? "")
+  ) {
+    return { ok: false, code: "unauthorized", message: "bad_signature" };
+  }
+
+  const r = await ingestTwilioInbound(admin, {
+    organizationId: input.session.organization_id,
+    channelSessionId: input.session.id,
+    payload: input.rawBody,
   });
   return { ok: true, body: { ...r } };
 }

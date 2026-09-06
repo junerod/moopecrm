@@ -37,6 +37,7 @@ import {
   fecharArquivoDoWebhook,
 } from "@/lib/channels/arquivo-de-webhook";
 import { acceptsInboundWebhook, handleInboundWebhook } from "@/lib/channels/inbound";
+import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
 
@@ -114,11 +115,18 @@ export async function POST(
   });
 
   try {
+    const publica = env.NEXT_PUBLIC_APP_URL;
+    const base = (
+      publica && !publica.includes("placeholder.invalid")
+        ? publica
+        : `${req.nextUrl.protocol}//${req.nextUrl.host}`
+    ).replace(/\/+$/, "");
     const r = await handleInboundWebhook(admin, {
       session: sessao,
       rawBody,
       headers: req.headers,
       secret,
+      requestUrl: `${base}/api/v1/webhooks/channel/${token}`,
     });
 
     if (r.ok) {

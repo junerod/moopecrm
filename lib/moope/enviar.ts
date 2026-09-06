@@ -10,6 +10,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { sendMessageHandler } from "@/app/api/v1/messages/_handler";
 import { ApiError } from "@/lib/api/types";
+import {
+  capabilitiesOf,
+  DEFAULT_CHANNEL_PROVIDER,
+  type ChannelCapabilities,
+} from "@/lib/channels/capabilities";
+import type { ChannelProvider } from "@/lib/channels/types";
 import { queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { estadoDaJanela, type EstadoDaJanela } from "@/lib/channels/janela";
 import { phoneLookupVariants } from "@/lib/channels/phone-variants";
@@ -20,7 +26,7 @@ import {
   registrarDisparoNoLedger,
   type FreioDoDisparo,
 } from "@/lib/moope/pacing-do-disparo";
-import { escolherFichaDoTelefone } from "@/lib/moope/pessoa";
+import { escolherFichaDoTelefone, upsertPessoa } from "@/lib/moope/pessoa";
 import { telefoneE164 } from "@/lib/moope/telefone";
 import {
   ESPERA_RESTRICAO_DE_ALCANCE_S,
@@ -34,10 +40,17 @@ export const MENSAGEM_SEM_CONVERSA =
 
 export const MOOPE_SEND_ENDPOINT = "moope:send";
 
+export type ModeloDoDisparo = {
+  name: string;
+  language?: string;
+  values?: Record<string, string>;
+};
+
 export type PedidoDeEnvioMoope = {
   external_id: string;
   phone: string;
-  body: string;
+  body?: string;
+  template?: ModeloDoDisparo;
   idempotency_key: string;
 };
 
@@ -83,7 +96,24 @@ export type EnviarDeps = {
     contactIds: string[],
     sessionId: string,
   ) => Promise<{ id: string; contact_id: string } | null>;
+  /** Teste: criar ficha quando o canal não tem banRisk. */
+  criarContato?: (
+    admin: SupabaseClient,
+    orgId: string,
+    externalId: string,
+    phone: string,
+  ) => Promise<string | null>;
+  /** Teste: capacidades já resolvidas. Produção pergunta `capabilitiesOf`. */
+  capacidades?: ChannelCapabilities;
 };
+
+function capacidadesDoCanal(provider: string) {
+  try {
+    return capabilitiesOf(provider as ChannelProvider);
+  } catch {
+    return capabilitiesOf(DEFAULT_CHANNEL_PROVIDER);
+  }
+}
 
 type Contato = {
   id: string;
@@ -145,16 +175,8 @@ export async function enviarPeloCrm(
   if (cached) return { ok: true, status: 200, ...cached, deduplicado: true };
 
   const fichas = await listarFichasDoDisparo(admin, orgId, pedido.external_id, fone);
-  const contato = escolherDestinoDoEnvio(fichas, fone);
-  if (!contato) {
-    return {
-      ok: false,
-      status: 409,
-      code: CODIGO_SEM_CONVERSA,
-      message: MENSAGEM_SEM_CONVERSA,
-    };
-  }
-  if (contato.is_blocked) {
+  let contato = escolherDestinoDoEnvio(fichas, fone);
+  if (contato?.is_blocked) {
     return {
       ok: false,
       status: 409,
@@ -164,6 +186,31 @@ export async function enviarPeloCrm(
   }
 
   const sessao = deps.sessao ?? (await acharSessaoWorking(admin, orgId));
+  const caps = deps.capacidades ?? capacidadesDoCanal(sessao?.provider ?? DEFAULT_CHANNEL_PROVIDER);
+
+  if (!contato) {
+    if (!sessao || caps.banRisk) {
+      return {
+        ok: false,
+        status: 409,
+        code: CODIGO_SEM_CONVERSA,
+        message: MENSAGEM_SEM_CONVERSA,
+      };
+    }
+    const criar = deps.criarContato ?? criarContatoMoope;
+    const id = await criar(admin, orgId, pedido.external_id, fone);
+    if (!id) {
+      return {
+        ok: false,
+        status: 409,
+        code: CODIGO_SEM_CONVERSA,
+        message: MENSAGEM_SEM_CONVERSA,
+      };
+    }
+    contato = { id, phone_number: fone, is_blocked: false };
+    fichas.push(contato);
+  }
+
   if (!sessao) {
     return {
       ok: false,
@@ -180,12 +227,21 @@ export async function enviarPeloCrm(
     fichas.map((f) => f.id),
     sessao.id,
   );
-  if (!fio) {
+  if (!fio && caps.banRisk) {
     return {
       ok: false,
       status: 409,
       code: CODIGO_SEM_CONVERSA,
       message: MENSAGEM_SEM_CONVERSA,
+    };
+  }
+  if (!fio && !pedido.template && !caps.freeformOutsideWindow) {
+    return {
+      ok: false,
+      status: 422,
+      code: "validation_failed",
+      message:
+        "Fora da janela de 24h este canal só aceita modelo aprovado. Envie o SID do modelo e as variáveis.",
     };
   }
 
@@ -201,7 +257,8 @@ export async function enviarPeloCrm(
     };
   }
 
-  const conversaId = await ensureConversation(admin, orgId, fio.contact_id, sessao.id);
+  const contatoId = fio?.contact_id ?? contato.id;
+  const conversaId = await ensureConversation(admin, orgId, contatoId, sessao.id);
   const { data: conv } = await admin
     .from("conversations")
     .select("last_inbound_at")
@@ -214,13 +271,22 @@ export async function enviarPeloCrm(
     (conv as { last_inbound_at: string | null } | null)?.last_inbound_at ?? null,
     agora,
   );
-  if (janela.tipo === "fechada") {
+  if (janela.tipo === "fechada" && !pedido.template) {
     return {
       ok: false,
       status: 422,
       code: "validation_failed",
       message:
         "Fora da janela de 24h este canal só aceita modelo aprovado. Não enviei texto livre.",
+    };
+  }
+
+  if (!pedido.template && !pedido.body) {
+    return {
+      ok: false,
+      status: 422,
+      code: "validation_failed",
+      message: "Informe o texto ou o modelo aprovado.",
     };
   }
 
@@ -233,7 +299,15 @@ export async function enviarPeloCrm(
         actor: { type: "webhook_source", id: "moope-send" },
         requestId,
       },
-      { conversation_id: conversaId, type: "text", body: pedido.body },
+      pedido.template
+        ? {
+            conversation_id: conversaId,
+            type: "template",
+            template_name: pedido.template.name,
+            template_language: pedido.template.language ?? "pt_BR",
+            template_values: pedido.template.values ?? {},
+          }
+        : { conversation_id: conversaId, type: "text", body: pedido.body ?? "" },
     );
   } catch (err) {
     if (err instanceof ApiError && (err.status === 403 || err.status === 409)) {
@@ -293,6 +367,15 @@ export async function listarFichasDoDisparo(
   if (porMeta) porId.set((porMeta as Contato).id, porMeta as Contato);
   for (const row of porFone) porId.set(row.id, row);
   return [...porId.values()];
+}
+
+async function criarContatoMoope(
+  admin: SupabaseClient,
+  orgId: string,
+  externalId: string,
+  phone: string,
+): Promise<string | null> {
+  return upsertPessoa(admin, orgId, { external_id: externalId, phone });
 }
 
 export async function acharContato(

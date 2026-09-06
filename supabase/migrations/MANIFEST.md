@@ -227,6 +227,7 @@ aplica.
 | `20260831160000` | `0198_semente_da_chave_de_cifra` | **O `.env` não entra sozinho no Postgres.** `fn_encrypt_oauth` lê `private.app_secrets`; o kit da VPS semeia, o Supabase local não. Sem a linha, criar conexão MOOPE (e o resto que cifra) devolve 422. `fn_seed_oauth_key` grava a chave do env se ainda não houver — `on conflict do nothing`, porque trocar invalidaria o que já está cifrado. Só `service_role`. |
 | `20260831200000` | `0199_moope_partner_api_url` | **URL da API da locadora**, distinta do webhook de eventos. O CRM chama GET lookup/retrato nesta base (ou na origem do webhook, se o campo estiver vazio). Sem POST Asaas e sem chave na query. |
 | `20260901140000` | `0200_moope_partner_tenant_id` | **userid da locadora na conexão.** O POST /provision reabre o mesmo tenant na segunda chamada em vez de nascer outro. Unique parcial (só quando preenchido). |
+| `20260904200000` | `0201_canal_twilio_vocabulario` | **Quarto canal** (API de mensagens hospedada). Coluna `twilio_from` (sessionRef = número WhatsApp em dígitos), SID + token cifrado, CHECKs recriados (três → quatro providers), unique parcial nos ativos. |
 
 ## Reproducibility
 

@@ -195,6 +195,17 @@ function adminSemIdempotencia(contatos: { from: (t: string) => unknown }) {
           insert: async () => ({ error: null }),
         };
       }
+      if (tabela === "channel_sessions") {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          is: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => ({ data: null }),
+        };
+        return chain;
+      }
       if (tabela === "conversations") {
         const chain = {
           select: () => chain,
@@ -292,7 +303,7 @@ describe("enviarPeloCrm", () => {
       { ...pedido(), phone: "+5561996715985" },
       "req-1",
       {
-        enviarMensagem,
+        enviarMensagem: enviarMensagem as never,
         acharConversa,
         registrarDisparo,
         avaliarDisparo: async () => ({ ok: true }),
@@ -411,4 +422,54 @@ describe("enviarPeloCrm", () => {
     expect(enviarMensagem).not.toHaveBeenCalled();
   });
 
+  it("canal sem risco de ban + modelo: manda sem fio prévio", async () => {
+    const enviarMensagem = vi.fn(async () => ({ id: "m-tpl", status: "sent" }));
+    const registrarDisparo = vi.fn(async () => undefined);
+    const contatos = contactsAdmin({
+      porMeta: { id: "ct-1", phone_number: "+5561999999999", is_blocked: false },
+    });
+    const r = await enviarPeloCrm(
+      adminSemIdempotencia(contatos) as never,
+      "org",
+      {
+        ...pedido(),
+        body: undefined,
+        template: { name: "HXabc", language: "pt_BR", values: { "1": "Ana" } },
+      },
+      "req-1",
+      {
+        enviarMensagem: enviarMensagem as never,
+        registrarDisparo,
+        acharConversa: async () => null,
+        avaliarDisparo: async () => ({ ok: true }),
+        sessao: { id: "s1", provider: "canal" },
+        capacidades: {
+          freeformOutsideWindow: false,
+          requiresTemplates: true,
+          canManageTemplates: false,
+          banRisk: false,
+          minIntervalMs: 6000,
+          voiceNote: "opus-only",
+          groups: "none",
+          costPerMessage: true,
+        },
+        estadoJanela: () => ({ tipo: "fechada", fechadaHaMs: 86_400_000 }),
+      },
+    );
+    expect(r).toEqual({
+      ok: true,
+      status: 200,
+      message_id: "m-tpl",
+      conversation_id: "cv-1",
+    });
+    expect(enviarMensagem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        type: "template",
+        template_name: "HXabc",
+        template_values: { "1": "Ana" },
+      }),
+    );
+  });
 });

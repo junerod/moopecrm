@@ -69,6 +69,20 @@ export const CHANNEL_CAPABILITIES: Record<ChannelProvider, ChannelCapabilities> 
     groups: "limited",
     costPerMessage: true,
   },
+  // Mesma hetero-restrição da Meta: Cloud API por baixo, template fora da
+  // janela, sem ban por QR. O transporte muda (Account SID + ContentSid);
+  // o permitido não. `canManageTemplates: false`: as definições já vivem
+  // no catálogo do provedor (SID HX…); o CRM dispara, não cria.
+  twilio: {
+    freeformOutsideWindow: false,
+    requiresTemplates: true,
+    canManageTemplates: false,
+    banRisk: false,
+    minIntervalMs: 6000,
+    voiceNote: "opus-only",
+    groups: "none",
+    costPerMessage: true,
+  },
 };
 
 /**
@@ -90,6 +104,7 @@ export const DEFAULT_CHANNEL_PROVIDER: ChannelProvider = "waha";
 export const CHANNEL_PROVIDER_WAHA: ChannelProvider = "waha";
 export const CHANNEL_PROVIDER_META: ChannelProvider = "meta_cloud";
 export const CHANNEL_PROVIDER_ZERNIO: ChannelProvider = "zernio";
+export const CHANNEL_PROVIDER_TWILIO: ChannelProvider = "twilio";
 
 export function capabilitiesOf(provider: ChannelProvider): ChannelCapabilities {
   const caps = CHANNEL_CAPABILITIES[provider];

@@ -2,7 +2,7 @@
  * POST /api/v1/integrations/moope/send
  *
  * Um locatário, uma mensagem, no WhatsApp já pareado. Bearer mop_…
- * Sem fio com mensagem: 409 conversation_required — não cria, não manda.
+ * Canal com risco de ban: sem fio → 409. Canal com modelo: SID + variáveis.
  * Não acorda o agente. Sem array.
  */
 import { randomUUID } from "node:crypto";
@@ -17,12 +17,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
-  external_id: z.string().min(1).max(200),
-  phone: z.string().min(8).max(32),
-  body: z.string().min(1).max(4096),
-  idempotency_key: z.string().min(1).max(200),
-});
+const bodySchema = z
+  .object({
+    external_id: z.string().min(1).max(200),
+    phone: z.string().min(8).max(32),
+    body: z.string().min(1).max(4096).optional(),
+    template: z
+      .object({
+        name: z.string().min(1).max(512),
+        language: z.string().min(2).max(16).optional(),
+        values: z.record(z.string(), z.string()).optional(),
+      })
+      .optional(),
+    idempotency_key: z.string().min(1).max(200),
+  })
+  .refine((d) => Boolean(d.body || d.template), {
+    message: "Informe body ou template",
+    path: ["body"],
+  });
 
 export async function POST(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();

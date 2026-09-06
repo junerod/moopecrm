@@ -2370,6 +2370,9 @@ export type Database = {
           waha_session_name: string | null
           warmup_completed_at: string | null
           warmup_started_at: string | null
+          twilio_account_sid: string | null
+          twilio_from: string | null
+          twilio_token_encrypted: string | null
           webhook_path_token: string
           webhook_secret_encrypted: string
           zernio_account_id: string | null
@@ -2400,6 +2403,9 @@ export type Database = {
           waha_session_name?: string | null
           warmup_completed_at?: string | null
           warmup_started_at?: string | null
+          twilio_account_sid?: string | null
+          twilio_from?: string | null
+          twilio_token_encrypted?: string | null
           webhook_path_token?: string
           webhook_secret_encrypted: string
           zernio_account_id?: string | null
@@ -2430,6 +2436,9 @@ export type Database = {
           waha_session_name?: string | null
           warmup_completed_at?: string | null
           warmup_started_at?: string | null
+          twilio_account_sid?: string | null
+          twilio_from?: string | null
+          twilio_token_encrypted?: string | null
           webhook_path_token?: string
           webhook_secret_encrypted?: string
           zernio_account_id?: string | null

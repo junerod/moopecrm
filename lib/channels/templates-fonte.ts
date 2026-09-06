@@ -42,6 +42,8 @@ const FONTE: Record<ChannelProvider, FonteDeTemplates | null> = {
   waha: null,
   meta_cloud: "oficial",
   zernio: "parceiro",
+  // Definições já aprovadas no provedor (SID). Sem espelho/CRUD no CRM.
+  twilio: null,
 };
 
 /** `null` quando este canal não trabalha com definições aprovadas. */

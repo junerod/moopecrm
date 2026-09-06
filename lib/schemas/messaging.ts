@@ -97,6 +97,7 @@ export const sendMessageSchema = z
   })
   .refine(
     (d) => {
+      if (d.type === "template") return !!d.template_name;
       if (d.type === "contact") {
         const id = d.metadata?.shared_contact_id;
         if (typeof id === "string" && id.length > 0) return true;

@@ -15952,3 +15952,44 @@ grant execute on function public.fn_decrypt_oauth(bytea) to service_role;
 grant execute on function public.fn_encrypt_oauth(text) to service_role;
 grant execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) to service_role;
 grant execute on function public.fn_update_budget_consumption() to service_role;
+
+-- ---- quarto canal: mensagens hospedadas (migration 0201) ----
+-- Espelho da 0201. CHECKs recriados: o bloco da 0131 deixou a versão de três
+-- providers. duplicate_object engoliria a quarta e o canal novo seria recusado
+-- com update.sh verde.
+alter table public.channel_sessions
+  add column if not exists twilio_from text;
+
+alter table public.channel_sessions
+  add column if not exists twilio_account_sid text;
+
+alter table public.channel_sessions
+  add column if not exists twilio_token_encrypted text;
+
+alter table public.channel_sessions
+  drop constraint if exists channel_sessions_provider_check;
+
+alter table public.channel_sessions
+  add constraint channel_sessions_provider_check
+  check (provider = any (array['waha'::text, 'meta_cloud'::text, 'zernio'::text, 'twilio'::text]));
+
+alter table public.channel_sessions
+  drop constraint if exists channel_sessions_provider_ref_check;
+
+alter table public.channel_sessions
+  add constraint channel_sessions_provider_ref_check check (
+    (provider = 'waha'       and waha_session_name    is not null) or
+    (provider = 'meta_cloud' and meta_phone_number_id is not null) or
+    (provider = 'zernio'     and zernio_account_id    is not null) or
+    (provider = 'twilio'     and twilio_from          is not null)
+  );
+
+comment on column public.channel_sessions.twilio_from is
+  'Número WhatsApp deste sender no provedor, só dígitos E.164. É o sessionRef.';
+
+comment on column public.channel_sessions.twilio_account_sid is
+  'Account SID da API de mensagens. Autentica; não identifica o sender.';
+
+create unique index if not exists channel_sessions_twilio_from_ativo_unique
+  on public.channel_sessions (twilio_from)
+  where archived_at is null and twilio_from is not null;

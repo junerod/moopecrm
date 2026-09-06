@@ -51,6 +51,9 @@ describe("fronteira do padrão de nome de provider", () => {
     ["import { x } from '@/lib/waha/client'", "caminho de import"],
     ["meta_cloud", "outro provider do vocabulário"],
     ["graph.facebook.com", "host de provider"],
+    ["twilio", "quarto provider"],
+    ["twilio_from", "coluna de sessionRef do canal hospedado"],
+    ["Twilio", "PascalCase do quarto provider"],
   ])("reconhece %s (%s)", (texto) => {
     expect(nomeiaProvider(texto)).toBe(true);
   });

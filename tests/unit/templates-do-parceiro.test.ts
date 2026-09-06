@@ -46,6 +46,7 @@ describe("de onde vêm as definições", () => {
     // Ele manda texto livre a qualquer hora: um seletor ali ofereceria uma
     // solução para um problema que aquele canal não tem.
     expect(fonteDeTemplates("waha")).toBeNull();
+    expect(fonteDeTemplates("twilio")).toBeNull();
   });
 
   it("sem canal resolvido, não busca nada", () => {
