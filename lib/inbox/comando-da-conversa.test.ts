@@ -13,6 +13,7 @@ import { join } from "node:path";
 
 import {
   comandoDaConversa,
+  decidirEnvioConversacional,
   ROTULO_DO_COMANDO,
   ROTULO_DO_MOTIVO,
   type FatosDoComando,
@@ -57,6 +58,12 @@ describe("comandoDaConversa — quem manda", () => {
 });
 
 describe("comandoDaConversa — o automático está ativo?", () => {
+  it("contato bloqueado cala o automático sem ser trava de devolver", () => {
+    const r = comandoDaConversa(fatos({ is_blocked: true }), AGORA);
+    expect(r.automaticoAtivo).toBe(false);
+    expect(r.travaVigente).toBe(false);
+  });
+
   it("'infinity' é silêncio DURÁVEL, não data inválida", () => {
     // `new Date("infinity")` é Invalid Date, e toda comparação com Invalid Date é
     // falsa: lido por engano, o silêncio para sempre leria como "já venceu".
@@ -225,6 +232,62 @@ describe("travaVigente — o fato que decide o botão de volta", () => {
   });
 });
 
+describe("decidirEnvioConversacional — o predicado do backend", () => {
+  it("TESTE C: silêncio infinity ainda vige depois de mais de 5 minutos", () => {
+    const depois = new Date(AGORA.getTime() + 6 * 60 * 1000);
+    const r = decidirEnvioConversacional(
+      fatos({ assigned_to_user_id: ATENDENTE, bot_silenced_until: "infinity" }),
+      depois,
+    );
+    expect(r.permitido).toBe(false);
+    if (r.permitido) throw new Error("inalcançável");
+    expect(r.codigo).toBe("DENY_HUMAN_ACTIVE");
+  });
+
+  it("TESTE G: conversa closed → DENY_CLOSED", () => {
+    const r = decidirEnvioConversacional(fatos({ status: "closed" }), AGORA);
+    expect(r.permitido).toBe(false);
+    if (r.permitido) throw new Error("inalcançável");
+    expect(r.codigo).toBe("DENY_CLOSED");
+  });
+
+  it("TESTE H: contato blocked → DENY_BLOCKED", () => {
+    const r = decidirEnvioConversacional(fatos({ is_blocked: true }), AGORA);
+    expect(r.permitido).toBe(false);
+    if (r.permitido) throw new Error("inalcançável");
+    expect(r.codigo).toBe("DENY_BLOCKED");
+  });
+
+  it("TESTE I: depois da devolução explícita o envio volta a ser permitido", () => {
+    const r = decidirEnvioConversacional(
+      fatos({
+        assigned_to_user_id: null,
+        assignee_kind: "ai",
+        bot_silenced_until: null,
+        force_human: false,
+        is_blocked: false,
+      }),
+      AGORA,
+    );
+    expect(r).toEqual({ permitido: true });
+  });
+
+  it("rodízio (dono humano SEM silêncio) NÃO cala — distribuir não é assumir", () => {
+    const r = decidirEnvioConversacional(
+      fatos({ assigned_to_user_id: ATENDENTE, assignee_kind: "user" }),
+      AGORA,
+    );
+    expect(r).toEqual({ permitido: true });
+  });
+
+  it("silêncio sem dono → DENY_PAUSED", () => {
+    const r = decidirEnvioConversacional(fatos({ bot_silenced_until: "infinity" }), AGORA);
+    expect(r.permitido).toBe(false);
+    if (r.permitido) throw new Error("inalcançável");
+    expect(r.codigo).toBe("DENY_PAUSED");
+  });
+});
+
 describe("o espelho entre a tela e o motor", () => {
   /**
    * Os gates que calam o automático vivem em DOIS arquivos de produção. Se um
@@ -255,6 +318,7 @@ describe("o espelho entre a tela e o motor", () => {
     expect(fonte).toContain('skip("force_human")');
     expect(fonte).toContain('skip("assigned_to_human")');
     expect(fonte).toContain('skip("silenced_post_handoff")');
+    expect(fonte).toContain("decidirEnvioConversacional");
   });
 
   it("todo estado e todo motivo têm rótulo, e a palavra do estado é 'automático'", () => {

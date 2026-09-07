@@ -20,7 +20,10 @@ import { checkDailyLimit, espacarEnvio } from "@/lib/automation/throttle";
 import { reportarEnvio, type MensagemEnviada } from "@/lib/automation/desfecho-do-envio";
 import { dadosDoFormularioDoContexto } from "@/lib/automation/dados-do-formulario";
 import { checarGuardasDeContato } from "@/lib/automation/guarda-do-contato";
+import { checarComandoParaEnvio, desfechoPuladoPorComando } from "@/lib/automation/guarda-do-comando";
 import { sendMessageHandler } from "@/app/api/v1/messages/_handler";
+import { lerPoliticaSupabase } from "@/lib/ai/execucao/ler-camadas";
+import { registrarDecisaoDeExecucao } from "@/lib/ai/execucao/medir";
 import { gerarAbordagemDeFormulario } from "@/lib/agent-engine/agent/abordagem-de-formulario";
 import { getRequestPool } from "@/lib/agent-engine/db/request-pool";
 import { llmEdgeConfigFromEnv } from "@/lib/agent-engine/edge/llm/credentials";
@@ -53,6 +56,24 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
   const guarda = checarGuardasDeContato(ctx);
   if (!guarda.ok) return { type: TIPO, status: "skipped", detail: { reason: guarda.reason } };
   const contact = guarda.contact;
+
+  const politica = await lerPoliticaSupabase(ctx.admin, {
+    organizationId: ctx.organizationId,
+    contactId: contact.id,
+    agentId,
+    channelSessionId: sessionId,
+  });
+  if (!politica.execution_allowed || !politica.side_effects_allowed) {
+    registrarDecisaoDeExecucao({
+      organization_id: ctx.organizationId,
+      agent_id: agentId,
+      ai_mode: politica.ai_mode,
+      execution_decision: "skip_dispatch",
+      kill_source: politica.kill_source,
+      reason: politica.reason,
+    });
+    return { type: TIPO, status: "skipped", detail: { reason: "ai_mode_blocks_send" } };
+  }
 
   // ─── O texto ───────────────────────────────────────────────────────────────
   //
@@ -102,6 +123,11 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
   // ─── O envio ───────────────────────────────────────────────────────────────
   try {
     const conversationId = await ensureConversation(ctx.admin, ctx.organizationId, contact.id, sessionId);
+    const comando = await checarComandoParaEnvio(ctx.admin, {
+      organizationId: ctx.organizationId,
+      conversationId,
+    });
+    if (!comando.permitido) return desfechoPuladoPorComando(TIPO, comando);
     await espacarEnvio(sessionId);
     const message = await sendMessageHandler(
       ctx.admin,
@@ -109,6 +135,7 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
         organization_id: ctx.organizationId,
         actor: { type: "webhook_source", id: ctx.ruleId },
         requestId: `rule:${ctx.ruleId}`,
+        send_intent: "conversational_auto",
       },
       { conversation_id: conversationId, type: "text", body: texto } as Parameters<
         typeof sendMessageHandler

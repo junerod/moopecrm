@@ -41,9 +41,10 @@
  *     a mostra. Ela entra como ESTADO DE COMANDO (`encerrada`), não como motivo.
  *
  * Informação com propósito (invariante 5): cada motivo aqui muda a ação de quem
- * lê. `resposta_humana_recente` existe justamente para dizer **não faça nada** —
- * é a janela deslizante de 5 min do envio manual, que se desfaz sozinha, e hoje a
- * tela oferece um botão de "devolver" para um estado que já vai voltar sozinho.
+ * lê. `resposta_humana_recente` ainda nomeia um silêncio FINITO legado (a janela
+ * de 5 min que o envio manual usava). O envio humano pelo Inbox agora grava
+ * `infinity` — a IA não volta sozinha. O rótulo permanece para conversas que
+ * ainda carregam o silêncio antigo até alguém devolver ou o relógio vencer.
  */
 
 /** As colunas de que esta função precisa — nada além. */
@@ -67,6 +68,8 @@ export interface FatosDoComando {
   bot_silenced_until?: string | null;
   /** A trava do CONTATO — irrevogável pelo agente. */
   force_human?: boolean | null;
+  /** Opt-out / bloqueio. Cala o automático sem ser trava de "devolver". */
+  is_blocked?: boolean | null;
 }
 
 export type Comando =
@@ -164,6 +167,7 @@ function silencioVigente(
 export function comandoDaConversa(fatos: FatosDoComando, agora: Date = new Date()): ComandoDaConversa {
   const silencio = silencioVigente(fatos.bot_silenced_until, agora);
   const travado = fatos.force_human === true;
+  const bloqueado = fatos.is_blocked === true;
   const encerrada = STATUS_ENCERRADOS.has(fatos.status);
 
   const comando: Comando = fatos.assigned_to_user_id
@@ -193,7 +197,7 @@ export function comandoDaConversa(fatos: FatosDoComando, agora: Date = new Date(
    */
   const comandoFinal: Comando = comando;
 
-  const automaticoAtivo = !encerrada && !travado && !silencio.vigente;
+  const automaticoAtivo = !encerrada && !travado && !bloqueado && !silencio.vigente;
 
   const motivo: MotivoDoSilencio | null = automaticoAtivo
     ? null
@@ -244,3 +248,74 @@ export const ROTULO_DO_MOTIVO: Record<MotivoDoSilencio, string> = {
   pausado: "Automático pausado",
   resposta_humana_recente: "Automático volta em instantes",
 };
+
+/**
+ * Códigos do gate de envio conversacional automático. Uma lista fechada: o
+ * worker, a automação e o before-send falam a mesma língua, e o trace grava
+ * exatamente isto — não um sinônimo por arquivo.
+ */
+export const CODIGOS_DE_NEGACAO_ENVIO = [
+  "DENY_BLOCKED",
+  "DENY_CLOSED",
+  "DENY_HUMAN_ACTIVE",
+  "DENY_PAUSED",
+] as const;
+export type CodigoDeNegacaoEnvio = (typeof CODIGOS_DE_NEGACAO_ENVIO)[number];
+
+export type DecisaoDeEnvioConversacional =
+  | { permitido: true }
+  | { permitido: false; codigo: CodigoDeNegacaoEnvio; motivo: string };
+
+/**
+ * O predicado do BACKEND: este envio automático pode sair?
+ *
+ * É a mesma leitura da tela (`comandoDaConversa`), com a pergunta invertida.
+ * Rodízio (`assignee_kind='user'` SEM silêncio) NÃO cala — distribuir não é
+ * assumir (migration 0173). Quem cala é silêncio vigente, `force_human`,
+ * bloqueio ou conversa encerrada.
+ *
+ * Uma função só. Worker, automação e before-send chamam ESTA, nunca uma cópia.
+ */
+export function decidirEnvioConversacional(
+  fatos: FatosDoComando,
+  agora: Date = new Date(),
+): DecisaoDeEnvioConversacional {
+  if (fatos.is_blocked === true) {
+    return {
+      permitido: false,
+      codigo: "DENY_BLOCKED",
+      motivo: "este contato bloqueou o atendimento — nenhum envio automático pode sair.",
+    };
+  }
+  if (STATUS_ENCERRADOS.has(fatos.status)) {
+    return {
+      permitido: false,
+      codigo: "DENY_CLOSED",
+      motivo: "esta conversa está encerrada — nenhum envio automático pode sair.",
+    };
+  }
+  if (fatos.force_human === true) {
+    return {
+      permitido: false,
+      codigo: "DENY_HUMAN_ACTIVE",
+      motivo: "um humano tem o comando deste contato — o automático não envia até a devolução explícita.",
+    };
+  }
+
+  const silencio = silencioVigente(fatos.bot_silenced_until, agora);
+  if (!silencio.vigente) return { permitido: true };
+
+  const donoHumano = Boolean(fatos.assigned_to_user_id) || fatos.assignee_kind === "user";
+  if (donoHumano) {
+    return {
+      permitido: false,
+      codigo: "DENY_HUMAN_ACTIVE",
+      motivo: "um humano assumiu esta conversa — o automático não envia até a devolução explícita.",
+    };
+  }
+  return {
+    permitido: false,
+    codigo: "DENY_PAUSED",
+    motivo: "o atendimento automático está pausado nesta conversa — o automático não envia até a devolução explícita.",
+  };
+}

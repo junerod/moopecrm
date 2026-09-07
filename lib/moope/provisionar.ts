@@ -232,6 +232,7 @@ async function nascer(
       settings: {
         plan: "standard",
         moope: { partner_tenant_id: partnerTenantId },
+        ai_mode: "off",
       },
     })
     .select("id, slug, display_name")

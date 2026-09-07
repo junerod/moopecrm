@@ -35,6 +35,64 @@ export type AiDispatchMode = (typeof AI_DISPATCH_MODES)[number];
 export const aiDispatchModeSchema = z.enum(AI_DISPATCH_MODES).catch("native");
 
 /**
+ * organizations.settings.ai_mode — O QUE a IA pode fazer, não QUEM manda
+ * na conversa (isso continua em `decidirEnvioConversacional`).
+ *
+ * Ausente/inválido = `autonomous`: instalação existente com agente publicado
+ * não muda de comportamento. Organização NOVA grava `off` no insert
+ * (`AI_MODE_PADRAO_ORG_NOVA`). CONTROLLED continua sem herdar AUTONOMOUS
+ * nas capacidades de envio; o efeito concreto passa por `authorizeAiAction`.
+ */
+export const AI_MODES = ["off", "copilot", "controlled", "autonomous"] as const;
+export type AiMode = (typeof AI_MODES)[number];
+export const AI_MODE_PADRAO_ORG_NOVA: AiMode = "off";
+export const aiModeSchema = z.enum(AI_MODES).catch("autonomous");
+
+/**
+ * Allowlist inicial da Action Policy (Etapa 2.5). Ausência de regra NUNCA
+ * vira ALLOW — o resolvedor `authorizeAiAction` trata lista vazia como
+ * DENY (ou REQUIRE_CONFIRMATION só onde a matriz inicial declara).
+ */
+export const AI_ACTIONS = [
+  "read_conversation",
+  "read_contact",
+  "read_lead",
+  "search_knowledge",
+  "suggest_reply",
+  "summarize",
+  "classify_intent",
+  "extract_fields",
+  "add_tag",
+  "create_task",
+  "move_lead_stage",
+  "send_message",
+  "call_external_api",
+  "operational_moope_action",
+] as const;
+export type AiAction = (typeof AI_ACTIONS)[number];
+export const aiActionSchema = z.enum(AI_ACTIONS);
+
+export const aiActionPolicySchema = z
+  .object({
+    allow: z.array(aiActionSchema).default([]),
+    confirm: z.array(aiActionSchema).default([]),
+  })
+  .catch({ allow: [], confirm: [] });
+export type AiActionPolicyConfig = z.infer<typeof aiActionPolicySchema>;
+
+export const aiModePatchSchema = z.object({
+  ai_mode: z.enum(AI_MODES),
+  ai_action_policy: aiActionPolicySchema.optional(),
+});
+
+/** Semente de `organizations.settings` para INSERT de org nova. */
+export function settingsDeOrganizacaoNova(
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return { ...extra, ai_mode: extra.ai_mode ?? AI_MODE_PADRAO_ORG_NOVA };
+}
+
+/**
  * G3-05: vocabulário canônico de tags de conversa, persistido em
  * organizations.settings.canonical_conversation_tags (spec 13 §3.3 — org-scoped,
  * não pipeline-scoped). Schema declarativo; usado para validar o que o inbox lê

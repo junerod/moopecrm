@@ -298,6 +298,7 @@ export async function enviarPeloCrm(
         organization_id: orgId,
         actor: { type: "webhook_source", id: "moope-send" },
         requestId,
+        send_intent: "operational_moope",
       },
       pedido.template
         ? {

@@ -120,11 +120,16 @@ beforeEach(() => {
   get.mockReset();
   patch.mockReset();
   patch.mockResolvedValue({ data: { id: "d-1" } });
+  get.mockImplementation((path: unknown) => {
+    const p = String(path);
+    if (p.includes("/copilot")) return Promise.resolve({ data: { suggestion: null } });
+    if (p.includes("/ai-actions")) return Promise.resolve({ data: { requests: [] } });
+    return Promise.resolve({ data: RESPOSTA });
+  });
 });
 
 describe("painel do inbox — demandas abertas", () => {
   it("distingue a demanda SEM próximo passo da que tem", async () => {
-    get.mockResolvedValue({ data: RESPOSTA });
     renderPainel();
 
     await waitFor(() => expect(screen.getByTestId("inbox-demandas")).toBeTruthy());
@@ -138,7 +143,6 @@ describe("painel do inbox — demandas abertas", () => {
   });
 
   it("a ausência do próximo passo é dita por ESCRITO, não só por cor", async () => {
-    get.mockResolvedValue({ data: RESPOSTA });
     renderPainel();
 
     const sem = await screen.findByTestId("demanda-sem-proximo-passo");
@@ -176,7 +180,6 @@ describe("painel do inbox — demandas abertas", () => {
     // atendente via o vazamento e tinha de sair da tela. O botão é a segunda
     // aresta — e ele não pode aparecer onde não há o que resolver, senão vira
     // ruído em cima de trabalho já feito.
-    get.mockResolvedValue({ data: RESPOSTA });
     renderPainel();
     const sem = await screen.findByTestId("demanda-sem-proximo-passo");
     const com = screen.getByTestId("demanda-com-proximo-passo");
@@ -185,7 +188,6 @@ describe("painel do inbox — demandas abertas", () => {
   });
 
   it("marcar o próximo passo GRAVA e relê do servidor", async () => {
-    get.mockResolvedValue({ data: RESPOSTA });
     renderPainel();
     const sem = await screen.findByTestId("demanda-sem-proximo-passo");
 
@@ -220,7 +222,6 @@ describe("painel do inbox — demandas abertas", () => {
   });
 
   it("a demanda vem ANTES do negócio — a unidade é ela (cap. 5)", async () => {
-    get.mockResolvedValue({ data: RESPOSTA });
     renderPainel();
 
     const secao = await screen.findByTestId("inbox-demandas");

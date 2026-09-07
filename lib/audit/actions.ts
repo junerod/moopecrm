@@ -403,6 +403,8 @@ export const AUDIT_ACTIONS = [
   "moope.ai_credential_from_locadora",
   // Perfil do negócio trocado em Configurações (locadora, SaaS, advocacia…).
   "org.perfil_aplicado",
+  "ai_mode.config_changed",
+  "ai_action.confirmed",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

@@ -5,7 +5,7 @@
  * ## Por que esta lista existe
  *
  * A cadeia de conferências roda em `lib/agent-engine/guardrails/before-send.ts` e
- * é boa: dez verificações, veto instrutivo, trace por linha. Só que o dono do
+ * é boa: onze verificações, veto instrutivo, trace por linha. Só que o dono do
  * negócio **não sabia que ela existia**. A spec 16 §3.3 chamou o papel de
  * "Segurança" e disse, com todas as letras, que o que faltava era *superfície* —
  * e o épico dos três papéis foi entregue com dois papéis na tela.
@@ -27,7 +27,7 @@
  * verdade (arquivo de teste pode importar `pg`) e reprova nos DOIS sentidos:
  * conferência que roda e não aparece, e conferência que aparece e não roda.
  *
- * ## A política: 9 não se desligam, e isso não é rigidez
+ * ## A política: 10 não se desligam, e isso não é rigidez
  *
  * Um botão só existe onde há escolha real. Desligar o que impede o número do
  * cliente de ser bloqueado, ou o que respeita quem pediu para parar, não é
@@ -77,6 +77,16 @@ export const CONFERENCIAS_DE_SAIDA: readonly ConferenciaDeSaida[] = [
     porQueNaoSeDesliga:
       "Quem pediu para parar tem o direito de ser deixado em paz — e insistir é infração, não estratégia.",
      camada: null,
+  },
+  {
+    nome: "conversation_control",
+    rotulo: "Respeitar quem assumiu o atendimento",
+    oQueProtege:
+      "Se uma pessoa assumiu ou pausou a conversa, o assistente e a automação não mandam mais mensagem até a devolução explícita.",
+    escolha: null,
+    porQueNaoSeDesliga:
+      "Atendimento humano e automático ao mesmo tempo é o cliente recebendo duas vozes. A pessoa no comando manda até devolver.",
+    camada: null,
   },
   {
     nome: "lgpd",

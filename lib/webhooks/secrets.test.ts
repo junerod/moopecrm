@@ -14,7 +14,7 @@ afterEach(() => {
 describe("garantirChaveDeCifra", () => {
   it("semeia a chave do env uma vez, antes de cifrar", async () => {
     process.env.NUVEMSHOP_OAUTH_ENCRYPTION_KEY = "a".repeat(32);
-    const rpc = vi.fn(async (fn: string) => {
+    const rpc = vi.fn(async (fn: string, _params?: Record<string, unknown>) => {
       if (fn === "fn_seed_oauth_key") return { data: true, error: null };
       return { data: "\\xabc", error: null };
     });

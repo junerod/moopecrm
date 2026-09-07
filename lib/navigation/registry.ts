@@ -487,7 +487,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     // dava para ligar com UPDATE à mão no banco.
     href: "/app/settings/atendimento",
     label: "Distribuição de atendimento",
-    description: "Quem recebe cada cliente novo, e o que cada atendente enxerga.",
+    description: "Quem recebe cada cliente novo, o que cada atendente enxerga, e o modo da IA.",
     icon: UsersThree,
     group: "organizacao",
     section: "Sua empresa",

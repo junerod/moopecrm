@@ -53,7 +53,10 @@ import { HANDOFF_REASON_ORCAMENTO } from '../edge/llm/orcamento';
 import { MIRROR_WARN_ONLY, mirrorLeadStageToCrm } from '../edge/crm/move-lead-stage';
 import { insertInboxItem } from '../db/repository';
 import { buildNativeMediaParts } from './media-parts';
-import { enqueueJob, rescheduleJob, type JobRow, type Queryable } from '../queue/queue';
+import { enqueueJob, jobFoiInvalidado, lastErrorDoJob, rescheduleJob, type JobRow, type Queryable } from '../queue/queue';
+import { lerPoliticaPg } from '@/lib/ai/execucao/ler-camadas';
+import { registrarDecisaoDeExecucao } from '@/lib/ai/execucao/medir';
+import { decidirEfeitoDaIa } from '@/lib/ai/execucao/modos';
 import { applyLeadStateUpdate, getLeadState, type LeadStage, type LeadStateRow } from './lead-state';
 import { applySaveLeadNote, buildNotesIndexBlock, getLeadNoteBody } from './lead-notes';
 import { applyScheduleFollowup, type FollowupWindowKnobs } from './schedule-followup';
@@ -1125,6 +1128,42 @@ async function executarTurnoDoAgente(
     return;
   }
 
+  if (jobFoiInvalidado(job.last_error) || jobFoiInvalidado(await lastErrorDoJob(pool, job.id))) {
+    runLog.info('turno pulado — job invalidado no takeover', { kind: job.kind });
+    registrarDecisaoDeExecucao({
+      organization_id: tenantId,
+      conversation_id: input.conversationId,
+      job_id: job.id,
+      execution_decision: 'abort',
+      reason: job.last_error ?? 'abort_requested',
+    });
+    return;
+  }
+
+  const politicaDoTurno = await lerPoliticaPg(pool, {
+    organizationId: tenantId,
+    conversationId: input.conversationId,
+    contactId: leadId,
+    channelSessionId: input.channelSessionId,
+  });
+  if (!politicaDoTurno.execution_allowed || !politicaDoTurno.side_effects_allowed) {
+    runLog.info('turno pulado — política de execução', {
+      kind: job.kind,
+      ai_mode: politicaDoTurno.ai_mode,
+      kill_source: politicaDoTurno.kill_source,
+    });
+    registrarDecisaoDeExecucao({
+      organization_id: tenantId,
+      conversation_id: input.conversationId,
+      ai_mode: politicaDoTurno.ai_mode,
+      execution_decision: 'deny',
+      kill_source: politicaDoTurno.kill_source,
+      job_id: job.id,
+      reason: politicaDoTurno.reason,
+    });
+    return;
+  }
+
   // JANELA ANTI-BAN (7h–22h por padrão, fuso do tenant): fora dela o turno é
   // ADIADO, não gasto.
   //
@@ -1776,6 +1815,7 @@ async function executarTurnoDoAgente(
           tenantId,
           leadId,
           jobId: job.id,
+          conversationId: input.conversationId,
           channelSessionId: input.channelSessionId,
           body: rendered,
           // Só ESTE gate muda; stop, LGPD e pacing continuam valendo integralmente.
@@ -1850,6 +1890,19 @@ async function executarTurnoDoAgente(
     send_message: tool({
       ...AGENT_TOOL_DEFS.send_message,
       execute: async ({ body }) => {
+        const efeito = decidirEfeitoDaIa(politicaDoTurno.ai_mode, { tipo: 'send_message' });
+        if (!efeito.permitido) {
+          return { ok: false, error: { code: 'DENY', message: efeito.motivo } };
+        }
+        if (jobFoiInvalidado(await lastErrorDoJob(pool, job.id))) {
+          return {
+            ok: false,
+            error: {
+              code: 'abort_requested',
+              message: 'este turno foi invalidado — um humano assumiu. não envie.',
+            },
+          };
+        }
         if (seq >= maxSendsPerTurn) {
           return {
             ok: false,
@@ -1889,6 +1942,7 @@ async function executarTurnoDoAgente(
             tenantId,
             leadId,
             jobId: job.id,
+            conversationId: input.conversationId,
             channelSessionId: input.channelSessionId,
             body,
             optedOutThisTurn,

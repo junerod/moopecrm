@@ -65,6 +65,7 @@ export async function ensureTenantForUser(
         legal_name: orgName,
         status: "active",
         created_by: user.id,
+        settings: { ai_mode: "off" },
       })
       .select("id, slug")
       .single();

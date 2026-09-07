@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
       // A check constraint de organizations.status não tem 'onboarding' — o
       // marcador de onboarding é onboarded_at null (mesmo modelo do signup).
       status: "active",
-      settings: { plan },
+      settings: { plan, ai_mode: "off" },
       created_by: adminCtx.user.id,
     })
     .select("id, slug, display_name")

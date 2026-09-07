@@ -54,6 +54,7 @@ function poolFalso(
     calls.push(sql);
     if (sql.includes('returning e.id')) return { rows: [eventoDeAudio(Number(process.env.__ESPERA__ ?? 0))] };
     if (sql.includes('ai_dispatch_mode')) return { rows: [{ mode: null }] };
+    if (sql.includes("ai_mode")) return { rows: [{ mode: process.env.__AI_MODE__ ?? null }] };
     if (sql.includes('is_group')) return { rows: [{ is_group: false }] };
     if (sql.includes('tem_agente')) return { rows: [capacidade] };
     if (sql.includes('media_derived_status')) return { rows: [msgRow] };
@@ -115,6 +116,16 @@ it('sem agente publicado e sem roteador: turno pulado ANTES de qualquer gasto', 
   expect(calls.some((s) => s.includes("status = 'done'"))).toBe(true);
 });
 
+it('AI_MODE=off: evento vira done SEM enfileirar job de turno', async () => {
+  const calls: string[] = [];
+  process.env.__ESPERA__ = '0';
+  process.env.__AI_MODE__ = 'off';
+  await drainTick(poolFalso(textoSimples, calls), knobs, log);
+  delete process.env.__AI_MODE__;
+  expect(calls.some((s) => s.includes('job_queue'))).toBe(false);
+  expect(calls.some((s) => s.includes("status = 'done'"))).toBe(true);
+});
+
 it('com agente publicado: turno segue', async () => {
   const calls: string[] = [];
   process.env.__ESPERA__ = '0';
@@ -123,6 +134,60 @@ it('com agente publicado: turno segue', async () => {
     knobs, log,
   );
   expect(calls.some((s) => s.includes('job_queue'))).toBe(true);
+});
+
+it('evento de copiloto + COPILOT: enfileira copilot_turn, não inbound_turn', async () => {
+  const calls: string[] = [];
+  process.env.__ESPERA__ = '0';
+  process.env.__AI_MODE__ = 'copilot';
+  const query = vi.fn().mockImplementation((sql: string) => {
+    calls.push(sql);
+    if (sql.includes('returning e.id')) {
+      return {
+        rows: [{
+          ...event,
+          event_type: 'ai_copilot.dispatch_requested',
+          created_at: new Date().toISOString(),
+        }],
+      };
+    }
+    if (sql.includes('ai_dispatch_mode')) return { rows: [{ mode: null }] };
+    if (sql.includes('ai_mode')) return { rows: [{ mode: 'copilot' }] };
+    if (sql.includes('is_group')) return { rows: [{ is_group: false }] };
+    if (sql.includes('ai_copilot_suggestions')) return { rows: [] };
+    return { rows: [] };
+  });
+  await drainTick({ query } as unknown as pg.Pool, knobs, log);
+  delete process.env.__AI_MODE__;
+  expect(calls.some((s) => s.includes('insert into job_queue'))).toBe(true);
+  const insert = calls.find((s) => s.includes('insert into job_queue'));
+  expect(insert).toBeTruthy();
+});
+
+it('sugestão já existente para a mensagem: não enfileira segundo copiloto', async () => {
+  const calls: string[] = [];
+  process.env.__ESPERA__ = '0';
+  process.env.__AI_MODE__ = 'copilot';
+  const query = vi.fn().mockImplementation((sql: string) => {
+    calls.push(sql);
+    if (sql.includes('returning e.id')) {
+      return {
+        rows: [{
+          ...event,
+          event_type: 'ai_copilot.dispatch_requested',
+          created_at: new Date().toISOString(),
+        }],
+      };
+    }
+    if (sql.includes('ai_dispatch_mode')) return { rows: [{ mode: null }] };
+    if (sql.includes('ai_mode')) return { rows: [{ mode: 'copilot' }] };
+    if (sql.includes('is_group')) return { rows: [{ is_group: false }] };
+    if (sql.includes('ai_copilot_suggestions')) return { rows: [{ id: 'ja' }] };
+    return { rows: [] };
+  });
+  await drainTick({ query } as unknown as pg.Pool, knobs, log);
+  delete process.env.__AI_MODE__;
+  expect(calls.some((s) => s.includes('insert into job_queue'))).toBe(false);
 });
 
 it('sem agente MAS com roteador que resolve alguém: turno segue (caminho genérico preservado)', async () => {

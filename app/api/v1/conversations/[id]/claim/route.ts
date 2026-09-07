@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
 import { audit } from "@/lib/audit";
+import { invalidarJobsConversacionaisSupabase } from "@/lib/ai/execucao/invalidar-jobs";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
 import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
@@ -100,6 +101,12 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   // A linha na TELA. O `emit_event` acima e o audit não são lidos por atendente
   // nenhum; sem esta chamada, assumir uma conversa era invisível na timeline —
   // grep por atividade nas três rotas de troca de dono devolvia zero.
+  await invalidarJobsConversacionaisSupabase({
+    organizationId: conv.organization_id,
+    contactId: conv.contact_id,
+    conversationId: conv.id,
+  });
+
   await registrarTrocaDeComando({
     supabase,
     organizationId: conv.organization_id,

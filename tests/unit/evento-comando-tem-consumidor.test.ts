@@ -51,6 +51,10 @@ const CONSUMIDORES_FORA_DO_REGISTRY: Record<string, string> = {
     "Quem é o dono é config: AGENT_DISPATCH_CONSUMER ('engine' default | 'native'), " +
     "e o invariante tests/invariants/agent-dispatch-single-consumer.test.ts prova " +
     "que nunca são os dois.",
+  "ai_copilot.dispatch_requested":
+    "lib/agent-engine/edge/crm/drain.ts — o mesmo drain do agent-engine, ramo " +
+    "copilot_turn. Não passa pelo dispatcher nativo: sugestão sem side effect, " +
+    "dedup por (organização, conversa, inbound_message_id).",
 };
 
 /**

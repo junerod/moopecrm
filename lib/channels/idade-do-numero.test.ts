@@ -17,7 +17,7 @@ describe("efeitoDaDeclaracao", () => {
     expect(e.warmup_daily_caps).toEqual([...WARMUP_PULADO]);
     expect(e.daily_message_limit).toBe(TETO_DIARIO_NUMERO_JA_EM_USO);
     expect(e.daily_message_limit).toBeGreaterThanOrEqual(300);
-    expect(warmupCapFor(0, e.warmup_daily_caps ?? [])).toBeNull();
+    expect(warmupCapFor(0, [...(e.warmup_daily_caps ?? [])])).toBeNull();
   });
 
   it("número novo: aquecimento no degrau conservador, teto 250", () => {

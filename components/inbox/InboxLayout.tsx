@@ -207,6 +207,9 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   }, []);
   const handleVisibleChange = useCallback((ids: string[]) => setVisibleIds(ids), []);
   const handleFocusReply = useCallback(() => composerRef.current?.focus(), []);
+  const handleUsarResposta = useCallback((texto: string) => {
+    composerRef.current?.aplicarRascunho(texto);
+  }, []);
   const handleClaim = useCallback(() => {
     if (!selectedConversation) return;
     claim.mutate({
@@ -396,7 +399,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
                   <SheetTitle className="sr-only">Ficha do contato</SheetTitle>
-                  <CRMSidePanel conversation={selectedConversation} />
+                  <CRMSidePanel conversation={selectedConversation} onUsarResposta={handleUsarResposta} />
                 </SheetContent>
               </Sheet>
             )}
@@ -440,7 +443,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       </div>
 
       <div className="hidden h-full min-h-0 xl:block">
-        <CRMSidePanel conversation={selectedConversation} />
+        <CRMSidePanel conversation={selectedConversation} onUsarResposta={handleUsarResposta} />
       </div>
 
       <InboxKeyboardShortcuts

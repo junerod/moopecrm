@@ -44,6 +44,9 @@ let updateErro: { message: string } | null = null;
 let rpcErro: { message: string } | null = null;
 let ultimoUpdate: Record<string, unknown> | null = null;
 let ultimaRpc: Record<string, unknown> | null = null;
+/** `null` = select quebra (fail-open, o default dos casos antigos). */
+let conversaDoComando: Record<string, unknown> | null = null;
+let settingsDaOrg: Record<string, unknown> = {};
 
 /** Imita o builder do PostgREST: encadeável, o efeito acontece no `await`. */
 function cadeia(rotulo: string): Record<string, unknown> {
@@ -69,6 +72,30 @@ const admin = {
       update(payload: Record<string, unknown>) {
         ultimoUpdate = payload;
         return cadeia(`update:${tabela}`);
+      },
+      select() {
+        if (tabela === "organizations") {
+          const chain: Record<string, unknown> = {
+            eq: () => chain,
+            maybeSingle: async () => ({ data: { settings: settingsDaOrg }, error: null }),
+          };
+          return chain;
+        }
+        if (tabela === "channel_sessions") {
+          const chain: Record<string, unknown> = {
+            eq: () => chain,
+            maybeSingle: async () => ({ data: { metadata: {} }, error: null }),
+          };
+          return chain;
+        }
+        if (conversaDoComando === null) {
+          throw new Error("select de comando não configurado — fail-open");
+        }
+        const chain: Record<string, unknown> = {
+          eq: () => chain,
+          maybeSingle: async () => ({ data: conversaDoComando, error: null }),
+        };
+        return chain;
       },
     };
   },
@@ -102,6 +129,8 @@ beforeEach(() => {
   rpcErro = null;
   ultimoUpdate = null;
   ultimaRpc = null;
+  conversaDoComando = null;
+  settingsDaOrg = {};
   audit.mockClear();
   garantirLeadDaConversa.mockClear();
   garantirLeadDaConversa.mockResolvedValue({ criado: true, leadId: "lead-1" } as never);
@@ -243,6 +272,68 @@ describe("despacho do agente", () => {
   it("falha do emit não derruba a ingestão", async () => {
     rpcErro = { message: "rpc fora do ar" };
     await expect(rodar()).resolves.toBeUndefined();
+  });
+});
+
+describe("despacho não acorda IA quando o comando já está calado", () => {
+  it("humano no comando: NÃO emite ai_agent.dispatch_requested", async () => {
+    conversaDoComando = {
+      status: "claimed",
+      assigned_to_user_id: "11111111-1111-4111-8111-111111111111",
+      assignee_kind: "user",
+      bot_silenced_until: "infinity",
+      contacts: { force_human: false, is_blocked: false },
+    };
+    await rodar();
+    expect(sequencia).not.toContain("rpc:ai_agent.dispatch_requested");
+  });
+
+  it("select que falha NÃO cala o despacho — a trava real é o before-send", async () => {
+    conversaDoComando = null;
+    await rodar();
+    expect(sequencia).toContain("rpc:ai_agent.dispatch_requested");
+  });
+
+  it("AI_MODE=off: NÃO emite despacho de IA (TESTE 1 no ingest)", async () => {
+    conversaDoComando = {
+      status: "open",
+      assigned_to_user_id: null,
+      assignee_kind: "ai",
+      bot_silenced_until: null,
+      contacts: { force_human: false, is_blocked: false },
+    };
+    settingsDaOrg = { ai_mode: "off" };
+    await rodar();
+    expect(sequencia).not.toContain("rpc:ai_agent.dispatch_requested");
+    expect(sequencia).not.toContain("rpc:ai_copilot.dispatch_requested");
+  });
+
+  it("AI_MODE=copilot: NÃO enfileira inbound_turn; emite copiloto", async () => {
+    conversaDoComando = {
+      status: "open",
+      assigned_to_user_id: null,
+      assignee_kind: "ai",
+      bot_silenced_until: null,
+      contacts: { force_human: false, is_blocked: false },
+    };
+    settingsDaOrg = { ai_mode: "copilot" };
+    await rodar();
+    expect(sequencia).not.toContain("rpc:ai_agent.dispatch_requested");
+    expect(sequencia).toContain("rpc:ai_copilot.dispatch_requested");
+  });
+
+  it("humano no comando + COPILOT: copiloto ainda nasce (ajuda o atendente)", async () => {
+    conversaDoComando = {
+      status: "claimed",
+      assigned_to_user_id: "11111111-1111-4111-8111-111111111111",
+      assignee_kind: "user",
+      bot_silenced_until: "infinity",
+      contacts: { force_human: false, is_blocked: false },
+    };
+    settingsDaOrg = { ai_mode: "copilot" };
+    await rodar();
+    expect(sequencia).not.toContain("rpc:ai_agent.dispatch_requested");
+    expect(sequencia).toContain("rpc:ai_copilot.dispatch_requested");
   });
 });
 

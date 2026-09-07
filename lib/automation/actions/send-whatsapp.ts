@@ -7,6 +7,7 @@ import { adiarAteAJanelaAbrir } from "@/lib/automation/janela-do-canal";
 import { sendMessageHandler } from "@/app/api/v1/messages/_handler";
 import { reportarEnvio, type MensagemEnviada } from "@/lib/automation/desfecho-do-envio";
 import { checarGuardasDeContato } from "@/lib/automation/guarda-do-contato";
+import { checarComandoParaEnvio, desfechoPuladoPorComando } from "@/lib/automation/guarda-do-comando";
 
 async function postponeUntil(ctx: ActionCtx, config: Record<string, unknown>): Promise<string | null> {
   const sessionId = typeof config.channel_session_id === "string" ? config.channel_session_id : null;
@@ -39,6 +40,11 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
 
   try {
     const conversationId = await ensureConversation(ctx.admin, ctx.organizationId, contact.id, sessionId);
+    const comando = await checarComandoParaEnvio(ctx.admin, {
+      organizationId: ctx.organizationId,
+      conversationId,
+    });
+    if (!comando.permitido) return desfechoPuladoPorComando("send_whatsapp_message", comando);
     const body = renderTemplate(template, ctx.context);
     const message = await sendMessageHandler(
       ctx.admin,
@@ -46,6 +52,7 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
         organization_id: ctx.organizationId,
         actor: { type: "webhook_source", id: ctx.ruleId },
         requestId: `rule:${ctx.ruleId}`,
+        send_intent: "conversational_auto",
       },
       { conversation_id: conversationId, type: "text", body } as Parameters<typeof sendMessageHandler>[2],
     );

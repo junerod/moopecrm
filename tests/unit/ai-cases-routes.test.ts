@@ -39,6 +39,7 @@ vi.mock("@/lib/agent-engine/agent/human-handoff", () => ({
 }));
 vi.mock("@/lib/agent-engine/queue/queue", () => ({
   enqueueJob: vi.fn(async () => ({ job: { id: "job-1" }, deduped: false })),
+  ABORT_REQUESTED_PREFIX: "abort_requested:",
 }));
 
 const ORG_ID = "22222222-2222-4222-8222-222222222222";

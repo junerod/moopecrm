@@ -73,7 +73,7 @@ describe("lookupLocatario", () => {
     const fetchFn = vi.fn(async () => new Response("{}", { status: 404 }));
     const r = await lookupLocatario(adminCom(CONN) as never, "org-1", { placa: "mkp-3423" }, { fetchFn });
     expect(r).toEqual({ ok: false, codigo: "nao_encontrado" });
-    const [url] = fetchFn.mock.calls[0] as [string];
+    const [url] = fetchFn.mock.calls[0] as unknown as [string];
     expect(url).toContain("placa=MKP3423");
   });
 
@@ -95,7 +95,7 @@ describe("lookupLocatario", () => {
     );
     expect(r).toEqual({ ok: false, codigo: "nao_encontrado" });
     expect(fetchFn).toHaveBeenCalledOnce();
-    const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain("/api/crm/locatario?phone=%2B5511999998888");
     expect(init.method).toBe("GET");
     const headers = init.headers as Record<string, string>;

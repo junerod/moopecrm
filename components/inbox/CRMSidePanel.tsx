@@ -20,9 +20,11 @@ import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { cn } from "@/lib/utils";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { CadastrarNomeDoContato } from "./CadastrarNomeDoContato";
+import { AssistenteIa } from "./AssistenteIa";
 
 interface Props {
   conversation: ConversationWithContact | null;
+  onUsarResposta?: (texto: string) => void;
 }
 
 interface LeadRow {
@@ -228,7 +230,7 @@ function SemLista({
   );
 }
 
-export function CRMSidePanel({ conversation }: Props) {
+export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   const contact = contatoDoEmbed(conversation?.contacts);
   const contactId = contact?.id ?? null;
 
@@ -328,7 +330,7 @@ export function CRMSidePanel({ conversation }: Props) {
   // ser apagada da lista no cliente. Sumir no otimismo esconderia uma escrita
   // que falhou depois — e escrita que parece ter dado certo é o defeito que
   // esta tela inteira combate.
-  const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
+  const recarregar = useCallback(() => setTentativa((n) => n + 1), [setTentativa]);
 
   const tags = contact?.tags ?? [];
   const displayName = rotuloDoContato(contact);
@@ -355,6 +357,7 @@ export function CRMSidePanel({ conversation }: Props) {
 
   return (
     <aside className="flex h-full flex-col gap-4 overflow-y-auto border-l border-border bg-background p-4">
+      <AssistenteIa conversationId={conversation.id} onUsarResposta={onUsarResposta} />
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Contato

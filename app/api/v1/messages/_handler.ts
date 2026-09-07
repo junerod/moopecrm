@@ -30,6 +30,9 @@ import {
 } from "@/lib/messaging/contact-card";
 import type { ListMessagesQuery, SendMessageInput } from "@/lib/schemas";
 import { sendTemplateForSession } from "@/lib/channels/meta/send-template-for-session";
+import { envioRespeitaComandoDaConversa, resolverIntencaoDeEnvio } from "@/lib/ai/execucao/intencao-de-envio";
+import { assumirPeloEnvioHumano, SILENCIO_DURAVEL } from "@/lib/inbox/assumir-pelo-envio";
+import { decidirEnvioConversacional } from "@/lib/inbox/comando-da-conversa";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Message } from "@/lib/types/messaging";
 
@@ -238,26 +241,10 @@ function previewFrom(input: {
 }
 
 /**
- * Atendente respondeu manualmente → IA fica quieta nesta conversa por uma janela curta,
- * renovada a cada mensagem humana (sliding window). Sem isto, a IA só "parecia" quieta
- * por coincidência de timing (nenhum turno novo disparado) e voltava a responder junto
- * com o humano assim que o cliente mandava a próxima mensagem — `isLeadInHandoff`
- * (lib/agent-engine/agent/human-handoff.ts) só olhava `force_human`/`bot_silenced_until`,
- * e nenhum envio manual tocava nenhum dos dois.
+ * Atendente respondeu pelo Inbox → assume o atendimento. O silêncio é
+ * DURÁVEL (`infinity`), o mesmo do botão Assumir. A janela de 5 minutos que
+ * morava aqui devolvia a IA sozinha; isso acabou. A volta é só Devolver.
  */
-const HUMAN_REPLY_SILENCE_MS = 5 * 60 * 1000;
-
-/**
- * Postgres 'infinity' (handoff permanente — regex/tool/orquestrador) chega do PostgREST
- * como o literal texto "infinity", que `new Date(...)` não parseia. Nunca encurtar isso
- * para uma janela de 5min: se já está travado pra sempre, este helper não mexe.
- */
-function extendBotSilence(current: string | null, now: string): string | undefined {
-  if (current === "infinity") return undefined;
-  const candidate = new Date(new Date(now).getTime() + HUMAN_REPLY_SILENCE_MS);
-  if (current && new Date(current) >= candidate) return undefined;
-  return candidate.toISOString();
-}
 
 export async function sendMessageHandler(
   supabase: SB,
@@ -270,7 +257,7 @@ export async function sendMessageHandler(
   // envio com 42703. Sem a coluna, nada está arquivado — e a consulta sem ela é a
   // consulta certa (ver lib/channels/archived).
   const convSelect = (comArchived: boolean) =>
-    `id, organization_id, contact_id, channel_session_id, is_group, group_chat_id, bot_silenced_until, provider_conversation_id, contacts:contact_id(phone_number, wa_identity, wa_lid, is_blocked), channel_sessions:channel_session_id(${CHANNEL_SESSION_REF_COLUMNS}, status${comArchived ? `, ${ARCHIVED_AT}` : ""})`;
+    `id, organization_id, contact_id, channel_session_id, is_group, group_chat_id, status, assigned_to_user_id, assignee_kind, bot_silenced_until, provider_conversation_id, contacts:contact_id(phone_number, wa_identity, wa_lid, is_blocked, force_human), channel_sessions:channel_session_id(${CHANNEL_SESSION_REF_COLUMNS}, status${comArchived ? `, ${ARCHIVED_AT}` : ""})`;
   const { data: conv, error: convErr } = await queryTolerantToMissingArchived(
     () => supabase.from("conversations").select(convSelect(true)).eq("id", input.conversation_id).maybeSingle(),
     () => supabase.from("conversations").select(convSelect(false)).eq("id", input.conversation_id).maybeSingle(),
@@ -290,6 +277,9 @@ export async function sendMessageHandler(
     channel_session_id: string;
     is_group: boolean;
     group_chat_id: string | null;
+    status: string | null;
+    assigned_to_user_id: string | null;
+    assignee_kind: string | null;
     bot_silenced_until: string | null;
     /** Thread do provider, quando ele endereça por thread própria (migration 0132). */
     provider_conversation_id: string | null;
@@ -298,6 +288,7 @@ export async function sendMessageHandler(
       wa_identity: string | null;
       wa_lid: string | null;
       is_blocked: boolean;
+      force_human?: boolean | null;
     } | null;
     channel_sessions: (ChannelSessionRef & { status: string; archived_at?: string | null }) | null;
   };
@@ -311,6 +302,36 @@ export async function sendMessageHandler(
       ctx.requestId,
       "Contato bloqueou o atendimento.",
     );
+  }
+
+  // Intenção explícita. `webhook_source` sozinho NÃO é privilégio operacional.
+  const intent = resolverIntencaoDeEnvio(ctx);
+  if (envioRespeitaComandoDaConversa(intent)) {
+    const comando = decidirEnvioConversacional({
+      status: c.status ?? "open",
+      assigned_to_user_id: c.assigned_to_user_id,
+      assignee_kind: c.assignee_kind,
+      bot_silenced_until: c.bot_silenced_until,
+      force_human: c.contacts?.force_human,
+      is_blocked: c.contacts?.is_blocked,
+    });
+    if (!comando.permitido) {
+      throw new ApiError(409, "state_conflict", undefined, ctx.requestId, comando.motivo);
+    }
+  }
+
+  // Humano no Inbox = comando durável ANTES do POST ao canal. Sem isto a IA
+  // que já estava gerando vence a corrida: o silêncio só nascia no update
+  // de depois, e o last-second do before-send lia o estado velho.
+  if (ctx.actor.type === "user") {
+    await assumirPeloEnvioHumano({
+      supabase,
+      organizationId: c.organization_id,
+      conversationId: c.id,
+      contactId: c.contact_id,
+      assignedToUserId: c.assigned_to_user_id,
+      actor: ctx.actor,
+    });
   }
 
   if (input.media_storage_path && !isMediaPathOwnedBy(input.media_storage_path, c.organization_id, c.id)) {
@@ -765,8 +786,7 @@ export async function sendMessageHandler(
     unread_count_for_assignee: 0,
   };
   if (ctx.actor.type === "user") {
-    const silenceUntil = extendBotSilence(c.bot_silenced_until, now);
-    if (silenceUntil) conversationUpdate.bot_silenced_until = silenceUntil;
+    conversationUpdate.bot_silenced_until = SILENCIO_DURAVEL;
   }
 
   await supabase.from("conversations").update(conversationUpdate).eq("id", c.id);

@@ -19,7 +19,7 @@ import { z } from 'zod';
 import type pg from 'pg';
 
 import { withFields } from '../obs/logger';
-import type { JobRow } from '../queue/queue';
+import { jobFoiInvalidado, lastErrorDoJob, type JobRow } from '../queue/queue';
 import { getLeadContext, type LeadContext } from '../edge/crm/get-lead-context';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
 import { applySendOutcome } from '../edge/crm/send-message';
@@ -233,6 +233,11 @@ export function createFollowupTurnHandler(deps: FollowupTurnDeps) {
     if (leadId === null) {
       throw new Error('job followup_turn sem contact_id — o CHECK da fila deveria impedir');
     }
+    if (jobFoiInvalidado(job.last_error) || jobFoiInvalidado(await lastErrorDoJob(pool, job.id))) {
+      deps.log.info('followup_turn pulado — job invalidado no takeover', { job_id: job.id });
+      return;
+    }
+
     const payload = followupTurnPayloadSchema.parse(job.payload);
 
     // Ids de envio resolvidos da conversa 1:1 mais recente do contato (fonte
@@ -461,6 +466,10 @@ async function runDeterministicReentry(
     runLog.info('re-entrada determinística pulada — lead silenciado (handoff/opt-out)', { kind: job.kind });
     return;
   }
+  if (jobFoiInvalidado(await lastErrorDoJob(pool, job.id))) {
+    runLog.info('re-entrada determinística pulada — job invalidado', { kind: job.kind });
+    return;
+  }
 
   // Mesma escolha por organização do caminho do agente: a re-entrada
   // determinística passa pela MESMA cadeia, então tem de honrar a MESMA
@@ -498,6 +507,7 @@ async function runDeterministicReentry(
     tenantId,
     leadId,
     jobId: job.id,
+    conversationId,
     channelSessionId,
     body,
     optedOutThisTurn,

@@ -36,6 +36,11 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
       SUPABASE_SERVICE_ROLE_KEY:
         "test-service-role-key-not-a-placeholder-1234567890-1234567890",
+      // O invariante de send_whatsapp afirma `queued_reason=waha_not_configured`.
+      // Um `.env.e2e` / `.env.local` do desenvolvedor (WAHA_API_KEY real) faz o
+      // handler TENTAR o canal, a mensagem virar `failed`, e o harness mentir.
+      WAHA_API_KEY: "",
+      WAHA_API_BASE_URL: "",
     },
   },
   resolve: { alias: { "@": path.resolve(__dirname, ".") } },

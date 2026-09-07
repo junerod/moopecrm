@@ -59,7 +59,8 @@ export type SkipReason =
    * rodam na mesma mensagem: o engine responde de verdade e este aqui gasta
    * token à toa e deixa uma linha presa para sempre no inbox de quem instalou.
    */
-  | "engine_owns_reply";
+  | "engine_owns_reply"
+  | "ai_mode_off";
 
 export interface BotContext {
   organization_id: string;

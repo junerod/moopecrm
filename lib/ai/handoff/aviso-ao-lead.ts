@@ -80,6 +80,7 @@ export async function avisarLeadDoCrm(
         organization_id: input.organizationId,
         actor: { type: "ai_agent", id: ATOR_DO_AVISO, role: "manager" },
         requestId: `handoff-aviso-${input.conversationId}`,
+        send_intent: "system_notice",
       },
       {
         conversation_id: input.conversationId,

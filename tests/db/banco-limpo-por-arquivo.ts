@@ -70,3 +70,9 @@ execFileSync(
 // arquivo da rodada" — e passaria verde justamente na regressão que ele existe
 // para pegar (o setupFile sumir da config).
 process.env.DESKCOMM_INVARIANTS_DB_RESET = "1";
+
+// Depois do dotenv do Vite: um WAHA_API_KEY do `.env.e2e` sobrevive ao
+// `test.env` vazio em alguns loaders. Sem isto o send_whatsapp do harness
+// deixa de ser o ramo `waha_not_configured` que o invariante documenta.
+delete process.env.WAHA_API_KEY;
+delete process.env.WAHA_API_BASE_URL;

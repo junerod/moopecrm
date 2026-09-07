@@ -147,7 +147,7 @@ Primeira passada ancorada no grafo (`graphify`) + `docs/architecture/`. A doutri
 - Atendentes com status/carga/capacidade/horário/disponibilidade + **Performance por Atendente** (ganhos, perdidos, conversas, 1ª resposta média).
 - **IA como assignee de 1ª classe** (`assignee_kind user|ai`) + Modo de Roteamento — handoff IA→humano existe.
 - Flywheel de auto-aprimoramento com gate humano; `createFollowupTurnHandler` (follow-up conduzido pelo agente).
-- 10 gates before-send com veto instrutivo de volta ao modelo (continuidade IA→modelo). *(Este número já dizia "7" quando a cadeia tinha 9 — corrigido junto com a entrada do gate `internal_vocabulary`, que a levou a 10. A lista viva é `BEFORE_SEND_GATES`, travada por `tests/unit/before-send-chain-shape.test.ts`.)*
+- Gates before-send com veto instrutivo de volta ao modelo (continuidade IA→modelo). A lista viva é `BEFORE_SEND_GATES`, travada por `tests/unit/before-send-chain-shape.test.ts` — o número não mora aqui de propósito: toda vez que a cadeia ganha um gate o número nesta frase apodrece.
 
 **Verificado em código (2026-07-24):**
 1. ✅ **Timeline de `crm_lead_activities` renderizada** — VIVO. `components/inbox/CRMSidePanel.tsx` busca `crm_lead_activities` e renderiza como feed no inbox (API `app/api/v1/contacts/[id]/timeline/route.ts`). *Nuance:* o feed vive no inbox, não no card do pipeline — desilhar o card seria o próximo passo se o operador trabalhar direto do Kanban. (invariante 3)

@@ -98,6 +98,9 @@ const envSchema = z.object({
   // worker no boot, e derrubar o worker é o oposto do que um kill switch faz.
   // Quem normaliza é `normalizarChaveDeOrcamento` (edge/llm/orcamento.ts).
   AI_BUDGET_ENFORCEMENT: z.string().min(1).optional(),
+  // Kill switch GLOBAL da IA conversacional. Mesmo contrato da alavanca de
+  // orçamento: string, nunca enum — typo não derruba o worker.
+  AI_EXECUTION: z.string().min(1).optional(),
   // Modo do gate de disclosure: 'inject' (default conservador) ou 'veto'.
   DISCLOSURE_MODE: z.enum(['inject', 'veto']).default('inject'),
   // Resposta 'queued' (sessão ≠ WORKING): job reagendado com este atraso, SEM

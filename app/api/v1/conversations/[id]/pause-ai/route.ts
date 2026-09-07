@@ -36,6 +36,7 @@ import type { NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { invalidarJobsConversacionaisSupabase } from "@/lib/ai/execucao/invalidar-jobs";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
 import { createClient } from "@/lib/supabase/server";
 import type { Conversation } from "@/lib/types/messaging";
@@ -143,6 +144,12 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
 
   // O log que aparece na TELA (invariante 3: log invisível é log morto). A
   // auditoria acima só `admin` lê; esta linha vai para o painel da conversa.
+  await invalidarJobsConversacionaisSupabase({
+    organizationId: org.orgId,
+    contactId: conv.contact_id,
+    conversationId: id,
+  });
+
   await registrarTrocaDeComando({
     supabase,
     organizationId: org.orgId,

@@ -38,7 +38,10 @@
  * um efeito faltando por uma tempestade de reentregas. Cada passo falha para
  * dentro, com log, e o seguinte roda mesmo assim.
  */
+import { lerPoliticaSupabase } from "@/lib/ai/execucao/ler-camadas";
+import { registrarDecisaoDeExecucao } from "@/lib/ai/execucao/medir";
 import { audit } from "@/lib/audit";
+import { decidirAPartirDosFatos, lerFatosDoComandoSupabase } from "@/lib/inbox/ler-comando";
 import { garantirLeadDaConversa } from "@/lib/leads/nascimento-do-lead";
 import { logger } from "@/lib/logger";
 import type { createAdminClient } from "@/lib/supabase/admin";
@@ -214,27 +217,98 @@ async function abrirDemanda(admin: Admin, entrada: EntradaDeMensagem): Promise<v
 async function pedirDespachoDoAgente(admin: Admin, entrada: EntradaDeMensagem): Promise<void> {
   if (!entrada.messageId) return;
 
-  const { error } = await admin.rpc("emit_event" as never, {
-    p_event_type: "ai_agent.dispatch_requested",
-    p_entity_kind: "message",
-    p_entity_id: entrada.messageId,
-    p_payload: {
-      organization_id: entrada.organizationId,
-      conversation_id: entrada.conversationId,
-      contact_id: entrada.contactId,
-      channel_session_id: entrada.channelSessionId,
-      inbound_message_id: entrada.messageId,
-    },
-    p_metadata: { source: entrada.origem, request_id: entrada.requestId },
-    p_organization_id: entrada.organizationId,
-  } as never);
-
-  if (error) {
-    logger.warn("pos-entrada: emit ai_agent.dispatch_requested falhou", {
-      organization_id: entrada.organizationId,
-      message_id: entrada.messageId,
-      origem: entrada.origem,
-      detail: error.message.slice(0, 160),
+  let comandoPermite = true;
+  let fatos = null as Awaited<ReturnType<typeof lerFatosDoComandoSupabase>> | null;
+  try {
+    fatos = await lerFatosDoComandoSupabase(admin, {
+      organizationId: entrada.organizationId,
+      conversationId: entrada.conversationId,
     });
+    const decisao = decidirAPartirDosFatos(fatos);
+    if (!decisao.permitido) {
+      comandoPermite = false;
+      logger.info("pos-entrada: despacho autônomo pulado — comando da conversa", {
+        organization_id: entrada.organizationId,
+        conversation_id: entrada.conversationId,
+        origem: entrada.origem,
+        codigo: decisao.codigo,
+      });
+    }
+  } catch {
+    // fail-open no comando — a trava real é o before-send
+  }
+
+  let enfileiraTurno = comandoPermite;
+  let enfileiraCopiloto = false;
+  try {
+    const politica = await lerPoliticaSupabase(
+      admin,
+      {
+        organizationId: entrada.organizationId,
+        conversationId: entrada.conversationId,
+        contactId: entrada.contactId,
+        channelSessionId: entrada.channelSessionId,
+      },
+      fatos,
+    );
+    enfileiraTurno = comandoPermite && politica.deve_enfileirar_turno;
+    enfileiraCopiloto = politica.deve_enfileirar_copiloto;
+    if (!enfileiraTurno && !enfileiraCopiloto) {
+      registrarDecisaoDeExecucao({
+        organization_id: entrada.organizationId,
+        conversation_id: entrada.conversationId,
+        ai_mode: politica.ai_mode,
+        execution_decision: "skip_dispatch",
+        kill_source: politica.kill_source,
+        reason: politica.reason,
+      });
+    }
+  } catch {
+    // fail-open do turno autônomo — Copilot só nasce com policy lida
+  }
+
+  const payload = {
+    organization_id: entrada.organizationId,
+    conversation_id: entrada.conversationId,
+    contact_id: entrada.contactId,
+    channel_session_id: entrada.channelSessionId,
+    inbound_message_id: entrada.messageId,
+  };
+
+  if (enfileiraTurno) {
+    const { error } = await admin.rpc("emit_event" as never, {
+      p_event_type: "ai_agent.dispatch_requested",
+      p_entity_kind: "message",
+      p_entity_id: entrada.messageId,
+      p_payload: payload,
+      p_metadata: { source: entrada.origem, request_id: entrada.requestId },
+      p_organization_id: entrada.organizationId,
+    } as never);
+    if (error) {
+      logger.warn("pos-entrada: emit ai_agent.dispatch_requested falhou", {
+        organization_id: entrada.organizationId,
+        message_id: entrada.messageId,
+        origem: entrada.origem,
+        detail: error.message.slice(0, 160),
+      });
+    }
+  }
+  if (enfileiraCopiloto) {
+    const { error } = await admin.rpc("emit_event" as never, {
+      p_event_type: "ai_copilot.dispatch_requested",
+      p_entity_kind: "message",
+      p_entity_id: entrada.messageId,
+      p_payload: payload,
+      p_metadata: { source: entrada.origem, request_id: entrada.requestId },
+      p_organization_id: entrada.organizationId,
+    } as never);
+    if (error) {
+      logger.warn("pos-entrada: emit ai_copilot.dispatch_requested falhou", {
+        organization_id: entrada.organizationId,
+        message_id: entrada.messageId,
+        origem: entrada.origem,
+        detail: error.message.slice(0, 160),
+      });
+    }
   }
 }

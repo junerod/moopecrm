@@ -17,6 +17,8 @@ import type pg from 'pg';
 
 import type { Logger } from '../../obs/logger';
 import { enqueueJob } from '../../queue/queue';
+import { lerAiMode } from '@/lib/ai/execucao/modos';
+import { globalAiExecutionOff, resolveAiExecutionPolicy } from '@/lib/ai/execucao/politica';
 import { TIPOS_DERIVAVEIS, DERIVACAO_TERMINADA } from '@/lib/messaging/media/derivable';
 
 const DRAIN_CONSUMER = 'agent-engine';
@@ -33,6 +35,7 @@ const dispatchPayloadSchema = z
 interface EventRow {
   id: string;
   organization_id: string;
+  event_type?: string;
   payload: unknown;
   attempts: number;
   created_at: string;
@@ -57,7 +60,7 @@ export async function drainTick(
   // Reaper de eventos órfãos — barato (update indexado), roda a cada tick.
   await pool.query(
     `update event_log set status = 'pending', updated_at = now()
-     where event_type = 'ai_agent.dispatch_requested'
+     where event_type in ('ai_agent.dispatch_requested', 'ai_copilot.dispatch_requested')
        and status = 'processing'
        and $1 = any(consumed_by)
        and updated_at < now() - make_interval(secs => $2 / 1000.0)`,
@@ -71,14 +74,14 @@ export async function drainTick(
          updated_at = now()
      where e.id in (
        select id from event_log
-       where event_type = 'ai_agent.dispatch_requested'
+       where event_type in ('ai_agent.dispatch_requested', 'ai_copilot.dispatch_requested')
          and status = 'pending'
          and (next_attempt_at is null or next_attempt_at <= now())
        order by created_at
        limit $1
        for update skip locked
      )
-     returning e.id, e.organization_id, e.payload, e.attempts, e.created_at`,
+     returning e.id, e.organization_id, e.event_type, e.payload, e.attempts, e.created_at`,
     [knobs.batchSize, DRAIN_CONSUMER],
   );
 
@@ -156,6 +159,28 @@ async function processEvent(
     return 'processado';
   }
 
+  const ehCopiloto = event.event_type === 'ai_copilot.dispatch_requested';
+  const { rows: aiModeRows } = await pool.query<{ mode: string | null }>(
+    `select settings->>'ai_mode' as mode from organizations where id = $1`,
+    [event.organization_id],
+  );
+  const politica = resolveAiExecutionPolicy({
+    globalOff: globalAiExecutionOff(),
+    tenantMode: lerAiMode(aiModeRows[0]?.mode),
+    channelOff: false,
+    agentOff: false,
+    conversationDeny: null,
+  });
+  if (ehCopiloto ? !politica.deve_enfileirar_copiloto : !politica.deve_enfileirar_turno) {
+    log.info(ehCopiloto ? 'drain: copiloto não enfileirado' : 'drain: turno de IA não enfileirado', {
+      event_id: event.id,
+      ai_mode: politica.ai_mode,
+      kill_source: politica.kill_source,
+      reason: politica.reason,
+    });
+    return 'processado';
+  }
+
   // Grupos: skip, sem exceção (regra dura nº 12).
   const { rows: convRows } = await pool.query<{ is_group: boolean }>(
     'select is_group from conversations where organization_id = $1 and id = $2',
@@ -164,6 +189,10 @@ async function processEvent(
   if (convRows[0]?.is_group !== false) {
     log.info('drain: conversa de grupo ou inexistente — evento pulado', { event_id: event.id });
     return 'processado';
+  }
+
+  if (ehCopiloto) {
+    return enqueueCopilot(pool, event, p, log);
   }
 
   // Ninguém para atender: NÃO gastar. Sem agente publicado para esta sessão e
@@ -281,6 +310,42 @@ async function processEvent(
     ...(runAfter !== undefined ? { runAfter } : {}),
   });
   log.info('drain: job de turno enfileirado', { event_id: event.id, job_id: job.id, deduped });
+  return 'processado';
+}
+
+async function enqueueCopilot(
+  pool: pg.Pool,
+  event: EventRow,
+  p: z.infer<typeof dispatchPayloadSchema>,
+  log: Logger,
+): Promise<DesfechoEvento> {
+  const { rows: existing } = await pool.query<{ id: string }>(
+    `select id from ai_copilot_suggestions
+      where organization_id = $1 and conversation_id = $2 and inbound_message_id = $3
+        and status <> 'discarded'
+      limit 1`,
+    [event.organization_id, p.conversation_id, p.inbound_message_id],
+  );
+  if (existing[0]) {
+    log.info('drain: sugestão já existe para a mensagem — copiloto pulado', {
+      event_id: event.id,
+    });
+    return 'processado';
+  }
+
+  const { job, deduped } = await enqueueJob(pool, event.organization_id, {
+    kind: 'copilot_turn',
+    leadId: p.contact_id,
+    sourceEventId: event.id,
+    payload: {
+      conversation_id: p.conversation_id,
+      contact_id: p.contact_id,
+      channel_session_id: p.channel_session_id,
+      inbound_message_id: p.inbound_message_id,
+      crm_event_id: event.id,
+    },
+  });
+  log.info('drain: job de copiloto enfileirado', { event_id: event.id, job_id: job.id, deduped });
   return 'processado';
 }
 

@@ -208,6 +208,20 @@ beforeAll(() => {
            where c.organization_id = v_org
            limit 1;
         end if;
+
+        if not exists (select 1 from public.ai_copilot_suggestions where organization_id = v_org) then
+          insert into public.ai_copilot_suggestions
+            (organization_id, conversation_id, inbound_message_id, summary, intent, suggested_reply, confidence)
+          select v_org, v_conv, m.id, 'RLS invariant summary', 'OTHER', 'rls', 0.1
+            from public.messages m
+           where m.organization_id = v_org
+           limit 1;
+        end if;
+        if not exists (select 1 from public.ai_action_requests where organization_id = v_org) then
+          insert into public.ai_action_requests
+            (organization_id, conversation_id, requested_action, policy_result, idempotency_key)
+          values (v_org, v_conv, 'move_lead_stage', 'REQUIRE_CONFIRMATION', 'rls-' || v_org::text);
+        end if;
       end loop;
     end
     $seed$;
@@ -248,6 +262,8 @@ const TABLES = [
   // migration 0197 — conector MOOPE. Leitura org-flat (agent lê); escrita admin.
   "moope_connections",
   "moope_inbound_events",
+  "ai_copilot_suggestions",
+  "ai_action_requests",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a
   // ausência é deliberada: a policy dela exige `manager`, e o usuário semeado
   // aqui é `agent` — o controle positivo falharia por ACERTO, e a "correção"
@@ -282,5 +298,49 @@ describe("RLS tenant isolation (fn_user_org_ids pattern)", () => {
       ),
     );
     expect(total).toBe(2);
+  });
+
+  it("user A cannot mark org B copilot suggestion used (write path)", () => {
+    sql(`
+      set role authenticated;
+      select set_config('request.jwt.claims', '{"sub":"${USER_A}"}', false);
+      update public.ai_copilot_suggestions set status = 'used' where organization_id = '${ORG_B}';
+    `);
+    const used = Number(
+      sql(
+        `select count(*) from public.ai_copilot_suggestions where organization_id = '${ORG_B}' and status = 'used';`,
+      ),
+    );
+    expect(used).toBe(0);
+  });
+
+  it("user A cannot execute org B action request (write path)", () => {
+    sql(`
+      set role authenticated;
+      select set_config('request.jwt.claims', '{"sub":"${USER_A}"}', false);
+      update public.ai_action_requests
+         set status = 'executed', confirmed_by = '${USER_A}'
+       where organization_id = '${ORG_B}';
+    `);
+    const executed = Number(
+      sql(
+        `select count(*) from public.ai_action_requests where organization_id = '${ORG_B}' and status = 'executed';`,
+      ),
+    );
+    expect(executed).toBe(0);
+  });
+
+  it("user A can mark own copilot suggestion used (positive write)", () => {
+    sql(`
+      set role authenticated;
+      select set_config('request.jwt.claims', '{"sub":"${USER_A}"}', false);
+      update public.ai_copilot_suggestions set status = 'used' where organization_id = '${ORG_A}';
+    `);
+    const used = Number(
+      sql(
+        `select count(*) from public.ai_copilot_suggestions where organization_id = '${ORG_A}' and status = 'used';`,
+      ),
+    );
+    expect(used).toBeGreaterThanOrEqual(1);
   });
 });

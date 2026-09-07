@@ -27,6 +27,7 @@ import { ehOptOutProvavel } from '@/lib/opt-out/deteccao';
 import { emitAgentActivityForContact } from '@/lib/leads/agent-activity';
 
 import type { Logger } from '../obs/logger';
+import { invalidarJobsConversacionaisPg } from '@/lib/ai/execucao/invalidar-jobs';
 import { cancelPendingCronsForLead } from '../cron/scheduler';
 import { findForbiddenKey, zodIssuesSummary } from './lead-state';
 import { renderDeclaracaoParaHumano, type DeclaracaoDoTurno } from './declaracao';
@@ -163,6 +164,11 @@ export async function performHumanHandoff(
   // (c) Cancela os crons PENDENTES do lead (follow-ups agendados — F3-01/02). Idempotente,
   // via o cancel compartilhado (mesma garantia que o opt-out irrevogável usa — F4-07).
   await cancelPendingCronsForLead(db, ids.tenantId, ids.leadId);
+  await invalidarJobsConversacionaisPg(db, {
+    organizationId: ids.tenantId,
+    contactId: ids.leadId,
+    conversationId: ids.conversationId,
+  });
 
   // (d) inbox de escalação com o resumo da conversa. Dedup por episódio ABERTO (mesmo padrão
   // do escalateJailbreakPromise): 2× no mesmo handoff aberto → 1 item.

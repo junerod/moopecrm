@@ -228,6 +228,7 @@ aplica.
 | `20260831200000` | `0199_moope_partner_api_url` | **URL da API da locadora**, distinta do webhook de eventos. O CRM chama GET lookup/retrato nesta base (ou na origem do webhook, se o campo estiver vazio). Sem POST Asaas e sem chave na query. |
 | `20260901140000` | `0200_moope_partner_tenant_id` | **userid da locadora na conexão.** O POST /provision reabre o mesmo tenant na segunda chamada em vez de nascer outro. Unique parcial (só quando preenchido). |
 | `20260904200000` | `0201_canal_twilio_vocabulario` | **Quarto canal** (API de mensagens hospedada). Coluna `twilio_from` (sessionRef = número WhatsApp em dígitos), SID + token cifrado, CHECKs recriados (três → quatro providers), unique parcial nos ativos. |
+| `20260907140000` | `0202_copilot_e_action_policy` | **Copilot + Action Policy.** Kind `copilot_turn` na fila (com contato; não é turno conversacional). Tabelas `ai_copilot_suggestions` (unique org+conversa+mensagem inbound) e `ai_action_requests` (unique org+idempotency_key). RLS com `fn_user_org_ids` + `fn_role_at_least(agent)`. |
 
 ## Reproducibility
 

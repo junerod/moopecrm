@@ -209,6 +209,15 @@ const schema = z.object({
    */
   AI_BUDGET_ENFORCEMENT: z.string().optional().default("on"),
 
+  /**
+   * Kill switch GLOBAL de execução de IA conversacional.
+   *   on   (default) a hierarquia tenant→canal→agente→conversa decide
+   *   off  nenhuma IA conversacional executa nesta instalação
+   * String, nunca enum: typo do operador não pode derrubar o app no boot.
+   * Grafias de desligado: off, false, 0, no, nao, não, disabled.
+   */
+  AI_EXECUTION: z.string().optional().default("on"),
+
   // `EVENT_LOG_WORKER_ENABLED` viveu aqui até 2026-08-25 e NUNCA teve leitor: o
   // campo era declarado, documentado no `.env.example` com `false` e lido por
   // ninguém (medido: zero ocorrências fora da própria declaração). Saiu junto

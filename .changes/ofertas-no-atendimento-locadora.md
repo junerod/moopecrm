@@ -1,5 +1,7 @@
 ---
-tipo: capacidade_nova
+impacto: capacidade_nova
+secao: adicionado
+titulo: Ofertas da frota no atendimento da locadora
 ---
 
 Quem pede carro, elétrico, valores ou veio da página de ofertas ouve a

@@ -16,8 +16,27 @@
  */
 import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
-export type JobKind = 'inbound_turn' | 'followup_turn' | 'watchdog' | 'flywheel' | 'case_reply_turn' | 'operator_turn';
+export type JobKind = 'inbound_turn' | 'followup_turn' | 'watchdog' | 'flywheel' | 'case_reply_turn' | 'operator_turn' | 'copilot_turn';
 export type JobStatus = 'pending' | 'running' | 'done' | 'failed' | 'dead';
+
+/** Turnos que falam com o lead. `operator_turn` / watchdog / flywheel ficam de fora. */
+export const CONVERSATIONAL_TURN_KINDS = ['inbound_turn', 'followup_turn', 'case_reply_turn'] as const;
+export type ConversationalTurnKind = (typeof CONVERSATIONAL_TURN_KINDS)[number];
+
+/** Prefixo gravado em last_error quando o humano assume no meio do voo. */
+export const ABORT_REQUESTED_PREFIX = 'abort_requested:';
+
+export function jobFoiInvalidado(lastError: string | null | undefined): boolean {
+  return typeof lastError === 'string' && lastError.startsWith(ABORT_REQUESTED_PREFIX);
+}
+
+export async function lastErrorDoJob(db: Queryable, jobId: string): Promise<string | null> {
+  const { rows } = await db.query<{ last_error: string | null }>(
+    `select last_error from job_queue where id = $1`,
+    [jobId],
+  );
+  return rows[0]?.last_error ?? null;
+}
 
 export interface JobRow {
   id: string;
@@ -301,6 +320,46 @@ export async function failJob(
  * A razão fica em last_error (normalizada — nunca conteúdo de mensagem).
  * Devolve null se o lease já não era deste worker.
  */
+/**
+ * Pending conversacional → failed. Terminal: devolver o atendimento NÃO
+ * ressuscita esta linha. Inbound novo gera job novo.
+ */
+export async function invalidatePendingConversationalJobs(
+  db: Queryable,
+  opts: { organizationId: string; contactId: string; reason: string },
+): Promise<number> {
+  const { rows } = await db.query<{ id: string }>(
+    `update job_queue
+        set status = 'failed', last_error = $3, locked_by = null, locked_at = null
+      where organization_id = $1 and contact_id = $2
+        and status = 'pending'
+        and kind = any($4::text[])
+      returning id`,
+    [opts.organizationId, opts.contactId, normalizeError(opts.reason), CONVERSATIONAL_TURN_KINDS],
+  );
+  return rows.length;
+}
+
+/**
+ * Running: não rouba o lease (o worker ainda segura a linha). Só marca
+ * abort para o turno reler antes de gastar LLM / enviar.
+ */
+export async function requestAbortOnRunningConversationalJobs(
+  db: Queryable,
+  opts: { organizationId: string; contactId: string; reason: string },
+): Promise<number> {
+  const { rows } = await db.query<{ id: string }>(
+    `update job_queue
+        set last_error = $3
+      where organization_id = $1 and contact_id = $2
+        and status = 'running'
+        and kind = any($4::text[])
+      returning id`,
+    [opts.organizationId, opts.contactId, normalizeError(opts.reason), CONVERSATIONAL_TURN_KINDS],
+  );
+  return rows.length;
+}
+
 export async function cancelJob(
   db: Queryable,
   jobId: string,

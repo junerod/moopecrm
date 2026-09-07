@@ -20,8 +20,10 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { DEFAULT_VISIBILITY_MODE, ROLE_RANK, type VisibilityMode } from "@/lib/auth/types";
+import { lerAiMode } from "@/lib/ai/execucao/modos";
 import { routingConfigSchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
+import { AiModeForm } from "./_ai-mode";
 import { AtendimentoForm } from "./_form";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +46,7 @@ export default async function AtendimentoSettingsPage() {
   const settings = ((data?.settings as Record<string, unknown> | null) ?? {}) as {
     routing?: unknown;
     visibility_mode?: VisibilityMode;
+    ai_mode?: unknown;
   };
   // `.catch(...)`: config antiga ou corrompida no jsonb não pode derrubar a
   // tela que serve justamente para consertá-la.
@@ -63,6 +66,8 @@ export default async function AtendimentoSettingsPage() {
       <AtendimentoForm
         initial={{ ...routing, visibility_mode: settings.visibility_mode ?? DEFAULT_VISIBILITY_MODE }}
       />
+
+      <AiModeForm initial={{ configured: lerAiMode(settings.ai_mode) }} />
     </div>
   );
 }

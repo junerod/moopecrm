@@ -25,6 +25,7 @@ import { recusaDeCapacidadeParaOModelo } from "@/lib/mcp/recusa-para-o-modelo";
 import type { McpContext, McpToolDefinition } from "@/lib/mcp/types";
 import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/active-lead";
 import { podeChamarFerramenta, recusaParaOModelo } from "@/lib/leads/escopo-de-funil";
+import { BLOCKED_TOOL_IDS } from "@/lib/agent-engine/edge/crm/mcp-tools";
 
 export interface RuntimeHandoffSignal {
   triggered: boolean;
@@ -225,6 +226,10 @@ export function pickToolsFromMcp(input: PickToolsInput): Record<string, Tool> {
     // A marca era declaração sem efeito no runtime: eu a criei no catálogo e
     // não a apliquei aqui. Não montar é o que faz a declaração valer.
     if (catalogEntry(def.name)?.apenasHumano) continue;
+    // O runtime legado (`runAgent`) montava o catálogo MCP inteiro. A tool
+    // de envio conversacional tem de passar pelo gate da Etapa 1 — o motor
+    // canônico já a bloqueia; este caminho também.
+    if (BLOCKED_TOOL_IDS.has(def.name)) continue;
 
     result[def.name] = wrapMcpTool(def, input);
   }

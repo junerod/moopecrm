@@ -108,6 +108,7 @@ export async function avisarLeadDaEscalacao(
       tenantId: ids.tenantId,
       leadId: ids.leadId,
       jobId: ids.jobId,
+      conversationId: ids.conversationId,
       channelSessionId: ids.channelSessionId,
       body,
       optedOutThisTurn: opts.optedOutThisTurn,

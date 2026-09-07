@@ -17,7 +17,7 @@
  *
  * ═══ POR QUE ISTO AVALIA SÓ UMA PARTE, E DIZ QUAL ═══
  *
- * A cadeia tem 10 gates. Seis dependem de ESTADO que só existe no turno real:
+ * A cadeia tem 11 gates. A maioria depende de ESTADO que só existe no turno real:
  * contadores de pacing, janela de cópias do spinning, carimbo da última inbound,
  * ledger de envios, base legal do contato. Fabricar esse estado para o teste
  * produziria um veredito **inventado** — pior que veredito nenhum, porque teria
@@ -61,6 +61,7 @@ export interface AvaliacaoDaRespostaDeTeste {
  */
 const NAO_AVALIAVEIS_SEM_TURNO: ReadonlyArray<{ gate: string; porque: string }> = [
   { gate: "stop", porque: "depende de o contato ter pedido para sair — não há contato real no teste" },
+  { gate: "conversation_control", porque: "depende de alguém ter assumido ou pausado a conversa agora" },
   { gate: "lgpd", porque: "depende da base legal registrada para o contato" },
   { gate: "pacing", porque: "depende de quantas mensagens o número já enviou hoje e do horário do envio" },
   { gate: "messaging_window", porque: "depende de quando o contato falou com você pela última vez" },

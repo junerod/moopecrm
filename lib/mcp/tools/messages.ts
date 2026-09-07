@@ -81,6 +81,8 @@ export const crmSendWhatsappMessage: McpToolDefinition<typeof inputShape> = {
         organization_id: ctx.organizationId,
         actor: ctx.actor,
         requestId: ctx.requestId,
+        // MCP conversacional — NÃO herda exceção operacional da MOOPE.
+        send_intent: "integration_api",
       },
       parsed,
     );

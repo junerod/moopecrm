@@ -101,6 +101,7 @@ async function ensureOrg(ownerId: string): Promise<string> {
       display_name: ORG_NAME,
       legal_name: ORG_NAME,
       created_by: ownerId,
+      settings: { ai_mode: "off" },
     } as never)
     .select("id")
     .single();

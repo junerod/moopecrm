@@ -126,6 +126,15 @@
       "tag": "runAgentTurn"
     },
     {
+      "id": "copilot_turn",
+      "lane": "worker",
+      "col": 2,
+      "type": "backend",
+      "label": "Copiloto",
+      "sublabel": "copilot_turn · resumo + intenção + rascunho · sem side effect",
+      "tag": "copilot_turn"
+    },
+    {
       "id": "toolbreaker",
       "lane": "guardrails",
       "col": 2,
@@ -139,7 +148,7 @@
       "col": 4,
       "type": "security",
       "label": "Before-send",
-      "sublabel": "cadeia de 10 gates (v6)",
+      "sublabel": "cadeia de 11 gates (v7)",
       "tag": "veto = HARD"
     },
     {
@@ -165,6 +174,15 @@
       "type": "backend",
       "label": "org_memory",
       "sublabel": "versão + ponteiro + aprendizados"
+    },
+    {
+      "id": "ai_policy",
+      "lane": "config",
+      "col": 2,
+      "type": "security",
+      "label": "Política de IA",
+      "sublabel": "AI_MODE + kill + authorizeAiAction · resolveAiExecutionPolicy",
+      "tag": "ai_mode"
     },
     {
       "id": "capacidades",
@@ -285,6 +303,38 @@
       "from": "ingest",
       "to": "eventlog",
       "label": "emite evento"
+    },
+    {
+      "id": "eventlog-ai_policy",
+      "from": "eventlog",
+      "to": "ai_policy",
+      "label": "despacho consulta modo",
+      "variant": "dashed"
+    },
+    {
+      "id": "ai_policy-turn",
+      "from": "ai_policy",
+      "to": "turn",
+      "label": "OFF/COPILOT não enfileira inbound_turn"
+    },
+    {
+      "id": "ai_policy-copilot_turn",
+      "from": "ai_policy",
+      "to": "copilot_turn",
+      "label": "COPILOT/CONTROLLED enfileira sugestão"
+    },
+    {
+      "id": "copilot_turn-handoff",
+      "from": "copilot_turn",
+      "to": "handoff",
+      "label": "atendente revisa no Inbox"
+    },
+    {
+      "id": "handoff-ai_policy",
+      "from": "handoff",
+      "to": "ai_policy",
+      "label": "invalida jobs",
+      "variant": "dashed"
     },
     {
       "id": "eventlog-turn",

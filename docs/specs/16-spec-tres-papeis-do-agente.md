@@ -125,7 +125,7 @@ existe, mais os classificadores onde regra não alcança.
 
 | camada | natureza | custo | estado |
 |---|---|---|---|
-| 10 gates de `BEFORE_SEND_GATES` (v6) | determinística | zero | **pronto** |
+| `BEFORE_SEND_GATES` (ordem e versão em `before-send.ts`, trava em `before-send-chain-shape.test.ts`) | determinística | zero | **pronto** |
 | promessa semântica | LLM auxiliar | 1 chamada/envio | **pronto**, opt-in |
 | jailbreak (inbound) | LLM auxiliar | 1 chamada/turno | **pronto**, opt-in |
 | vazamento de vocabulário | determinística | zero | **pronto** (`internal_vocabulary`) |

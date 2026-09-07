@@ -65,6 +65,8 @@ interface PoolOpts {
   archivedAt?: string | null;
   /** Clone sem a migration 0106: a coluna simplesmente não existe na tabela. */
   semColuna?: boolean;
+  /** Sem conversa 1:1 — o handler deve dead-letter, não inventar destino. */
+  semConversa?: boolean;
 }
 
 /** Pool que responde como o Postgres responderia, inclusive quando erra. */
@@ -72,9 +74,18 @@ function fakePool(opts: PoolOpts = {}) {
   const consultas: string[] = [];
   const query = vi.fn(async (sql: string) => {
     consultas.push(sql);
+    // A Etapa 1 relê `job_queue.last_error` antes de qualquer consulta de
+    // conversa. Sem este ramo o primeiro `mockResolvedValueOnce` do caso
+    // "sem conversa" esvazia a releitura e o handler segue no caminho bom.
+    if (/from job_queue/.test(sql) && /last_error/.test(sql)) {
+      return { rows: [{ last_error: null }] };
+    }
     // Regra do Postgres: referência DIRETA a coluna inexistente é 42703. A
     // expressão `to_jsonb(cs) ->> 'archived_at'` não referencia coluna nenhuma —
     // lê uma chave de um json, e chave ausente é NULL.
+    if (opts.semConversa === true && /from conversations/.test(sql)) {
+      return { rows: [] };
+    }
     if (opts.semColuna === true && /\bcs\.archived_at\b/.test(sql)) {
       throw Object.assign(new Error('column cs.archived_at does not exist'), { code: "42703" });
     }
@@ -160,13 +171,12 @@ describe("followup_turn — canal arquivado", () => {
     await run(job(), pool, ctx);
     expect(runAgentTurn).toHaveBeenCalledTimes(1);
     // Não-vacuidade: a consulta que rodou é mesmo a que resolve a conversa.
-    expect(consultas[0]).toMatch(/from conversations/);
+    expect(consultas.find((c) => /from conversations/i.test(c))).toMatch(/from conversations/);
   });
 
   it("contato sem conversa/número: dead-letter, não turno contra o vazio", async () => {
     runAgentTurn.mockClear();
-    const { pool, query } = fakePool();
-    query.mockResolvedValueOnce({ rows: [] });
+    const { pool } = fakePool({ semConversa: true });
     const run = handler();
 
     await expect(run(job(), pool, ctx)).rejects.toThrow(/impossível retomar o contato/i);

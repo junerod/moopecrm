@@ -199,7 +199,10 @@ describe("remetente", () => {
     });
     expect(r.ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledOnce();
-    const req = fetchMock.mock.calls[0] as [string, { headers: Record<string, string>; body: string }];
+    const req = fetchMock.mock.calls[0] as unknown as [
+      string,
+      { headers: Record<string, string>; body: string },
+    ];
     expect(req[0]).toBe("http://mailserver.test/enviar-email");
     expect(req[1].headers["x-api-key"]).toBe("chave-de-teste");
     expect(JSON.parse(req[1].body)).toEqual({

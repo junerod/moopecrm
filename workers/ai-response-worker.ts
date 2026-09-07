@@ -38,6 +38,9 @@ import { logInvocation } from "@/lib/ai/log-invocation";
 import { renderSystemPrompt } from "@/lib/ai/render-system-prompt";
 import { triggerHandoff } from "@/lib/ai/handoff/orchestrator";
 import { checkG1, checkG3, checkG4Legal, checkG4Stage } from "@/lib/ai/handoff/triggers";
+import { decidirEnvioConversacional } from "@/lib/inbox/comando-da-conversa";
+import { lerPoliticaSupabase } from "@/lib/ai/execucao/ler-camadas";
+import { registrarDecisaoDeExecucao } from "@/lib/ai/execucao/medir";
 import type {
   BotContext,
   BotResponse,
@@ -573,7 +576,7 @@ async function buildContext(input: BuildContextInput): Promise<GuardDecision> {
   const { data: conv, error: convErr } = await admin
     .from("conversations")
     .select(
-      "id, organization_id, contact_id, channel_session_id, last_inbound_at, bot_silenced_until, last_handoff_at, assignee_kind, contacts:contact_id(id, display_name, locale, is_blocked, force_human)",
+      "id, organization_id, contact_id, channel_session_id, status, last_inbound_at, bot_silenced_until, last_handoff_at, assigned_to_user_id, assignee_kind, contacts:contact_id(id, display_name, locale, is_blocked, force_human)",
     )
     .eq("id", input.conversationId)
     .eq("organization_id", input.organizationId)
@@ -587,9 +590,11 @@ async function buildContext(input: BuildContextInput): Promise<GuardDecision> {
     organization_id: string;
     contact_id: string;
     channel_session_id: string;
+    status: string | null;
     last_inbound_at: string | null;
     bot_silenced_until: string | null;
     last_handoff_at: string | null;
+    assigned_to_user_id: string | null;
     assignee_kind: string | null;
     contacts: {
       id: string;
@@ -607,14 +612,45 @@ async function buildContext(input: BuildContextInput): Promise<GuardDecision> {
   // deterministicamente, mesma família de guard de force_human/bot_silenced_until.
   if (c.assignee_kind === "user") return skip("assigned_to_human");
 
+  // O mesmo predicado do before-send. O worker legado NÃO passa por
+  // runBeforeSend — esta é a trava dele. `infinity` o Date() antigo lia como
+  // inválido e deixava passar; o predicado não.
+  const comando = decidirEnvioConversacional({
+    status: c.status ?? "open",
+    assigned_to_user_id: c.assigned_to_user_id ?? null,
+    assignee_kind: c.assignee_kind,
+    bot_silenced_until: c.bot_silenced_until,
+    force_human: c.contacts.force_human,
+    is_blocked: c.contacts.is_blocked,
+  });
+  if (!comando.permitido) {
+    if (comando.codigo === "DENY_BLOCKED") return skip("contact_blocked");
+    if (comando.codigo === "DENY_HUMAN_ACTIVE") return skip("assigned_to_human");
+    return skip("silenced_post_handoff");
+  }
+
+  const politica = await lerPoliticaSupabase(admin, {
+    organizationId: input.organizationId,
+    conversationId: input.conversationId,
+    contactId: c.contact_id,
+    channelSessionId: c.channel_session_id,
+  });
+  if (!politica.execution_allowed || !politica.side_effects_allowed) {
+    registrarDecisaoDeExecucao({
+      organization_id: input.organizationId,
+      conversation_id: input.conversationId,
+      ai_mode: politica.ai_mode,
+      execution_decision: "deny",
+      kill_source: politica.kill_source,
+      reason: politica.reason,
+    });
+    return skip("ai_mode_off");
+  }
+
   // 24h window (IA-01). Use last_inbound_at — webhook updates it on receive.
   if (c.last_inbound_at) {
     const age = Date.now() - new Date(c.last_inbound_at).getTime();
     if (age > WINDOW_24H_MS) return skip("window_24h_expired");
-  }
-  // Post-handoff silence (IA-06)
-  if (c.bot_silenced_until && new Date(c.bot_silenced_until).getTime() > Date.now()) {
-    return skip("silenced_post_handoff");
   }
   // Recent handoff (idempotency for S-06.03)
   if (c.last_handoff_at) {

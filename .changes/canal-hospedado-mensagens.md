@@ -1,5 +1,7 @@
 ---
-tipo: capacidade_nova
+impacto: capacidade_nova
+secao: adicionado
+titulo: Número WhatsApp por API de mensagens
 ---
 
 Dá para ligar um número WhatsApp por API de mensagens (SID + token) em

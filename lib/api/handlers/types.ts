@@ -26,8 +26,21 @@ export type Actor =
   | { type: "ai_agent"; id: string; role: string; api_token_id?: string; agent_id?: string }
   | { type: "webhook_source"; id: string };
 
+export type SendIntent =
+  | "human"
+  | "conversational_auto"
+  | "operational_moope"
+  | "integration_api"
+  | "system_notice";
+
 export interface HandlerCtx {
   organization_id: string;
   actor: Actor;
   requestId: string;
+  /**
+   * Por que este envio existe. Ausente = inferido com cuidado:
+   * user → human; qualquer outro ator → conversational_auto.
+   * `webhook_source` NÃO herda privilégio operacional da MOOPE.
+   */
+  send_intent?: SendIntent;
 }

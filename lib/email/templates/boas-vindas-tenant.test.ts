@@ -7,7 +7,8 @@ const MARCA = {
   accent: "#111111",
   accentFg: "#ffffff",
   logoUrl: null,
-};
+  origens: { nome: "padrao", cor: "padrao" },
+} as const;
 
 describe("boas-vindas do tenant", () => {
   it("com senha inicial, o texto leva a senha e o login — não um produto inventado", () => {

@@ -84,7 +84,7 @@ describe("painel de segurança — o que se confere antes de enviar", () => {
     // passaram a lê-la, o interruptor deixou de ser decorativo e passou a ser
     // devido. A ordem foi essa de propósito.
     //
-    // Nove continuam sem controle: desligar o que respeita quem pediu para parar,
+    // Dez continuam sem controle: desligar o que respeita quem pediu para parar,
     // ou o que impede o número do cliente de ser bloqueado, não é preferência.
     const { container } = renderPainel();
     await waitFor(() =>
@@ -128,9 +128,10 @@ describe("painel de segurança — o que se confere antes de enviar", () => {
     renderPainel();
 
     const fixas = CONFERENCIAS_DE_SAIDA.filter((c) => c.escolha === null);
-    // 9 das 10 hoje. A contagem entra na asserção de propósito: se alguém tornar
-    // uma delas "configurável", este número muda e a mudança tem de ser deliberada.
-    expect(fixas).toHaveLength(9);
+    // 10 das 11 hoje (a configurável é a promessa semântica). A contagem entra
+    // na asserção de propósito: se alguém tornar uma delas "configurável", este
+    // número muda e a mudança tem de ser deliberada.
+    expect(fixas).toHaveLength(10);
     for (const c of fixas) {
       const linha = screen.getByTestId(`conferencia-${c.nome}-fixa`);
       expect(linha.textContent).toContain("não se desliga");
@@ -141,7 +142,7 @@ describe("painel de segurança — o que se confere antes de enviar", () => {
 
   it("as configuráveis dizem o CUSTO — é o que torna a escolha uma escolha", () => {
     // O custo é a única razão pela qual estas duas são configuráveis e as outras
-    // nove não. Sem o número na tela, o interruptor vira preferência estética.
+    // dez não. Sem o número na tela, o interruptor vira preferência estética.
     //
     // A frase de ONDE a decisão vem tem caso próprio abaixo: ela depende do
     // estado carregado, e misturar as duas fazia esta asserção medir o texto de

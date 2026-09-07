@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 
 export interface ComposerHandle {
   focus: () => void;
+  /** Preenche o composer. NÃO envia — o atendente revisa. */
+  aplicarRascunho: (texto: string) => void;
 }
 
 interface Props {
@@ -89,6 +91,13 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 
   useImperativeHandle(ref, () => ({
     focus: () => taRef.current?.focus(),
+    aplicarRascunho: (texto: string) => {
+      setText(texto);
+      requestAnimationFrame(() => {
+        autoresize();
+        taRef.current?.focus();
+      });
+    },
   }));
 
   // send/createNote fora do disable: o texto some na hora do envio; travar o campo
@@ -310,6 +319,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           />
           <textarea
             ref={taRef}
+            data-testid="inbox-composer"
             value={text}
             onChange={(e) => {
               setText(e.target.value);
@@ -349,6 +359,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               type="button"
               size="icon"
               className="h-9 w-9 shrink-0"
+              data-testid="inbox-enviar"
               onClick={handleSubmit}
               disabled={(mode === "note" ? isDisabled : respostaBarrada) || !text.trim()}
               aria-label="Enviar"

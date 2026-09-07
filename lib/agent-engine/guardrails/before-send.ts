@@ -5,13 +5,14 @@
  * como erro instrutivo (o modelo a vê no turno seguinte); só se TODOS passarem a
  * mensagem alcança o `ChannelAdapter` (e, por baixo, o sink idempotente F2-06).
  *
- * Ordem FINAL v6 (DECLARATIVA + VERSIONADA — `BEFORE_SEND_GATES`/`BEFORE_SEND_CHAIN_VERSION`,
- * F4-08/F4-09): (1) stop/opt-out — irrevogável; (2) lgpd — anonimização/base legal de
- * prospecção (F4-09); (3) anti-ban (janela/throttle/warm-up/caps — F2-11); (3.5) janela de
- * atendimento; (4) spinning (F2-12); (5) promise determinística (F4-01); (6) promise
- * semântica (F4-02); (6.5) case promise — anti-alucinação de casos humanos (spec 15 §10.2,
- * Wave 4); (6.7) internal_vocabulary — vazamento de vocabulário interno ao cliente
- * (`docs/doctrine/separacao-fala-e-operacao.md`); (7) disclosure
+ * Ordem FINAL v7 (DECLARATIVA + VERSIONADA — `BEFORE_SEND_GATES`/`BEFORE_SEND_CHAIN_VERSION`,
+ * F4-08/F4-09): (1) stop/opt-out — irrevogável; (2) conversation_control — humano/pausado/
+ * fechado/bloqueado relidos do banco; (3) lgpd — anonimização/base legal de
+ * prospecção (F4-09); (4) anti-ban (janela/throttle/warm-up/caps — F2-11); (4.5) janela de
+ * atendimento; (5) spinning (F2-12); (6) promise determinística (F4-01); (7) promise
+ * semântica (F4-02); (7.5) case promise — anti-alucinação de casos humanos (spec 15 §10.2,
+ * Wave 4); (7.7) internal_vocabulary — vazamento de vocabulário interno ao cliente
+ * (`docs/doctrine/separacao-fala-e-operacao.md`); (8) disclosure
  * (F4-05). A ordem é código-constante DE PROPÓSITO, não config de
  * runtime: "stop primeiro" é invariante de segurança (regra dura nº 2) e mudar a ordem sem
  * bumpar a versão quebra o CI — deixá-la mutável em disco seria um footgun.
@@ -71,6 +72,11 @@ import { detectarVazamentoInterno, renderVetoDeVazamento } from './vazamento-int
 import { capabilitiesOf, DEFAULT_CHANNEL_PROVIDER } from '@/lib/channels/capabilities';
 import { isWindowOpen } from './messaging-window';
 import type { ChannelProvider } from '@/lib/channels/capabilities';
+import {
+  decidirEnvioConversacional,
+  type DecisaoDeEnvioConversacional,
+} from '@/lib/inbox/comando-da-conversa';
+import { lerFatosDoComandoPg } from '@/lib/inbox/ler-comando';
 
 /** O que os gates enxergam — carregado UMA vez sob o lock, por tentativa de envio. */
 export interface GateContext {
@@ -221,6 +227,11 @@ export interface GateContext {
    * gate persegue —, e ele continua contando no cap diário (`recordSend`).
    */
   spinningEnforced?: boolean;
+  /**
+   * Predicado de comando relido SOB o lock. Ausente = o gate passa (testes que
+   * injetam cadeia parcial sem conversa). Em produção o runner sempre preenche.
+   */
+  conversationControl?: DecisaoDeEnvioConversacional;
 }
 
 /**
@@ -243,6 +254,20 @@ export interface Gate {
   readonly name: string;
   evaluate(ctx: GateContext): GateVerdict;
 }
+
+/**
+ * Gate de comando — HUMANO/PAUSADO/FECHADO/BLOQUEADO cala o envio automático.
+ * A regra é `decidirEnvioConversacional`; este gate só a aplica. Posição 2:
+ * depois do stop (opt-out continua primeiro) e antes de gastar janela/cap.
+ */
+export const conversationControlGate: Gate = {
+  name: 'conversation_control',
+  evaluate: (ctx) => {
+    const decisao = ctx.conversationControl;
+    if (decisao === undefined || decisao.permitido) return { pass: true };
+    return { pass: false, code: decisao.codigo, reason: decisao.motivo };
+  },
+};
 
 /** Gate 1 — STOP/opt-out/força-humano: veto IRREVOGÁVEL (regra dura nº 2), 1ª linha. */
 const stopGate: Gate = {
@@ -543,15 +568,21 @@ const spinningGate: Gate = {
  * nasce DESARMADO por default (ver `GateContext.internalVocabularyEnforced`): só o
  * caminho do agente o arma, então, como a v5, a v6 não muda o destino de nenhum envio
  * que já existia — muda o TRACE, e passa a medir o vazamento onde há modelo para ensinar.
+ * v7 = insere `conversationControlGate` imediatamente após `stop`: o humano no
+ * comando (ou conversa pausada/fechada/bloqueada) cala o envio automático. A
+ * regra é `decidirEnvioConversacional`; o runner AINDA relê os fatos depois do
+ * throttle, imediatamente antes do ChannelAdapter — é o que fecha a corrida
+ * "IA gerou → humano assumiu → IA ia enviar".
  */
-export const BEFORE_SEND_CHAIN_VERSION = 6;
+export const BEFORE_SEND_CHAIN_VERSION = 7;
 
 /**
  * Ordem FINAL da cadeia (F4-08/F4-09; edge-contract §before_send / blueprint órgão 5) — DADO
  * declarativo iterado pelo runner (acceptance 2). Constante de código de propósito: a
  * precedência é invariante de segurança/compliance, não config de runtime.
  *   (1) stop/opt-out/force_human — irrevogável, 1ª linha (regra dura nº 2);
- *   (2) lgpd — anonimização/base legal de prospecção, veto de conformidade HARD (F4-09);
+ *   (2) conversation_control — humano/pausado/fechado/bloqueado, relido do banco;
+ *   (3) lgpd — anonimização/base legal de prospecção, veto de conformidade HARD (F4-09);
  *   (3) pacing — janela/throttle/warm-up/caps anti-ban (F2-11);
  *   (4) spinning — template idêntico em massa (F2-12);
  *   (5) promise — validação determinística de preço/desconto/parcelamento (F4-01);
@@ -564,6 +595,7 @@ export const BEFORE_SEND_CHAIN_VERSION = 6;
  */
 export const BEFORE_SEND_GATES: readonly Gate[] = [
   stopGate,
+  conversationControlGate,
   lgpdGate,
   pacingGate,
   messagingWindowGate,
@@ -612,6 +644,12 @@ export interface RunBeforeSendArgs {
    * emitido ao logger); usado por testes que exercitam a cadeia sem um job real.
    */
   jobId?: string;
+  /**
+   * Conversa deste envio. Sem ela o runner tenta achar pela sessão; se não
+   * achar, o gate de comando passa (fail-open) — a ausência de evidência não
+   * pode calar um teste que injeta `rows: []`. Em produção o turno sempre passa.
+   */
+  conversationId?: string;
   /** número (channel_sessions.id do CRM) — chave da serialização e do estado anti-ban. */
   channelSessionId: string;
   body: string;
@@ -739,11 +777,14 @@ export async function runBeforeSend(args: RunBeforeSendArgs): Promise<BeforeSend
       args.channelSessionId,
     );
 
+    const conversationControl = await lerControleConversacional(client, args);
+
     const ctx: GateContext = {
       now: args.now,
       body: args.body,
       optedOut,
       provider,
+      ...(conversationControl !== undefined ? { conversationControl } : {}),
       messagingWindow: { lastInboundAt, ...(args.isTemplate === true ? { isTemplate: true } : {}) },
       pacing: { knobs: pacingCfg.knobs, state: pacingState, crmDailyLimit: args.crmDailyLimit, rng: args.rng },
       spinning: { knobs: spinningKnobs, window },
@@ -852,6 +893,47 @@ export async function runBeforeSend(args: RunBeforeSendArgs): Promise<BeforeSend
     // Throttle: espera o gap restante (bounded pelos knobs) antes do envio.
     if (throttleWaitMs > 0) await (args.sleep ?? realSleep)(throttleWaitMs);
 
+    // Relê IMEDIATAMENTE antes do ChannelAdapter. O humano pode ter assumido
+    // durante a geração (já passou) OU durante este sleep. A 1ª leitura sob o
+    // lock não basta — o claim do Inbox não espera este advisory lock.
+    const controleFinal = await lerControleConversacional(client, args);
+    if (controleFinal !== undefined && !controleFinal.permitido) {
+      const lastVeto = {
+        gate: 'conversation_control',
+        code: controleFinal.codigo,
+        message: controleFinal.motivo,
+      };
+      trace.push({ gate: 'conversation_control', verdict: 'veto', code: lastVeto.code });
+      emitTrace(args.log, args.channelSessionId, [trace[trace.length - 1]!]);
+      const lastTraceId = await persistTrace(args, trace, lastVeto);
+      if (lastTraceId) {
+        try {
+          const r = await emitVetoActivity({
+            pool: args.pool,
+            organizationId: args.tenantId,
+            contactId: args.leadId,
+            traceId: lastTraceId,
+            gate: lastVeto.gate,
+            code: lastVeto.code,
+            agentId: args.agentId ?? null,
+          });
+          if (!r.routed) {
+            args.log.info('veto sem negócio para pendurar: registrado no event_log', {
+              channel_session_id: args.channelSessionId,
+              reason: r.reason,
+            });
+          }
+        } catch (err) {
+          args.log.error('falha ao registrar atividade de veto (segue)', {
+            channel_session_id: args.channelSessionId,
+            error: err instanceof Error ? err.name : 'unknown',
+          });
+        }
+      }
+      await client.query('rollback');
+      return { status: 'vetoed', trace, ...lastVeto };
+    }
+
     // ctx.body é o corpo FINAL (emendado pelo disclosureGate F4-05 quando aplicável).
     const outcome = await args.send(ctx.body);
 
@@ -905,6 +987,44 @@ export async function loadChannelProvider(
   );
   const provider = rows[0]?.provider;
   return provider === undefined ? DEFAULT_CHANNEL_PROVIDER : (provider as ChannelProvider);
+}
+
+/**
+ * Predicado de comando, lido agora. Sem linha = sem evidência = o gate passa.
+ * Fail-open de propósito: testes que devolvem `rows: []` não podem calar o envio,
+ * e um lookup falho no último instante não pode ser pior que o stopGate (que
+ * também só veta o que LEU).
+ */
+async function lerControleConversacional(
+  db: Queryable,
+  args: RunBeforeSendArgs,
+): Promise<DecisaoDeEnvioConversacional | undefined> {
+  try {
+    let conversationId = args.conversationId;
+    if (!conversationId) {
+      const { rows } = await db.query<{ id: string }>(
+        `select id from conversations
+          where organization_id = $1 and contact_id = $2 and channel_session_id = $3
+          order by last_inbound_at desc nulls last
+          limit 1`,
+        [args.tenantId, args.leadId, args.channelSessionId],
+      );
+      conversationId = rows[0]?.id;
+    }
+    if (!conversationId) return undefined;
+    const fatos = await lerFatosDoComandoPg(db, {
+      organizationId: args.tenantId,
+      conversationId,
+    });
+    if (fatos === null) return undefined;
+    return decidirEnvioConversacional(fatos, args.now);
+  } catch (err) {
+    args.log.error('falha ao ler comando da conversa (segue: fail-open; o stopGate já rodou)', {
+      channel_session_id: args.channelSessionId,
+      error: err instanceof Error ? err.name : 'unknown',
+    });
+    return undefined;
+  }
 }
 
 async function readStopFlags(db: Queryable, organizationId: string, contactId: string): Promise<boolean> {
