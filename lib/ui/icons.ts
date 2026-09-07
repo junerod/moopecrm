@@ -133,4 +133,6 @@ export {
   ArrowsOutSimple,
   // onboarding: ramo do negócio
   Car,
+  Wrench,
+  Handshake,
 } from "@phosphor-icons/react/dist/ssr";

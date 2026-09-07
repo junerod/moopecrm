@@ -7,15 +7,13 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
-import {
-  aplicarPerfilDoNegocio,
-  IDS_DE_PERFIL,
-  type IdDePerfil,
-} from "@/lib/onboarding/aplicar-perfil";
+import { aplicarPerfilDoNegocio, IDS_DE_PERFIL } from "@/lib/onboarding/aplicar-perfil";
+import { LOCACAO_SUBTYPES } from "@/lib/ready-models/tipos";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const bodySchema = z.object({
-  perfil: z.enum(IDS_DE_PERFIL as [IdDePerfil, ...IdDePerfil[]]),
+  perfil: z.enum(IDS_DE_PERFIL as [string, ...string[]]),
+  subtype: z.enum(LOCACAO_SUBTYPES).optional(),
 });
 
 export type AplicarPerfilResult =
@@ -36,7 +34,10 @@ export async function aplicarPerfilAction(input: unknown): Promise<AplicarPerfil
 
   const admin = createAdminClient();
   try {
-    const r = await aplicarPerfilDoNegocio(admin, activeOrg.orgId, parsed.data.perfil);
+    const r = await aplicarPerfilDoNegocio(admin, activeOrg.orgId, parsed.data.perfil, {
+      subtype: parsed.data.subtype,
+      actorUserId: authUser.id,
+    });
     const hdrs = await headers();
     await audit({
       action: "org.perfil_aplicado",

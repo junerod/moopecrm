@@ -14,6 +14,7 @@ import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitte
 import { listaLegivel } from "@/lib/leads/activity-vocabulary";
 import { camposAlterados } from "@/lib/leads/campos-alterados";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
+import { filtrarCustomFieldsDoPipeline } from "@/lib/leads/custom-fields";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 import { ehCorrecaoDeMovimentoDaIa } from "@/lib/leads/correcao-humana";
 
@@ -397,6 +398,22 @@ export async function updateLeadHandler(
     patch.expected_close_date = input.expected_close_date;
   }
   if (input.tags !== undefined) patch.tags = input.tags;
+  if (input.custom_fields !== undefined) {
+    const { data: funil, error: funilErr } = await supabase
+      .from("crm_pipelines")
+      .select("settings")
+      .eq("id", (existing as { pipeline_id: string }).pipeline_id)
+      .eq("organization_id", ctx.organization_id)
+      .maybeSingle();
+    if (funilErr) {
+      throw new ApiError(500, "internal_error", undefined, ctx.requestId, funilErr.message);
+    }
+    const filtrado = filtrarCustomFieldsDoPipeline(funil?.settings, input.custom_fields);
+    if (!filtrado.ok) {
+      throw new ApiError(422, "validation_failed", undefined, ctx.requestId, filtrado.message);
+    }
+    patch.custom_fields = filtrado.value;
+  }
 
   // O filtro entra AQUI TAMBÉM, e não só no SELECT acima: entre ler e escrever
   // há uma janela, e defesa que depende de uma leitura anterior é defesa que

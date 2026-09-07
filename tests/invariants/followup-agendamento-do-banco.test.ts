@@ -291,6 +291,9 @@ describe("agendar 'para agora' usa o relógio do BANCO — retomada", () => {
       async loadConversationContactId() {
         return c.contactId;
       },
+      async loadLeadContactId() {
+        return c.contactId;
+      },
       async loadContactBlocked() {
         return false;
       },

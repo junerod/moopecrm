@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
+import { carregarOverlayDoFunilPadrao } from "@/lib/ai/copiloto/overlay";
 import { gerarSugestaoDoCopiloto } from "@/lib/ai/copiloto/gerar";
 import { buscarSugestaoAtual, marcarSugestao } from "@/lib/ai/copiloto/persistir";
 import { faixaDeConfianca, rotuloDaIntencao } from "@/lib/ai/copiloto/schema";
@@ -133,6 +134,7 @@ export async function POST(
   );
 
   const llmCfg = llmEdgeConfigFromEnv(env);
+  const overlay = await carregarOverlayDoFunilPadrao(pool, authz.org.orgId);
   const result = await gerarSugestaoDoCopiloto({
     db: pool,
     organizationId: authz.org.orgId,
@@ -141,6 +143,7 @@ export async function POST(
     inboundMessageId: inboundId,
     historico,
     politica,
+    overlay,
     force,
     llm: async ({ historico: msgs, system }) => {
       const { result: call, model, usage } = await runModelCall(pool, llmCfg, {

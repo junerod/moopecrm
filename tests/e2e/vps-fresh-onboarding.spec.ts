@@ -134,6 +134,7 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
 
     // J1.4 — preenche e avança
     await page.locator("#display_name").fill("Loja QA VPS");
+    await page.getByText("Comercial / Vendas", { exact: true }).click();
     await page.locator('input[type="checkbox"]').check();
     await expect(continuar).toBeEnabled();
     await continuar.click();
@@ -182,79 +183,44 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
     // DIRETO no setup de IA — nunca num step oculto (bug corrigido: as actions
     // redirecionavam hardcoded pro connect-nuvemshop).
     await page.getByRole("button", { name: /pular por enquanto/i }).click();
-    await page.waitForURL(/\/onboarding\/setup-ai/, { timeout: 20_000 });
-    await snap(page, "j1.6-setup-ai");
+    await page.waitForURL(/\/onboarding\/quem-atende/, { timeout: 20_000 });
+    await snap(page, "j1.6-quem-atende");
   });
 
-  test("J1.7 setup IA: cria agente default e avança", async ({ page }) => {
+  test("J1.7 Simple Mode: quadro, lembrete e IA sem publicar agente", async ({ page }) => {
     await login(page);
-    await page.waitForURL(/\/onboarding\/setup-ai/);
-
-    await page.locator("#name").fill("Tomik QA");
-    await page.getByRole("button", { name: /criar e continuar/i }).click();
-    // O wizard ganhou um passo entre treinar e chamar o time: ver o
-    // funcionário atender. Terminar sem nunca tê-lo visto fazer nada era como
-    // o onboarding entregava a pessoa num inbox vazio.
-    await page.waitForURL(/\/onboarding\/testar/, { timeout: 20_000 });
-    await snap(page, "j1.7-testar");
+    await page.waitForURL(/\/onboarding\/quem-atende/);
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/funil/, { timeout: 20_000 });
+    await page.getByRole("button", { name: /usar esta organização/i }).click();
+    await page.waitForURL(/\/onboarding\/follow-up/, { timeout: 20_000 });
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/setup-ai/, { timeout: 20_000 });
+    await page.getByText("Assistente IA").click();
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/invite-team/, { timeout: 20_000 });
+    await snap(page, "j1.7-invite-team");
 
     const { data: agents } = await svc
       .from("ai_agents")
-      .select("id, name, is_active, is_default, published_version_id");
-    expect(agents?.length).toBe(1);
-    expect(agents?.[0]).toMatchObject({ name: "Tomik QA", is_active: true, is_default: true });
+      .select("id, published_version_id");
+    expect(agents ?? []).toHaveLength(0);
 
-    // A VERSÃO, e não só o agente. Este caso olhava apenas `ai_agents` — e foi
-    // por isso que a regressão do provedor nasceu invisível: o agente ficava
-    // bonito na tabela enquanto a versão publicada apontava para uma empresa de
-    // IA que a instalação não contratou, morrendo em toda mensagem.
-    const { data: versoes } = await svc
-      .from("ai_agent_versions")
-      .select("provider, model, status, channel_session_id")
-      .eq("agent_id", agents?.[0]?.id ?? "");
-    expect(versoes?.length).toBe(1);
-    expect(versoes?.[0]?.status).toBe("published");
-
-    // E o provedor da versão é o MESMO que a instalação escolheu. Comparar com
-    // uma string fixa aqui não provaria nada: o teste passaria justamente na
-    // instalação Anthropic, que é a única em que o defeito não aparecia.
     const { data: org } = await svc.from("organizations").select("settings").limit(1).maybeSingle();
-    const escolhido =
-      (org?.settings as { llm?: { provider?: string } } | null)?.llm?.provider ?? "anthropic";
-    expect(versoes?.[0]?.provider).toBe(escolhido);
-
-    // O modelo veio do catálogo DAQUELE provedor — nunca um id emprestado.
-    const { data: curado } = await svc
-      .from("ai_models")
-      .select("model_id")
-      .eq("provider", escolhido)
-      .eq("is_default_for_provider", true)
-      .is("deprecated_at", null)
-      .limit(1)
-      .maybeSingle();
-    expect(versoes?.[0]?.model).toBe(curado?.model_id);
+    const settings = (org?.settings ?? {}) as { ai_mode?: string; perfil_do_negocio?: { id?: string } };
+    expect(settings.ai_mode).toBe("copilot");
+    expect(settings.perfil_do_negocio?.id).toBe("comercial");
   });
 
-  test("J1.24 ver ele atender: o wizard não termina sem mostrar o funcionário", async ({ page }) => {
+  test("J1.24 o wizard não publica agente implícito e segue para o time", async ({ page }) => {
     // O passo que faltava. O onboarding entregava a pessoa num inbox vazio
     // ("Sem conversas por aqui") logo depois de ela montar um funcionário que
     // nunca tinha visto fazer nada — e um erro de chave ou de saldo só
     // apareceria quando um cliente de verdade escrevesse.
     await login(page);
-    await page.waitForURL(/\/onboarding\/testar/, { timeout: 20_000 });
-    await expect(page.getByRole("heading", { name: /veja ele atender/i })).toBeVisible();
-
-    // O agente desta jornada nasceu SEM canal (o WhatsApp foi pulado em J1.6),
-    // então ficou rascunho — e rascunho não responde. A tela tem de dizer isso
-    // em vez de oferecer um ensaio que nunca funcionaria.
-    await expect(page.getByText(/rascunho/i)).toBeVisible();
-    await snap(page, "j1.24-testar-rascunho");
-
-    await page.getByRole("button", { name: /^continuar$/i }).click();
     await page.waitForURL(/\/onboarding\/invite-team/, { timeout: 20_000 });
-
-    const org = await orgRow();
-    expect((org.onboarding_state as { teste?: unknown })?.teste).toBeTruthy();
+    await expect(page.locator("body")).not.toContainText(/veja ele atender/i);
+    await snap(page, "j1.24-invite-team");
   });
 
   test("J1.8 convite SEM Resend: a UI não pode mentir que enviou email", async ({ page }) => {

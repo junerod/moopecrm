@@ -11,7 +11,8 @@ import { provisionarDonoDoTenant } from "@/lib/admin/provisionar-dono-do-tenant"
 import { env } from "@/lib/env";
 import { gerarChaveDeEntrada, gerarSegredoDeSaida } from "@/lib/moope/chave";
 import { garantirAgenteAtendimentoLocadora } from "@/lib/moope/agente-atendimento-locadora";
-import { aplicarPerfilLocadora } from "@/lib/onboarding/perfil-locadora";
+import { aplicarReadyModel } from "@/lib/ready-models/aplicar";
+import { resolverDefinition } from "@/lib/ready-models/catalogo";
 import { encryptWebhookSecret } from "@/lib/webhooks/secrets";
 
 export const PISO_DO_SEGREDO_DE_PROVISION = 16;
@@ -280,7 +281,12 @@ async function garantirDonoEPerfil(
     senha: SENHA_INICIAL_LOCADORA,
   });
   try {
-    await aplicarPerfilLocadora(admin, orgId);
+    const definition = resolverDefinition("locacao", "veiculos");
+    if (!definition) throw new Error("ready model locacao ausente");
+    await aplicarReadyModel(admin, orgId, definition, {
+      followup: false,
+      actorUserId: dono.userId,
+    });
   } catch {
     // Funil padrão ainda não nasceu (gatilho atrasado) — o dono aplica
     // em Configurações › Perfil. A conexão e o login já valem.

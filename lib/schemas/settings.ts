@@ -169,7 +169,7 @@ export const notificationPrefsSchema = z.object({
 });
 export type NotificationPrefsInput = z.infer<typeof notificationPrefsSchema>;
 
-const customFieldSchema = z.object({
+export const customFieldSchema = z.object({
   key: z
     .string()
     .min(1)

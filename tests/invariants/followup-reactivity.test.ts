@@ -68,6 +68,13 @@ function reactivityDb(): ReactivityAdminClient {
       );
       return rows[0]?.contact_id ?? null;
     },
+    async loadLeadContactId(orgId, leadId) {
+      const { rows } = await pool.query<{ contact_id: string | null }>(
+        `select contact_id from crm_leads where id = $1 and organization_id = $2`,
+        [leadId, orgId],
+      );
+      return rows[0]?.contact_id ?? null;
+    },
     async loadContactBlocked(orgId, contactId) {
       const { rows } = await pool.query<{ is_blocked: boolean }>(
         `select is_blocked from contacts where id = $1 and organization_id = $2`,

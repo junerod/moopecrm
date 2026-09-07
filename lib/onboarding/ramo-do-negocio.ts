@@ -1,39 +1,51 @@
 /**
- * O que o dono escolhe no primeiro passo — três portas, não um campo livre.
- *
- * O texto gravado em `o_que_faz` continua sendo prosa: é o que o funil e o
- * agente leem (`escolherPacotePorTexto`, prompt do atendente). As frases daqui
- * foram escritas para casar com as pistas de `sugerir-funil.ts` — trocar uma
- * palavra sem olhar aquele arquivo muda o quadro que nasce no passo 4.
+ * As portas do primeiro passo — Ready Models, sem jargão.
  */
-export const RAMOS_DO_NEGOCIO = [
-  {
-    id: "locadora",
-    rotulo: "Locadora / gestão de frotas",
-    desc: "Aluguel de carros, frota para app, cobrança de locatário.",
-    oQueFaz: "Locadora de carros e gestão de frotas",
-  },
-  {
-    id: "advocacia",
-    rotulo: "Serviços de advocacia",
-    desc: "Escritório, banca, captação de cliente e processo.",
-    oQueFaz: "Escritório de advocacia",
-  },
-  {
-    id: "outros",
-    rotulo: "Outros",
-    desc: "Clínica, loja, imobiliária, curso — o que já existia.",
-    oQueFaz: null,
-  },
-] as const;
+import { catalogoParaWizard, ROTULOS_SUBTYPE_LOCACAO } from "@/lib/ready-models/catalogo";
+import {
+  LOCACAO_SUBTYPES,
+  READY_MODEL_IDS,
+  type LocacaoSubtype,
+  type ReadyModelId,
+} from "@/lib/ready-models/tipos";
 
-export type IdDoRamo = (typeof RAMOS_DO_NEGOCIO)[number]["id"];
+export const RAMOS_DO_NEGOCIO = catalogoParaWizard().map((r) => ({
+  id: r.id,
+  rotulo: r.label,
+  desc: r.description,
+}));
 
-/** A prosa que vai para o banco — vazia só quando é "outros" sem detalhe. */
-export function textoDoRamo(id: IdDoRamo, detalhe?: string): string | undefined {
-  const ramo = RAMOS_DO_NEGOCIO.find((r) => r.id === id);
-  if (!ramo) return detalhe?.trim() || undefined;
-  if (ramo.oQueFaz) return ramo.oQueFaz;
-  const livre = detalhe?.trim();
-  return livre || undefined;
+export type IdDoRamo = ReadyModelId;
+
+export const SUBTYPES_LOCACAO = LOCACAO_SUBTYPES;
+export type SubtypeLocacao = LocacaoSubtype;
+
+export const ROTULOS_SUBTYPE = ROTULOS_SUBTYPE_LOCACAO;
+
+const PROSA: Record<ReadyModelId, string> = {
+  locacao: "Locação de bens",
+  advocacia: "Escritório de advocacia",
+  comercial: "Comercial e vendas",
+  servicos: "Prestação de serviços",
+  personalizado: "Atendimento personalizado",
+};
+
+/** A prosa que vai para o banco — o funil e o Copilot leem isto, não o id. */
+export function textoDoRamo(
+  id: ReadyModelId,
+  detalhe?: string,
+  subtype?: LocacaoSubtype,
+): string | undefined {
+  if (id === "personalizado") {
+    const livre = detalhe?.trim();
+    return livre || PROSA.personalizado;
+  }
+  if (id === "locacao" && subtype) {
+    return `Locação — ${ROTULOS_SUBTYPE_LOCACAO[subtype]}`;
+  }
+  return PROSA[id];
+}
+
+export function ehReadyModelDoWizard(valor: string): valor is ReadyModelId {
+  return (READY_MODEL_IDS as readonly string[]).includes(valor);
 }

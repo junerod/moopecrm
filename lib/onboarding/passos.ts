@@ -68,37 +68,42 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
   {
     segmento: "connect-nuvemshop",
     rotulo: "Sua loja",
-    // A Nuvemshop some da cara do operador neste produto. O passo e o schema
-    // ficam, mas o wizard nunca oferece a tela — nem com NUVEMSHOP_ENABLED.
     existe: () => false,
     cumprido: (s) => marcado(s.nuvemshop),
     pulado: (s) => foiPulado(s.nuvemshop),
   },
   {
-    segmento: "setup-ai",
-    rotulo: "Agente de IA",
+    segmento: "quem-atende",
+    rotulo: "Quem atende",
     existe: () => true,
-    cumprido: (s) => marcado(s.ai),
-    pulado: (s) => foiPulado(s.ai),
+    cumprido: (s) => marcado(s.routing),
+    pulado: (s) => foiPulado(s.routing),
   },
   {
     segmento: "funil",
-    // O quadro vem DEPOIS de treinar de propósito: a sugestão sai da chave que a
-    // pessoa acabou de confirmar funcionando, e é o mesmo cérebro que vai
-    // atender. Pedir o quadro antes obrigaria a montá-lo no escuro.
-    rotulo: "O funil",
+    rotulo: "Organização",
     existe: () => true,
     cumprido: (s) => marcado(s.funil),
     pulado: (s) => foiPulado(s.funil),
   },
   {
-    segmento: "testar",
-    // O wizard terminava entregando a pessoa num inbox vazio. Ver o
-    // funcionário responder ANTES de acabar é o que transforma "configurei um
-    // sistema" em "contratei alguém" — e é onde o erro aparece antes do
-    // primeiro cliente real, não depois.
-    rotulo: "Testar o agente",
+    segmento: "follow-up",
+    rotulo: "Lembretes",
     existe: () => true,
+    cumprido: (s) => marcado(s.followup),
+    pulado: (s) => foiPulado(s.followup),
+  },
+  {
+    segmento: "setup-ai",
+    rotulo: "Inteligência artificial",
+    existe: () => true,
+    cumprido: (s) => marcado(s.ai),
+    pulado: (s) => foiPulado(s.ai),
+  },
+  {
+    segmento: "testar",
+    rotulo: "Testar o agente",
+    existe: () => false,
     cumprido: (s) => marcado(s.teste),
     pulado: (s) => foiPulado(s.teste),
   },

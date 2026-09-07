@@ -28,6 +28,8 @@ export async function acceptWelcome(formData: FormData): Promise<AcceptWelcomeRe
   const raw = {
     display_name: String(formData.get("display_name") ?? "").trim(),
     o_que_faz: String(formData.get("o_que_faz") ?? "").trim() || undefined,
+    ready_model_id: String(formData.get("ready_model_id") ?? "").trim() || undefined,
+    ready_model_subtype: String(formData.get("ready_model_subtype") ?? "").trim() || undefined,
     timezone: String(formData.get("timezone") ?? "America/Sao_Paulo"),
     accepted_terms_at: new Date().toISOString(),
   };
@@ -51,6 +53,8 @@ export async function acceptWelcome(formData: FormData): Promise<AcceptWelcomeRe
           timezone: input.timezone,
           display_name: input.display_name,
           ...(input.o_que_faz ? { o_que_faz: input.o_que_faz } : {}),
+          ...(input.ready_model_id ? { ready_model_id: input.ready_model_id } : {}),
+          ...(input.ready_model_subtype ? { ready_model_subtype: input.ready_model_subtype } : {}),
         },
       },
       { display_name: input.display_name, timezone: input.timezone },

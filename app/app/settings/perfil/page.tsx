@@ -6,6 +6,7 @@ import {
   inferirPerfilPeloNomeDoQuadro,
   lerPerfilGravado,
 } from "@/lib/onboarding/aplicar-perfil";
+import { lerPerfilDoNegocio } from "@/lib/ready-models/perfil";
 import { createClient } from "@/lib/supabase/server";
 import { PerfilDoNegocioForm } from "./_client";
 
@@ -42,12 +43,14 @@ export default async function PerfilDoNegocioPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Perfil do negócio</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Escolhe o quadro padrão desta organização. Serve para testar um
-          ramo e para a própria operação — vender o sistema para locadoras
-          é um perfil; operar a frota é outro.
+          Escolhe o quadro padrão desta organização. Trocar não apaga
+          negócios, conversas nem contatos.
         </p>
       </header>
-      <PerfilDoNegocioForm atual={atual} />
+      <PerfilDoNegocioForm
+        atual={lerPerfilDoNegocio(data?.settings)?.id ?? atual}
+        subtypeAtual={lerPerfilDoNegocio(data?.settings)?.subtype}
+      />
     </div>
   );
 }

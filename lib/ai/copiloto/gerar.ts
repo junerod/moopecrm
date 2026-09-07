@@ -11,6 +11,11 @@ import {
 } from "./persistir";
 import type { Queryable } from "@/lib/agent-engine/queue/queue";
 import type { AiExecutionPolicy } from "@/lib/ai/execucao/politica";
+import {
+  filtrarCamposExtraidos,
+  montarSystemDoCopiloto,
+  type OverlayDoCopiloto,
+} from "@/lib/ai/copiloto/overlay";
 
 export interface MensagemParaCopiloto {
   direction: string;
@@ -53,6 +58,7 @@ export async function gerarSugestaoDoCopiloto(input: {
   historico: MensagemParaCopiloto[];
   politica: AiExecutionPolicy;
   force?: boolean;
+  overlay?: OverlayDoCopiloto;
   llm: CopilotLlm;
 }): Promise<ResultadoDoCopiloto> {
   if (!input.politica.suggestion_allowed) {
@@ -80,9 +86,12 @@ export async function gerarSugestaoDoCopiloto(input: {
     return { ok: false, reason: "empty", message: "Conversa sem mensagens para resumir." };
   }
 
+  const overlay = input.overlay ?? { instruction: null, fieldKeys: [], fieldLabels: [] };
+  const system = montarSystemDoCopiloto(SYSTEM_COPILOTO, overlay);
+
   let bruto: CopilotLlmResultado;
   try {
-    bruto = await input.llm({ historico: input.historico, system: SYSTEM_COPILOTO });
+    bruto = await input.llm({ historico: input.historico, system });
   } catch (err) {
     return {
       ok: false,
@@ -95,6 +104,7 @@ export async function gerarSugestaoDoCopiloto(input: {
   if (!parsed) {
     return { ok: false, reason: "parse", message: "A IA não devolveu uma sugestão legível." };
   }
+  parsed.extractedFields = filtrarCamposExtraidos(parsed.extractedFields, overlay.fieldKeys);
 
   const { row, created } = await gravarSugestao(input.db, {
     organizationId: input.organizationId,

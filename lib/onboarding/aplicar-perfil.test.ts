@@ -19,7 +19,8 @@ describe("perfil do negócio", () => {
 
   it("lê o perfil gravado em settings — lixo não vira escolha", () => {
     expect(lerPerfilGravado(null)).toBeNull();
-    expect(lerPerfilGravado({ [CHAVE_PERFIL]: { id: "locadora" } })).toBe("locadora");
+    expect(lerPerfilGravado({ [CHAVE_PERFIL]: { id: "locadora" } })).toBe("locacao");
+    expect(lerPerfilGravado({ [CHAVE_PERFIL]: { id: "locacao", version: "1.0" } })).toBe("locacao");
     expect(lerPerfilGravado({ [CHAVE_PERFIL]: { id: "nao-existe" } })).toBeNull();
   });
 

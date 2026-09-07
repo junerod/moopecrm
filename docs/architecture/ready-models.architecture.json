@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Ready Models — definition vira cópia no tenant",
+    "subtitle": "o instalador é genérico; o runtime lê pipeline/settings, nunca o id do modelo",
+    "output": "ready-models.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o humano vê" },
+    { "id": "dado", "label": "Definition" },
+    { "id": "copia", "label": "Instalador" },
+    { "id": "core", "label": "Core do CRM" }
+  ],
+  "mainPath": ["wizard", "catalogo", "instalador", "pipeline"],
+  "nodes": [
+    { "id": "wizard", "lane": "humano", "col": 1, "type": "frontend", "label": "/onboarding", "sublabel": "negócio → WhatsApp → quem atende → quadro → lembrete → IA" },
+    { "id": "perfil", "lane": "humano", "col": 2, "type": "frontend", "label": "/app/settings/perfil", "sublabel": "reaplica o mesmo instalador" },
+    { "id": "dossie", "lane": "humano", "col": 3, "type": "frontend", "label": "Dossiê do lead", "sublabel": "CustomFieldsEditor lê settings.fields" },
+    { "id": "catalogo", "lane": "dado", "col": 1, "type": "service", "label": "lib/ready-models/catalogo", "sublabel": "locacao@1.0 … personalizado@1.0" },
+    { "id": "definition", "lane": "dado", "col": 2, "type": "service", "label": "ReadyModelDefinition", "sublabel": "pipeline · fields · tags · overlay" },
+    { "id": "instalador", "lane": "copia", "col": 2, "type": "service", "label": "aplicarReadyModel", "sublabel": "idempotente por id+version+subtype" },
+    { "id": "facade", "lane": "copia", "col": 1, "type": "service", "label": "aplicarPerfilDoNegocio", "sublabel": "alias antigo → definition" },
+    { "id": "pipeline", "lane": "core", "col": 2, "type": "database", "label": "crm_pipelines.settings", "sublabel": "fields · lost_reasons · copilot_overlay" },
+    { "id": "rules", "lane": "core", "col": 3, "type": "database", "label": "automation_rules", "sublabel": "0–1 regra rm:<id>:tag-novo" },
+    { "id": "followup", "lane": "core", "col": 4, "type": "database", "label": "followup_flow_pointers", "sublabel": "0–1 fluxo silêncio 24h" },
+    { "id": "runtime", "lane": "core", "col": 1, "type": "service", "label": "inbound / send / copilot", "sublabel": "não lê Ready Model id" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "wizard", "to": "catalogo", "label": "escolhe id + subtype" },
+    { "id": "e2", "from": "catalogo", "to": "definition", "label": "resolve dado" },
+    { "id": "e3", "from": "definition", "to": "instalador", "label": "sem if de nicho" },
+    { "id": "e4", "from": "instalador", "to": "pipeline", "label": "copia fields/vocabulary" },
+    { "id": "e5", "from": "instalador", "to": "rules", "label": "select-before-insert" },
+    { "id": "e6", "from": "instalador", "to": "followup", "label": "opt-in no wizard" },
+    { "id": "e7", "from": "facade", "to": "instalador", "label": "settings e scripts antigos" },
+    { "id": "e8", "from": "perfil", "to": "facade", "label": "aplicar perfil" },
+    { "id": "e9", "from": "dossie", "to": "pipeline", "label": "lê settings.fields" },
+    { "id": "e10", "from": "runtime", "to": "pipeline", "label": "overlay e fields — nunca o id" }
+  ]
+}

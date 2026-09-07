@@ -11,34 +11,49 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   RAMOS_DO_NEGOCIO,
+  ROTULOS_SUBTYPE,
+  SUBTYPES_LOCACAO,
   textoDoRamo,
   type IdDoRamo,
+  type SubtypeLocacao,
 } from "@/lib/onboarding/ramo-do-negocio";
-import { Car, PuzzlePiece, ScalesSimple } from "@/lib/ui/icons";
+import { Car, Handshake, PuzzlePiece, ScalesSimple, Storefront, Wrench } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const FUSO_PADRAO = "America/Sao_Paulo";
 
 const ICONE_DO_RAMO = {
-  locadora: Car,
+  locacao: Car,
   advocacia: ScalesSimple,
-  outros: PuzzlePiece,
+  comercial: Storefront,
+  servicos: Wrench,
+  personalizado: PuzzlePiece,
 } as const;
 
 export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
   const [displayName, setDisplayName] = useState(defaultOrgName);
   const [ramo, setRamo] = useState<IdDoRamo | null>(null);
+  const [subtype, setSubtype] = useState<SubtypeLocacao | null>(null);
   const [detalhe, setDetalhe] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const oQueFaz = ramo ? textoDoRamo(ramo, detalhe) ?? "" : "";
+  const oQueFaz = ramo ? textoDoRamo(ramo, detalhe, subtype ?? undefined) ?? "" : "";
+  const locacaoSemSubtype = ramo === "locacao" && !subtype;
 
   return (
     <form
       action={(formData) => {
         if (!accepted) {
           toast.error("Aceite os termos para continuar.");
+          return;
+        }
+        if (!ramo) {
+          toast.error("Escolha o tipo do seu negócio.");
+          return;
+        }
+        if (locacaoSemSubtype) {
+          toast.error("Diga o que vocês alugam principalmente.");
           return;
         }
         startTransition(async () => {
@@ -62,24 +77,11 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
             required
             className="border-white/10 bg-zinc-950/60"
           />
-          <p className="text-xs text-zinc-500">
-            É o nome que aparece para o seu time e nos relatórios.
-          </p>
         </div>
 
-        {/*
-          A pergunta que faltava no produto inteiro. Sem ela, o funcionário nasce
-          se apresentando como atendente de uma "loja online" — era o que os três
-          modelos de prompt diziam — e o quadro de clientes nasce com as colunas
-          de e-commerce que o gatilho semeia. Os dois defeitos têm a mesma origem:
-          uma instalação que nunca pergunta em que ramo entrou.
-
-          As três portas mandam a MESMA prosa que o funil já reconhece. "Outros"
-          abre o campo livre — clínica, loja, imobiliária, o que já existia.
-        */}
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-zinc-100">O que vocês fazem?</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <legend className="text-sm font-medium text-zinc-100">Qual é o seu tipo de negócio?</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
             {RAMOS_DO_NEGOCIO.map((r) => {
               const Icone = ICONE_DO_RAMO[r.id];
               const marcada = ramo === r.id;
@@ -95,10 +97,13 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
                 >
                   <input
                     type="radio"
-                    name="ramo_do_negocio"
+                    name="ready_model_id"
                     value={r.id}
                     checked={marcada}
-                    onChange={() => setRamo(r.id)}
+                    onChange={() => {
+                      setRamo(r.id);
+                      if (r.id !== "locacao") setSubtype(null);
+                    }}
                     className="sr-only"
                   />
                   <Icone
@@ -113,29 +118,59 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
               );
             })}
           </div>
-          {ramo === "outros" ? (
-            <Input
-              id="o_que_faz_detalhe"
-              value={detalhe}
-              onChange={(e) => setDetalhe(e.target.value)}
-              maxLength={280}
-              placeholder="Ex.: clínica odontológica, ou venda de roupa fitness pelo WhatsApp"
-              className="border-white/10 bg-zinc-950/60"
-            />
-          ) : null}
-          <input type="hidden" id="o_que_faz" name="o_que_faz" value={oQueFaz} />
-          <p className="text-xs text-zinc-500">
-            É com isso que montamos o quadro de clientes do seu jeito — locadora
-            ganha Locatários e Cobrança; escritório ganha captação e processos.
-          </p>
         </fieldset>
 
-        {/*
-          O fuso decide o horário em que o agente pode falar. Quase todo mundo
-          que instala atende no horário de Brasília — mostrar a lista de
-          identificadores só atrapalhava. O valor segue indo no formulário, e
-          dá para trocar depois em Configurações.
-        */}
+        {ramo === "locacao" ? (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-zinc-100">
+              O que sua empresa aluga principalmente?
+            </legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {SUBTYPES_LOCACAO.map((s) => {
+                const marcada = subtype === s;
+                return (
+                  <label
+                    key={s}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm",
+                      marcada
+                        ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                        : "border-white/10 hover:border-accent/40",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="ready_model_subtype"
+                      value={s}
+                      checked={marcada}
+                      onChange={() => setSubtype(s)}
+                      className="sr-only"
+                    />
+                    <Handshake
+                      size={18}
+                      className={marcada ? "text-accent" : "text-zinc-500"}
+                      aria-hidden
+                    />
+                    {ROTULOS_SUBTYPE[s]}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        ) : null}
+
+        {ramo === "personalizado" ? (
+          <Input
+            id="o_que_faz_detalhe"
+            value={detalhe}
+            onChange={(e) => setDetalhe(e.target.value)}
+            maxLength={280}
+            placeholder="Ex.: clínica, curso, imobiliária"
+            className="border-white/10 bg-zinc-950/60"
+          />
+        ) : null}
+
+        <input type="hidden" name="o_que_faz" value={oQueFaz} />
         <input type="hidden" name="timezone" value={FUSO_PADRAO} />
 
         <label className="flex items-start gap-2 text-sm text-zinc-300">
@@ -162,7 +197,11 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
         <AcoesDoPasso
           segmento="welcome"
           avancar={
-            <Button type="submit" disabled={pending || !accepted} className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              disabled={pending || !accepted || !ramo || locacaoSemSubtype}
+              className="w-full sm:w-auto"
+            >
               {pending ? "Salvando..." : "Continuar"}
             </Button>
           }

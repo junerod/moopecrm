@@ -78,6 +78,7 @@ export interface LiveEnrollmentRef {
  *  não estende `AdminClient` do engine; só o que este consumidor precisa. */
 export interface ReactivityAdminClient {
   loadConversationContactId(orgId: string, conversationId: string): Promise<string | null>;
+  loadLeadContactId(orgId: string, leadId: string): Promise<string | null>;
   loadContactBlocked(orgId: string, contactId: string): Promise<boolean>;
   loadLiveEnrollmentsForContact(orgId: string, contactId: string): Promise<LiveEnrollmentRef[]>;
   insertEnrollmentEvent(event: {
@@ -334,6 +335,40 @@ async function reactToHandoffClose(
   return { matched: true, reacted };
 }
 
+// ---- reação 4: lead.won / lead.lost — oportunidade encerrada -----------------
+
+/**
+ * Genérico: o negócio terminou (ganho ou perdido). Follow-up comercial
+ * não continua. Sem branch de segmento — só status do lead.
+ */
+async function reactToLeadClosed(
+  db: ReactivityAdminClient,
+  clock: () => Date,
+  row: EventRow,
+  outcome: EnrollmentOutcome,
+  cancelReason: string,
+): Promise<ReactivitySummary> {
+  const leadId = strOrNull(row.entity_id) ?? strOrNull(row.payload.lead_id);
+  if (!leadId) return { matched: false, reacted: 0 };
+
+  const contactId =
+    strOrNull(row.payload.contact_id) ?? (await db.loadLeadContactId(row.organization_id, leadId));
+  if (!contactId) return { matched: true, reacted: 0 };
+
+  const live = await db.loadLiveEnrollmentsForContact(row.organization_id, contactId);
+  const reacted = await cancelAll(
+    db,
+    row.organization_id,
+    row.id,
+    live,
+    outcome,
+    cancelReason,
+    `reactivity_${cancelReason}`,
+    clock,
+  );
+  return { matched: true, reacted };
+}
+
 /**
  * Dispatch por `event_type` — chamado por `reactivity.handler.ts` (adapter do
  * dispatcher genérico) e diretamente pelos testes DB-real. Tipo desconhecido
@@ -351,6 +386,10 @@ export async function applyReactivityEvent(
       return reactToHandoffOpen(db, clock, row);
     case "ai.handoff_resolved":
       return reactToHandoffClose(db, clock, row);
+    case "lead.won":
+      return reactToLeadClosed(db, clock, row, "converted", "lead_won");
+    case "lead.lost":
+      return reactToLeadClosed(db, clock, row, "exhausted", "lead_lost");
     default:
       return { matched: false, reacted: 0 };
   }
@@ -370,6 +409,16 @@ export function createSupabaseReactivityClient(admin: SupabaseClient): Reactivit
         .from("conversations")
         .select("contact_id")
         .eq("id", conversationId)
+        .eq("organization_id", orgId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data?.contact_id ?? null;
+    },
+    async loadLeadContactId(orgId, leadId) {
+      const { data, error } = await admin
+        .from("crm_leads")
+        .select("contact_id")
+        .eq("id", leadId)
         .eq("organization_id", orgId)
         .maybeSingle();
       if (error) throw new Error(error.message);

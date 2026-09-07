@@ -47,11 +47,12 @@ export const CAPITULOS: readonly Capitulo[] = [
       {
         tipo: "passos",
         itens: [
-          "Seu negócio — o nome e o ramo (locadora, advocacia ou outros). O fuso fica em Brasília. Isto decide o quadro que vem depois.",
+          "Seu negócio — o nome e o tipo (locação, advocacia, comercial/vendas, serviços ou personalizado). Se for locação, pergunta o que a empresa aluga (veículos, máquinas, ferramentas, imóveis ou outros). Isto decide o quadro que vem depois.",
           "WhatsApp — conectar pelo QR (já vem selecionado), ou pular e conectar depois em Canais › Conexões.",
-          "Agente de IA — cria o primeiro agente. Precisa de uma chave contratada com uma empresa de IA. Dá para pular e configurar depois.",
-          "O funil — o quadro de clientes. Locadora ganha Locatários e Cobrança; escritório ganha Novos clientes e Processos.",
-          "Testar o agente — um ensaio. Nada sai no WhatsApp de verdade.",
+          "Quem atende — novos atendimentos ficam manuais ou entram na fila automática entre os atendentes.",
+          "Organização — preview do quadro do modelo. Personalizado deixa editar o nome e as etapas. Não cria outro CRM.",
+          "Lembretes — opcional: um aviso depois de 24 horas sem resposta. Quem não quiser, segue sem.",
+          "Inteligência artificial — quatro jeitos (sem IA, assistente, controlada, automática). Nenhuma destas opções publica um agente sozinha.",
           "Seu time — convites. Se o e-mail da instalação não estiver configurado, a tela mostra o link para copiar; ela não finge que o convite saiu.",
         ],
       },

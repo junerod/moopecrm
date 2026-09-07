@@ -9,19 +9,19 @@ describe("VoltarDoPasso", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("no passo 5 (testar) volta para o funil, ao lado de quem chamar", () => {
-    render(<VoltarDoPasso segmento="testar" />);
-    expect(screen.getByRole("link", { name: /voltar/i })).toHaveAttribute(
-      "href",
-      "/onboarding/funil",
-    );
-  });
-
-  it("no funil volta para o agente de IA", () => {
+  it("no funil volta para quem atende", () => {
     render(<VoltarDoPasso segmento="funil" />);
     expect(screen.getByRole("link", { name: /voltar/i })).toHaveAttribute(
       "href",
-      "/onboarding/setup-ai",
+      "/onboarding/quem-atende",
+    );
+  });
+
+  it("na IA volta para o lembrete", () => {
+    render(<VoltarDoPasso segmento="setup-ai" />);
+    expect(screen.getByRole("link", { name: /voltar/i })).toHaveAttribute(
+      "href",
+      "/onboarding/follow-up",
     );
   });
 });

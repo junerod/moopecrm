@@ -1,10 +1,5 @@
 /**
  * O wizard não pode culpar a pessoa por uma tela que nunca lhe ofereceu.
- *
- * Em 100% das instalações pelo kit a integração de loja vem desligada. Mesmo
- * assim o indicador mostrava o passo "Loja", ele aparecia CONCLUÍDO enquanto a
- * pessoa estava no passo seguinte, e a tela final listava "Loja Nuvemshop
- * (pulado)". Três listas independentes discordando entre si.
  */
 import { describe, expect, it } from "vitest";
 
@@ -19,35 +14,28 @@ import type { OnboardingState } from "@/lib/schemas/onboarding";
 
 const SEM_LOJA: ContextoDoPasso = { lojaLigada: false };
 const COM_LOJA: ContextoDoPasso = { lojaLigada: true };
-
 const VAZIO: OnboardingState = {};
 
+const ORDEM = [
+  "welcome",
+  "connect-whatsapp",
+  "quem-atende",
+  "funil",
+  "follow-up",
+  "setup-ai",
+  "invite-team",
+];
+
 describe("passos visíveis", () => {
-  it("instalação pelo kit não vê passo de loja em lugar nenhum", () => {
+  it("não oferece Nuvemshop nem o ensaio do agente", () => {
     const segmentos = passosVisiveis(SEM_LOJA).map((p) => p.segmento);
+    expect(segmentos).toEqual(ORDEM);
     expect(segmentos).not.toContain("connect-nuvemshop");
+    expect(segmentos).not.toContain("testar");
   });
 
   it("mesmo com a loja ligada o wizard não oferece Nuvemshop", () => {
-    const segmentos = passosVisiveis(COM_LOJA).map((p) => p.segmento);
-    expect(segmentos).not.toContain("connect-nuvemshop");
-  });
-
-  it("a ordem é a mesma nos dois casos, menos o passo que não existe", () => {
-    expect(passosVisiveis(SEM_LOJA).map((p) => p.segmento)).toEqual([
-      "welcome",
-      "connect-whatsapp",
-      "setup-ai",
-      // O quadro de clientes vem DEPOIS de treinar: a sugestão sai da chave que
-      // a pessoa acabou de confirmar funcionando, e é o mesmo modelo que vai
-      // atender. Pedi-lo antes obrigaria a montá-lo no escuro.
-      "funil",
-      // Ver o funcionário atender vem DEPOIS de treiná-lo e ANTES de chamar o
-      // time: é a prova de que ele funciona, e ela precisa acontecer enquanto a
-      // pessoa ainda está no wizard.
-      "testar",
-      "invite-team",
-    ]);
+    expect(passosVisiveis(COM_LOJA).map((p) => p.segmento)).toEqual(ORDEM);
   });
 });
 
@@ -56,32 +44,30 @@ describe("próximo passo", () => {
     expect(proximoPasso(VAZIO, SEM_LOJA)?.segmento).toBe("welcome");
   });
 
-  it("pula o passo que não existe, em vez de travar nele", () => {
-    // O defeito equivalente do lado do roteador: parar num passo que a
-    // instalação não oferece deixaria a pessoa presa sem entender por quê.
+  it("depois do WhatsApp vem quem atende — não o agente", () => {
     const s: OnboardingState = {
       welcome: { accepted_at: "x", timezone: "America/Sao_Paulo", display_name: "N" },
       whatsapp: { status: "WORKING" },
     };
-    expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("setup-ai");
-    expect(proximoPasso(s, COM_LOJA)?.segmento).toBe("setup-ai");
+    expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("quem-atende");
   });
 
-  it("passo PULADO conta como resolvido — senão o wizard entra em laço", () => {
+  it("passo PULADO conta como resolvido", () => {
     const s: OnboardingState = {
       welcome: { accepted_at: "x", timezone: "America/Sao_Paulo", display_name: "N" },
       whatsapp: { status: "skipped", skipped: true },
     };
-    expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("setup-ai");
+    expect(proximoPasso(s, SEM_LOJA)?.segmento).toBe("quem-atende");
   });
 
   it("tudo resolvido = não falta nenhum", () => {
     const s: OnboardingState = {
       welcome: { accepted_at: "x", timezone: "America/Sao_Paulo", display_name: "N" },
       whatsapp: { status: "WORKING" },
-      ai: { agent_id: "a", prompt_template: "p" },
-      funil: { pipeline_id: "f", origem: "ia", etapas: 6 },
-      teste: { respondeu: true },
+      routing: { mode: "manual" },
+      funil: { pipeline_id: "f", origem: "ready_model", etapas: 6 },
+      followup: { ativo: false },
+      ai: { ai_mode: "copilot" },
       team: { invites_sent: 0, skipped: true },
     };
     expect(proximoPasso(s, SEM_LOJA)).toBeNull();
@@ -93,12 +79,13 @@ describe("passo anterior", () => {
     expect(passoAnterior("welcome", SEM_LOJA)).toBeNull();
   });
 
-  it("volta pelo passo visível de verdade — não pela loja fantasma", () => {
-    expect(passoAnterior("setup-ai", SEM_LOJA)?.segmento).toBe("connect-whatsapp");
-    expect(passoAnterior("funil", SEM_LOJA)?.segmento).toBe("setup-ai");
-    expect(passoAnterior("testar", SEM_LOJA)?.segmento).toBe("funil");
-    expect(passoAnterior("invite-team", SEM_LOJA)?.segmento).toBe("testar");
+  it("a ordem nova é negócio → WhatsApp → quem atende → organização", () => {
     expect(passoAnterior("connect-whatsapp", SEM_LOJA)?.segmento).toBe("welcome");
+    expect(passoAnterior("quem-atende", SEM_LOJA)?.segmento).toBe("connect-whatsapp");
+    expect(passoAnterior("funil", SEM_LOJA)?.segmento).toBe("quem-atende");
+    expect(passoAnterior("follow-up", SEM_LOJA)?.segmento).toBe("funil");
+    expect(passoAnterior("setup-ai", SEM_LOJA)?.segmento).toBe("follow-up");
+    expect(passoAnterior("invite-team", SEM_LOJA)?.segmento).toBe("setup-ai");
   });
 
   it("na tela final volta para o último passo do wizard", () => {
@@ -108,32 +95,17 @@ describe("passo anterior", () => {
 
 describe("resumo final", () => {
   it("NÃO lista o passo que a instalação nunca ofereceu", () => {
-    // O defeito original: a tela final acusava "Loja Nuvemshop (pulado)".
     const resumo = resumoDoOnboarding(VAZIO, SEM_LOJA);
     expect(resumo.map((i) => i.segmento)).not.toContain("connect-nuvemshop");
+    expect(resumo.map((i) => i.segmento)).not.toContain("testar");
   });
 
-  it("distingue feito de pulado — pular é escolha, não falha", () => {
-    const s: OnboardingState = {
-      welcome: { accepted_at: "x", timezone: "America/Sao_Paulo", display_name: "N" },
-      whatsapp: { status: "skipped", skipped: true },
-    };
-    const resumo = resumoDoOnboarding(s, SEM_LOJA);
-    const porSegmento = new Map(resumo.map((i) => [i.segmento, i]));
-    expect(porSegmento.get("welcome")).toMatchObject({ feito: true, pulado: false });
-    expect(porSegmento.get("connect-whatsapp")).toMatchObject({ feito: false, pulado: true });
-    // O que nem chegou a ser oferecido não é "pulado": é pendente.
-    expect(porSegmento.get("setup-ai")).toMatchObject({ feito: false, pulado: false });
-  });
-
-  it("os rótulos nomeiam PEÇAS do funcionário, não telas do sistema", () => {
-    // A moldura do redesenho. Um passo chamado só "IA" não diz o que vai
-    // acontecer ali; o rótulo nomeia a peça (WhatsApp, agente, funil).
+  it("os rótulos não exigem jargão técnico", () => {
     const rotulos = resumoDoOnboarding(VAZIO, SEM_LOJA).map((i) => i.rotulo);
     expect(rotulos).toContain("WhatsApp");
-    expect(rotulos).toContain("Agente de IA");
-    expect(rotulos).toContain("O funil");
-    expect(rotulos).toContain("Testar o agente");
-    expect(rotulos).not.toContain("IA");
+    expect(rotulos).toContain("Quem atende");
+    expect(rotulos).toContain("Organização");
+    expect(rotulos).toContain("Inteligência artificial");
+    expect(rotulos).not.toContain("Testar o agente");
   });
 });

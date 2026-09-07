@@ -7,6 +7,7 @@ import { z } from "zod";
 import type pg from "pg";
 
 import { lerPoliticaPg } from "@/lib/ai/execucao/ler-camadas";
+import { carregarOverlayDoFunilPadrao } from "@/lib/ai/copiloto/overlay";
 import { gerarSugestaoDoCopiloto } from "@/lib/ai/copiloto/gerar";
 import type { JobRow } from "@/lib/agent-engine/queue/queue";
 import type { LlmEdgeConfig } from "@/lib/agent-engine/edge/llm/run-model-call";
@@ -53,6 +54,7 @@ export function createCopilotTurnHandler(deps: CopilotTurnDeps) {
       [job.organization_id, payload.conversation_id],
     );
 
+    const overlay = await carregarOverlayDoFunilPadrao(pool, job.organization_id);
     const result = await gerarSugestaoDoCopiloto({
       db: pool,
       organizationId: job.organization_id,
@@ -61,6 +63,7 @@ export function createCopilotTurnHandler(deps: CopilotTurnDeps) {
       inboundMessageId: payload.inbound_message_id,
       historico: mensagens,
       politica,
+      overlay,
       force: payload.force === true,
       llm: async ({ historico, system }) => {
         const { result: call, model, usage } = await runModelCall(pool, deps.llmCfg, {

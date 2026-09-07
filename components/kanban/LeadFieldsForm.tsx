@@ -1,16 +1,19 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEditLead } from "@/hooks/kanban/useUpdateLead";
+import { camposDoPipeline } from "@/lib/leads/custom-fields";
 import type { Lead } from "@/lib/types/leads";
 import { updateLeadSchema, type UpdateLeadInput } from "@/lib/schemas/leads";
 import { parseReaisToCents } from "@/lib/money";
+import { createClient } from "@/lib/supabase/browser";
 import { EcoDoValor } from "./EcoDoValor";
 
 interface FormShape {
@@ -46,6 +49,27 @@ function centsToReais(cents: number | null | undefined): string {
  */
 export function LeadFieldsForm({ lead, pipelineId, onSaved, onCancel }: Props) {
   const edit = useEditLead(pipelineId);
+  const [campos, setCampos] = useState<CustomFieldDef[]>([]);
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>(
+    lead.custom_fields ?? {},
+  );
+
+  useEffect(() => {
+    let vivo = true;
+    const sb = createClient();
+    void sb
+      .from("crm_pipelines")
+      .select("settings")
+      .eq("id", pipelineId)
+      .maybeSingle()
+      .then(({ data }: { data: { settings?: unknown } | null }) => {
+        if (!vivo) return;
+        setCampos(camposDoPipeline(data?.settings) as CustomFieldDef[]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [pipelineId]);
 
   const form = useForm<FormShape>({
     defaultValues: {
@@ -90,6 +114,7 @@ export function LeadFieldsForm({ lead, pipelineId, onSaved, onCancel }: Props) {
       value_cents: valueCents,
       tags,
       expected_close_date: values.expected_close_date || null,
+      custom_fields: customFields,
     };
 
     const parsed = updateLeadSchema.safeParse(patch);
@@ -157,6 +182,19 @@ export function LeadFieldsForm({ lead, pipelineId, onSaved, onCancel }: Props) {
           <Label htmlFor="tagsRaw">Tags (separadas por vírgula)</Label>
           <Input id="tagsRaw" placeholder="vip, recompra" {...form.register("tagsRaw")} />
         </div>
+
+        {campos.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Dados deste negócio</p>
+            <CustomFieldsEditor
+              fields={campos}
+              value={customFields}
+              onChange={setCustomFields}
+              mode="lead"
+              disabled={edit.isPending}
+            />
+          </div>
+        ) : null}
 
       <div className="flex justify-end gap-2">
         {onCancel && (

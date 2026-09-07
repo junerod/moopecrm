@@ -22,10 +22,11 @@
 
 Contexto do código: primeiro usuário nasce do `scripts/bootstrap-owner.ts`
 (install.sh); quem é convidado e ainda não tem conta entra por `/signup?invite=`.
-Wizard: welcome → whatsapp → (nuvemshop se `NUVEMSHOP_ENABLED`) → setup-ai →
-**testar** → invite-team → done. A ordem, os rótulos e o resumo final saem de uma
-fonte só (`lib/onboarding/passos.ts`) — eram três listas que discordavam. Gate:
-`organizations.onboarded_at`. MFA obrigatório pra admin logo após o wizard.
+Wizard (Etapa 3B): welcome (Ready Model) → whatsapp → quem-atende → funil →
+follow-up → setup-ai (AI_MODE, sem publicar agente) → invite-team → done.
+`connect-nuvemshop` e `testar` existem no código e estão ocultos (`existe: false`).
+A ordem, os rótulos e o resumo final saem de uma fonte só (`lib/onboarding/passos.ts`).
+Gate: `organizations.onboarded_at`. MFA não é imposto pelo wizard.
 
 | # | Caso | Expectativa |
 |---|------|-------------|

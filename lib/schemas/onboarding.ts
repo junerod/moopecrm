@@ -4,8 +4,13 @@
  */
 import { z } from "zod";
 
+import { READY_MODEL_IDS, LOCACAO_SUBTYPES } from "@/lib/ready-models/tipos";
+import { AI_MODES } from "@/lib/schemas/settings";
+
 export const welcomeSchema = z.object({
   display_name: z.string().min(2).max(120),
+  ready_model_id: z.enum(READY_MODEL_IDS).optional(),
+  ready_model_subtype: z.enum(LOCACAO_SUBTYPES).optional(),
   /**
    * O que o negócio faz, na palavra do dono ("clínica odontológica", "vendo
    * roupa fitness pelo WhatsApp").
@@ -51,8 +56,10 @@ export const onboardingStepSchema = z.enum([
   "welcome",
   "whatsapp",
   "nuvemshop",
-  "ai",
+  "quem-atende",
   "funil",
+  "follow-up",
+  "ai",
   "team",
   "done",
 ]);
@@ -66,6 +73,20 @@ export const onboardingStateSchema = z.object({
       display_name: z.string(),
       /** O ramo, na palavra do dono. Alimenta o prompt e o quadro de clientes. */
       o_que_faz: z.string().optional(),
+      ready_model_id: z.enum(READY_MODEL_IDS).optional(),
+      ready_model_subtype: z.enum(LOCACAO_SUBTYPES).optional(),
+    })
+    .optional(),
+  routing: z
+    .object({
+      mode: z.enum(["manual", "round_robin"]),
+      skipped: z.boolean().optional(),
+    })
+    .optional(),
+  followup: z
+    .object({
+      ativo: z.boolean(),
+      skipped: z.boolean().optional(),
     })
     .optional(),
   whatsapp: z
@@ -85,8 +106,9 @@ export const onboardingStateSchema = z.object({
     .optional(),
   ai: z
     .object({
-      agent_id: z.string(),
-      prompt_template: z.string(),
+      agent_id: z.string().optional(),
+      prompt_template: z.string().optional(),
+      ai_mode: z.enum(AI_MODES).optional(),
       skipped: z.boolean().optional(),
     })
     .optional(),
@@ -109,7 +131,7 @@ export const onboardingStateSchema = z.object({
   funil: z
     .object({
       pipeline_id: z.string().optional(),
-      origem: z.enum(["ia", "pacote"]).optional(),
+      origem: z.enum(["ia", "pacote", "ready_model"]).optional(),
       etapas: z.number().optional(),
       skipped: z.boolean().optional(),
     })
