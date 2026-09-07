@@ -13,7 +13,6 @@ import { camposDoPipeline } from "@/lib/leads/custom-fields";
 import type { Lead } from "@/lib/types/leads";
 import { updateLeadSchema, type UpdateLeadInput } from "@/lib/schemas/leads";
 import { parseReaisToCents } from "@/lib/money";
-import { createClient } from "@/lib/supabase/browser";
 import { EcoDoValor } from "./EcoDoValor";
 
 interface FormShape {
@@ -27,6 +26,12 @@ interface FormShape {
 interface Props {
   lead: Lead;
   pipelineId: string;
+  /**
+   * Settings do quadro já carregados pela API do board.
+   * O cookie de sessão é httpOnly — o supabase-js do browser não lê o funil
+   * (RLS esconde a linha) e os custom fields do Ready Model somem em silêncio.
+   */
+  pipelineSettings?: unknown;
   /** Quando o salvamento dá certo. O dossiê NÃO fecha aqui — ver abaixo. */
   onSaved?: () => void;
   /** O dossiê não tem "cancelar"; o diálogo tem. */
@@ -47,29 +52,18 @@ function centsToReais(cents: number | null | undefined): string {
  * registro justamente de quem o produziu — a funcionalidade que prova "sua ação
  * fica registrada" provaria isso para todo mundo menos para o autor.
  */
-export function LeadFieldsForm({ lead, pipelineId, onSaved, onCancel }: Props) {
+export function LeadFieldsForm({
+  lead,
+  pipelineId,
+  pipelineSettings,
+  onSaved,
+  onCancel,
+}: Props) {
   const edit = useEditLead(pipelineId);
-  const [campos, setCampos] = useState<CustomFieldDef[]>([]);
+  const campos = camposDoPipeline(pipelineSettings) as CustomFieldDef[];
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(
     lead.custom_fields ?? {},
   );
-
-  useEffect(() => {
-    let vivo = true;
-    const sb = createClient();
-    void sb
-      .from("crm_pipelines")
-      .select("settings")
-      .eq("id", pipelineId)
-      .maybeSingle()
-      .then(({ data }: { data: { settings?: unknown } | null }) => {
-        if (!vivo) return;
-        setCampos(camposDoPipeline(data?.settings) as CustomFieldDef[]);
-      });
-    return () => {
-      vivo = false;
-    };
-  }, [pipelineId]);
 
   const form = useForm<FormShape>({
     defaultValues: {

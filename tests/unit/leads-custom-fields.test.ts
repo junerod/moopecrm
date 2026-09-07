@@ -33,6 +33,13 @@ describe("custom fields do Ready Model", () => {
     expect(r.ok).toBe(false);
   });
 
+  it("o formulário do dossiê não lê o funil pelo supabase do browser", () => {
+    const src = readFileSync("components/kanban/LeadFieldsForm.tsx", "utf8");
+    expect(src).not.toMatch("lib/supabase/browser");
+    expect(src).toMatch("pipelineSettings");
+    expect(src).toMatch("camposDoPipeline(pipelineSettings)");
+  });
+
   it("PATCH schema aceita custom_fields", () => {
     const parsed = updateLeadSchema.safeParse({
       title: "Furadeira",

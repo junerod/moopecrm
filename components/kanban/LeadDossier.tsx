@@ -16,6 +16,7 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   lead: Lead;
   pipelineId: string;
+  pipelineSettings?: unknown;
   stageName: string;
   ownerNames?: Map<string, string | null>;
 }
@@ -51,6 +52,7 @@ export function LeadDossier({
   onOpenChange,
   lead,
   pipelineId,
+  pipelineSettings,
   stageName,
   ownerNames,
 }: Props) {
@@ -141,7 +143,12 @@ export function LeadDossier({
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
             Dados do negócio
           </h3>
-          <LeadFieldsForm lead={lead} pipelineId={pipelineId} />
+          <LeadFieldsForm
+            key={lead.id}
+            lead={lead}
+            pipelineId={pipelineId}
+            pipelineSettings={pipelineSettings}
+          />
         </div>
       </SheetContent>
     </Sheet>

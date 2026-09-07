@@ -264,6 +264,7 @@ export function KanbanBoard({
           onOpenChange={(v) => !v && setDossieId(null)}
           lead={leadDoDossie}
           pipelineId={pipelineId}
+          pipelineSettings={(pipelineProp ?? data?.pipeline)?.settings}
           stageName={
             data.stages.find((s) => s.id === leadDoDossie.stage_id)?.name ?? "—"
           }
