@@ -8,6 +8,8 @@ import {
   type GatilhoEtapaDb,
   type PointerDeEtapa,
 } from "./gatilho-etapa";
+import { grafoComIa, grafoDeterministico } from "./fluxo-fixtures";
+import type { FlowGraph } from "./graph-schema";
 
 /**
  * A DECISÃO do gatilho de etapa, isolada do banco. O que este arquivo vigia é
@@ -40,6 +42,7 @@ function fakeDb(opts: {
   pointers?: PointerDeEtapa[];
   contato?: string | null;
   noDeGatilho?: string | null;
+  graph?: FlowGraph;
   jaVivo?: boolean;
   registro: Registro;
 }): GatilhoEtapaDb {
@@ -51,8 +54,12 @@ function fakeDb(opts: {
       opts.registro.contatoConsultado++;
       return opts.contato === undefined ? CONTATO : opts.contato;
     },
-    async carregaNoDeGatilho() {
-      return opts.noDeGatilho === undefined ? "t1" : opts.noDeGatilho;
+    async carregaFluxoPublicado() {
+      if (opts.noDeGatilho === null) return null;
+      return {
+        triggerNodeId: opts.noDeGatilho ?? "t1",
+        graph: opts.graph ?? grafoDeterministico(),
+      };
     },
     async insereEnrollment(input) {
       if (opts.jaVivo) return { inserted: false, id: null };
@@ -160,10 +167,14 @@ describe("aplicaGatilhoDeEtapa — o que NÃO dispara", () => {
 });
 
 describe("aplicaGatilhoDeEtapa — o gate do agente", () => {
-  it("nenhum agente publicado armando o fluxo → 0 enrollments, contado como barrado", async () => {
+  it("fluxo com IA e nenhum agente publicado → 0 enrollments, contado como barrado", async () => {
     const reg = registro();
     const s = await aplicaGatilhoDeEtapa(
-      { db: fakeDb({ pointers: [pointerArmado], registro: reg }), gateDb: fakeGate([]), clock: CLOCK },
+      {
+        db: fakeDb({ pointers: [pointerArmado], graph: grafoComIa(), registro: reg }),
+        gateDb: fakeGate([]),
+        clock: CLOCK,
+      },
       evento(),
     );
     expect(s.pointers_barrados_pelo_gate).toBe(1);
@@ -171,11 +182,21 @@ describe("aplicaGatilhoDeEtapa — o gate do agente", () => {
     expect(reg.enrollments).toHaveLength(0);
   });
 
-  it("agente que arma OUTRO fluxo não libera este", async () => {
+  it("fluxo determinístico sem agente enrolla", async () => {
+    const reg = registro();
+    const s = await aplicaGatilhoDeEtapa(
+      { db: fakeDb({ pointers: [pointerArmado], registro: reg }), gateDb: fakeGate([]), clock: CLOCK },
+      evento(),
+    );
+    expect(s.enrolled).toBe(1);
+    expect((reg.enrollments[0] as { agent_id: string | null }).agent_id).toBeNull();
+  });
+
+  it("agente que arma OUTRO fluxo não libera um fluxo com IA", async () => {
     const reg = registro();
     const s = await aplicaGatilhoDeEtapa(
       {
-        db: fakeDb({ pointers: [pointerArmado], registro: reg }),
+        db: fakeDb({ pointers: [pointerArmado], graph: grafoComIa(), registro: reg }),
         gateDb: fakeGate([{ agentId: AGENT, pointerIds: ["outro-pointer"] }]),
         clock: CLOCK,
       },
@@ -274,7 +295,7 @@ describe("aplicaGatilhoDeEtapa — o enrollment que nasce", () => {
     const outro = { ...pointerArmado, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" };
     const s = await aplicaGatilhoDeEtapa(
       {
-        db: fakeDb({ pointers: [pointerArmado, outro], registro: reg }),
+        db: fakeDb({ pointers: [pointerArmado, outro], graph: grafoComIa(), registro: reg }),
         gateDb: fakeGate([{ agentId: AGENT, pointerIds: [POINTER] }]),
         clock: CLOCK,
       },

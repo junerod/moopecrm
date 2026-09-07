@@ -2,14 +2,13 @@
  * Gate de gatilho AUTOMÁTICO de follow-up (Task 7.2) + resolução do agente que
  * ARMA o pointer (Task 8.6).
  *
- * Regra (spec 2026-07-21, seletor no agente): um gatilho AUTOMÁTICO
- * (silence/stage_change/conversation_end — `TriggerConfig.kind` em
- * `api-schemas.ts`) só pode criar um enrollment para um pointer se algum
- * agente PUBLICADO (`ai_agent_versions.status='published'`) da mesma org tem
- * `followup.enabled=true` e `followup.flow_pointer_ids` inclui esse pointer.
- * Enrollment MANUAL (`POST /api/v1/ai/followups/enrollments`) NÃO passa por
- * este gate — é escolha explícita de um humano, ortogonal ao vínculo do
- * agente (mas o manual TAMBÉM resolve o agente pinado por aqui pra registro).
+ * Este módulo RESOLVE o agente que arma o pointer. A decisão de enrollar
+ * automática NÃO vive mais só neste booleano: `decidirArmacaoAutomatica`
+ * (fluxo-requer-ia.ts) classifica o grafo. Fluxo com IA ainda exige um
+ * agente publicado com `followup.enabled=true` e o pointer em
+ * `followup.flow_pointer_ids`. Fluxo determinístico (template) enrolla
+ * sem agente. Enrollment MANUAL (`POST /api/v1/ai/followups/enrollments`)
+ * NÃO passa por este gate — é escolha explícita de um humano.
  *
  * Task 8.6: além do booleano, o consumidor (silence-sweep) precisa saber QUAL
  * agente pinar no enrollment. `resolveAgentForAutomaticTrigger` devolve o

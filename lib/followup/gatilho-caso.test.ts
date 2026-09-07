@@ -10,6 +10,8 @@ import {
   type GatilhoCasoDb,
   type PointerDeCaso,
 } from "./gatilho-caso";
+import { grafoComIa, grafoDeterministico } from "./fluxo-fixtures";
+import type { FlowGraph } from "./graph-schema";
 
 /**
  * A DECISÃO do gatilho de caso, isolada do banco: quando ignora, quando enrolla,
@@ -45,6 +47,7 @@ function fakeDb(opts: {
   pointers?: PointerDeCaso[];
   contato?: string | null;
   noDeGatilho?: string | null;
+  graph?: FlowGraph;
   jaVivo?: boolean;
   vivos?: Array<{ id: string; current_node_id: string | null }>;
   cancelaFalha?: boolean;
@@ -58,8 +61,12 @@ function fakeDb(opts: {
       opts.reg.contatoConsultado++;
       return opts.contato === undefined ? CONTATO : opts.contato;
     },
-    async carregaNoDeGatilho() {
-      return opts.noDeGatilho === undefined ? "t1" : opts.noDeGatilho;
+    async carregaFluxoPublicado() {
+      if (opts.noDeGatilho === null) return null;
+      return {
+        triggerNodeId: opts.noDeGatilho ?? "t1",
+        graph: opts.graph ?? grafoDeterministico(),
+      };
     },
     async insereEnrollment(input) {
       if (opts.jaVivo) return { inserted: false, id: null };
@@ -170,11 +177,21 @@ describe("gatilho de caso — abertura", () => {
     expect(s.enrolled).toBe(0);
   });
 
-  it("sem agente publicado o gate barra, e o barramento aparece no resumo", async () => {
+  it("fluxo com IA e sem agente publicado o gate barra, e o barramento aparece no resumo", async () => {
     const reg = registro();
-    const s = await aplicaGatilhoDeCaso(deps(fakeDb({ reg }), fakeGate([])), evento());
+    const s = await aplicaGatilhoDeCaso(
+      deps(fakeDb({ reg, graph: grafoComIa() }), fakeGate([])),
+      evento(),
+    );
     expect(s.pointers_barrados_pelo_gate).toBe(1);
     expect(s.enrolled).toBe(0);
+  });
+
+  it("fluxo determinístico sem agente enrolla", async () => {
+    const reg = registro();
+    const s = await aplicaGatilhoDeCaso(deps(fakeDb({ reg }), fakeGate([])), evento());
+    expect(s.enrolled).toBe(1);
+    expect((reg.enrollments[0] as { agent_id: string | null }).agent_id).toBeNull();
   });
 
   it("contato já vivo em outro fluxo vira skip, nunca erro", async () => {

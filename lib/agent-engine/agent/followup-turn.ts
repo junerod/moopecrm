@@ -71,6 +71,7 @@ export const followupTurnPayloadSchema = z
     node_id: z.string().min(1).optional(),
     purpose: z.enum(['send_message', 'classify', 'plan_timing']).optional(),
     prompt_hint: z.string().optional(),
+    template_id: z.string().uuid().optional(),
     classes: z.array(z.string()).optional(),
     hint: z.string().optional(),
     // purpose 'plan_timing': as esperas adaptativas do fluxo inteiro, na ordem.
@@ -287,6 +288,7 @@ export function createFollowupTurnHandler(deps: FollowupTurnDeps) {
         nodeId: payload.node_id,
         purpose: payload.purpose,
         promptHint: payload.prompt_hint,
+        templateId: payload.template_id,
         classes: payload.classes,
         hint: payload.hint,
         waits: payload.waits,
@@ -350,6 +352,7 @@ async function runFlowDrivenTurn(
     nodeId: string | undefined;
     purpose: 'send_message' | 'classify' | 'plan_timing' | undefined;
     promptHint: string | undefined;
+    templateId: string | undefined;
     classes: string[] | undefined;
     hint: string | undefined;
     waits: EsperaParaPlanejar[] | undefined;
@@ -368,6 +371,13 @@ async function runFlowDrivenTurn(
   const runLog = withFields(deps.log, { job_id: job.id, tenant_id: target.tenantId, lead_id: target.leadId, enrollment_id: enrollmentId });
 
   if (input.purpose === 'send_message') {
+    if (input.templateId) {
+      const envio = await sendFlowTemplateThroughGates(deps, job, pool, ctx, clock, target, input.templateId);
+      if (envio === 'sent') {
+        await complete(pool, { organizationId: target.tenantId, enrollmentId, nodeId, result: { kind: 'sent' } });
+      }
+      return;
+    }
     await runAgentTurn(deps, job, pool, ctx, {
       channelSessionId: target.channelSessionId,
       conversationId: target.conversationId,
@@ -441,6 +451,45 @@ async function runFlowDrivenTurn(
 }
 
 /**
+ * Action `template` do fluxo: o corpo já está no message_templates do tenant.
+ * Passa pelos MESMOS gates de `runDeterministicReentry`. Sem LLM, sem agente.
+ */
+async function sendFlowTemplateThroughGates(
+  deps: InboundTurnDeps,
+  job: JobRow,
+  pool: pg.Pool,
+  ctx: { workerId: string },
+  clock: () => Date,
+  target: ReentrySendTarget,
+  templateId: string,
+): Promise<'sent' | 'skipped'> {
+  const { tenantId, leadId } = target;
+  const runLog = withFields(deps.log, { job_id: job.id, tenant_id: tenantId, lead_id: leadId });
+
+  if (await isLeadInHandoff(pool, tenantId, leadId)) {
+    runLog.info('follow-up de template pulado — lead silenciado (handoff/opt-out)', { kind: job.kind });
+    return 'skipped';
+  }
+  if (jobFoiInvalidado(await lastErrorDoJob(pool, job.id))) {
+    runLog.info('follow-up de template pulado — job invalidado', { kind: job.kind });
+    return 'skipped';
+  }
+
+  const { rows } = await pool.query<{ body: string }>(
+    `select body from message_templates
+      where id = $1 and organization_id = $2
+      limit 1`,
+    [templateId, tenantId],
+  );
+  const body = rows[0]?.body?.trim();
+  if (!body) {
+    throw new Error('follow-up de template sem corpo — o fluxo aponta para um template que não existe neste tenant');
+  }
+
+  return enviarCorpoDeterministico(deps, job, pool, ctx, clock, target, body);
+}
+
+/**
  * Re-entrada DETERMINÍSTICA (F3-04): carrega o template ativo por ponteiro, escolhe a
  * variante do lead (hash — acc2) e a envia SEM LLM. Enviar continua sendo o sink
  * idempotente (F2-06) ATRÁS da cadeia de guardrails (F2-13): STOP/anti-ban/spinning
@@ -455,7 +504,7 @@ async function runDeterministicReentry(
   clock: () => Date,
   target: ReentrySendTarget,
 ): Promise<void> {
-  const { tenantId, leadId, channelSessionId, conversationId } = target;
+  const { tenantId, leadId } = target;
   const runLog = withFields(deps.log, { job_id: job.id, tenant_id: tenantId, lead_id: leadId });
 
   // F4-07: silêncio DURÁVEL (bot_silenced_until — handoff explícito F4-06 OU opt-out
@@ -471,12 +520,6 @@ async function runDeterministicReentry(
     return;
   }
 
-  // Mesma escolha por organização do caminho do agente: a re-entrada
-  // determinística passa pela MESMA cadeia, então tem de honrar a MESMA
-  // preferência. Ler só no inbound deixaria a camada ligada num caminho e
-  // desligada no outro, para a mesma organização.
-  const camadasDaOrg = await lerCamadasDaOrg(pool, tenantId);
-
   // Template versionado por ponteiro (acc1): sem cache de processo — mover o ponteiro
   // ⇒ este disparo já usa a versão nova. Tenant sem template apontado = erro de
   // configuração (permanente): o job vira dead-letter + inbox pela fila, nunca envio mudo.
@@ -485,9 +528,22 @@ async function runDeterministicReentry(
     throw new Error('re-entrada determinística sem template apontado para o tenant — publique um template e mova o ponteiro');
   }
   const body = pickReentryVariant(leadId, template.variants);
+  await enviarCorpoDeterministico(deps, job, pool, ctx, clock, target, body);
+}
 
-  // STOP no turno (fonte: CRM via get_lead_context — regra dura nº 2), como o caminho
-  // do agente. É leitura de CRM, não do modelo: o custo em LLM segue $0.
+async function enviarCorpoDeterministico(
+  deps: InboundTurnDeps,
+  job: JobRow,
+  pool: pg.Pool,
+  ctx: { workerId: string },
+  clock: () => Date,
+  target: ReentrySendTarget,
+  body: string,
+): Promise<'sent' | 'skipped'> {
+  const { tenantId, leadId, channelSessionId, conversationId } = target;
+  const runLog = withFields(deps.log, { job_id: job.id, tenant_id: tenantId, lead_id: leadId });
+  const camadasDaOrg = await lerCamadasDaOrg(pool, tenantId);
+
   const context = await getLeadContext(pool, deps.crmCfg, { tenantId, leadId }, {
     historyLimit: deps.knobs.historyLimit,
     maxTokens: deps.knobs.maxContextTokens,
@@ -499,8 +555,6 @@ async function runDeterministicReentry(
 
   const channel = (deps.channel ?? ((p: pg.Pool) => new WahaChannelAdapter(p, deps.crmCfg)))(pool);
 
-  // seq = 1: uma única mensagem determinística por disparo (identidade (job_id, 1) no
-  // ledger F2-06). Enviar SÓ pela cadeia — nunca por baixo dela (CLAUDE.md princípio 2).
   const chain = await runBeforeSend({
     pool,
     log: runLog,
@@ -511,16 +565,11 @@ async function runDeterministicReentry(
     channelSessionId,
     body,
     optedOutThisTurn,
-    // ponytail: mesmo débito do caminho do agente — o daily_message_limit do CRM ainda
-    // não é lido no runtime; null cai nos degraus de warm-up (conservadores).
     crmDailyLimit: null,
     now: clock(),
     sleep: deps.sleep,
-    // Gate LGPD (F4-09): base legal/anonimização do CRM lidas no turno (fonte confiável).
     lgpd: context.lgpd,
     ...(deps.knobs.disclosureMode !== undefined ? { disclosureMode: deps.knobs.disclosureMode } : {}),
-    // Gate 5 (F4-02/F4-08): mesma camada semântica do caminho do agente — a re-entrada
-    // determinística também passa a candidata pela cadeia completa (ids da ROW do job).
     ...(camadaLigada(camadasDaOrg.promessa_semantica, deps.knobs.promiseSemantic?.enabled === true)
       ? {
           classifyPromiseSemantic: (candidate: string) =>
@@ -533,14 +582,10 @@ async function runDeterministicReentry(
             ),
         }
       : {}),
-    // finalBody = corpo após a cadeia (disclosureGate F4-05 pode prependar o disclosure).
     send: (finalBody) => channel.send({ tenantId, leadId, jobId: job.id, seq: 1, conversationId, body: finalBody }),
   });
 
   if (chain.status === 'vetoed') {
-    // acc3: veto por JANELA anti-ban não dropa — re-agenda para a próxima abertura
-    // (7h + jitter, já calculada pelo gate). Demais vetos (STOP irrevogável, spinning)
-    // NÃO re-agendam: o trace do gate já os registrou.
     if (chain.code === 'outside_window' && chain.nextAllowedAt !== undefined) {
       await rescheduleReentry(pool, {
         tenantId,
@@ -553,10 +598,10 @@ async function runDeterministicReentry(
         code: chain.code,
         next_run_at: chain.nextAllowedAt.toISOString(),
       });
-      return;
+      return 'skipped';
     }
     runLog.info('re-entrada determinística vetada pela cadeia — não re-agendada', { code: chain.code });
-    return;
+    return 'skipped';
   }
 
   const outcome = chain.outcome;
@@ -564,13 +609,9 @@ async function runDeterministicReentry(
     case 'sent':
     case 'already_sent':
     case 'queued':
-      // 'queued' = o canal aceitou e segura (sessão fora) — sob custódia do CRM, não
-      // re-agenda (mesma disposição do caminho do agente).
       runLog.info('re-entrada determinística concluída', { kind: outcome.kind });
-      return;
+      return 'sent';
     case 'blocked':
-      // veto permanente do sink (is_blocked): cancela o job e cacheia o opt-out — a
-      // fonte é o CRM, nunca revertido (regra dura nº 2).
       await applySendOutcome(pool, outcome, { jobId: job.id, workerId: ctx.workerId, tenantId, leadId }, {
         queuedRetryDelayMs: deps.knobs.queuedRetryDelayMs,
       });

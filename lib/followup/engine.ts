@@ -58,6 +58,9 @@ export interface FollowupJobRequest {
     purpose: "send_message" | "classify" | "plan_timing";
     /** action (mode 'ai_message') — Task 5.1: repassado ao turno pra virar o bloco de orientação. */
     prompt_hint?: string;
+    /** action (mode 'template') — envio determinístico, sem LLM. */
+    template_id?: string;
+    mode?: "template";
     /** ai_classify — Task 5.1: classes possíveis + dica opcional pro classificador. */
     classes?: string[];
     hint?: string;
@@ -166,9 +169,12 @@ function eventPayload(result: NodeResult): Record<string, unknown> {
  * action, classes/hint do ai_classify, guidance do wait smart) pra saber o que
  * fazer; sem isso o job só teria os 3 campos genéricos (enrollment/node/purpose).
  */
-function turnPayloadExtras(node: FlowNode, smartWaits: EsperaAdaptativa[]): Partial<FollowupJobRequest["payload"]> {
+export function turnPayloadExtras(node: FlowNode, smartWaits: EsperaAdaptativa[]): Partial<FollowupJobRequest["payload"]> {
   if (node.type === "action" && node.config.mode === "ai_message") {
     return { prompt_hint: node.config.prompt_hint };
+  }
+  if (node.type === "action" && node.config.mode === "template") {
+    return { template_id: node.config.template_id, mode: "template" };
   }
   if (node.type === "ai_classify") {
     return { classes: node.config.classes, ...(node.config.hint !== undefined ? { hint: node.config.hint } : {}) };

@@ -10,8 +10,8 @@
  * Fluxo por tick: acha pointers `status='active'` com `trigger_config.kind=
  * 'silence'` (de TODAS as orgs — mesmo design cross-org do
  * `fn_claim_due_followup_enrollments`) → GATEIA cada um via
- * `isPointerEnabledForAutomaticTrigger` (Task 7.2 — só enrolla se algum
- * agente PUBLICADO da org tem esse pointer habilitado) → acha contatos
+ * `decidirArmacaoAutomatica` (fluxo com IA ainda exige agente publicado;
+ * fluxo só de template enrolla sem agente) → acha contatos
  * silenciosos da org (sem inbound há >= threshold_minutes) → cria 1
  * enrollment por (pointer, contato) qualificado, nascendo no nó `trigger` do
  * grafo pinado com `next_eval_at=now`. Como `runSilenceSweep` roda DEPOIS de
@@ -26,9 +26,9 @@
  * pode ser re-enrollado na varredura seguinte se continuar silencioso —
  * aceitável no MVP, sem cooldown table.
  *
- * agent_id: cada pointer é gateado por `resolveAgentForAutomaticTrigger`, que
- * devolve o agente publicado que ARMA o pointer (menor uuid se >1) — esse
- * agent_id é PINADO no enrollment (persona + exibição na fila). `null` = gate-out.
+ * agent_id: pinado quando um agente publicado arma o pointer. Fluxo
+ * determinístico (sem ai_classify / ai_message / wait smart) enrolla mesmo
+ * sem agente — o toggle do Simple Mode não pode ficar inerte com AI_MODE=off.
  *
  * `segments`: única primitiva de segmentação já modelada no schema é
  * `contacts.tags` (GIN index `idx_contacts_tags_gin` já existe) — interpretado
@@ -40,6 +40,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { flowGraphSchema } from "./graph-schema";
 import { triggerConfigSchema } from "./api-schemas";
 import { resolveAgentForAutomaticTrigger, type FollowupGateDb } from "./agent-followup-gate";
+import {
+  decidirArmacaoAutomatica,
+  fluxoPublicadoDoGrafo,
+  type FluxoPublicado,
+} from "./fluxo-requer-ia";
 
 export interface SilencePointer {
   id: string;
@@ -55,8 +60,8 @@ export interface SilenceSweepDb {
   loadActiveSilencePointers(): Promise<SilencePointer[]>;
   /** Contact ids da org sem inbound desde `cutoffIso` (inclusive); `segments` vazio = todos. */
   loadSilentContactIds(orgId: string, cutoffIso: string, segments: string[]): Promise<string[]>;
-  /** id do nó `trigger` do grafo pinado da version; `null` se version/nó não existir (defensivo — não deveria acontecer, validate-publish garante 1 trigger). */
-  loadTriggerNodeId(orgId: string, versionId: string): Promise<string | null>;
+  /** Grafo pinado + id do nó trigger; `null` se version/nó não existir. */
+  loadPublishedFlow(orgId: string, versionId: string): Promise<FluxoPublicado | null>;
   /** Insere o enrollment nascendo no nó trigger; `inserted:false` = 23505 (já vivo nesse pointer) → skip. */
   insertEnrollment(input: {
     organization_id: string;
@@ -94,11 +99,7 @@ export async function runSilenceSweep(deps: SilenceSweepDeps): Promise<SilenceSw
   const pointers = await db.loadActiveSilencePointers();
   summary.pointers_scanned = pointers.length;
 
-  // Memoiza a resolução do agente por pointer dentro desta varredura — nada
-  // impede 2 pointers silence na mesma org, e a query do gate já é 1 por org
-  // (não precisa repetir). `null` = gate-out (nenhum agente publicado arma o
-  // pointer); qualquer agent_id = habilitado E já pinado (o mesmo id que vai
-  // pro enrollment). Colapsa gate + pick numa chamada só (Task 8.6).
+  // Memoiza a resolução do agente por pointer dentro desta varredura.
   const agentCache = new Map<string, Promise<string | null>>();
   const resolveAgent = (orgId: string, pointerId: string): Promise<string | null> => {
     const key = `${orgId}:${pointerId}`;
@@ -111,14 +112,17 @@ export async function runSilenceSweep(deps: SilenceSweepDeps): Promise<SilenceSw
   };
 
   for (const pointer of pointers) {
+    const fluxo = await db.loadPublishedFlow(pointer.organization_id, pointer.active_version_id);
+    if (!fluxo) continue;
+
     const agentId = await resolveAgent(pointer.organization_id, pointer.id);
-    if (agentId === null) {
+    const armacao = decidirArmacaoAutomatica(fluxo.graph, agentId);
+    if (!armacao.allowed) {
       summary.pointers_gated_out++;
       continue;
     }
 
-    const triggerNodeId = await db.loadTriggerNodeId(pointer.organization_id, pointer.active_version_id);
-    if (!triggerNodeId) continue;
+    const triggerNodeId = fluxo.triggerNodeId;
 
     const cutoffIso = new Date(clock().getTime() - pointer.threshold_minutes * 60_000).toISOString();
     const contactIds = await db.loadSilentContactIds(pointer.organization_id, cutoffIso, pointer.segments);
@@ -132,7 +136,7 @@ export async function runSilenceSweep(deps: SilenceSweepDeps): Promise<SilenceSw
         contact_id: contactId,
         current_node_id: triggerNodeId,
         next_eval_at: nextEvalAt,
-        agent_id: agentId,
+        agent_id: armacao.agentId,
       });
       if (inserted) summary.enrolled++;
       else summary.skipped_existing++;
@@ -213,7 +217,7 @@ export function createSupabaseSilenceSweepDb(admin: SupabaseClient): SilenceSwee
       return silentIds;
     },
 
-    async loadTriggerNodeId(orgId, versionId) {
+    async loadPublishedFlow(orgId, versionId) {
       const { data, error } = await admin
         .from("followup_flow_versions")
         .select("graph")
@@ -222,8 +226,7 @@ export function createSupabaseSilenceSweepDb(admin: SupabaseClient): SilenceSwee
         .maybeSingle();
       if (error) throw new Error(error.message);
       if (!data) return null;
-      const graph = flowGraphSchema.parse(data.graph);
-      return graph.nodes.find((n) => n.type === "trigger")?.id ?? null;
+      return fluxoPublicadoDoGrafo(flowGraphSchema.parse(data.graph));
     },
 
     async insertEnrollment(input) {

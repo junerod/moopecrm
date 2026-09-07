@@ -10,6 +10,7 @@ import {
   type GatilhoEtapaDb,
   type PointerDeEtapa,
 } from "@/lib/followup/gatilho-etapa";
+import { fluxoPublicadoDoGrafo } from "@/lib/followup/fluxo-requer-ia";
 import type { FlowGraph } from "@/lib/followup/graph-schema";
 
 /**
@@ -184,13 +185,13 @@ function gatilhoDb(): GatilhoEtapaDb {
       );
       return rows[0]?.contact_id ?? null;
     },
-    async carregaNoDeGatilho(orgId, versionId) {
+    async carregaFluxoPublicado(orgId, versionId) {
       const { rows } = await pool.query<{ graph: FlowGraph }>(
         `select graph from followup_flow_versions where organization_id = $1 and id = $2`,
         [orgId, versionId],
       );
       if (rows.length === 0) return null;
-      return rows[0]!.graph.nodes.find((n) => n.type === "trigger")?.id ?? null;
+      return fluxoPublicadoDoGrafo(rows[0]!.graph);
     },
     async insereEnrollment(input) {
       try {

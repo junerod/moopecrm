@@ -55,6 +55,11 @@ import type { EventRow } from "@/lib/event-log/dispatcher";
 import { flowGraphSchema } from "./graph-schema";
 import { triggerConfigSchema } from "./api-schemas";
 import { resolveAgentForAutomaticTrigger, type FollowupGateDb } from "./agent-followup-gate";
+import {
+  decidirArmacaoAutomatica,
+  fluxoPublicadoDoGrafo,
+  type FluxoPublicado,
+} from "./fluxo-requer-ia";
 
 /** Os dois eventos deste produtor. Constantes porque o handler, o registro e os
  *  testes precisam do MESMO literal — cópias divergem no primeiro ajuste. */
@@ -87,7 +92,7 @@ export interface GatilhoCasoDb {
   carregaPointersDeCaso(orgId: string): Promise<PointerDeCaso[]>;
   /** Fallback: o payload do trigger já traz `contact_id`; isto só roda se faltar. */
   carregaContatoDaConversa(orgId: string, conversationId: string): Promise<string | null>;
-  carregaNoDeGatilho(orgId: string, versionId: string): Promise<string | null>;
+  carregaFluxoPublicado(orgId: string, versionId: string): Promise<FluxoPublicado | null>;
   insereEnrollment(input: {
     organization_id: string;
     pointer_id: string;
@@ -244,14 +249,16 @@ export async function aplicaGatilhoDeCaso(
   }
 
   for (const pointer of armados) {
+    const fluxo = await deps.db.carregaFluxoPublicado(row.organization_id, pointer.active_version_id);
+    if (!fluxo) continue;
     const agentId = await resolveAgentForAutomaticTrigger(deps.gateDb, row.organization_id, pointer.id);
-    if (agentId === null) {
+    const armacao = decidirArmacaoAutomatica(fluxo.graph, agentId);
+    if (!armacao.allowed) {
       summary.pointers_barrados_pelo_gate++;
       continue;
     }
 
-    const noDeGatilho = await deps.db.carregaNoDeGatilho(row.organization_id, pointer.active_version_id);
-    if (!noDeGatilho) continue;
+    const noDeGatilho = fluxo.triggerNodeId;
 
     const { inserted, id } = await deps.db.insereEnrollment({
       organization_id: row.organization_id,
@@ -260,7 +267,7 @@ export async function aplicaGatilhoDeCaso(
       contact_id: contatoId,
       conversation_id: conversationId,
       current_node_id: noDeGatilho,
-      agent_id: agentId,
+      agent_id: armacao.agentId,
     });
     if (!inserted) {
       summary.skipped_existing++;
@@ -337,7 +344,7 @@ export function createSupabaseGatilhoCasoDb(admin: SupabaseClient): GatilhoCasoD
       return data?.contact_id ?? null;
     },
 
-    async carregaNoDeGatilho(orgId, versionId) {
+    async carregaFluxoPublicado(orgId, versionId) {
       const { data, error } = await admin
         .from("followup_flow_versions")
         .select("graph")
@@ -346,8 +353,7 @@ export function createSupabaseGatilhoCasoDb(admin: SupabaseClient): GatilhoCasoD
         .maybeSingle();
       if (error) throw new Error(error.message);
       if (!data) return null;
-      const graph = flowGraphSchema.parse(data.graph);
-      return graph.nodes.find((n) => n.type === "trigger")?.id ?? null;
+      return fluxoPublicadoDoGrafo(flowGraphSchema.parse(data.graph));
     },
 
     async insereEnrollment(input) {

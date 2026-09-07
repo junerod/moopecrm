@@ -7,6 +7,8 @@ import {
   type SilencePointer,
 } from "@/lib/followup/silence-sweep";
 import { isPointerEnabledForAutomaticTrigger, type FollowupGateDb } from "@/lib/followup/agent-followup-gate";
+import { fluxoPublicadoDoGrafo } from "@/lib/followup/fluxo-requer-ia";
+import { grafoComIa } from "@/lib/followup/fluxo-fixtures";
 import type { FlowGraph } from "@/lib/followup/graph-schema";
 
 /**
@@ -17,8 +19,8 @@ import type { FlowGraph } from "@/lib/followup/graph-schema";
  * Congela: (1) pointer silence habilitado no gate + contato silêncio >
  * threshold → exatamente 1 enrollment nascendo no nó trigger; rodar a
  * varredura DE NOVO não duplica (unique-live, `idx_followup_enrollments_one_live`);
- * (2) o MESMO cenário mas SEM nenhum agente publicado habilitando o pointer →
- * 0 enrollments (prova que o gate é de fato chamado, não só importado);
+ * (2) fluxo DETERMINÍSTICO sem agente publicado enrolla; fluxo COM IA sem
+ * agente publicado → 0 enrollments (o gate continua chamado, não só importado);
  * (3) contato silencioso HÁ MENOS que o threshold → não enrolla (boundary);
  * silêncio EXATAMENTE igual ao threshold → enrolla (`<=`, não `<`);
  * (4) `isPointerEnabledForAutomaticTrigger` contra `ai_agent_versions` REAL
@@ -106,13 +108,13 @@ function silenceSweepDb(): SilenceSweepDb {
         .filter((r) => segments.length === 0 || segments.some((s) => r.tags.includes(s)))
         .map((r) => r.contact_id);
     },
-    async loadTriggerNodeId(orgId, versionId) {
+    async loadPublishedFlow(orgId, versionId) {
       const { rows } = await pool.query<{ graph: FlowGraph }>(
         `select graph from followup_flow_versions where organization_id = $1 and id = $2`,
         [orgId, versionId],
       );
       if (rows.length === 0) return null;
-      return rows[0]!.graph.nodes.find((n) => n.type === "trigger")?.id ?? null;
+      return fluxoPublicadoDoGrafo(rows[0]!.graph);
     },
     async insertEnrollment(input) {
       try {
@@ -221,9 +223,9 @@ async function seedConversationAt(org: string, contactId: string, atIso: string)
 
 async function seedSilenceFlow(
   org: string,
-  opts?: { thresholdMinutes?: number; segments?: string[] },
+  opts?: { thresholdMinutes?: number; segments?: string[]; graph?: FlowGraph },
 ): Promise<{ pointerId: string; versionId: string }> {
-  const graph: FlowGraph = {
+  const graph: FlowGraph = opts?.graph ?? {
     nodes: [
       { id: "t1", type: "trigger", label: "Start", position: { x: 0, y: 0 }, config: {} },
       { id: "e1", type: "end", label: "Done", position: { x: 0, y: 0 }, config: { outcome: "converted" } },
@@ -317,14 +319,32 @@ describe("runSilenceSweep — enrolla contato silencioso gateado, sem duplicar",
   });
 });
 
-// ---- 2. gate-out: sem agente publicado habilitando → 0 enrollments -----
+// ---- 2. gate: determinístico sem agente enrolla; IA sem agente barra -----
 
-describe("runSilenceSweep — gate-out (nenhum agente publicado habilita o pointer)", () => {
-  it("mesmo contato silencioso, SEM agente publicado com followup.enabled → 0 enrollments (prova que o gate é chamado)", async () => {
+describe("runSilenceSweep — classificação do grafo (agente só quando o fluxo usa IA)", () => {
+  it("fluxo determinístico SEM agente publicado enrolla o contato silencioso", async () => {
     const org = nextOrgId();
     await seedOrg(org);
     const { pointerId } = await seedSilenceFlow(org, { thresholdMinutes: 30 });
-    // nenhum ai_agent_versions publicado nesta org habilitando o pointer
+    const contactId = await seedContact(org);
+    await seedConversation(org, contactId, 90);
+
+    const summary = await runSilenceSweep({ db: silenceSweepDb(), gateDb: pgGateDb(), clock: CLOCK });
+    expect(summary.pointers_gated_out).toBe(0);
+    expect(summary.enrolled).toBe(1);
+    expect(await countEnrollments(pointerId, contactId)).toBe(1);
+
+    const { rows } = await pool.query<{ agent_id: string | null }>(
+      `select agent_id from followup_enrollments where pointer_id = $1 and contact_id = $2`,
+      [pointerId, contactId],
+    );
+    expect(rows[0]!.agent_id).toBeNull();
+  });
+
+  it("fluxo com IA e SEM agente publicado → 0 enrollments (prova que o gate ainda é chamado)", async () => {
+    const org = nextOrgId();
+    await seedOrg(org);
+    const { pointerId } = await seedSilenceFlow(org, { thresholdMinutes: 30, graph: grafoComIa() });
     const contactId = await seedContact(org);
     await seedConversation(org, contactId, 90);
 
@@ -333,10 +353,10 @@ describe("runSilenceSweep — gate-out (nenhum agente publicado habilita o point
     expect(await countEnrollments(pointerId, contactId)).toBe(0);
   });
 
-  it("agente existe mas com followup.enabled=false → gate-out também", async () => {
+  it("fluxo com IA e agente com followup.enabled=false → gate-out também", async () => {
     const org = nextOrgId();
     await seedOrg(org);
-    const { pointerId } = await seedSilenceFlow(org, { thresholdMinutes: 30 });
+    const { pointerId } = await seedSilenceFlow(org, { thresholdMinutes: 30, graph: grafoComIa() });
     await seedPublishedAgentVersion(org, { enabled: false, pointerIds: [pointerId] });
     const contactId = await seedContact(org);
     await seedConversation(org, contactId, 90);

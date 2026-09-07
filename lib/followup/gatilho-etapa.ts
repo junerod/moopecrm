@@ -32,10 +32,9 @@
  *     org-wide `(organization_id, contact_id)`: um contato vivo em QUALQUER
  *     fluxo barra o insert. `23505` é caminho normal — vira `skipped_existing`,
  *     nunca erro.
- *   - **Gate do agente.** `resolveAgentForAutomaticTrigger` — só enrolla se
- *     algum agente PUBLICADO da org arma este pointer. É o que impede fluxo
- *     rascunho de disparar em produção; e o `agent_id` que ele devolve é pinado
- *     no enrollment (persona + exibição na fila).
+ *   - **Gate do agente quando o fluxo usa IA.** `decidirArmacaoAutomatica` —
+ *     ai_classify / ai_message / wait smart ainda exigem agente publicado.
+ *     Fluxo só de template enrolla sem agente.
  *   - **Trigger Postgres nunca faz HTTP.** Nada aqui roda dentro da transação
  *     do banco: o trigger só emitiu a linha, quem consome é este worker.
  *
@@ -51,6 +50,11 @@ import type { EventRow } from "@/lib/event-log/dispatcher";
 import { flowGraphSchema } from "./graph-schema";
 import { triggerConfigSchema } from "./api-schemas";
 import { resolveAgentForAutomaticTrigger, type FollowupGateDb } from "./agent-followup-gate";
+import {
+  decidirArmacaoAutomatica,
+  fluxoPublicadoDoGrafo,
+  type FluxoPublicado,
+} from "./fluxo-requer-ia";
 
 /** O evento que este produtor consome. Constante porque o handler e os testes
  *  precisam do MESMO literal — duas cópias divergiriam no primeiro ajuste. */
@@ -72,8 +76,8 @@ export interface GatilhoEtapaDb {
   carregaPointersDeEtapa(orgId: string): Promise<PointerDeEtapa[]>;
   /** `contact_id` do negócio — `null` quando o negócio não tem contato (coluna é nullable). */
   carregaContatoDoNegocio(orgId: string, leadId: string): Promise<string | null>;
-  /** id do nó `trigger` do grafo pinado; `null` se a version sumiu (defensivo). */
-  carregaNoDeGatilho(orgId: string, versionId: string): Promise<string | null>;
+  /** Grafo pinado + id do nó trigger; `null` se a version sumiu (defensivo). */
+  carregaFluxoPublicado(orgId: string, versionId: string): Promise<FluxoPublicado | null>;
   /** `inserted:false` = 23505 (contato já vivo em algum fluxo) → skip silencioso. */
   insereEnrollment(input: {
     organization_id: string;
@@ -172,14 +176,16 @@ export async function aplicaGatilhoDeEtapa(
   }
 
   for (const pointer of armados) {
+    const fluxo = await deps.db.carregaFluxoPublicado(row.organization_id, pointer.active_version_id);
+    if (!fluxo) continue;
     const agentId = await resolveAgentForAutomaticTrigger(deps.gateDb, row.organization_id, pointer.id);
-    if (agentId === null) {
+    const armacao = decidirArmacaoAutomatica(fluxo.graph, agentId);
+    if (!armacao.allowed) {
       summary.pointers_barrados_pelo_gate++;
       continue;
     }
 
-    const noDeGatilho = await deps.db.carregaNoDeGatilho(row.organization_id, pointer.active_version_id);
-    if (!noDeGatilho) continue;
+    const noDeGatilho = fluxo.triggerNodeId;
 
     const { inserted, id } = await deps.db.insereEnrollment({
       organization_id: row.organization_id,
@@ -189,7 +195,7 @@ export async function aplicaGatilhoDeEtapa(
       current_node_id: noDeGatilho,
       // `next_eval_at` NÃO vai: o default do banco decide. Ver o comentário na
       // interface e a migration 0147.
-      agent_id: agentId,
+      agent_id: armacao.agentId,
     });
     if (!inserted) {
       summary.skipped_existing++;
@@ -268,7 +274,7 @@ export function createSupabaseGatilhoEtapaDb(admin: SupabaseClient): GatilhoEtap
       return data?.contact_id ?? null;
     },
 
-    async carregaNoDeGatilho(orgId, versionId) {
+    async carregaFluxoPublicado(orgId, versionId) {
       const { data, error } = await admin
         .from("followup_flow_versions")
         .select("graph")
@@ -277,8 +283,7 @@ export function createSupabaseGatilhoEtapaDb(admin: SupabaseClient): GatilhoEtap
         .maybeSingle();
       if (error) throw new Error(error.message);
       if (!data) return null;
-      const graph = flowGraphSchema.parse(data.graph);
-      return graph.nodes.find((n) => n.type === "trigger")?.id ?? null;
+      return fluxoPublicadoDoGrafo(flowGraphSchema.parse(data.graph));
     },
 
     async insereEnrollment(input) {

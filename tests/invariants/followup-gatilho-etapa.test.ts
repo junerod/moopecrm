@@ -10,6 +10,8 @@ import {
   type GatilhoEtapaDb,
   type PointerDeEtapa,
 } from "@/lib/followup/gatilho-etapa";
+import { fluxoPublicadoDoGrafo } from "@/lib/followup/fluxo-requer-ia";
+import { grafoComIa } from "@/lib/followup/fluxo-fixtures";
 import type { FlowGraph } from "@/lib/followup/graph-schema";
 
 /**
@@ -184,13 +186,13 @@ function gatilhoDb(): GatilhoEtapaDb {
       );
       return rows[0]?.contact_id ?? null;
     },
-    async carregaNoDeGatilho(orgId, versionId) {
+    async carregaFluxoPublicado(orgId, versionId) {
       const { rows } = await pool.query<{ graph: FlowGraph }>(
         `select graph from followup_flow_versions where organization_id = $1 and id = $2`,
         [orgId, versionId],
       );
       if (rows.length === 0) return null;
-      return rows[0]!.graph.nodes.find((n) => n.type === "trigger")?.id ?? null;
+      return fluxoPublicadoDoGrafo(rows[0]!.graph);
     },
     async insereEnrollment(input) {
       try {
@@ -318,14 +320,14 @@ async function seedFunilComNegocio(
 async function seedFluxo(
   org: string,
   trigger: Record<string, unknown>,
-): Promise<{ pointerId: string; versionId: string }> {
-  const graph: FlowGraph = {
+  graph: FlowGraph = {
     nodes: [
       { id: "t1", type: "trigger", label: "Start", position: { x: 0, y: 0 }, config: {} },
       { id: "e1", type: "end", label: "Done", position: { x: 0, y: 0 }, config: { outcome: "converted" } },
     ],
     edges: [{ id: "t1-e1", source: "t1", target: "e1", priority: 0, condition: { type: "always" } }],
-  };
+  },
+): Promise<{ pointerId: string; versionId: string }> {
   const { rows: version } = await pool.query<{ id: string }>(
     `insert into followup_flow_versions (organization_id, graph) values ($1, $2) returning id`,
     [org, JSON.stringify(graph)],
@@ -448,12 +450,32 @@ describe("gatilho de etapa — enrolla o negócio que entrou na etapa armada", (
 // ---- 2. gate real contra ai_agent_versions -------------------------------
 
 describe("gatilho de etapa — o gate do agente, contra ai_agent_versions real", () => {
-  it("versão em RASCUNHO não libera o fluxo", async () => {
+  it("fluxo determinístico sem agente publicado enrolla", async () => {
     const org = nextOrgId();
     await seedOrg(org);
     const contactId = await seedContact(org);
     const { etapaOrigem, etapaDestino, leadId } = await seedFunilComNegocio(org, contactId);
     const { pointerId } = await seedFluxo(org, { kind: "stage_change", params: { stage_id: etapaDestino } });
+
+    const s = await aplicaGatilhoDeEtapa(deps(), eventoDeEtapa(org, leadId, etapaOrigem, etapaDestino));
+    expect(s.enrolled).toBe(1);
+    const { rows } = await pool.query<{ agent_id: string | null }>(
+      `select agent_id from followup_enrollments where pointer_id = $1 and contact_id = $2`,
+      [pointerId, contactId],
+    );
+    expect(rows[0]!.agent_id).toBeNull();
+  });
+
+  it("versão em RASCUNHO não libera um fluxo com IA", async () => {
+    const org = nextOrgId();
+    await seedOrg(org);
+    const contactId = await seedContact(org);
+    const { etapaOrigem, etapaDestino, leadId } = await seedFunilComNegocio(org, contactId);
+    const { pointerId } = await seedFluxo(
+      org,
+      { kind: "stage_change", params: { stage_id: etapaDestino } },
+      grafoComIa(),
+    );
     await seedAgentePublicado(org, { status: "draft", pointerIds: [pointerId] });
 
     const s = await aplicaGatilhoDeEtapa(deps(), eventoDeEtapa(org, leadId, etapaOrigem, etapaDestino));
@@ -461,12 +483,16 @@ describe("gatilho de etapa — o gate do agente, contra ai_agent_versions real",
     expect(s.enrolled).toBe(0);
   });
 
-  it("agente publicado com follow-up DESLIGADO não libera o fluxo", async () => {
+  it("agente publicado com follow-up DESLIGADO não libera um fluxo com IA", async () => {
     const org = nextOrgId();
     await seedOrg(org);
     const contactId = await seedContact(org);
     const { etapaOrigem, etapaDestino, leadId } = await seedFunilComNegocio(org, contactId);
-    const { pointerId } = await seedFluxo(org, { kind: "stage_change", params: { stage_id: etapaDestino } });
+    const { pointerId } = await seedFluxo(
+      org,
+      { kind: "stage_change", params: { stage_id: etapaDestino } },
+      grafoComIa(),
+    );
     await seedAgentePublicado(org, { enabled: false, pointerIds: [pointerId] });
 
     const s = await aplicaGatilhoDeEtapa(deps(), eventoDeEtapa(org, leadId, etapaOrigem, etapaDestino));

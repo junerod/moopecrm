@@ -307,3 +307,280 @@ test.describe("o wizard monta um funcionário", () => {
     expect(org?.display_name).toBe("Clínica Bem Viver");
   });
 });
+
+type ContaWizard = { email: string; userId: string; orgId: string };
+
+async function criarContaWizard(prefixo: string): Promise<ContaWizard> {
+  const email = `${prefixo}-${randomUUID().slice(0, 8)}@qa.local`;
+  const { data: criado, error: errUser } = await svc.auth.admin.createUser({
+    email,
+    password: SENHA,
+    email_confirm: true,
+  });
+  if (errUser || !criado.user) throw errUser ?? new Error("sem usuário");
+  const { data: org, error: errOrg } = await svc
+    .from("organizations")
+    .insert({
+      slug: `${prefixo}-${randomUUID().slice(0, 8)}`,
+      display_name: "Minha Empresa",
+      legal_name: "Minha Empresa",
+      status: "active",
+      created_by: criado.user.id,
+      settings: { llm: { provider: "anthropic" } },
+    })
+    .select("id")
+    .single();
+  if (errOrg || !org) throw errOrg ?? new Error("sem org");
+  await svc.from("user_organizations").insert({
+    organization_id: org.id,
+    user_id: criado.user.id,
+    role: "admin",
+    accepted_at: new Date().toISOString(),
+  });
+  return { email, userId: criado.user.id, orgId: org.id as string };
+}
+
+async function apagarContaWizard(conta: ContaWizard | null): Promise<void> {
+  if (!conta) return;
+  if (conta.orgId) {
+    await svc.from("followup_enrollments").delete().eq("organization_id", conta.orgId);
+    await svc.from("followup_flow_pointers").delete().eq("organization_id", conta.orgId);
+    await svc.from("followup_flow_versions").delete().eq("organization_id", conta.orgId);
+    await svc.from("message_templates").delete().eq("organization_id", conta.orgId);
+    await svc.from("conversations").delete().eq("organization_id", conta.orgId);
+    await svc.from("contacts").delete().eq("organization_id", conta.orgId);
+    await svc.from("channel_sessions").delete().eq("organization_id", conta.orgId);
+    await svc.from("crm_stages").delete().eq("organization_id", conta.orgId);
+    await svc.from("crm_pipelines").delete().eq("organization_id", conta.orgId);
+    await svc.from("ai_agents").delete().eq("organization_id", conta.orgId);
+    await svc.from("user_organizations").delete().eq("organization_id", conta.orgId);
+    await svc.from("organizations").delete().eq("id", conta.orgId);
+  }
+  if (conta.userId) await svc.auth.admin.deleteUser(conta.userId);
+}
+
+async function loginNaConta(page: Page, emailDaConta: string): Promise<void> {
+  await page.goto("/login");
+  await page.locator("#email").fill(emailDaConta);
+  await page.locator("#password").fill(SENHA);
+  await page.getByRole("button", { name: /entrar/i }).click();
+}
+
+test.describe("Ready Model Locação / máquinas — Simple Mode OFF", () => {
+  test.describe.configure({ mode: "serial", timeout: 120_000 });
+
+  let conta: ContaWizard | null = null;
+
+  test.beforeAll(async () => {
+    conta = await criarContaWizard("locacao");
+  });
+
+  test.afterAll(async () => {
+    await apagarContaWizard(conta);
+  });
+
+  test("wizard: Locação + máquinas + follow-up + Sem IA, sem publicar agente", async ({ page }) => {
+    if (!conta) throw new Error("sem conta");
+    await loginNaConta(page, conta.email);
+    await page.waitForURL(/\/onboarding\/welcome/, { timeout: 30_000 });
+
+    await page.locator("#display_name").fill("Máquinas Norte");
+    await page.getByText("Locação", { exact: true }).click();
+    await page.getByText("Máquinas e equipamentos", { exact: true }).click();
+    await page.locator('input[type="checkbox"]').check();
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/connect-whatsapp/, { timeout: 30_000 });
+
+    await page.getByRole("button", { name: /pular por enquanto/i }).click();
+    await page.waitForURL(/\/onboarding\/quem-atende/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/funil/, { timeout: 30_000 });
+
+    await expect(page.locator("body")).toContainText("Cotação / Proposta");
+    await expect(page.locator("body")).toContainText("Fechamento");
+    await page.getByRole("button", { name: /usar esta organização/i }).click();
+    await page.waitForURL(/\/onboarding\/follow-up/, { timeout: 30_000 });
+
+    await page.locator('input[name="ativo"][value="sim"]').click();
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/setup-ai/, { timeout: 30_000 });
+
+    await page.locator('input[name="ai_mode"][value="off"]').click();
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/invite-team/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /pular por enquanto/i }).click();
+    await page.waitForURL(/\/onboarding\/done/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /começar a usar/i }).click();
+    await page.waitForURL(/\/app\//, { timeout: 30_000 });
+
+    const { data: org } = await svc
+      .from("organizations")
+      .select("settings, onboarded_at")
+      .eq("id", conta.orgId)
+      .maybeSingle();
+    const settings = (org?.settings ?? {}) as {
+      ai_mode?: string;
+      perfil_do_negocio?: { id?: string; version?: string; subtype?: string };
+    };
+    expect(org?.onboarded_at).toBeTruthy();
+    expect(settings.ai_mode).toBe("off");
+    expect(settings.perfil_do_negocio?.id).toBe("locacao");
+    expect(settings.perfil_do_negocio?.version).toBe("1.0");
+    expect(settings.perfil_do_negocio?.subtype).toBe("maquinas_e_equipamentos");
+
+    const { data: funil } = await svc
+      .from("crm_pipelines")
+      .select("id, name, settings")
+      .eq("organization_id", conta.orgId)
+      .eq("is_default", true)
+      .maybeSingle();
+    expect(String(funil!.name)).toBe("Atendimento");
+    const fields = ((funil?.settings as { fields?: Array<{ key: string; label: string }> } | null)?.fields ??
+      []) as Array<{ key: string; label: string }>;
+    const item = fields.find((f) => f.key === "item_tipo");
+    expect(item?.label).toBe("Equipamento");
+
+    const { data: agentes } = await svc
+      .from("ai_agents")
+      .select("id, published_version_id")
+      .eq("organization_id", conta.orgId);
+    expect(agentes ?? []).toHaveLength(0);
+
+    const { data: pointers } = await svc
+      .from("followup_flow_pointers")
+      .select("name, status")
+      .eq("organization_id", conta.orgId);
+    expect((pointers ?? []).some((p) => p.name === "rm:locacao:silencio-24h")).toBe(true);
+  });
+
+  test("follow-up determinístico enrolla sem agente publicado", async ({ page }) => {
+    if (!conta) throw new Error("sem conta");
+    const { data: contato, error: errContato } = await svc
+      .from("contacts")
+      .insert({ organization_id: conta.orgId, display_name: "Cliente silencioso" })
+      .select("id")
+      .single();
+    if (errContato || !contato) throw errContato ?? new Error("sem contato");
+
+    const { data: sessao, error: errSessao } = await svc
+      .from("channel_sessions")
+      .insert({
+        organization_id: conta.orgId,
+        waha_session_name: `e2e-locacao-${randomUUID().slice(0, 8)}`,
+        webhook_secret_encrypted: "\\x00",
+      } as never)
+      .select("id")
+      .single();
+    if (errSessao || !sessao) throw errSessao ?? new Error("sem sessão");
+
+    const silenciosDesde = new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString();
+    const { error: errConv } = await svc.from("conversations").insert({
+      organization_id: conta.orgId,
+      contact_id: contato.id,
+      channel_session_id: sessao.id,
+      status: "open",
+      is_group: false,
+      last_inbound_at: silenciosDesde,
+    });
+    if (errConv) throw errConv;
+
+    const tick = await page.request.post("/api/v1/cron/followup-flow-worker", {
+      headers: {
+        authorization: `Bearer ${process.env.INTERNAL_CRON_SECRET ?? process.env.INTERNAL_SECRET ?? "e2e-placeholder-nao-e-segredo"}`,
+      },
+    });
+    expect(tick.ok(), `tick do sweep: ${tick.status()} ${await tick.text()}`).toBe(true);
+
+    const { data: enrollments } = await svc
+      .from("followup_enrollments")
+      .select("id, agent_id, status")
+      .eq("organization_id", conta.orgId)
+      .eq("contact_id", contato.id);
+    expect(enrollments ?? []).toHaveLength(1);
+    expect(enrollments![0]!.agent_id).toBeNull();
+    expect(enrollments![0]!.status).toBe("active");
+
+    const { data: runs } = await svc.from("ai_agent_runs").select("id").eq("organization_id", conta.orgId);
+    expect(runs ?? []).toHaveLength(0);
+  });
+});
+
+test.describe("Ready Model Advocacia — Simple Mode OFF", () => {
+  test.describe.configure({ timeout: 120_000 });
+
+  let conta: ContaWizard | null = null;
+
+  test.beforeAll(async () => {
+    conta = await criarContaWizard("advocacia");
+  });
+
+  test.afterAll(async () => {
+    await apagarContaWizard(conta);
+  });
+
+  test("mesmo instalador, pipeline jurídico, sem artefato de locação nem agente", async ({ page }) => {
+    if (!conta) throw new Error("sem conta");
+    await loginNaConta(page, conta.email);
+    await page.waitForURL(/\/onboarding\/welcome/, { timeout: 30_000 });
+
+    await page.locator("#display_name").fill("Escritório Norte");
+    await page.getByText("Advocacia", { exact: true }).click();
+    await page.locator('input[type="checkbox"]').check();
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/connect-whatsapp/, { timeout: 30_000 });
+
+    await page.getByRole("button", { name: /pular por enquanto/i }).click();
+    await page.waitForURL(/\/onboarding\/quem-atende/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/funil/, { timeout: 30_000 });
+
+    await expect(page.locator("body")).toContainText("Triagem");
+    await expect(page.locator("body")).toContainText("Contratação");
+    await expect(page.locator("body")).not.toContainText("Cotação / Proposta");
+    await page.getByRole("button", { name: /usar esta organização/i }).click();
+    await page.waitForURL(/\/onboarding\/follow-up/, { timeout: 30_000 });
+
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/setup-ai/, { timeout: 30_000 });
+    await page.locator('input[name="ai_mode"][value="off"]').click();
+    await page.getByRole("button", { name: /^continuar$/i }).click();
+    await page.waitForURL(/\/onboarding\/invite-team/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /pular por enquanto/i }).click();
+    await page.waitForURL(/\/onboarding\/done/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /começar a usar/i }).click();
+    await page.waitForURL(/\/app\//, { timeout: 30_000 });
+
+    const { data: org } = await svc.from("organizations").select("settings").eq("id", conta.orgId).maybeSingle();
+    const settings = (org?.settings ?? {}) as {
+      ai_mode?: string;
+      perfil_do_negocio?: { id?: string };
+    };
+    expect(settings.ai_mode).toBe("off");
+    expect(settings.perfil_do_negocio?.id).toBe("advocacia");
+
+    const { data: funil } = await svc
+      .from("crm_pipelines")
+      .select("name, settings")
+      .eq("organization_id", conta.orgId)
+      .eq("is_default", true)
+      .maybeSingle();
+    expect(String(funil!.name)).toBe("Novos clientes");
+    const fields = ((funil?.settings as { fields?: Array<{ key: string }> } | null)?.fields ?? []) as Array<{
+      key: string;
+    }>;
+    expect(fields.some((f) => f.key === "item_tipo")).toBe(false);
+    expect(fields.some((f) => f.key === "area_juridica")).toBe(true);
+
+    const { data: pointers } = await svc
+      .from("followup_flow_pointers")
+      .select("name")
+      .eq("organization_id", conta.orgId);
+    expect((pointers ?? []).some((p) => String(p.name).includes("locacao"))).toBe(false);
+
+    const { data: moope } = await svc.from("moope_connections").select("id").eq("organization_id", conta.orgId);
+    expect(moope ?? []).toHaveLength(0);
+
+    const { data: agentes } = await svc.from("ai_agents").select("id").eq("organization_id", conta.orgId);
+    expect(agentes ?? []).toHaveLength(0);
+  });
+});

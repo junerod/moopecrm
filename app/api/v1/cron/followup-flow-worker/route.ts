@@ -9,9 +9,9 @@
  *
  * Depois do tick, roda `runSilenceSweep` (lib/followup/silence-sweep.ts) NO
  * MESMO tick — gatilho TIME-DRIVEN (varredura periódica, não event-driven):
- * acha pointers `trigger_config.kind='silence'` ativos, gateia via
- * `isPointerEnabledForAutomaticTrigger` (só enrolla se algum agente publicado
- * da org tem o pointer habilitado), acha contatos silenciosos e cria
+ * acha pointers `trigger_config.kind='silence'` ativos, classifica o grafo
+ * (`decidirArmacaoAutomatica`: fluxo com IA ainda exige agente publicado;
+ * fluxo de template enrolla sem agente), acha contatos silenciosos e cria
  * enrollment. Falha do sweep NUNCA aborta a resposta do tick (try/catch
  * isolado, só loga) — o cron sempre devolve o resultado de `runFollowupTick`.
  *

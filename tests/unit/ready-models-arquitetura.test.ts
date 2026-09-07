@@ -13,6 +13,12 @@ const CAMINHOS_CRITICOS = [
   "lib/automation/engine.ts",
   "lib/followup/engine.ts",
   "lib/followup/reactivity.ts",
+  "lib/followup/fluxo-requer-ia.ts",
+  "lib/followup/silence-sweep.ts",
+  "lib/followup/gatilho-etapa.ts",
+  "lib/followup/gatilho-caso.ts",
+  "lib/followup/agent-followup-gate.ts",
+  "lib/agent-engine/agent/followup-turn.ts",
   "lib/ai/copiloto/gerar.ts",
   "lib/agent-engine/agent/copilot-turn.ts",
 ];
