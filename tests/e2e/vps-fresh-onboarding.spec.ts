@@ -151,6 +151,19 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
     await login(page);
     await page.waitForURL(/\/onboarding\/connect-whatsapp/);
 
+    // QR do proxy (poll de 3s até SCAN_QR_CODE) — imagem carregada de fato.
+    // <img> visível NÃO basta: sessão FAILED devolve 422 com body vazio e o
+    // quadrado branco ainda passa "element visible" (3B.2). Exigimos HTTP 200,
+    // content-type de imagem e pixels reais (naturalWidth > 0).
+    // Registrar ANTES dos cliques: a sessão sobe ao escolher "leio um código".
+    const qrOk = page.waitForResponse(
+      (r) =>
+        r.url().includes("/whatsapp/qr") &&
+        r.status() === 200 &&
+        /image\//.test(r.headers()["content-type"] ?? ""),
+      { timeout: 60_000 },
+    );
+
     // O passo agora ABRE PERGUNTANDO como a pessoa já usa o número — o código
     // deixou de ser suposição. Escolher "leio um código com o celular" é o que
     // sobe a sessão; antes ela subia sozinha na montagem da tela, e quem tinha
@@ -162,15 +175,35 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
     // O nome do transporte saiu da tela: o aviso agora fala do "WhatsApp desta
     // instalação", que é como o dono chama a coisa.
     await expect(page.getByText(/ainda não subiu/i)).toHaveCount(0);
-
-    // QR do proxy (poll de 3s até SCAN_QR_CODE) — imagem carregada de fato
     const qr = page.locator('img[src*="/whatsapp/qr"]');
     await expect(qr).toBeVisible({ timeout: 60_000 });
+    const qrRes = await qrOk;
+    expect(qrRes.status()).toBe(200);
+    expect(qrRes.headers()["content-type"] ?? "").toMatch(/image\//);
     await expect
       .poll(async () => qr.evaluate((el: HTMLImageElement) => el.naturalWidth), {
         timeout: 15_000,
       })
       .toBeGreaterThan(0);
+    await expect
+      .poll(async () => qr.evaluate((el: HTMLImageElement) => el.naturalHeight), {
+        timeout: 5_000,
+      })
+      .toBeGreaterThan(0);
+    fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+    fs.writeFileSync(
+      path.join(EVIDENCE_DIR, "j1.5-qr-http.json"),
+      JSON.stringify(
+        {
+          status: qrRes.status(),
+          content_type: qrRes.headers()["content-type"] ?? null,
+          natural_width: await qr.evaluate((el: HTMLImageElement) => el.naturalWidth),
+          natural_height: await qr.evaluate((el: HTMLImageElement) => el.naturalHeight),
+        },
+        null,
+        2,
+      ),
+    );
     await snap(page, "j1.5-qr-visivel");
   });
 
@@ -232,7 +265,9 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
 
     // Honestidade: sem RESEND_API_KEY nenhum email sai. A UI deve dizer isso
     // e oferecer o link de aceite copiável (nunca redirecionar em silêncio).
-    await expect(page.getByText(/não está configurado neste servidor/i)).toBeVisible({
+    // Copy atual do produto (invite-team/_form.tsx); a frase antiga
+    // "não está configurado neste servidor" saiu da tela.
+    await expect(page.getByText(/esta instalação não envia e-mail/i)).toBeVisible({
       timeout: 15_000,
     });
     const acceptUrl = (
@@ -279,8 +314,10 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
     await expect(page.getByText("Desativada")).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: /^ativar$/i }).click();
 
+    // O heading da página de Segurança continua visível atrás do modal.
+    // Regex ampla pega os dois e o Playwright recusa (strict mode).
     await expect(
-      page.getByRole("heading", { name: /verificação em duas etapas/i }),
+      page.getByRole("heading", { name: /configure a verificação em duas etapas/i }),
     ).toBeVisible({ timeout: 20_000 });
     await snap(page, "j1.10-mfa-ativar");
 
@@ -329,11 +366,10 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
     await page.getByText(/salvei meus códigos/i).click();
     await page.getByRole("button", { name: /^concluir$/i }).click();
 
-    // gate some após reload; shell do app visível
+    // Modal de enroll some; a página de Segurança continua com o heading
+    // "Verificação em duas etapas" — isso não é o gate.
     await page.waitForLoadState("networkidle");
-    await expect(
-      page.getByRole("heading", { name: /verificação em duas etapas/i }),
-    ).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.locator("#mfa-title")).toHaveCount(0, { timeout: 20_000 });
     await snap(page, "j1.10-inbox-livre");
   });
 
