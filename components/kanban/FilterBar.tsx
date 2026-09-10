@@ -15,6 +15,7 @@ import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import type { Lead, OwnerKind } from "@/lib/types/leads";
 import { OwnerBadge } from "./OwnerBadge";
+import { ORIGENS_COMERCIAIS, rotuloDaOrigem } from "@/lib/crm/origem-comercial";
 import {
   agentOwnerFilter,
   parseAgentOwnerFilter,
@@ -114,7 +115,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
       <Input
         type="search"
-        placeholder="Buscar por título…"
+        placeholder="Buscar por nome, empresa ou origem…"
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
         className="h-9 w-full sm:w-64"
@@ -160,6 +161,27 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
               ))}
             </>
           )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            Origem: {filters.source ? rotuloDaOrigem(filters.source) : "todas"}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={() => onChange({ ...filters, source: undefined })}>
+            Todas
+          </DropdownMenuItem>
+          {ORIGENS_COMERCIAIS.map((o) => (
+            <DropdownMenuItem
+              key={o.value}
+              onClick={() => onChange({ ...filters, source: o.value })}
+            >
+              {o.label}
+            </DropdownMenuItem>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -215,6 +237,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
       {(filters.search ||
         filters.owner ||
         filters.tag ||
+        filters.source ||
         filters.overdueOnly ||
         (filters.status && filters.status !== "all")) && (
         <Button

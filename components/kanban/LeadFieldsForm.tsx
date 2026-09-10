@@ -13,6 +13,14 @@ import { camposDoPipeline } from "@/lib/leads/custom-fields";
 import type { Lead } from "@/lib/types/leads";
 import { updateLeadSchema, type UpdateLeadInput } from "@/lib/schemas/leads";
 import { parseReaisToCents } from "@/lib/money";
+import { ORIGENS_COMERCIAIS } from "@/lib/crm/origem-comercial";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EcoDoValor } from "./EcoDoValor";
 
 interface FormShape {
@@ -21,6 +29,7 @@ interface FormShape {
   valueReais: string;
   tagsRaw: string;
   expected_close_date: string;
+  source: string;
 }
 
 interface Props {
@@ -72,6 +81,7 @@ export function LeadFieldsForm({
       valueReais: centsToReais(lead.value_cents),
       tagsRaw: (lead.tags ?? []).join(", "),
       expected_close_date: lead.expected_close_date ?? "",
+      source: lead.source || "manual",
     },
   });
 
@@ -82,6 +92,7 @@ export function LeadFieldsForm({
       valueReais: centsToReais(lead.value_cents),
       tagsRaw: (lead.tags ?? []).join(", "),
       expected_close_date: lead.expected_close_date ?? "",
+      source: lead.source || "manual",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
@@ -109,6 +120,7 @@ export function LeadFieldsForm({
       tags,
       expected_close_date: values.expected_close_date || null,
       custom_fields: customFields,
+      source: values.source || "manual",
     };
 
     const parsed = updateLeadSchema.safeParse(patch);
@@ -170,6 +182,25 @@ export function LeadFieldsForm({
               {...form.register("expected_close_date")}
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Origem</Label>
+          <Select
+            value={form.watch("source")}
+            onValueChange={(v) => form.setValue("source", v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="De onde veio este lead?" />
+            </SelectTrigger>
+            <SelectContent>
+              {ORIGENS_COMERCIAIS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

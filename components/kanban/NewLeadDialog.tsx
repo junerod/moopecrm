@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateLead } from "@/hooks/kanban/useCreateLead";
+import { garantirContatoDoLead } from "@/lib/contacts/garantir-contato-do-lead";
+import { ORIGENS_COMERCIAIS } from "@/lib/crm/origem-comercial";
 import type { Stage } from "@/lib/kanban/types";
 import { createLeadSchema, type CreateLeadInput } from "@/lib/schemas/leads";
 import { parseReaisToCents } from "@/lib/money";
@@ -34,6 +36,9 @@ interface FormShape {
   valueReais: string;
   tagsRaw: string;
   expected_close_date: string;
+  source: string;
+  contact_name: string;
+  contact_phone: string;
 }
 
 interface Props {
@@ -62,6 +67,9 @@ export function NewLeadDialog({ open, onOpenChange, pipelineId, stages, contactI
       valueReais: "",
       tagsRaw: "",
       expected_close_date: "",
+      source: "manual",
+      contact_name: "",
+      contact_phone: "",
     },
   });
 
@@ -88,15 +96,28 @@ export function NewLeadDialog({ open, onOpenChange, pipelineId, stages, contactI
       }
     }
 
+    let resolvedContactId = contactId ?? null;
+    if (!resolvedContactId) {
+      try {
+        resolvedContactId = await garantirContatoDoLead({
+          nome: values.contact_name,
+          telefone: values.contact_phone,
+        });
+      } catch {
+        toast.error("Não consegui gravar o contato. Tente de novo.");
+        return;
+      }
+    }
+
     const payload: Record<string, unknown> = {
       pipeline_id: pipelineId,
       stage_id: values.stage_id,
       title: values.title.trim(),
       currency: "BRL",
-      source: "manual",
+      source: values.source || "manual",
       tags,
     };
-    if (contactId) payload.contact_id = contactId;
+    if (resolvedContactId) payload.contact_id = resolvedContactId;
     if (values.description.trim()) payload.description = values.description.trim();
     if (valueCents !== null) payload.value_cents = valueCents;
     if (values.expected_close_date) payload.expected_close_date = values.expected_close_date;
@@ -118,6 +139,9 @@ export function NewLeadDialog({ open, onOpenChange, pipelineId, stages, contactI
         valueReais: "",
         tagsRaw: "",
         expected_close_date: "",
+        source: "manual",
+        contact_name: "",
+        contact_phone: "",
       });
       onOpenChange(false);
     } catch {
@@ -126,6 +150,7 @@ export function NewLeadDialog({ open, onOpenChange, pipelineId, stages, contactI
   }
 
   const stageId = form.watch("stage_id");
+  const source = form.watch("source");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,7 +158,8 @@ export function NewLeadDialog({ open, onOpenChange, pipelineId, stages, contactI
         <DialogHeader>
           <DialogTitle>Novo Lead</DialogTitle>
           <DialogDescription>
-            Crie um lead manualmente neste pipeline.
+            Crie um lead neste funil. Se a pessoa já existir pelo telefone, a
+            oportunidade reusa o contato.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -144,6 +170,44 @@ export function NewLeadDialog({ open, onOpenChange, pipelineId, stages, contactI
               placeholder="Ex: Pedido Maria — combo presente"
               {...form.register("title", { required: true, minLength: 2 })}
             />
+          </div>
+
+          {!contactId && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="contact_name">Pessoa / empresa</Label>
+              <Input
+                id="contact_name"
+                placeholder="João Silva"
+                {...form.register("contact_name")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact_phone">Telefone</Label>
+              <Input
+                id="contact_phone"
+                inputMode="tel"
+                placeholder="(48) 99999-9999"
+                {...form.register("contact_phone")}
+              />
+            </div>
+          </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Origem</Label>
+            <Select value={source} onValueChange={(v) => form.setValue("source", v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="De onde veio este lead?" />
+              </SelectTrigger>
+              <SelectContent>
+                {ORIGENS_COMERCIAIS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

@@ -398,6 +398,7 @@ export async function updateLeadHandler(
     patch.expected_close_date = input.expected_close_date;
   }
   if (input.tags !== undefined) patch.tags = input.tags;
+  if (input.source !== undefined) patch.source = input.source;
   if (input.custom_fields !== undefined) {
     const { data: funil, error: funilErr } = await supabase
       .from("crm_pipelines")

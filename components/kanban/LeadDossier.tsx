@@ -10,6 +10,8 @@ import { ScoreSlot } from "./ScoreSlot";
 import { LeadTimeline } from "./LeadTimeline";
 import { OwnerBadge } from "./OwnerBadge";
 import { resolveLeadOwner } from "@/lib/kanban/owner";
+import { rotuloDaOrigem } from "@/lib/crm/origem-comercial";
+import Link from "next/link";
 
 interface Props {
   open: boolean;
@@ -84,6 +86,26 @@ export function LeadDossier({
             {formatBRL(lead.value_cents, lead.currency)}
           </span>
           <span className="text-text-muted">{stageName}</span>
+          <span className="text-text-muted">Origem: {rotuloDaOrigem(lead.source)}</span>
+          <span className="text-text-muted">
+            Criado em {new Date(lead.created_at).toLocaleDateString("pt-BR")}
+          </span>
+          {lead.last_activity_at && (
+            <span className="text-text-muted">
+              Última atividade {new Date(lead.last_activity_at).toLocaleDateString("pt-BR")}
+            </span>
+          )}
+          {lead.lost_reason && (
+            <span className="text-text-muted">Perda: {lead.lost_reason}</span>
+          )}
+          {lead.contact_id && (
+            <Link
+              href={`/app/contacts/${lead.contact_id}`}
+              className="text-text-muted underline-offset-2 hover:text-text hover:underline"
+            >
+              Ver contato
+            </Link>
+          )}
           <OwnerBadge
             ownerKind={owner.kind}
             ownerName={owner.name}

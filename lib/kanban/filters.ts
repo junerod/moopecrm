@@ -25,6 +25,7 @@ export interface LeadFilters {
   valueCentsMin?: number | null;
   valueCentsMax?: number | null;
   overdueOnly?: boolean;
+  source?: string;
 }
 
 /**
@@ -38,6 +39,7 @@ export function filtersFromParams(
   const status = sp.get("status");
   const tag = sp.get("tag");
   const search = sp.get("q");
+  const source = sp.get("source");
   return {
     owner: owner ?? undefined,
     status:
@@ -47,6 +49,7 @@ export function filtersFromParams(
     tag: tag ?? undefined,
     search: search ?? undefined,
     overdueOnly: sp.get("overdue") === "1" || undefined,
+    source: source ?? undefined,
   };
 }
 
@@ -57,6 +60,7 @@ export function filtersToParams(f: LeadFilters): string {
   if (f.tag) p.set("tag", f.tag);
   if (f.search?.trim()) p.set("q", f.search.trim());
   if (f.overdueOnly) p.set("overdue", "1");
+  if (f.source) p.set("source", f.source);
   return p.toString();
 }
 
@@ -81,9 +85,10 @@ export function applyFilters(leads: Lead[], f: LeadFilters): Lead[] {
     }
     if (f.status && f.status !== "all" && l.status !== f.status) return false;
     if (f.tag && !l.tags.includes(f.tag)) return false;
+    if (f.source && l.source !== f.source) return false;
     if (
       search &&
-      !`${l.title} ${l.description ?? ""}`.toLowerCase().includes(search)
+      !`${l.title} ${l.description ?? ""} ${l.source}`.toLowerCase().includes(search)
     )
       return false;
     if (typeof f.valueCentsMin === "number" && (l.value_cents ?? 0) < f.valueCentsMin)
