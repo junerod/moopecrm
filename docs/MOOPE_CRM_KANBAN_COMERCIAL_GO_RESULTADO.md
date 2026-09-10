@@ -166,12 +166,13 @@ SHAs desta rodada (locais, sem push):
 - `bdae5b0e` `feat(crm): add commercial origin and reuse contact on new lead`
 - `a70413bc` `feat(kanban): reopen lost deals and move from the phone menu`
 - `4eeaabbb` `test(crm): lock the commercial kanban path and record the GO`
+- `bd232271` `docs: record local SHAs of the kanban commercial GO`
 
 ---
 
 ## 9. Commits locais (sem push)
 
-Os quatro acima. Leftovers de outras sessões (manual, IA 360, `.cursor/`, piloto 3C) **não** entraram.
+Os cinco acima. Leftovers de outras sessões (manual, IA 360, `.cursor/`, piloto 3C) **não** entraram.
 
 ---
 
