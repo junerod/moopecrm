@@ -8,25 +8,7 @@ import { Card } from "@/components/ui/card";
 import { apiClient } from "@/lib/api/client";
 import type { AiActionPolicyConfig, AiMode } from "@/lib/schemas/settings";
 import { AI_MODES } from "@/lib/schemas/settings";
-
-const COPY: Record<AiMode, { titulo: string; corpo: string }> = {
-  off: {
-    titulo: "OFF",
-    corpo: "IA desligada. CRM e automações normais continuam funcionando.",
-  },
-  copilot: {
-    titulo: "COPILOT",
-    corpo: "IA ajuda o atendente, mas não executa ações sozinha.",
-  },
-  controlled: {
-    titulo: "CONTROLLED",
-    corpo: "IA pode executar apenas ações autorizadas.",
-  },
-  autonomous: {
-    titulo: "AUTONOMOUS",
-    corpo: "Agente pode atuar sozinho dentro das regras e guardrails.",
-  },
-};
+import { ROTULO_DO_MODO_IA, rotuloDoModoIa } from "@/lib/negocio/rotulos";
 
 export interface AiModeEstado {
   configured: AiMode;
@@ -104,11 +86,11 @@ export function AiModeForm({ initial }: { initial: { configured: AiMode } }) {
                 onChange={() => setModo(m)}
                 disabled={isPending}
                 className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                aria-label={COPY[m].titulo}
+                aria-label={ROTULO_DO_MODO_IA[m].titulo}
               />
               <span className="space-y-1">
-                <span className="block text-sm font-medium">{COPY[m].titulo}</span>
-                <span className="block text-xs text-muted-foreground">{COPY[m].corpo}</span>
+                <span className="block text-sm font-medium">{ROTULO_DO_MODO_IA[m].titulo}</span>
+                <span className="block text-xs text-muted-foreground">{ROTULO_DO_MODO_IA[m].corpo}</span>
               </span>
             </label>
           ))}
@@ -119,10 +101,10 @@ export function AiModeForm({ initial }: { initial: { configured: AiMode } }) {
           className="rounded-md border border-border bg-muted/30 p-3 text-xs"
         >
           <p>
-            Configurado: <strong data-testid="ai-mode-configurado">{modo.toUpperCase()}</strong>
+            Configurado: <strong data-testid="ai-mode-configurado">{rotuloDoModoIa(modo)}</strong>
           </p>
           <p>
-            Efetivo: <strong data-testid="ai-mode-valor-efetivo">{efetivo.toUpperCase()}</strong>
+            Efetivo: <strong data-testid="ai-mode-valor-efetivo">{rotuloDoModoIa(efetivo)}</strong>
           </p>
           {motivo && efetivo === "off" && modo !== "off" ? (
             <p data-testid="ai-mode-motivo" className="mt-1 text-muted-foreground">

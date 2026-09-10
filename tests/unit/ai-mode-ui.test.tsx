@@ -27,8 +27,8 @@ describe("TESTE 11 — UI mostra efetivo OFF com motivo", () => {
 
     render(<AiModeForm initial={{ configured: "autonomous" }} />);
 
-    await waitFor(() => expect(screen.getByTestId("ai-mode-valor-efetivo").textContent).toBe("OFF"));
-    expect(screen.getByTestId("ai-mode-configurado").textContent).toBe("AUTONOMOUS");
+    await waitFor(() => expect(screen.getByTestId("ai-mode-valor-efetivo").textContent).toBe("Desligada"));
+    expect(screen.getByTestId("ai-mode-configurado").textContent).toBe("Automática");
     expect(screen.getByTestId("ai-mode-motivo").textContent).toMatch(/IA desativada globalmente/i);
   });
 });

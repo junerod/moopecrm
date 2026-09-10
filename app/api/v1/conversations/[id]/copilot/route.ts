@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { carregarOverlayDoFunilPadrao } from "@/lib/ai/copiloto/overlay";
 import { gerarSugestaoDoCopiloto } from "@/lib/ai/copiloto/gerar";
+import { recuperarConhecimentoDaEmpresa } from "@/lib/ai/copiloto/recuperar";
 import { buscarSugestaoAtual, marcarSugestao } from "@/lib/ai/copiloto/persistir";
 import { faixaDeConfianca, rotuloDaIntencao } from "@/lib/ai/copiloto/schema";
 import { lerPoliticaPg } from "@/lib/ai/execucao/ler-camadas";
@@ -135,6 +136,20 @@ export async function POST(
 
   const llmCfg = llmEdgeConfigFromEnv(env);
   const overlay = await carregarOverlayDoFunilPadrao(pool, authz.org.orgId);
+  const ultima = [...historico]
+    .reverse()
+    .find((m) => m.direction === "inbound" && (m.body ?? "").trim())?.body;
+  let trechos: Array<{ content: string }> = [];
+  try {
+    const rec = await recuperarConhecimentoDaEmpresa(
+      await createClient(),
+      authz.org.orgId,
+      ultima ?? "",
+    );
+    trechos = rec.trechos;
+  } catch {
+    trechos = [];
+  }
   const result = await gerarSugestaoDoCopiloto({
     db: pool,
     organizationId: authz.org.orgId,
@@ -144,6 +159,7 @@ export async function POST(
     historico,
     politica,
     overlay,
+    trechos,
     force,
     llm: async ({ historico: msgs, system }) => {
       const { result: call, model, usage } = await runModelCall(pool, llmCfg, {

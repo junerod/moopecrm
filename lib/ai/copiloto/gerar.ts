@@ -16,6 +16,11 @@ import {
   montarSystemDoCopiloto,
   type OverlayDoCopiloto,
 } from "@/lib/ai/copiloto/overlay";
+import { deveRecusarInventar, RASCUNHO_SEM_FONTE } from "@/lib/ai/copiloto/anti-alucinacao";
+import {
+  montarSystemComConhecimento,
+  type TrechoParaCopiloto,
+} from "@/lib/ai/copiloto/conhecimento";
 
 export interface MensagemParaCopiloto {
   direction: string;
@@ -59,6 +64,11 @@ export async function gerarSugestaoDoCopiloto(input: {
   politica: AiExecutionPolicy;
   force?: boolean;
   overlay?: OverlayDoCopiloto;
+  /**
+   * Trechos já recuperados para ESTE tenant. `undefined` = chamador antigo
+   * sem retrieval (testes herdados). `[]` = buscou e não achou.
+   */
+  trechos?: TrechoParaCopiloto[];
   llm: CopilotLlm;
 }): Promise<ResultadoDoCopiloto> {
   if (!input.politica.suggestion_allowed) {
@@ -87,24 +97,50 @@ export async function gerarSugestaoDoCopiloto(input: {
   }
 
   const overlay = input.overlay ?? { instruction: null, fieldKeys: [], fieldLabels: [] };
-  const system = montarSystemDoCopiloto(SYSTEM_COPILOTO, overlay);
+  const ultimaPergunta = [...input.historico]
+    .reverse()
+    .find((m) => m.direction === "inbound" && (m.body ?? "").trim())?.body;
+  const trechos = input.trechos;
+  const recusar =
+    trechos !== undefined && deveRecusarInventar(ultimaPergunta, trechos.length);
 
-  let bruto: CopilotLlmResultado;
-  try {
-    bruto = await input.llm({ historico: input.historico, system });
-  } catch (err) {
-    return {
-      ok: false,
-      reason: "error",
-      message: err instanceof Error ? err.message : "falha no modelo",
+  let parsed;
+  let bruto: CopilotLlmResultado = {
+    texto: "",
+    model: recusar ? "recusa-sem-fonte" : null,
+    prompt_tokens: 0,
+    completion_tokens: 0,
+  };
+
+  if (recusar) {
+    parsed = {
+      summary: "O cliente pediu um dado que não está no conhecimento da empresa.",
+      intent: "PRICE" as const,
+      suggestedReply: RASCUNHO_SEM_FONTE,
+      suggestedNextAction: "Confirmar com a equipe antes de responder",
+      extractedFields: {},
+      confidence: 0.2,
     };
+  } else {
+    const system =
+      trechos !== undefined
+        ? montarSystemComConhecimento(SYSTEM_COPILOTO, overlay, trechos)
+        : montarSystemDoCopiloto(SYSTEM_COPILOTO, overlay);
+    try {
+      bruto = await input.llm({ historico: input.historico, system });
+    } catch (err) {
+      return {
+        ok: false,
+        reason: "error",
+        message: err instanceof Error ? err.message : "falha no modelo",
+      };
+    }
+    parsed = parsearSugestao(bruto.texto);
+    if (!parsed) {
+      return { ok: false, reason: "parse", message: "A IA não devolveu uma sugestão legível." };
+    }
+    parsed.extractedFields = filtrarCamposExtraidos(parsed.extractedFields, overlay.fieldKeys);
   }
-
-  const parsed = parsearSugestao(bruto.texto);
-  if (!parsed) {
-    return { ok: false, reason: "parse", message: "A IA não devolveu uma sugestão legível." };
-  }
-  parsed.extractedFields = filtrarCamposExtraidos(parsed.extractedFields, overlay.fieldKeys);
 
   const { row, created } = await gravarSugestao(input.db, {
     organizationId: input.organizationId,

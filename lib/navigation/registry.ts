@@ -18,6 +18,7 @@ import {
   FlowArrow,
   Funnel,
   Gauge,
+  House,
   Inbox,
   Kanban,
   Key,
@@ -138,6 +139,14 @@ export const GRUPO_NO_RODAPE: NavGroupId = "organizacao";
 export const NAV_DESTINATIONS: NavDestination[] = [
   // ---- Atendimento — onde o operador passa o dia ----
   {
+    href: "/app/inicio",
+    label: "Início",
+    description: "Primeiros passos e o que ainda falta configurar no CRM.",
+    icon: House,
+    group: "atendimento",
+    sidebar: true,
+  },
+  {
     href: "/app/inbox",
     label: "Caixa de entrada",
     description: "As conversas de WhatsApp, com você e a IA atendendo lado a lado.",
@@ -250,8 +259,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   // ---- Agente de IA — montar, ensinar, acompanhar ----
   {
     href: "/app/ai/agents",
-    label: "Agentes",
-    description: "Quem atende por você: instruções, modelo, ferramentas e publicação.",
+    label: "Assistentes",
+    description: "Quem atende por você: instruções, conhecimento e publicação.",
     icon: Robot,
     group: "ia",
     section: "Montar o agente",
@@ -260,8 +269,11 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   },
   {
     href: "/app/ai/followups",
-    label: "Voltar a falar",
-    description: "Automação: se o cliente para de responder, o sistema manda uma mensagem na hora certa.",
+    // ⚠️ ERA "Voltar a falar". Isso descreve o EFEITO, não o destino: quem
+    // procura "fluxos" ou "automações" no menu não acha, e o verbo parece um
+    // botão de ação, não uma tela. A URL não muda.
+    label: "Automações",
+    description: "Se o cliente para de responder, o sistema manda uma mensagem na hora certa.",
     icon: FlowArrow,
     group: "ia",
     section: "Montar o agente",
@@ -307,7 +319,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/ai/knowledge/sources",
     label: "Conhecimento",
-    description: "Os materiais que o agente consulta antes de responder sobre o seu negócio.",
+    description: "Ensine o sistema sobre a empresa — textos, perguntas e documentos.",
     icon: BookOpen,
     group: "ia",
     section: "Ensinar o agente",
@@ -501,6 +513,15 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "organizacao",
     section: "Sua empresa",
     minRole: "admin",
+  },
+  {
+    href: "/app/settings/business",
+    label: "Meu Negócio",
+    description: "Central da configuração: empresa, WhatsApp, conhecimento, IA e equipe.",
+    icon: Storefront,
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
   },
   {
     href: "/app/settings/perfil",

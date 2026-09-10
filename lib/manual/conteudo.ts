@@ -220,12 +220,12 @@ export const CAPITULOS: readonly Capitulo[] = [
     blocos: [
       {
         tipo: "p",
-        texto: "Na tela isto se chama Voltar a falar: o sistema manda mensagem sozinho depois de um silêncio, quando o card muda de coluna, ou quando o atendente automático pede ajuda. Precisa ser gerente ou administrador.",
+        texto: "Na tela isto se chama Automações: o sistema manda mensagem sozinho depois de um silêncio, quando o card muda de coluna, ou quando o atendente automático pede ajuda. Precisa ser gerente ou administrador.",
       },
       {
         tipo: "passos",
         itens: [
-          "Agente de IA › Voltar a falar, aba Fluxos.",
+          "Agente de IA › Automações.",
           "Novo fluxo → nome → Criar fluxo.",
           "Monte o quadro com as peças da paleta e ligue as caixas. Todo caminho precisa chegar num Fim.",
           "No gatilho, escolha quando começa.",

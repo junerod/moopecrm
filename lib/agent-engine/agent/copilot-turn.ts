@@ -9,6 +9,8 @@ import type pg from "pg";
 import { lerPoliticaPg } from "@/lib/ai/execucao/ler-camadas";
 import { carregarOverlayDoFunilPadrao } from "@/lib/ai/copiloto/overlay";
 import { gerarSugestaoDoCopiloto } from "@/lib/ai/copiloto/gerar";
+import { recuperarConhecimentoDaEmpresa } from "@/lib/ai/copiloto/recuperar";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { JobRow } from "@/lib/agent-engine/queue/queue";
 import type { LlmEdgeConfig } from "@/lib/agent-engine/edge/llm/run-model-call";
 import { runModelCall } from "@/lib/agent-engine/edge/llm/run-model-call";
@@ -55,6 +57,21 @@ export function createCopilotTurnHandler(deps: CopilotTurnDeps) {
     );
 
     const overlay = await carregarOverlayDoFunilPadrao(pool, job.organization_id);
+    const ultima = [...mensagens]
+      .reverse()
+      .find((m) => m.direction === "inbound" && (m.body ?? "").trim())?.body;
+    let trechos: Array<{ content: string }> = [];
+    try {
+      const admin = createAdminClient();
+      const rec = await recuperarConhecimentoDaEmpresa(
+        admin,
+        job.organization_id,
+        ultima ?? "",
+      );
+      trechos = rec.trechos;
+    } catch {
+      trechos = [];
+    }
     const result = await gerarSugestaoDoCopiloto({
       db: pool,
       organizationId: job.organization_id,
@@ -64,6 +81,7 @@ export function createCopilotTurnHandler(deps: CopilotTurnDeps) {
       historico: mensagens,
       politica,
       overlay,
+      trechos,
       force: payload.force === true,
       llm: async ({ historico, system }) => {
         const { result: call, model, usage } = await runModelCall(pool, deps.llmCfg, {

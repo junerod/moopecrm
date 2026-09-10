@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Productization 3C — configuração leiga sobre engines existentes",
+    "subtitle": "Meu Negócio e Início organizam; RAG, Copilot, follow-up e agentes continuam os mesmos",
+    "output": "productization-3c.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o operador vê" },
+    { "id": "app", "label": "App / API" },
+    { "id": "engine", "label": "Engine já existente" }
+  ],
+  "mainPath": ["inicio", "negocio", "conhecimento", "rag", "copilot"],
+  "nodes": [
+    { "id": "inicio", "lane": "humano", "col": 0, "type": "frontend", "label": "/app/inicio", "sublabel": "checklist primeiros passos" },
+    { "id": "negocio", "lane": "humano", "col": 1, "type": "frontend", "label": "Meu Negócio", "sublabel": "/app/settings/business" },
+    { "id": "conhecimento", "lane": "humano", "col": 2, "type": "frontend", "label": "Conhecimento da Empresa", "sublabel": "testar + cadastrar" },
+    { "id": "assistentes", "lane": "humano", "col": 3, "type": "frontend", "label": "Meus Assistentes", "sublabel": "wizard rascunho" },
+    { "id": "automacoes", "lane": "humano", "col": 4, "type": "frontend", "label": "Automações", "sublabel": "prontas / 24h" },
+    { "id": "consultar", "lane": "app", "col": 2, "type": "api", "label": "POST knowledge/consultar", "sublabel": "org do cookie" },
+    { "id": "pronto24h", "lane": "app", "col": 4, "type": "api", "label": "POST pronto-24h", "sublabel": "publish existente" },
+    { "id": "estado", "lane": "app", "col": 1, "type": "lib", "label": "montarEstadoDoSetup", "sublabel": "3B.3 residual" },
+    { "id": "rag", "lane": "engine", "col": 2, "type": "lib", "label": "buscarConhecimento", "sublabel": "retrieve_top_k_chunks" },
+    { "id": "copilot", "lane": "engine", "col": 3, "type": "lib", "label": "gerarSugestaoDoCopiloto", "sublabel": "trechos + anti-alucinação" },
+    { "id": "followup", "lane": "engine", "col": 4, "type": "lib", "label": "publishFollowupFlowVersion", "sublabel": "silêncio 24h" },
+    { "id": "agentes", "lane": "engine", "col": 3, "type": "lib", "label": "createMcpAgentAction", "sublabel": "draft até publish" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "inicio", "to": "negocio", "label": "Abrir Meu Negócio" },
+    { "id": "e2", "from": "negocio", "to": "conhecimento", "label": "card conhecimento" },
+    { "id": "e3", "from": "negocio", "to": "estado", "label": "cards reais" },
+    { "id": "e4", "from": "conhecimento", "to": "consultar", "label": "testar" },
+    { "id": "e5", "from": "consultar", "to": "rag", "label": "mesmo path" },
+    { "id": "e6", "from": "rag", "to": "copilot", "label": "trechos do tenant" },
+    { "id": "e7", "from": "assistentes", "to": "agentes", "label": "salvar rascunho" },
+    { "id": "e8", "from": "automacoes", "to": "pronto24h", "label": "ativar 24h" },
+    { "id": "e9", "from": "pronto24h", "to": "followup", "label": "publish" },
+    { "id": "e10", "from": "copilot", "to": "conhecimento", "label": "sugestão sem inventar" },
+    { "id": "e11", "from": "inicio", "to": "automacoes", "label": "checklist automação" },
+    { "id": "e12", "from": "negocio", "to": "assistentes", "label": "card IA" }
+  ]
+}

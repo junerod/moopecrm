@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { garantirAgenteDoAcervo } from "@/lib/negocio/garantir-acervo";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import type { SourceRow } from "@/hooks/ai/useKnowledgeSources";
-import { KnowledgeSourcesClient } from "./_client";
+import { ConhecimentoDaEmpresaClient } from "./_empresa";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Conhecimento da Empresa" };
 
 export default async function KnowledgeSourcesPage() {
   const user = await requireAuth();
@@ -20,33 +23,33 @@ export default async function KnowledgeSourcesPage() {
   }
 
   const supabase = await createClient();
-  const { data: agent } = await supabase
+  let { data: agent } = await supabase
     .from("ai_agents")
     .select("id, name, is_default")
     .eq("organization_id", activeOrg.orgId)
+    .is("archived_at", null)
     .eq("is_default", true)
     .maybeSingle();
 
   if (!agent) {
-    return (
-      <div className="flex h-full flex-col gap-6 p-6">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Fontes de Conhecimento</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure as fontes de RAG do agent default da organização.
-          </p>
-        </header>
-        <div className="rounded-lg border border-border bg-surface p-6 text-sm">
-          <p className="mb-4">
-            Nenhum agent default encontrado. Crie um agent default em{" "}
-            <span className="font-mono">/app/ai/agents</span> primeiro.
-          </p>
-          <Button asChild variant="primary" size="sm">
-            <Link href="/app/ai/agents">Ir para Agents</Link>
-          </Button>
-        </div>
-      </div>
+    const { data: qualquer } = await supabase
+      .from("ai_agents")
+      .select("id, name, is_default")
+      .eq("organization_id", activeOrg.orgId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    agent = qualquer;
+  }
+
+  if (!agent) {
+    const criado = await garantirAgenteDoAcervo(
+      createAdminClient(),
+      activeOrg.orgId,
+      user.id,
     );
+    agent = { id: criado.id, name: "Assistente da empresa", is_default: true };
   }
 
   const { data: sourcesRaw } = await supabase
@@ -59,14 +62,26 @@ export default async function KnowledgeSourcesPage() {
   const initialSources = (sourcesRaw ?? []) as unknown as SourceRow[];
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Fontes de Conhecimento</h1>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Conhecimento da Empresa</h1>
         <p className="text-sm text-muted-foreground">
-          Status e ações sobre as fontes RAG do agent <span className="font-medium">{agent.name}</span>.
+          Ensine o sistema sobre sua empresa. O assistente e as sugestões de
+          resposta consultam isto — não inventam o que não estiver aqui.
         </p>
       </header>
-      <KnowledgeSourcesClient agentId={agent.id} initialSources={initialSources} />
+
+      <ConhecimentoDaEmpresaClient agentId={agent.id} initialSources={initialSources} />
+
+      <p className="text-xs text-muted-foreground">
+        Precisa de um assistente publicado?{" "}
+        <Link href="/app/ai/agents" className="underline">
+          Abrir assistentes
+        </Link>
+      </p>
+      <Button asChild variant="ghost" size="sm" className="self-start">
+        <Link href="/app/settings/business">Voltar para Meu Negócio</Link>
+      </Button>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Queryable } from "@/lib/agent-engine/queue/queue";
 import { gerarSugestaoDoCopiloto, parsearSugestao } from "@/lib/ai/copiloto/gerar";
+import { RASCUNHO_SEM_FONTE } from "@/lib/ai/copiloto/anti-alucinacao";
 import { resolveAiExecutionPolicy } from "@/lib/ai/execucao/politica";
 
 const COPILOT = resolveAiExecutionPolicy({
@@ -181,6 +182,52 @@ describe("TESTE 13 — mesma last_message_id não gera duas", () => {
       expect(r.suggestion.id).toBe("ja");
     }
     expect(chamadas).toBe(0);
+  });
+});
+
+describe("Copilot + RAG — não inventa preço ausente", () => {
+  it("sem trecho, não chama o modelo e admite a ausência", async () => {
+    let chamadas = 0;
+    const { db, gravados } = dbComMemoria();
+    const r = await gerarSugestaoDoCopiloto({
+      db,
+      organizationId: "org-a",
+      conversationId: "conv",
+      contactId: "ct",
+      inboundMessageId: "msg-zeta",
+      historico: [{ direction: "inbound", body: "Quanto custa o Produto Zeta?" }],
+      politica: COPILOT,
+      trechos: [],
+      llm: async () => {
+        chamadas += 1;
+        return { texto: JSON.stringify({ ...JSON.parse(JSON_OK), suggestedReply: "O Produto Zeta custa R$ 50." }) };
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(chamadas).toBe(0);
+    if (r.ok) expect(r.suggestion.suggested_reply).toBe(RASCUNHO_SEM_FONTE);
+    expect(JSON.stringify(gravados[0])).not.toMatch(/R\$ ?50/);
+  });
+
+  it("com trecho do tenant, o system leva só esse texto", async () => {
+    let systemVisto = "";
+    const { db } = dbComMemoria();
+    await gerarSugestaoDoCopiloto({
+      db,
+      organizationId: "org-a",
+      conversationId: "conv",
+      contactId: "ct",
+      inboundMessageId: "msg-alfa",
+      historico: [{ direction: "inbound", body: "Quanto custa o Produto Alfa?" }],
+      politica: COPILOT,
+      trechos: [{ content: "Produto Alfa custa R$ 123." }],
+      llm: async ({ system }) => {
+        systemVisto = system;
+        return { texto: JSON_OK };
+      },
+    });
+    expect(systemVisto).toMatch(/R\$ 123/);
+    expect(systemVisto).not.toMatch(/R\$ 999/);
   });
 });
 
