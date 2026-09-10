@@ -55,10 +55,9 @@ export function PipelinesClient({
     // procurando um botão que não existe em lugar nenhum.
     return (
       <Card className="p-6 text-sm leading-relaxed text-muted-foreground">
-        Você ainda não tem nenhum funil. Enquanto for assim, o agente atende normalmente, mas não
-        tem para onde levar o card de ninguém — não há etapas para onde mover. Criar o funil é
-        feito por quem instalou o sistema, direto no banco; depois ele aparece aqui para você
-        escolher a etapa de cada passo.
+        Você ainda não tem nenhum funil. Crie um em Funis (menu Kanban) e volte
+        aqui para ajustar as etapas. Sem funil, o quadro não tem colunas para
+        receber os negócios.
       </Card>
     );
   }

@@ -13,23 +13,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { DotsThree, PencilSimple, Users } from "@/lib/ui/icons";
 import { useWinLead, useEditLead } from "@/hooks/kanban/useUpdateLead";
+import { useMoveCard } from "@/hooks/kanban/useMoveCard";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import { usePermission } from "@/hooks/auth/AuthProvider";
 import { LoseLeadDialog } from "./LoseLeadDialog";
 import { EditLeadDialog } from "./EditLeadDialog";
 import type { Lead } from "@/lib/types/leads";
+import type { Stage } from "@/lib/kanban/types";
 
 interface KanbanCardActionsProps {
   lead: Lead;
   pipelineId: string;
+  stages?: Stage[];
 }
 
-export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) {
+export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardActionsProps) {
   const [loseOpen, setLoseOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const winMutation = useWinLead(pipelineId);
   const editMutation = useEditLead(pipelineId);
+  const moveMutation = useMoveCard(pipelineId);
   // spec 13 §4: escrita no funil é agent+ — viewer não reatribui (a rota
   // PATCH também recusa; aqui é só não oferecer o que seria negado).
   const canAssign = usePermission("pipeline.move_card");
@@ -56,6 +60,20 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
     });
   };
 
+  const etapasAbertas = stages.filter((s) => !s.is_archived && !s.is_won && !s.is_lost);
+  const etapaReativar =
+    etapasAbertas.find((s) => /reativar/i.test(s.name)) ?? etapasAbertas[0];
+
+  const moverPara = (stageId: string) => {
+    if (stageId === lead.stage_id || moveMutation.isPending) return;
+    moveMutation.mutate({
+      leadId: lead.id,
+      stageId,
+      positionInStage: 1_000_000,
+      expectedUpdatedAt: lead.updated_at,
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -63,7 +81,7 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
+            className="h-7 w-7 shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 data-[state=open]:opacity-100"
             onClick={(e) => e.stopPropagation()}
             aria-label="Ações do lead"
           >
@@ -73,6 +91,7 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
         <DropdownMenuContent
           align="end"
           onClick={(e) => e.stopPropagation()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <DropdownMenuItem
             onSelect={() => {
@@ -81,6 +100,30 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
           >
             <PencilSimple size={14} className="mr-2" /> Editar
           </DropdownMenuItem>
+          {etapasAbertas.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Mover para…</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {etapasAbertas.map((s) => (
+                    <DropdownMenuItem
+                      key={s.id}
+                      disabled={moveMutation.isPending || s.id === lead.stage_id}
+                      onSelect={() => moverPara(s.id)}
+                    >
+                      {s.name}
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          {(lead.status === "won" || lead.status === "lost") && etapaReativar && (
+            <DropdownMenuItem
+              disabled={moveMutation.isPending}
+              onSelect={() => moverPara(etapaReativar.id)}
+            >
+              Reabrir / reativar
+            </DropdownMenuItem>
+          )}
           {canAssign && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>

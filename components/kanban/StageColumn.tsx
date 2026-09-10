@@ -11,6 +11,7 @@ interface StageColumnProps {
   stage: Stage;
   leads: Lead[];
   pipelineId: string;
+  stages?: Stage[];
   /** owner_user_id → nome, resolvido no board. O dono agente vem no lead. */
   ownerNames?: Map<string, string | null>;
   /** ids que o radar classificou como esfriando (fonte única, não recalculada). */
@@ -43,6 +44,7 @@ export function StageColumn({
   stage,
   leads,
   pipelineId,
+  stages,
   ownerNames,
   coolingIds,
   reactivations,
@@ -105,6 +107,7 @@ export function StageColumn({
                 lead={lead}
                 index={idx}
                 pipelineId={pipelineId}
+                stages={stages}
                 isSelected={selectedLeadIds?.has(lead.id)}
                 pulseCount={pulses?.get(lead.id) ?? 0}
                 onSelect={onSelect}

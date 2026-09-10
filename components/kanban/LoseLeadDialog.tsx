@@ -12,18 +12,17 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useLoseLead } from "@/hooks/kanban/useUpdateLead";
-import { CANONICAL_LOST_REASONS } from "@/lib/schemas/leads";
 
-const REASON_LABELS: Record<(typeof CANONICAL_LOST_REASONS)[number], string> = {
-  requested_by_customer: "Cliente solicitou cancelamento",
-  price: "Preço",
-  no_response: "Sem resposta do cliente",
-  product_unavailable: "Produto indisponível",
-  cancelled_by_store: "Cancelado pela loja",
-  cancelled_by_customer: "Cancelado pelo cliente",
-  payment_failed: "Falha no pagamento",
-  other: "Outro motivo",
-};
+const MOTIVOS_DE_PERDA = [
+  { code: "price", label: "Preço" },
+  { code: "escolheu_concorrente", label: "Escolheu concorrente" },
+  { code: "sem_orcamento", label: "Sem orçamento" },
+  { code: "no_response", label: "Não respondeu" },
+  { code: "nao_era_o_momento", label: "Não era o momento" },
+  { code: "nao_qualificado", label: "Não qualificado" },
+  { code: "requested_by_customer", label: "Cliente pediu para parar" },
+  { code: "other", label: "Outro" },
+] as const;
 
 interface LoseLeadDialogProps {
   open: boolean;
@@ -61,7 +60,7 @@ export function LoseLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+        <DialogContent className="z-[70]">
         <DialogHeader>
           <DialogTitle>Marcar como perdido</DialogTitle>
           <DialogDescription>
@@ -72,19 +71,19 @@ export function LoseLeadDialog({
         <div className="grid gap-3">
           <Label>Motivo</Label>
           <div className="grid grid-cols-1 gap-1.5">
-            {CANONICAL_LOST_REASONS.map((code) => (
+            {MOTIVOS_DE_PERDA.map((motivo) => (
               <label
-                key={code}
+                key={motivo.code}
                 className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent"
               >
                 <input
                   type="radio"
                   name="lost-reason"
-                  value={code}
-                  checked={reasonCode === code}
+                  value={motivo.code}
+                  checked={reasonCode === motivo.code}
                   onChange={(e) => setReasonCode(e.target.value)}
                 />
-                <span>{REASON_LABELS[code]}</span>
+                <span>{motivo.label}</span>
               </label>
             ))}
           </div>
@@ -114,7 +113,7 @@ export function LoseLeadDialog({
           >
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={disabled}>
+          <Button onClick={handleSubmit} disabled={disabled} data-testid="confirmar-perda">
             {mutation.isPending ? "Salvando..." : "Confirmar"}
           </Button>
         </DialogFooter>

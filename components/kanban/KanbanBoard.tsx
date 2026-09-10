@@ -233,7 +233,7 @@ export function KanbanBoard({
   if (data.stages.length === 0) {
     return (
       <Card className="m-4 p-6 text-sm text-text-muted">
-        Nenhum lead nesta pipeline ainda.
+        Nenhuma etapa neste funil ainda.
       </Card>
     );
   }
@@ -247,6 +247,7 @@ export function KanbanBoard({
             stage={stage}
             leads={grouped.get(stage.id) ?? []}
             pipelineId={pipelineId}
+            stages={data.stages}
             ownerNames={ownerNames}
             coolingIds={coolingIds}
             reactivations={reactivations}

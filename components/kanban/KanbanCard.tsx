@@ -3,6 +3,7 @@ import { Draggable } from "@hello-pangea/dnd";
 import type { MouseEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
+import type { Stage } from "@/lib/kanban/types";
 import { resolveCardState, stageAgeLabel, type CardInput } from "@/lib/kanban/card-state";
 import { KanbanCardActions } from "./KanbanCardActions";
 import { NextActionSlot } from "./NextActionSlot";
@@ -18,6 +19,7 @@ interface KanbanCardProps {
   lead: Lead;
   index: number;
   pipelineId: string;
+  stages?: Stage[];
   isSelected?: boolean;
   /**
    * Contador de pulsos deste card (evento REMOTO). Muda a cada evento novo — é
@@ -60,6 +62,7 @@ export function KanbanCard({
   lead,
   index,
   pipelineId,
+  stages,
   isSelected,
   pulseCount = 0,
   onSelect,
@@ -163,7 +166,7 @@ export function KanbanCard({
                 </button>
               </h3>
             </div>
-            <KanbanCardActions lead={lead} pipelineId={pipelineId} />
+            <KanbanCardActions lead={lead} pipelineId={pipelineId} stages={stages} />
           </div>
 
           {/* ② valor — altura reservada mesmo sem valor, senão o card encolhe. */}
