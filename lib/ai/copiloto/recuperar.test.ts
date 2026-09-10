@@ -60,4 +60,13 @@ describe("isolamento do cadastro de conhecimento", () => {
     expect(hits.some((h) => h.content.includes("999"))).toBe(true);
     expect(hits.some((h) => h.content.includes("123"))).toBe(false);
   });
+
+  it("Produto Zeta sem cadastro não herda o preço do Alfa", async () => {
+    const hits = await buscarFaqDaOrg(
+      dbFake(linhas) as never,
+      "org-a",
+      "Quanto custa o Produto Zeta?",
+    );
+    expect(hits).toHaveLength(0);
+  });
 });

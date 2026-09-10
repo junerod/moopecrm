@@ -172,11 +172,12 @@ test.describe("navegação agrupada", () => {
     await expect(busca).toBeVisible();
 
     await busca.fill("conhec");
-    await expect(page.getByRole("option", { name: /Conhecimento/ })).toBeVisible();
-
+    const conhecimento = page.getByRole("option", { name: /^Conhecimento/ });
+    await expect(conhecimento).toBeVisible();
     await page.screenshot({ path: path.join(EVIDENCE, "nav-command-palette.png") });
-
-    await page.keyboard.press("Enter");
+    // Enter no primeiro match pegava Assistentes: a descrição 3C contém
+    // "conhecimento". O destino certo é o rótulo Conhecimento.
+    await conhecimento.click();
     await page.waitForURL(/knowledge\/sources/);
   });
 

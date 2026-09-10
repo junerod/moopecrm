@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -24,11 +24,15 @@ export function AiModeForm({ initial }: { initial: { configured: AiMode } }) {
   const [salvo, setSalvo] = useState<AiMode>(initial.configured);
   const [estado, setEstado] = useState<AiModeEstado | null>(null);
   const [isPending, startTransition] = useTransition();
+  const tocou = useRef(false);
 
   useEffect(() => {
+    let cancelado = false;
     void apiClient
       .get<{ data: AiModeEstado }>("/api/v1/settings/ai-mode")
       .then((r) => {
+        // GET atrasado não pode apagar escolha/salvamento já feitos nesta tela.
+        if (cancelado || tocou.current) return;
         setEstado(r.data);
         setModo(r.data.configured);
         setSalvo(r.data.configured);
@@ -36,6 +40,9 @@ export function AiModeForm({ initial }: { initial: { configured: AiMode } }) {
       .catch(() => {
         /* a tela ainda deixa escolher; o GET é o efetivo */
       });
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   function salvar(e: React.FormEvent) {
@@ -45,7 +52,9 @@ export function AiModeForm({ initial }: { initial: { configured: AiMode } }) {
         const r = await apiClient.patch<{ data: AiModeEstado }>("/api/v1/settings/ai-mode", {
           ai_mode: modo,
         });
+        tocou.current = true;
         setEstado(r.data);
+        setModo(r.data.configured);
         setSalvo(r.data.configured);
         toast.success("Modo da IA salvo.");
       } catch (err) {
@@ -83,7 +92,10 @@ export function AiModeForm({ initial }: { initial: { configured: AiMode } }) {
                 name="ai_mode"
                 value={m}
                 checked={modo === m}
-                onChange={() => setModo(m)}
+                onChange={() => {
+                  tocou.current = true;
+                  setModo(m);
+                }}
                 disabled={isPending}
                 className="mt-1 h-4 w-4 shrink-0 accent-primary"
                 aria-label={ROTULO_DO_MODO_IA[m].titulo}

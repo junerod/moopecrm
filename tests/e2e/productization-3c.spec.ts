@@ -148,7 +148,12 @@ test.describe("3C — leigo configura o CRM", () => {
 
     await page.goto("/app/settings/atendimento");
     await page.getByTestId("opcao-ai-mode-copilot").click();
+    const salvouModo = page.waitForResponse(
+      (r) => r.url().includes("/api/v1/settings/ai-mode") && r.request().method() === "PATCH",
+    );
     await page.getByRole("button", { name: /salvar modo da ia/i }).click();
+    expect((await salvouModo).ok(), "PATCH do modo da IA precisa persistir").toBeTruthy();
+    await expect(page.getByText(/modo da ia salvo/i)).toBeVisible();
     await expect(page.getByTestId("ai-mode-configurado")).toHaveText("Assistente");
 
     await page.goto("/app/ai/followups");
@@ -245,6 +250,33 @@ test.describe("3C — isolamento e ausência", () => {
     expect(texto).not.toMatch(/999/);
   });
 
+  test("follow-up 24h liga com AI_MODE off e sem agente publicado", async ({ page }) => {
+    if (!a) throw new Error("sem conta");
+    const { data: org } = await svc
+      .from("organizations")
+      .select("settings")
+      .eq("id", a.orgId)
+      .maybeSingle();
+    const settings = (org?.settings ?? {}) as { ai_mode?: string };
+    expect(settings.ai_mode ?? "off").toBe("off");
+    const { count } = await svc
+      .from("ai_agents")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", a.orgId)
+      .not("published_version_id", "is", null);
+    expect(count ?? 0).toBe(0);
+    await login(page, a.email);
+    await page.waitForURL(/\/app\//, { timeout: 30_000 });
+    const res = await page.request.post("/api/v1/ai/followup-flows/pronto-24h");
+    expect(res.ok()).toBeTruthy();
+    const { data: fluxos } = await svc
+      .from("followup_flow_pointers")
+      .select("id, status")
+      .eq("organization_id", a.orgId)
+      .eq("status", "active");
+    expect((fluxos ?? []).length).toBeGreaterThan(0);
+  });
+
   test("Produto Zeta sem preço não inventa valor", async ({ page }) => {
     if (!a) throw new Error("sem conta");
     await login(page, a.email);
@@ -313,6 +345,9 @@ test.describe("3C — assistente nasce rascunho", () => {
     const pub = await page.request.post(`/api/v1/ai/agents/${criado!.id}/publish`, {
       data: { version_id: versao!.id },
     });
+    // A = draft (acima). B = tentativa de publish. C = publish HTTP 2xx.
+    // 422 não prova ativação efetiva — só que o endpoint recusou o ambiente.
+    console.info(`3C_ASSISTENTE_PUBLISH_STATUS=${pub.status()}`);
     expect([200, 201, 422]).toContain(pub.status());
     if (pub.ok()) {
       const { data: depois } = await svc

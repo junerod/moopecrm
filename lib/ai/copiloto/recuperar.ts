@@ -50,6 +50,42 @@ export async function resolverAgenteDoAcervo(
   };
 }
 
+/** Palavras que toda pergunta de preço/produto carrega — sozinhas não identificam o item. */
+const TERMOS_GENERICOS = new Set([
+  "quanto",
+  "quantos",
+  "quantas",
+  "custa",
+  "custam",
+  "custo",
+  "preco",
+  "valor",
+  "valores",
+  "produto",
+  "produtos",
+  "desse",
+  "dessa",
+  "deste",
+  "desta",
+  "qual",
+  "quais",
+  "como",
+  "onde",
+  "quando",
+  "voces",
+  "voce",
+  "este",
+  "essa",
+  "isso",
+  "aqui",
+  "para",
+  "pela",
+  "pelo",
+  "temos",
+  "neste",
+  "nesta",
+]);
+
 export async function buscarFaqDaOrg(
   db: SupabaseClient,
   organizationId: string,
@@ -60,7 +96,7 @@ export async function buscarFaqDaOrg(
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .split(/[^a-z0-9]+/i)
-    .filter((t) => t.length >= 4)
+    .filter((t) => t.length >= 4 && !TERMOS_GENERICOS.has(t))
     .slice(0, 6);
   if (termos.length === 0) return [];
 

@@ -144,7 +144,9 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     description: "Primeiros passos e o que ainda falta configurar no CRM.",
     icon: House,
     group: "atendimento",
-    sidebar: true,
+    // SEM `sidebar: true`: o item extra estourou a dobra em 900px — medido
+    // pelo e2e `navegacao.spec.ts`. A porta continua no hub Atendimento, no
+    // ⌘K e nos atalhos do próprio /app/inicio.
   },
   {
     href: "/app/inbox",
