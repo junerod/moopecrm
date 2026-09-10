@@ -160,13 +160,18 @@ Helena tem 13 linhas em `crm_lead_activities` (`stage_changed` + `demand_closed`
 | Playwright comercial + 3C + herdados | 12 passed na primeira leva; `pipelines-gestao` reorder falhou por **10 funis Comercial GO órfãos** (cleanup do spec não arquivava). Cleanup + spec corrigidos → **4/4** na reexecução |
 | `test:db` | não aplicável (sem schema) |
 
-SHAs desta rodada: ver seção 9 (preenchidos após o commit).
+SHAs desta rodada (locais, sem push):
+
+- `abe42511` `fix(contacts): show new contacts and accept Brazilian phone`
+- `bdae5b0e` `feat(crm): add commercial origin and reuse contact on new lead`
+- `a70413bc` `feat(kanban): reopen lost deals and move from the phone menu`
+- `4eeaabbb` `test(crm): lock the commercial kanban path and record the GO`
 
 ---
 
 ## 9. Commits locais (sem push)
 
-Preenchido após `git log`.
+Os quatro acima. Leftovers de outras sessões (manual, IA 360, `.cursor/`, piloto 3C) **não** entraram.
 
 ---
 
