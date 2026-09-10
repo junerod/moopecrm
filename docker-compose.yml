@@ -18,7 +18,11 @@ version: "3.9"
 
 services:
   waha:
-    image: devlikeapro/waha:noweb
+    # DEV ONLY. `:noweb` é tag móvel do CORE — não usar em produção.
+    # Produção: ${WAHA_IMAGE:-devlikeapro/waha:latest-2026.7.2} em
+    # docker-compose.prod.yml. Plus (multi-número / retry / S3) é opt-in
+    # via WAHA_IMAGE=devlikeapro/waha-plus:<versão aprovada>, nunca :latest.
+    image: ${WAHA_IMAGE:-devlikeapro/waha:noweb}
     platform: linux/amd64
     container_name: deskcomm-waha
     restart: unless-stopped

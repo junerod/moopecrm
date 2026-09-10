@@ -280,6 +280,10 @@ describe("os elos que somem sem barulho", () => {
     const layout = readFileSync("app/app/layout.tsx", "utf8");
     expect(layout).toMatch(/await listarConexoesCaidas\(/);
     expect(layout).toMatch(/<ConexaoCaidaBanner/);
+    const health = readFileSync("lib/channels/health.ts", "utf8");
+    expect(health, "a faixa tem que filtrar residual pela regra compartilhada").toMatch(
+      /filtrarCaidasParaFaixa/,
+    );
     expect(layout, "tela montando o select de canais à mão").not.toMatch(
       /from\(\s*["'`]channel_sessions/,
     );

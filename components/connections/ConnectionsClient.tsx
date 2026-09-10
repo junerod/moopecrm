@@ -41,6 +41,7 @@ import {
   Warning,
 } from "@/lib/ui/icons";
 import { lerEstadoDoCanal } from "@/lib/channels/estado";
+import { ehResidualSupersedida } from "@/lib/channels/sessoes-residuais";
 
 type Variant = "success" | "warning" | "error" | "neutral";
 
@@ -391,6 +392,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
             // não acontece. O canal oficial não passa pelo transporte e continua
             // podendo ser excluído.
             const vivaNoTransporte = dependeDoTransporte(c);
+            const residual = ehResidualSupersedida(c, list);
             const podeExcluir = wahaConfigured || !vivaNoTransporte;
             return (
               <Card key={c.id} className="flex flex-col gap-3 p-4">
@@ -439,7 +441,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                       Trazer contatos do aparelho
                     </Button>
                   )}
-                  {vivaNoTransporte && (
+                  {vivaNoTransporte && !residual && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -453,6 +455,12 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                       )}
                       Reconectar
                     </Button>
+                  )}
+                  {residual && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Sessão antiga sem número. A conexão em uso é outra — não
+                      escaneie QR aqui.
+                    </p>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setAntiBanId(c.id)}>
                     <ShieldCheck size={14} aria-hidden />

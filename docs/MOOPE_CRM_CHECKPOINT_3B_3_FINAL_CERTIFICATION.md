@@ -12,7 +12,7 @@
 
 A instalação fresca **funciona** de ponta a ponta no ambiente para o qual o spec foi desenhado.
 
-O WhatsApp real **não** chega ao nível 4 nesta sessão: não houve dispositivo/número de QA para escanear o QR.
+O WhatsApp real tem **inbound 1 real** (`Teste MOOPE MOOPE-WA-3B3-215952`). O **nível 4 não fechou**: outbound Inbox e inbound 2 **ausentes** no banco. Token `MOOPE-WA-3B3-215952`. Detalhe: `docs/MOOPE_CRM_S1_CERT_WA_NIVEL_4_RESULTADO.md`.
 
 | Pergunta | Resposta |
 |---|---|
@@ -20,7 +20,7 @@ O WhatsApp real **não** chega ao nível 4 nesta sessão: não houve dispositivo
 | INSTALAÇÃO FRESCA FUNCIONA END-TO-END | **SIM** |
 | **MOOPE CRM CERTIFICADO PARA PILOTO COM CLIENTE REAL** | **NÃO** |
 
-S1-CERT-VPS **fechado**. S1-CERT-WA **aberto** nos níveis 3 e 4 (pareamento + inbound/outbound reais).
+S1-CERT-VPS **fechado**. S1-CERT-WA **aberto só no nível 4** (outbound Inbox + inbound 2 + takeover).
 
 Níveis WhatsApp medidos:
 
@@ -28,8 +28,8 @@ Níveis WhatsApp medidos:
 |---|---|
 | 1 — WAHA responde | **SIM** (`GET /ping` 200) |
 | 2 — sessão + QR com conteúdo decodificável | **SIM** (HTTP 200, `image/png`, `naturalWidth=292`, jsQR `decoded=true`) |
-| 3 — telefone QA escaneia → WORKING/CONNECTED | **NÃO** — sem dispositivo nesta sessão |
-| 4 — inbound externo + outbound humano no telefone | **NÃO** — depende do 3 |
+| 3 — telefone QA escaneia → WORKING/CONNECTED | **SIM** — `org_62d52837_055ec6` WORKING, pushName Moope Tecnologia |
+| 4 — inbound externo + outbound humano no telefone | **NÃO** — inbound 1 SIM; outbound Inbox e inbound 2 ausentes |
 
 O quadrado branco da 3B.2 **não é CSS**. Em sessão WAHA `FAILED`, o proxy devolve **422 com body vazio**; o `<img class="… bg-white">` continua visível. Em sessão fresca `SCAN_QR_CODE`, o mesmo `<img>` carrega PNG real.
 
@@ -275,59 +275,59 @@ Payload completo **não** foi gravado. Sessão de pareamento **apagada** depois 
 
 ## 15. Dispositivo QA
 
-**NÃO.** Nenhum telefone/número WhatsApp de QA desta sessão. Sem `adb`. Sem acesso físico ou lógico a aparelho.
+**SIM** (nível 3). O operador escaneou depois da 3B.3 inicial. Sessão viva: `org_62d52837_055ec6`. Número só pelo sufixo `…9343`. Detalhe em `docs/MOOPE_CRM_CHECKPOINT_3B_3_WHATSAPP_REAL_RESULTADO.md`.
 
-Conforme o briefing: a certificação do S1-CERT-WA **parou** aqui. Verde não foi inventado.
-
-**WHATSAPP REAL CONECTADO: NÃO**
+**WHATSAPP REAL CONECTADO: SIM** (pareado). **WHATSAPP REAL FUNCIONA END-TO-END: NÃO** (inbound 1 real sim; outbound Inbox e inbound 2 ausentes).
 
 ---
 
 ## 16. Sessão conectada
 
-**NÃO.** Estado observado: `SCAN_QR_CODE`. Nunca `WORKING` / `CONNECTED`. Persistência após refresh e anti-duplicata pós-scan **não** medidos (dependem do nível 3).
+**SIM.** WAHA `GET /api/sessions/org_62d52837_055ec6` → `WORKING`. Residual `org_62d52837` hoje em **SCAN_QR_CODE** (era FAILED; restart-all do Docker). Não escanear. Não há duas WORKING.
 
 ---
 
 ## 17. Inbound externo
 
-**NÃO.** Mensagem “Teste piloto MOOPE 3B.3” não foi enviada — sem número conectado.
+**SIM** para `Teste MOOPE MOOPE-WA-3B3-215952` (LID real, `f1a23450` @ 01:03:07Z). A `Teste final MOOPE CRM` simulada (`e78831e0`) **não** conta.
+
+`Resposta MOOPE MOOPE-WA-3B3-215952` e `Depois humano MOOPE-WA-3B3-215952`: **0** rows.
 
 ---
 
 ## 18. Inbox
 
-Inbound real **não** aparece. A jornada J1.9 chegou no `/app/inbox` vazio após onboarding (esperado sem canal pareado).
+**SIM** para o inbound 1: conversa `65dc093e`, preview = a frase do token. Sem screenshot de UI.
 
 ---
 
 ## 19. Lead / contact / conversation
 
-**NÃO MEDIDO** no canal real (não houve mensagem). O wizard Simple Mode criou a organização comercial sem publicar agente (J1.7).
+Do inbound 1 real: contact `1212b06b` (`Suporte MOOPE`), conversa `65dc093e`, org `62d52837`. 1 contact / 1 conversation / 1 message. Sem tabela `leads`.
 
 ---
 
 ## 20. Outbound humano
 
-**NÃO.** “Recebido pelo MOOPE CRM.” não foi enviado.
+**NÃO.** `Resposta MOOPE MOOPE-WA-3B3-215952` ausente. `sent_via=user` no isolado = 0.
 
 ---
 
 ## 21. Recebimento no telefone
 
-**NÃO.**
+**NÃO MEDIDO.** Sem outbound persistido e sem confirmação no contexto.
 
 ---
 
 ## 22. Duplicação
 
-**NÃO MEDIDO** — sem inbound/outbound reais. Sem prova de 1:1.
+Inbound 1: **1:1** (1 webhook, 1 message, 1 external_id). Outbound e inbound 2: **não medido** (ações ausentes).
 
 ---
 
 ## 23. Takeover smoke
 
-**NÃO EXECUTADO.** O briefing autorizava só com canal vivo. Follow-up no telefone também **não** rodou (não é blocker; 3B.1 já certificou o engine sem agente).
+**NÃO.** Conversa do inbound 1 sem `assignee_kind`, sem `bot_silenced_until`. Humano não assumiu pelo Inbox. `sent_via=ai` após WORKING = 0 (não substitui takeover).
 
 ---
 
@@ -336,7 +336,8 @@ Inbound real **não** aparece. A jornada J1.9 chegou no `/app/inbox` vazio após
 | Comando | Resultado |
 |---|---|
 | `pnpm exec playwright test tests/e2e/vps-fresh-onboarding.spec.ts --workers=1` | **12 passed (40.1s)** |
-| Smoke WhatsApp real níveis 3–4 | **não executado** (sem dispositivo) |
+| Smoke WhatsApp real nível 3 | **SIM** (WORKING) |
+| Smoke WhatsApp real nível 4 | **PARCIAL** — inbound 1 persistiu; outbound + inbound 2 ausentes |
 | Teste permanente do QR | J1.5 reforçado (HTTP + MIME + `naturalWidth`/`naturalHeight`) |
 
 ---
@@ -425,7 +426,7 @@ Depois do commit desta etapa, o esperado é:
 
 ## 34. Riscos restantes
 
-1. **S1-CERT-WA níveis 3–4** — sem telefone QA não há piloto WhatsApp. Precisa de número de teste, scan, inbound de um segundo número, outbound pelo Inbox e checagem no aparelho.
+1. **S1-CERT-WA nível 4** — WORKING existe. As três frases do smoke não estão no banco como telefone + Inbox (`sent_via=user`). A inbound simulada não conta.
 2. **BUG-3B3-WA-01 (S2)** — sessão FAILED ainda pinta quadrado branco; um operador que reabre o wizard em cima de sessão morta vê o mesmo sintoma da 3B.2.
 3. S2/S3 da 3B.2 (Editar card, mobile, copy Locação, overlay lost).
 4. Stack isolado em `/tmp/deskcomm-vps-fresh-3b3` continua no Docker local até `npx supabase stop` naquele diretório. Não é o banco do operador.
@@ -444,27 +445,51 @@ Depois do commit desta etapa, o esperado é:
 | SESSÃO WAHA FOI CRIADA | **SIM** | `org_62d52837` em `SCAN_QR_CODE` |
 | QR POSSUI CONTEÚDO REAL | **SIM** | HTTP 200, `image/png`, 292×292, 5323 bytes no WAHA |
 | QR É ESCANEÁVEL | **SIM** | jsQR `decoded=true` (`https://wa.me/se…`) |
-| DISPOSITIVO QA CONECTOU | **NÃO** | sem telefone nesta sessão |
-| WHATSAPP FICOU CONNECTED/WORKING | **NÃO** | parou em `SCAN_QR_CODE` |
-| MENSAGEM EXTERNA ENTROU | **NÃO** | não enviada |
-| MENSAGEM APARECEU NO INBOX | **NÃO** | não havia inbound |
-| CONTATO/CONVERSA FORAM CRIADOS CORRETAMENTE | **NÃO** | não medido no canal real |
-| RESPOSTA HUMANA SAIU DO INBOX | **NÃO** | não enviada |
-| RESPOSTA CHEGOU NO TELEFONE | **NÃO** | sem dispositivo |
-| NÃO HOUVE DUPLICAÇÃO | **NÃO** | não medido (sem mensagens) |
-| TAKEOVER CONTINUOU PROTEGIDO | **NÃO** | smoke não executado |
+| DISPOSITIVO QA CONECTOU | **SIM** | sessão `org_62d52837_055ec6`, pushName Moope Tecnologia |
+| WHATSAPP FICOU CONNECTED/WORKING | **SIM** | WAHA status `WORKING` |
+| MENSAGEM EXTERNA ENTROU | **SIM** | inbound 1 `f1a23450` @ 01:03:07Z (LID real) |
+| MENSAGEM APARECEU NO INBOX | **SIM** | preview conv `65dc093e` |
+| CONTATO/CONVERSA FORAM CRIADOS CORRETAMENTE | **SIM** | contact `1212b06b` / conv `65dc093e` |
+| RESPOSTA HUMANA SAIU DO INBOX | **NÃO** | 0 `Resposta MOOPE…`; 0 `sent_via=user` |
+| RESPOSTA CHEGOU NO TELEFONE | **NÃO MEDIDO** | sem outbound; sem confirmação explícita |
+| NÃO HOUVE DUPLICAÇÃO | **PARCIAL** | inbound 1 = 1:1; outbound/inbound 2 ausentes |
+| TAKEOVER CONTINUOU PROTEGIDO | **NÃO** | assignee/silence NULL |
 | NENHUM S0 ABERTO | **SIM** | nenhum S0 nesta etapa |
-| NENHUM S1 DE CERTIFICAÇÃO ABERTO | **NÃO** | S1-CERT-WA níveis 3–4 |
+| NENHUM S1 DE CERTIFICAÇÃO ABERTO | **NÃO** | S1-CERT-WA nível 4 |
 
 ---
 
+## Smoke real final
+
+Medição 2026-09-09 ~13:22 UTC. Detalhe: `docs/MOOPE_CRM_S1_CERT_WA_NIVEL_4_RESULTADO.md`.
+
+| Prova | SIM/NÃO |
+|---|---|
+| Inbound real 1 | **SIM** |
+| Webhook real | **SIM** |
+| Persistência | **SIM** |
+| Inbox | **SIM** |
+| Outbound humano | **NÃO** |
+| sent_via=user | **NÃO** |
+| Provider aceitou | **NÃO** |
+| Telefone recebeu | **NÃO MEDIDO** |
+| Inbound real 2 | **NÃO** |
+| Mesma conversa | **NÃO** |
+| Takeover | **NÃO** |
+| IA não respondeu | **SIM** |
+| Sem duplicação | **PARCIAL** |
+| Sessão final WORKING | **SIM** |
+| S1-CERT-WA nível 4 fechado | **NÃO** |
+
 # Veredito
+
+**WHATSAPP REAL FUNCIONA END-TO-END: NÃO**
 
 **MOOPE CRM CERTIFICADO PARA PILOTO COM CLIENTE REAL: NÃO**
 
 S0/S1 restantes:
 
-1. **S1-CERT-WA** — falta dispositivo QA + sessão WORKING/CONNECTED + 1 inbound externo visível no Inbox + 1 outbound humano chegando no telefone (e, com isso, duplicação e takeover no canal real).
+1. **S1-CERT-WA (nível 4)** — outbound Inbox `Resposta MOOPE MOOPE-WA-3B3-215952` (`sent_via=user`) na conv `65dc093e`; inbound 2 `Depois humano MOOPE-WA-3B3-215952`; takeover; confirmação explícita do telefone. Inbound 1 já está comprovado.
 
 S1-CERT-VPS está **fechado**.
 
@@ -473,3 +498,52 @@ S1-CERT-VPS está **fechado**.
 # Stop
 
 Sem 3C. Sem RAG. Sem feature nova. Sem push. Esperar revisão final.
+
+---
+
+## Adendo 2026-09-09 ~22:43 UTC — tentativa de fecho nível 4
+
+Não apaga o recorte de 13:22Z. Evidência nova no isolado:
+
+| Prova | SIM/NÃO |
+|---|---|
+| Inbound real 1 | **SIM** `f1a23450` |
+| Outbound humano | **SIM** `a9593549` `sent_via=user` |
+| Inbound real 2 | **SIM** `ead997af` webhook `3dcba575` |
+| Mesma conversa / contact | **SIM** `65dc093e` / `1212b06b` |
+| Takeover após inbound 2 | **SIM** `user` + `infinity` |
+| IA / automação | **SIM** (zero envio) |
+| Sem duplicação | **SIM** 1:1 nas três frases |
+| Sessão WORKING | **SIM** `org_62d52837_055ec6` |
+| Telefone recebeu | **NÃO MEDIDO** |
+| S1-CERT-WA nível 4 | **NÃO** |
+
+**WHATSAPP REAL FUNCIONA END-TO-END: NÃO** (falta confirmação explícita do telefone)
+
+**PRONTIDÃO OPERACIONAL WAHA PARA PILOTO: NÃO** (residual FAILED; banner/QR; CORE sem pin)
+
+Detalhe: `docs/MOOPE_CRM_S1_CERT_WA_FECHAMENTO_FINAL.md`.
+
+---
+
+## Adendo 2026-09-10 ~00:35 UTC — fecho funcional + prontidão
+
+Não apaga os recortes de 13:22Z nem de ~22:43 UTC (telefone ainda **NÃO MEDIDO** naquela hora).
+
+O operador confirmou visualmente no WhatsApp externo:
+
+`Resposta Inbox MOOPE-INBOX-S1-193014`
+
+**TELEFONE EXTERNO RECEBEU: SIM**
+
+**S1-CERT-WA NÍVEL 4: SIM**
+
+**WHATSAPP REAL FUNCIONA END-TO-END: SIM**
+
+**CERTIFICAÇÃO FUNCIONAL E2E: SIM**
+
+A prontidão operacional (residual não domina status; QR protegido; pin de produção documentado) está em `docs/MOOPE_CRM_CHECKPOINT_3B_3_WAHA_OPERATIONAL_READINESS_RESULTADO.md`.
+
+**PRONTIDÃO OPERACIONAL WAHA PARA PILOTO: SIM**
+
+**MOOPE CRM 3B.3 PODE SER ENCERRADO: SIM**

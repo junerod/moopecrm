@@ -114,6 +114,20 @@ describe("packaging — o artefato que o cliente instala", () => {
     ).toEqual([]);
   });
 
+  it("WAHA de produção nasce pinado via WAHA_IMAGE, nunca :noweb", () => {
+    // :noweb é tag móvel do CORE local. Produção já declara default versionado
+    // em ${WAHA_IMAGE:-…}. Este teste não inventa o número — só impede o
+    // default de voltar para tag móvel sem versão.
+    const bloco = servicos.get("waha");
+    expect(bloco, "serviço waha sumiu do compose de produção").toBeDefined();
+    const imagem = bloco!.match(/^\s{4}image:\s*(\S+)/m)?.[1] ?? "";
+    const padrao = imagem.replace(/^\$\{[A-Z_]+:-(.+)\}$/, "$1");
+    expect(imagem, "produção precisa aceitar WAHA_IMAGE").toMatch(/\$\{WAHA_IMAGE:-/);
+    expect(padrao, "default de produção voltou para tag móvel noweb").not.toMatch(/:noweb$/);
+    expect(padrao.split(":").pop(), "default sem tag = :latest").not.toBe("latest");
+    expect(padrao, "default sem versão").toMatch(/:/);
+  });
+
   it("toda imagem upstream está pinada — nunca :latest nem tag implícita", () => {
     const soltas: string[] = [];
 

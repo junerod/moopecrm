@@ -173,6 +173,57 @@ describe("Reconectar não é oferecido a quem não vive no transporte", () => {
 
     expect(screen.getByRole("button", { name: /Reconectar/ })).toBeEnabled();
   });
+
+  it("residual sem telefone não oferece Reconectar quando já há WORKING", () => {
+    listagem.data = [
+      canal({ id: "viva", display_name: "Vendas", status: "WORKING", phone_number: "5511999" }),
+      canal({
+        id: "lixo",
+        waha_session_name: "org_62d52837",
+        display_name: null,
+        phone_number: null,
+        status: "FAILED",
+      }),
+    ];
+
+    render(wrap(<ConnectionsClient wahaConfigured />));
+
+    expect(screen.getAllByRole("button", { name: /Reconectar/ })).toHaveLength(1);
+    expect(screen.getByText(/Sessão antiga sem número/)).toBeInTheDocument();
+    expect(screen.queryByText(/Escanear o QR/)).not.toBeInTheDocument();
+  });
+
+  it("bolinha fica verde com WORKING + residual FAILED", () => {
+    listagem.data = [
+      canal({ id: "viva", status: "WORKING", phone_number: "5511999" }),
+      canal({
+        id: "lixo",
+        display_name: null,
+        phone_number: null,
+        status: "FAILED",
+      }),
+    ];
+
+    render(wrap(<ConnectionHealthDot />));
+
+    expect(screen.getByLabelText("Todas as conexões ativas")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Uma conexão caiu")).not.toBeInTheDocument();
+  });
+
+  it("FAILED sozinha (sem WORKING) continua vermelha", () => {
+    listagem.data = [
+      canal({
+        id: "unica",
+        display_name: null,
+        phone_number: null,
+        status: "FAILED",
+      }),
+    ];
+
+    render(wrap(<ConnectionHealthDot />));
+
+    expect(screen.getByLabelText("Uma conexão caiu")).toBeInTheDocument();
+  });
 });
 
 describe("diálogo de exclusão diz a verdade antes do clique", () => {

@@ -50,14 +50,15 @@ export function ConexaoCaidaBanner({ caidas }: { caidas: ConexaoCaida[] }) {
             <>
               WhatsApp <strong className="font-semibold">{uma.apelido}</strong> está
               desconectado
+              {" — nenhuma mensagem entra nem sai por esta conexão."}
             </>
           ) : (
             <>
               <strong className="font-semibold">{caidas.length} conexões</strong> de WhatsApp
               estão desconectadas
+              {" — nenhuma mensagem entra nem sai por elas."}
             </>
           )}
-          {" — nenhuma mensagem entra nem sai."}
         </span>
       </div>
       <Link

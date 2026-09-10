@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
+import { ehResidualSupersedida } from "@/lib/channels/sessoes-residuais";
 
 export interface ChannelSession {
   id: string;
@@ -71,8 +72,11 @@ export function useChannelSessions(opts?: { refetchInterval?: number; enabled?: 
 }
 
 /**
- * Saúde agregada: vermelho vence (um número caído é o que o usuário precisa
- * ver na hora), depois amarelo (conectando), senão verde (tudo WORKING).
+ * Saúde agregada da organização.
+ *
+ * Residual sem telefone não entra: vermelho só vence quando o canal caído
+ * é um número de verdade (tem telefone) ou quando não há WORKING nenhuma.
+ * Depois amarelo (conectando), senão verde.
  *
  * `none` é uma AFIRMAÇÃO ("esta org não tem número"), então só sai de uma
  * listagem que chegou. Quem não conseguiu carregar pede `unknown` — ver
@@ -80,7 +84,14 @@ export function useChannelSessions(opts?: { refetchInterval?: number; enabled?: 
  */
 export function deriveOverallHealth(sessions: ChannelSession[] | undefined): ConnectionHealth {
   if (!sessions || sessions.length === 0) return "none";
-  if (sessions.some((s) => s.status === "FAILED" || s.status === "STOPPED")) return "down";
-  if (sessions.some((s) => s.status === "STARTING" || s.status === "SCAN_QR_CODE")) return "connecting";
+  // Residual sem telefone não decide o estado da organização: se há WORKING,
+  // ela prevalece. Número real caído (com telefone) continua vermelho — é
+  // multi-número, não lixo de pareamento. Ver `lib/channels/sessoes-residuais`.
+  const relevantes = sessions.filter((s) => !ehResidualSupersedida(s, sessions));
+  if (relevantes.length === 0) return "none";
+  if (relevantes.some((s) => s.status === "FAILED" || s.status === "STOPPED")) return "down";
+  if (relevantes.some((s) => s.status === "STARTING" || s.status === "SCAN_QR_CODE")) {
+    return "connecting";
+  }
   return "connected";
 }

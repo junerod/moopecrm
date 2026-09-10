@@ -30,6 +30,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { filtrarCaidasParaFaixa } from "./sessoes-residuais";
+
 /** Único estado em que mensagem entra e sai. Contrato do CRM (uppercase). */
 export const STATUS_SAUDAVEL = "WORKING";
 
@@ -160,7 +162,8 @@ export interface ConexaoCaida {
 }
 
 /**
- * As conexões desta organização que estão fora do ar AGORA.
+ * As conexões desta organização que estão fora do ar AGORA e que a faixa
+ * pode anunciar.
  *
  * Mora aqui, e não na tela, por duas razões que o repo já pagou caro: telas que
  * montam a consulta de `channel_sessions` à mão foram o que deixou três
@@ -171,22 +174,38 @@ export interface ConexaoCaida {
  *
  * Arquivada fica de fora: foi desligada de propósito, e anunciar que uma conexão
  * aposentada está parada é o ruído que ensina a ignorar a faixa.
+ *
+ * Residual sem telefone ao lado de uma WORKING também fica de fora: ela não
+ * é o número em uso, e anunciá-la como "desconectado" + QR era o defeito
+ * medido. A regra está em `filtrarCaidasParaFaixa`.
  */
 export async function listarConexoesCaidas(
   admin: SupabaseClient,
   organizationId: string,
 ): Promise<ConexaoCaida[]> {
+  // Lê TODAS as ativas, não só as caídas: a residual FAILED/SCAN_QR sem
+  // telefone só é residual se existir uma WORKING irmã. Filtrar no SQL
+  // pelas caídas apagava a WORKING e a faixa mentia. A regra mora em
+  // `filtrarCaidasParaFaixa` — uma segunda lista aqui divergiria.
   const { data } = await admin
     .from("channel_sessions")
     .select("id, display_name, phone_number, status")
     .eq("organization_id", organizationId)
-    .is("archived_at", null)
-    .in("status", [...STATUS_QUE_AVISAM]);
+    .is("archived_at", null);
 
-  return (data ?? []).map((s) => ({
-    id: s.id as string,
-    apelido: (s.display_name as string | null) ?? (s.phone_number as string | null) ?? "sem nome",
-    status: (s.status as string | null) ?? "",
+  const visiveis = filtrarCaidasParaFaixa(
+    (data ?? []).map((s) => ({
+      id: s.id as string,
+      status: (s.status as string | null) ?? "",
+      phone_number: (s.phone_number as string | null) ?? null,
+      display_name: (s.display_name as string | null) ?? null,
+    })),
+  );
+
+  return visiveis.map((s) => ({
+    id: s.id,
+    apelido: s.display_name ?? s.phone_number ?? "sem nome",
+    status: s.status,
   }));
 }
 
