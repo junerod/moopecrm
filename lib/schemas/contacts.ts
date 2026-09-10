@@ -9,8 +9,16 @@
  */
 import { z } from "zod";
 
-const PHONE_REGEX = /^\+\d{8,15}$/;
+import { normalizePhoneBR } from "@/lib/webhooks/inbound";
+
 const CPF_DIGITS = /^\d{11}$/;
+
+/** Aceita E.164 ou entrada brasileira ((48) 99999-9999) e devolve E.164. */
+export function telefoneParaE164(raw: string | undefined): string | undefined {
+  if (!raw?.trim()) return undefined;
+  const n = normalizePhoneBR(raw);
+  return n ?? raw.trim();
+}
 
 /**
  * CPF check-digit validator (algoritmo oficial Receita Federal).
@@ -31,14 +39,18 @@ export function isValidCpf(raw: string): boolean {
   return d2 === parseInt(s[10]!, 10);
 }
 
+const phoneField = z
+  .string()
+  .optional()
+  .refine((s) => !s?.trim() || !!normalizePhoneBR(s), {
+    message: "Informe um telefone com DDD, por exemplo (48) 99999-9999",
+  });
+
 export const contactCreateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   display_name: z.string().min(1).max(200).optional(),
   email: z.string().email().optional(),
-  phone_number: z
-    .string()
-    .regex(PHONE_REGEX, "Telefone deve estar em formato E.164 (+5511999998888)")
-    .optional(),
+  phone_number: phoneField,
   cpf: z.string().refine(isValidCpf, "CPF inválido").optional(),
   birthdate: z
     .string()

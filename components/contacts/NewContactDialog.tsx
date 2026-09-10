@@ -48,6 +48,7 @@ export function NewContactDialog({ open, onOpenChange }: Props) {
     if (values.name?.trim()) payload.name = values.name.trim();
     if (values.email?.trim()) payload.email = values.email.trim();
     if (values.phone_number?.trim()) payload.phone_number = values.phone_number.trim();
+    // o schema/handler normalizam (48) 99999-9999 → E.164
     if (values.cpf?.trim()) payload.cpf = values.cpf.trim();
     if (tags.length) payload.tags = tags;
 
@@ -74,7 +75,7 @@ export function NewContactDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Novo contato</DialogTitle>
           <DialogDescription>
-            Preencha pelo menos um identificador (email ou telefone).
+            Preencha pelo menos um identificador (e-mail ou telefone).
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -87,10 +88,11 @@ export function NewContactDialog({ open, onOpenChange }: Props) {
             <Input id="email" type="email" {...form.register("email")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone_number">Telefone (E.164)</Label>
+            <Label htmlFor="phone_number">Telefone</Label>
             <Input
               id="phone_number"
-              placeholder="+5511999998888"
+              inputMode="tel"
+              placeholder="(48) 99999-9999"
               {...form.register("phone_number")}
             />
           </div>

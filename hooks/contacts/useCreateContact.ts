@@ -14,8 +14,8 @@ export function useCreateContact() {
         input,
       ),
     onError: showApiError,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["contacts"] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["contacts"] });
     },
   });
 }

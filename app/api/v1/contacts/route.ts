@@ -10,7 +10,6 @@ import { type NextRequest } from "next/server";
 import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import {
   contactCreateSchema,
   contactListQuerySchema,
@@ -25,14 +24,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
+  // Sem org ativa a lista NÃO pode parecer vazia: isso esconde contato
+  // recém-gravado (Maria Silva no piloto) e o comercial conclui que "não salvou".
+  const authz = await requireRole("viewer", { requestId, resource: "contacts" });
+  if (!authz.ok) return authz.response;
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: authErr,
-  } = await supabase.auth.getUser();
-  if (authErr || !user) {
-    return fail("unauthenticated", "Auth required.", 401, { requestId });
-  }
 
   const url = new URL(req.url);
   const qsParsed = contactListQuerySchema.safeParse({
@@ -51,15 +47,12 @@ export async function GET(req: NextRequest): Promise<Response> {
     });
   }
 
-  const authUser = await loadAuthUser();
-  const orgId = authUser ? (await resolveActiveOrg(authUser))?.orgId : undefined;
-
   try {
     const { contacts, cursor, has_more } = await listContactsHandler(
       supabase,
       {
-        organization_id: orgId ?? "",
-        actor: { type: "user", id: user.id },
+        organization_id: authz.org.orgId,
+        actor: { type: "user", id: authz.user.id },
         requestId,
       },
       qsParsed.data,

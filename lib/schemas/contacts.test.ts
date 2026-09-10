@@ -15,6 +15,7 @@ import {
   contactPatchSchema,
   isValidCpf,
   lgpdAnonymizeSchema,
+  telefoneParaE164,
 } from "./contacts";
 
 describe("isValidCpf", () => {
@@ -52,8 +53,20 @@ describe("contactCreateSchema", () => {
     expect(parsed.source).toBe("manual");
   });
 
-  it("rejects non-E.164 phones", () => {
+  it("aceita telefone brasileiro e normaliza para E.164", () => {
+    const r = contactCreateSchema.safeParse({ phone_number: "(48) 99999-9999" });
+    expect(r.success).toBe(true);
+    expect(telefoneParaE164("(48) 99999-9999")).toBe("+5548999999999");
+  });
+
+  it("aceita 11 dígitos sem máscara como celular BR", () => {
     const r = contactCreateSchema.safeParse({ phone_number: "11999998888" });
+    expect(r.success).toBe(true);
+    expect(telefoneParaE164("11999998888")).toBe("+5511999998888");
+  });
+
+  it("rejects phones that are not a number", () => {
+    const r = contactCreateSchema.safeParse({ phone_number: "ligar depois" });
     expect(r.success).toBe(false);
   });
 

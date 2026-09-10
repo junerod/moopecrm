@@ -103,8 +103,13 @@ export function EditContactDialog({ contact, open, onOpenChange }: Props) {
             <Input id="ec-email" type="email" {...form.register("email")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ec-phone">Telefone (E.164)</Label>
-            <Input id="ec-phone" {...form.register("phone_number")} />
+            <Label htmlFor="ec-phone">Telefone</Label>
+            <Input
+              id="ec-phone"
+              inputMode="tel"
+              placeholder="(48) 99999-9999"
+              {...form.register("phone_number")}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="ec-tags">Tags</Label>

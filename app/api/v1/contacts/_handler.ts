@@ -11,6 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApiError } from "@/lib/api/types";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
+import { trechosDeTelefoneParaBusca } from "@/lib/contacts/busca-telefone";
 import { hashCpf, encryptCpfSql } from "@/lib/contacts/cpf";
 import type { Contact } from "@/lib/types/contacts";
 import type {
@@ -19,7 +20,7 @@ import type {
   ContactListQuery,
   ContactListQueryParams,
 } from "@/lib/schemas";
-import { contactListQuerySchema } from "@/lib/schemas";
+import { contactListQuerySchema, telefoneParaE164 } from "@/lib/schemas";
 import { completarContatosComGemeo } from "@/lib/contacts/completar-com-gemeo";
 import { completarIdentidadeLid } from "@/lib/contacts/completar-identidade-lid";
 import { getWahaClient } from "@/lib/waha/client";
@@ -132,6 +133,11 @@ export async function listContactsHandler(
     ];
     if (digits.length === 11) {
       orParts.push(`cpf_hash.eq.${hashCpf(digits)}`);
+    }
+    // Telefone no banco é E.164 (+55…). Busca com máscara BR
+    // ("(48) 99991-2026") não casa `ilike %99991-2026%`.
+    for (const d of trechosDeTelefoneParaBusca(q.search)) {
+      orParts.push(`phone_number.ilike.%${d}%`);
     }
     query = query.or(orParts.join(","));
   }
@@ -355,12 +361,16 @@ export async function createContactHandler(
     name: input.name ?? null,
     display_name: input.display_name ?? null,
     email: input.email ?? null,
-    phone_number: input.phone_number ?? null,
+    phone_number: telefoneParaE164(input.phone_number) ?? null,
     birthdate: input.birthdate ?? null,
     tags: input.tags ?? [],
     source: input.source,
     source_metadata: input.source_metadata ?? {},
     consent: input.consent ?? {},
+    // Sem isto, a lista padrão (last_activity_at desc, nulls last) enterra
+    // o contato recém-criado — ou o some da primeira página. Cadastro manual
+    // É uma atividade: o comercial acabou de incluir a pessoa.
+    last_activity_at: new Date().toISOString(),
   };
 
   if (input.cpf) {
@@ -462,7 +472,9 @@ export async function patchContactHandler(
   //
   // O banco deriva a coluna sozinho — era só não escrever nela.
   if (input.email !== undefined) patch.email = input.email;
-  if (input.phone_number !== undefined) patch.phone_number = input.phone_number;
+  if (input.phone_number !== undefined) {
+    patch.phone_number = telefoneParaE164(input.phone_number) ?? null;
+  }
   if (input.birthdate !== undefined) patch.birthdate = input.birthdate;
   if (input.tags !== undefined) patch.tags = input.tags;
   if (input.source !== undefined) patch.source = input.source;
