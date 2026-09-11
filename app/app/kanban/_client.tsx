@@ -9,7 +9,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/types";
 import { Archive, CaretDown, CaretUp, Check, PencilSimple, Plus } from "@/lib/ui/icons";
-import { useArquivarFunil, useCriarFunil, useEditarFunil } from "@/hooks/pipelines/usePipelines";
+import {
+  useArquivarFunil,
+  useCriarFunil,
+  useEditarFunil,
+  useGravarFunilDeNovosLeads,
+} from "@/hooks/pipelines/usePipelines";
+import { idEfetivoDeNovosLeads } from "@/lib/leads/funil-de-nascimento";
 
 export interface FunilDaLista {
   id: string;
@@ -54,10 +60,13 @@ function textoDoErro(e: unknown): string {
 export function FunisClient({
   funis: funisDoServidor,
   podeGerenciar,
+  inboundPipelineId: inboundDoServidor = null,
 }: {
   funis: FunilDaLista[];
   /** Espelha o `requireRole("manager")` das rotas — ver o comentário da page. */
   podeGerenciar: boolean;
+  /** Funil configurado para nascimento automático. Ausente = cair no padrão. */
+  inboundPipelineId?: string | null;
 }) {
   /**
    * ⚠️ A LISTA VEM DO SERVIDOR E É ATUALIZADA PELO CORPO DA RESPOSTA.
@@ -71,6 +80,8 @@ export function FunisClient({
    */
   const [funis, setFunis] = useState<FunilDaLista[]>(funisDoServidor);
   const [ultimoDoServidor, setUltimoDoServidor] = useState<FunilDaLista[]>(funisDoServidor);
+  const [inboundPipelineId, setInboundPipelineId] = useState<string | null>(inboundDoServidor);
+  const [ultimoInbound, setUltimoInbound] = useState<string | null>(inboundDoServidor);
   // Ajuste DURANTE o render, não em efeito: é o padrão do React para "a prop
   // mudou, reponha o estado" e não dispara render em cascata (o efeito
   // equivalente dispara — o compilador avisa, e com razão).
@@ -78,17 +89,35 @@ export function FunisClient({
     setUltimoDoServidor(funisDoServidor);
     setFunis(funisDoServidor);
   }
+  if (inboundDoServidor !== ultimoInbound) {
+    setUltimoInbound(inboundDoServidor);
+    setInboundPipelineId(inboundDoServidor);
+  }
 
   const criar = useCriarFunil();
   const editar = useEditarFunil();
   const arquivar = useArquivarFunil();
+  const gravarInbound = useGravarFunilDeNovosLeads();
 
   const [novo, setNovo] = useState<string | null>(null);
   const [renomeando, setRenomeando] = useState<{ id: string; nome: string } | null>(null);
   const [arquivando, setArquivando] = useState<{ id: string; erro: string | null } | null>(null);
   const [erro, setErro] = useState<{ id: string | null; texto: string } | null>(null);
 
-  const ocupado = criar.isPending || editar.isPending || arquivar.isPending;
+  const ocupado = criar.isPending || editar.isPending || arquivar.isPending || gravarInbound.isPending;
+
+  const efetivoDeNovos = idEfetivoDeNovosLeads(funis, inboundPipelineId);
+
+  function gravarFunilDeNovosLeads(id: string) {
+    if (!id || id === efetivoDeNovos) return;
+    setErro(null);
+    gravarInbound.mutate(id, {
+      onSuccess: (r) => {
+        setInboundPipelineId(r.data.inbound_pipeline_id ?? id);
+      },
+      onError: (e) => setErro({ id: null, texto: textoDoErro(e) }),
+    });
+  }
 
   function criarFunil() {
     const nome = (novo ?? "").trim();
@@ -200,6 +229,32 @@ export function FunisClient({
 
       {formularioDeCriacao}
 
+      {podeGerenciar && funis.length > 1 && (
+        <Card className="space-y-2 p-4" data-testid="funil-de-novos-leads">
+          <label htmlFor="funil-de-novos-leads" className="text-sm font-medium">
+            Novos leads entram em
+          </label>
+          <select
+            id="funil-de-novos-leads"
+            className="flex h-9 w-full max-w-md rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+            value={efetivoDeNovos ?? ""}
+            disabled={ocupado}
+            onChange={(e) => gravarFunilDeNovosLeads(e.target.value)}
+            data-testid="funil-de-novos-leads-select"
+          >
+            {funis.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Quando uma nova conversa gerar uma oportunidade automaticamente, ela será criada neste
+            funil.
+          </p>
+        </Card>
+      )}
+
       {erro?.id === null && (
         <p className="text-sm text-destructive" data-testid="erro-geral">
           {erro.texto}
@@ -278,6 +333,11 @@ export function FunisClient({
                         {funil.is_default && (
                           <Badge variant="secondary" className="text-[10px]">
                             Padrão
+                          </Badge>
+                        )}
+                        {funis.length > 1 && efetivoDeNovos === funil.id && (
+                          <Badge variant="outline" className="text-[10px]">
+                            Novos contatos
                           </Badge>
                         )}
                       </span>

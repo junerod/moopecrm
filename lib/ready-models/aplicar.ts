@@ -10,6 +10,7 @@ import { publishFollowupFlowVersion } from "@/lib/followup/publish";
 import { validateFlowForPublish } from "@/lib/followup/validate-publish";
 import type { FlowGraph } from "@/lib/followup/graph-schema";
 import { garantirQuadroComoPadrao } from "@/lib/onboarding/garantir-quadro";
+import { semearInboundSeAusente } from "@/lib/leads/funil-de-nascimento";
 import {
   lerPerfilDoNegocio,
   mesmoPerfilAplicado,
@@ -74,7 +75,7 @@ export async function aplicarReadyModel(
   const followupId = followup?.id ?? null;
 
   const perfil = montarBlocoPerfil(definition.id, definition.version, definition.subtype);
-  await gravarPerfil(admin, orgId, settings, perfil);
+  await gravarPerfil(admin, orgId, settings, perfil, quadro.id);
 
   return {
     ok: true,
@@ -311,12 +312,16 @@ async function gravarPerfil(
   orgId: string,
   settings: Record<string, unknown>,
   perfil: ReturnType<typeof montarBlocoPerfil>,
+  inboundSemente: string,
 ): Promise<void> {
+  // Só grava inbound se o tenant ainda não escolheu. Reaplicar outro modelo
+  // não move leads e não sobrescreve escolha manual (nem a semente anterior).
+  const comInbound = semearInboundSeAusente(settings, inboundSemente);
   const { error } = await admin
     .from("organizations")
     .update({
       settings: {
-        ...settings,
+        ...comInbound,
         [CHAVE_PERFIL]: perfil,
       },
     } as never)

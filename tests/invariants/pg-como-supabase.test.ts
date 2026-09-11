@@ -320,9 +320,31 @@ describe("rpc — argumentos NOMEADOS, como o PostgREST", () => {
   });
 });
 
+describe("o adaptador APAGA com filtro", () => {
+  it("delete sem filtro recusa — não esvazia a tabela", async () => {
+    const tentativa = Promise.resolve(db.from("crm_pipelines").delete() as unknown as Promise<unknown>);
+    await expect(tentativa).rejects.toThrow(/sem filtro/);
+  });
+
+  it("`.eq` no delete restringe — sem isto, reconciliar apagaria o card errado", async () => {
+    const { rows } = await pool.query<{ id: string }>(
+      `insert into crm_pipelines (organization_id, name, slug, is_default, position)
+       values ($1, 'Temporario', 'temporario-delete', false, 99) returning id`,
+      [ORG],
+    );
+    const id = rows[0]!.id;
+    const { error } = await db.from("crm_pipelines").delete().eq("id", id).eq("organization_id", ORG);
+    expect(error).toBeNull();
+    const { rows: ainda } = await pool.query<{ n: string }>(
+      "select count(*) as n from crm_pipelines where id = $1",
+      [id],
+    );
+    expect(ainda[0]!.n).toBe("0");
+  });
+});
+
 describe("o que NÃO está implementado estoura", () => {
   it("método ausente lança em vez de devolver vazio — vazio silencioso é teste verde medindo nada", () => {
-    expect(() => db.from("crm_pipelines").delete()).toThrow(/não está implementado/);
     expect(() => db.from("crm_pipelines").select("id").neq("id", "x")).toThrow(/não está implementado/);
   });
 });

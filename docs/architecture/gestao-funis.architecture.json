@@ -18,7 +18,10 @@
   "nodes": [
     { "id": "perfil", "lane": "humano", "col": 1, "type": "frontend", "label": "/app/settings/perfil", "sublabel": "escolhe o quadro padrão (locadora, SaaS, escritório…)" },
     { "id": "lista", "lane": "humano", "col": 1, "type": "frontend", "label": "/app/kanban (page)", "sublabel": "Server Component · filtra organization_id da org ATIVA" },
-    { "id": "client", "lane": "humano", "col": 2, "type": "frontend", "label": "FunisClient", "sublabel": "criar · renomear · ↑↓ · padrão · arquivar" },
+    { "id": "client", "lane": "humano", "col": 2, "type": "frontend", "label": "FunisClient", "sublabel": "criar · renomear · ↑↓ · padrão · novos leads · arquivar" },
+    { "id": "inbound_api", "lane": "borda", "col": 5, "type": "api", "label": "PATCH /api/v1/settings/crm-inbound", "sublabel": "manager+ · settings.crm.inbound_pipeline_id" },
+    { "id": "inbound_settings", "lane": "dados", "col": 5, "type": "database", "label": "organizations.settings.crm", "sublabel": "inbound_pipeline_id · sem coluna nova" },
+    { "id": "nascimento", "lane": "regra", "col": 4, "type": "service", "label": "funil-de-nascimento.ts", "sublabel": "inbound válido → is_default → recusa" },
     { "id": "hooks", "lane": "humano", "col": 3, "type": "frontend", "label": "usePipelines", "sublabel": "só mutations — a leitura é do servidor" },
     { "id": "board", "lane": "humano", "col": 4, "type": "frontend", "label": "/app/pipelines/[id]", "sublabel": "o quadro do funil escolhido" },
 
@@ -72,7 +75,14 @@
     { "id": "e29", "from": "trigger", "to": "stages", "label": "8 etapas de e-commerce" },
     { "id": "e30", "from": "board", "to": "stages", "label": "as colunas do quadro" },
     { "id": "e31", "from": "perfil", "to": "pipelines", "label": "aplica o pacote; se o padrão tem card, nasce quadro novo" },
-    { "id": "e32", "from": "perfil", "to": "audit", "label": "org.perfil_aplicado" }
+    { "id": "e32", "from": "perfil", "to": "audit", "label": "org.perfil_aplicado" },
+    { "id": "e33", "from": "client", "to": "inbound_api", "label": "Novos leads entram em (só se há 2+ funis)" },
+    { "id": "e34", "from": "inbound_api", "to": "inbound_settings", "label": "merge jsonb · recusa id de outra org / arquivado" },
+    { "id": "e35", "from": "inbound_api", "to": "audit", "label": "crm.inbound_pipeline_changed" },
+    { "id": "e36", "from": "nascimento", "to": "inbound_settings", "label": "lê inbound_pipeline_id" },
+    { "id": "e37", "from": "nascimento", "to": "pipelines", "label": "valida organization_id + não arquivado" },
+    { "id": "e38", "from": "nascimento", "to": "stages", "label": "primeira etapa aberta DO funil escolhido" },
+    { "id": "e39", "from": "perfil", "to": "inbound_settings", "label": "Ready Model semeia só se a chave estiver ausente" }
   ],
   "cards": [
     {

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Kanban } from "@/lib/ui/icons";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { lerInboundPipelineId } from "@/lib/leads/funil-de-nascimento";
 import { createClient } from "@/lib/supabase/server";
 import { FunisClient, type FunilDaLista } from "./_client";
 
@@ -33,15 +34,19 @@ export default async function KanbanPickerPage() {
   if (!activeOrg) redirect("/app");
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("crm_pipelines")
-    .select("id, name, slug, description, position, is_default")
-    .eq("organization_id", activeOrg.orgId)
-    .eq("is_archived", false)
-    .order("position");
+  const [{ data }, { data: orgRow }] = await Promise.all([
+    supabase
+      .from("crm_pipelines")
+      .select("id, name, slug, description, position, is_default")
+      .eq("organization_id", activeOrg.orgId)
+      .eq("is_archived", false)
+      .order("position"),
+    supabase.from("organizations").select("settings").eq("id", activeOrg.orgId).maybeSingle(),
+  ]);
 
   const funis = (data ?? []) as FunilDaLista[];
   const podeGerenciar = ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
+  const inboundPipelineId = lerInboundPipelineId(orgRow?.settings);
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
@@ -57,7 +62,11 @@ export default async function KanbanPickerPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Funis</h1>
       </header>
 
-      <FunisClient funis={funis} podeGerenciar={podeGerenciar} />
+      <FunisClient
+        funis={funis}
+        podeGerenciar={podeGerenciar}
+        inboundPipelineId={inboundPipelineId}
+      />
     </div>
   );
 }

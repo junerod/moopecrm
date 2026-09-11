@@ -44,6 +44,13 @@ const ORG_SEM_FUNIL = "1ead7e00-0000-4000-8000-000000000002";
 const ORG_SO_FECHADAS = "1ead7e00-0000-4000-8000-000000000003";
 /** Org com etapa de GANHO na posição 0 — a armadilha do §6. */
 const ORG_GANHO_PRIMEIRO = "1ead7e00-0000-4000-8000-000000000004";
+/** Default A + inbound B. */
+const ORG_INBOUND = "1ead7e00-0000-4000-8000-000000000005";
+/** Inbound aponta para funil arquivado. */
+const ORG_INBOUND_MORTO = "1ead7e00-0000-4000-8000-000000000006";
+/** Isolamento: settings de A citam pipeline de B. */
+const ORG_ISOLADA_A = "1ead7e00-0000-4000-8000-000000000007";
+const ORG_ISOLADA_B = "1ead7e00-0000-4000-8000-000000000008";
 
 const CONVERSA = "1ead7e00-0000-4000-8000-00000000c001";
 
@@ -52,6 +59,52 @@ async function criarOrg(id: string, slug: string): Promise<void> {
     `insert into organizations (id, slug, legal_name, display_name)
      values ($1, $2, 'Nascimento LTDA', 'Nascimento') on conflict (id) do nothing`,
     [id, slug],
+  );
+}
+
+async function funilPadraoDaOrg(org: string): Promise<string> {
+  const { rows } = await pool.query<{ id: string }>(
+    `select id from crm_pipelines
+      where organization_id = $1 and is_default = true and is_archived = false`,
+    [org],
+  );
+  return rows[0]!.id;
+}
+
+async function criarFunilAberto(
+  org: string,
+  nome: string,
+  slug: string,
+): Promise<{ pipelineId: string; stageId: string }> {
+  const { rows } = await pool.query<{ id: string }>(
+    `insert into crm_pipelines (organization_id, name, slug, is_default, position)
+     values ($1, $2, $3, false, 2000) returning id`,
+    [org, nome, slug],
+  );
+  const pipelineId = rows[0]!.id;
+  const { rows: etapas } = await pool.query<{ id: string; slug: string }>(
+    `insert into crm_stages (organization_id, pipeline_id, name, slug, position, is_won, is_lost) values
+       ($1, $2, 'Novo contato', $3, 0, false, false),
+       ($1, $2, 'Fechamento',   $4, 1, true,  false),
+       ($1, $2, 'Não fechou',   $5, 2, false, true)
+     returning id, slug`,
+    [org, pipelineId, `${slug}-novo`, `${slug}-won`, `${slug}-lost`],
+  );
+  const stageId = etapas.find((e) => e.slug === `${slug}-novo`)!.id;
+  return { pipelineId, stageId };
+}
+
+async function gravarInbound(org: string, pipelineId: string): Promise<void> {
+  await pool.query(
+    `update organizations
+        set settings = jsonb_set(
+          coalesce(settings, '{}'::jsonb),
+          '{crm}',
+          jsonb_build_object('inbound_pipeline_id', to_jsonb($2::text)),
+          true
+        )
+      where id = $1`,
+    [org, pipelineId],
   );
 }
 
@@ -68,6 +121,10 @@ beforeAll(async () => {
   await criarOrg(ORG_SEM_FUNIL, "org-nascimento-sem-funil");
   await criarOrg(ORG_SO_FECHADAS, "org-nascimento-so-fechadas");
   await criarOrg(ORG_GANHO_PRIMEIRO, "org-nascimento-ganho-primeiro");
+  await criarOrg(ORG_INBOUND, "org-nascimento-inbound");
+  await criarOrg(ORG_INBOUND_MORTO, "org-nascimento-inbound-morto");
+  await criarOrg(ORG_ISOLADA_A, "org-nascimento-isolada-a");
+  await criarOrg(ORG_ISOLADA_B, "org-nascimento-isolada-b");
 
   // ORG_SEM_FUNIL: apaga o que o trigger semeou. Um tenant que arquivou ou
   // apagou o funil padrão chega neste estado sem fazer nada de errado.
@@ -96,11 +153,30 @@ beforeAll(async () => {
        ($1, $2, 'Entrada', 'entrada-torta', 2, false, false)`,
     [ORG_GANHO_PRIMEIRO, funilTorto],
   );
+
+  const comercial = await criarFunilAberto(ORG_INBOUND, "Entrada comercial", "entrada-comercial");
+  await gravarInbound(ORG_INBOUND, comercial.pipelineId);
+
+  const morto = await criarFunilAberto(ORG_INBOUND_MORTO, "Arquivado", "arquivado-inbound");
+  await gravarInbound(ORG_INBOUND_MORTO, morto.pipelineId);
+  await pool.query("update crm_pipelines set is_archived = true where id = $1", [morto.pipelineId]);
+
+  const alheio = await funilPadraoDaOrg(ORG_ISOLADA_B);
+  await gravarInbound(ORG_ISOLADA_A, alheio);
 });
 
 afterAll(async () => {
   await pool.query("delete from organizations where id = any($1)", [
-    [ORG_VIVA, ORG_SEM_FUNIL, ORG_SO_FECHADAS, ORG_GANHO_PRIMEIRO],
+    [
+      ORG_VIVA,
+      ORG_SEM_FUNIL,
+      ORG_SO_FECHADAS,
+      ORG_GANHO_PRIMEIRO,
+      ORG_INBOUND,
+      ORG_INBOUND_MORTO,
+      ORG_ISOLADA_A,
+      ORG_ISOLADA_B,
+    ],
   ]);
   await pool.end();
 });
@@ -428,5 +504,102 @@ describe("a etapa de entrada nunca é uma etapa de fechamento", () => {
     expect(rows[0]!.name).toBe("Entrada");
     expect(rows[0]!.is_won).toBe(false);
     expect(rows[0]!.is_lost).toBe(false);
+  });
+});
+
+describe("pipeline de entrada comercial ≠ is_default", () => {
+  it("B. inbound configurado nasce nesse funil, na primeira etapa DELE", async () => {
+    const comercial = await pool.query<{ id: string }>(
+      `select id from crm_pipelines
+        where organization_id = $1 and slug = 'entrada-comercial'`,
+      [ORG_INBOUND],
+    );
+    const contato = await criarContato(ORG_INBOUND, "Entrada Comercial");
+    const r = await garantirLeadDaConversa(db, {
+      organizationId: ORG_INBOUND,
+      contactId: contato,
+      conversationId: CONVERSA,
+      nomeDoContato: "Entrada Comercial",
+    });
+    expect(r.criado, `esperava criar, veio ${JSON.stringify(r)}`).toBe(true);
+    if (!r.criado) return;
+
+    const { rows } = await pool.query<{
+      pipeline_id: string;
+      pipeline_is_default: boolean;
+      stage_name: string;
+      stage_pipeline: string;
+    }>(
+      `select l.pipeline_id, p.is_default as pipeline_is_default, s.name as stage_name,
+              s.pipeline_id as stage_pipeline
+         from crm_leads l
+         join crm_pipelines p on p.id = l.pipeline_id
+         join crm_stages s on s.id = l.stage_id
+        where l.id = $1`,
+      [r.leadId],
+    );
+    expect(rows[0]!.pipeline_id).toBe(comercial.rows[0]!.id);
+    expect(rows[0]!.pipeline_is_default).toBe(false);
+    expect(rows[0]!.stage_name).toBe("Novo contato");
+    expect(rows[0]!.stage_pipeline).toBe(comercial.rows[0]!.id);
+    expect(r.pipelineId).toBe(comercial.rows[0]!.id);
+  });
+
+  it("C. inbound arquivado cai no is_default", async () => {
+    const padrao = await funilPadraoDaOrg(ORG_INBOUND_MORTO);
+    const contato = await criarContato(ORG_INBOUND_MORTO, "Fallback Silva");
+    const r = await garantirLeadDaConversa(db, {
+      organizationId: ORG_INBOUND_MORTO,
+      contactId: contato,
+      conversationId: CONVERSA,
+      nomeDoContato: "Fallback Silva",
+    });
+    expect(r.criado).toBe(true);
+    if (!r.criado) return;
+    expect(r.pipelineId).toBe(padrao);
+  });
+
+  it("D. pipeline de outra org nunca é usado", async () => {
+    const padraoA = await funilPadraoDaOrg(ORG_ISOLADA_A);
+    const alheio = await funilPadraoDaOrg(ORG_ISOLADA_B);
+    const contato = await criarContato(ORG_ISOLADA_A, "Isolado Costa");
+    const r = await garantirLeadDaConversa(db, {
+      organizationId: ORG_ISOLADA_A,
+      contactId: contato,
+      conversationId: CONVERSA,
+      nomeDoContato: "Isolado Costa",
+    });
+    expect(r.criado).toBe(true);
+    if (!r.criado) return;
+    expect(r.pipelineId).toBe(padraoA);
+    expect(r.pipelineId).not.toBe(alheio);
+
+    const { rows } = await pool.query<{ n: string }>(
+      `select count(*) as n from crm_leads
+        where organization_id = $1 and pipeline_id = $2`,
+      [ORG_ISOLADA_A, alheio],
+    );
+    expect(rows[0]!.n).toBe("0");
+  });
+
+  it("E. corrida com inbound configurado não duplica OPEN", async () => {
+    const contato = await criarContato(ORG_INBOUND, "Corrida Inbound");
+    const dados = {
+      organizationId: ORG_INBOUND,
+      contactId: contato,
+      conversationId: CONVERSA,
+      nomeDoContato: "Corrida Inbound",
+    };
+    const [a, b] = await Promise.all([
+      garantirLeadDaConversa(db, dados),
+      garantirLeadDaConversa(db, dados),
+    ]);
+    const criados = [a, b].filter((r) => r.criado);
+    expect(criados.length).toBeLessThanOrEqual(1);
+    const { rows } = await pool.query<{ n: string }>(
+      "select count(*) as n from crm_leads where contact_id = $1 and status = 'open'",
+      [contato],
+    );
+    expect(rows[0]!.n).toBe("1");
   });
 });

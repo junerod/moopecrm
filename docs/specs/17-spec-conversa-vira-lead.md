@@ -62,9 +62,11 @@ mover.
 Nada de "o funil é o Pedidos". O produto é self-host, multi-tenant e o funil é do dono do negócio —
 uma clínica, uma imobiliária e um infoprodutor não têm o mesmo desenho.
 
-**O funil de entrada reusa `crm_pipelines.is_default`**, que já existe, já tem tela e já tem regra de
-exclusividade (`lib/pipelines/pipeline-editing.ts`). Não se cria campo novo para o mesmo conceito
-(DIRC — *Duplicar?* não: já vive aqui).
+**O funil de entrada tem dois degraus.** `organizations.settings.crm.inbound_pipeline_id` é o
+pipeline de entrada comercial (quando válido: mesma org, não arquivado, com etapa aberta).
+`crm_pipelines.is_default` continua sendo o padrão técnico/legado e o **fallback** — org sem a
+chave nova não muda de comportamento. Não se cria coluna `is_entry_pipeline`: o knob mora no
+JSONB que já existe. Nenhum nome de funil ou vertical entra no runtime.
 
 **A etapa de entrada é a de menor `position`** entre as não-arquivadas. Não se cria flag
 `is_entry`: a ordem do funil **já** diz qual é a primeira, e um segundo lugar para a mesma verdade
@@ -81,7 +83,8 @@ mensagem chega → contato (existe) → [LEAD]  ← a peça nova
 ```
 
 **Quando:** primeira mensagem **inbound** de um contato que não tem lead aberto.
-**Onde:** funil `is_default` da organização, etapa de menor `position`.
+**Onde:** funil de `settings.crm.inbound_pipeline_id` se válido; senão `is_default`. Etapa de menor
+`position` **daquele** funil (nunca etapa de outro pipeline).
 **Quem:** o runtime, determinístico — não o modelo (mesma razão do checkpoint imposto na spec 16).
 
 **Não nasce lead** quando: é grupo (`@g.us`), o contato está bloqueado/opt-out, ou já existe lead
@@ -159,7 +162,7 @@ superfície boa e cobrança de completude.
 | 4 | onde apareço na tela? | card no kanban + linha na timeline do contato |
 | 5 | por qual porta? | `/app/kanban` (já registrada) |
 | 6 | anti-morte? | o lead entra no funil ⇒ passa a ser visto pelo Radar e pelo follow-up. **É o anti-morte que hoje não existe: conversa fora do funil não é cobrada por ninguém** |
-| 7 | onde se configura? | funil de entrada (`is_default`, tela de funis) · escopo do agente (aba do Operador) · tradução de etapas (`settings/tenant/pipelines`) |
+| 7 | onde se configura? | funil de novos leads (`settings.crm.inbound_pipeline_id`, tela de Funis; fallback `is_default`) · escopo do agente (aba do Operador) · tradução de etapas (`settings/tenant/pipelines`) |
 | 8 | continuidade IA↔humano? | o lead carrega o contato ⇒ o handoff entrega histórico **e** posição no funil |
 | 9 | laço de retorno? | movimentação do agente que o humano **desfaz** vira sinal — sem isso ele erra igual amanhã (invariante 7) |
 | 10 | mapa atualizado? | `docs/architecture/` ganha a aresta conversa→lead |
@@ -178,7 +181,7 @@ superfície boa e cobrança de completude.
 
 ### O que cada passo virou, na prática
 
-**1.** O lead nasce no funil `is_default`, na primeira etapa aberta, com o contato vinculado — e
+**1.** O lead nasce no funil de entrada comercial (inbound configurado ou `is_default`), na primeira etapa aberta **desse** funil, com o contato vinculado — e
 com atividade na timeline dizendo de onde veio. Achado no caminho: toda organização nasce com um
 funil de **e-commerce** (`Pedidos`, com *Carrinho abandonado*), então numa clínica o lead nasce ali.
 
@@ -203,7 +206,8 @@ IA escolheu — o dado que responde "onde ele mais erra".
 
 ## 8. Não-objetivos
 
-- **Não** criar campo `is_entry_pipeline`: `is_default` já é isso.
+- **Não** criar coluna `is_entry_pipeline`: o inbound comercial é `settings.crm.inbound_pipeline_id`;
+  `is_default` é o fallback. São dois conceitos.
 - **Não** criar flag de primeira etapa: `position` já ordena.
 - **Não** dar ao agente um campo de prosa para "aprender o CRM" (§5).
 - **Não** deixar o agente criar lead sem escopo marcado.

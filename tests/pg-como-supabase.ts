@@ -351,6 +351,51 @@ class AtualizacaoPg<T> implements PromiseLike<RespostaFalsa<unknown>> {
 }
 
 /**
+ * DELETE com filtros. Sem filtro ESTOURA: um `delete()` solto apagaria a tabela.
+ * Nasceu porque `reconciliarNascimentoAberto` apaga o card acidental da corrida
+ * ingest × ingest, e o adaptador que só tinha `naoImplementado("delete")`
+ * fazia o teste de corrida passar só quando um dos dois ganhava o SELECT —
+ * o caminho inbound (mais queries) perdeu e o delete estourou.
+ */
+class ExclusaoPg implements PromiseLike<RespostaFalsa<null>> {
+  private filtros: Array<[string, unknown]> = [];
+
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly tabela: string,
+  ) {}
+
+  eq(coluna: string, valor: unknown): this {
+    this.filtros.push([coluna, valor]);
+    return this;
+  }
+
+  then<R1 = RespostaFalsa<null>, R2 = never>(
+    aoResolver?: ((v: RespostaFalsa<null>) => R1 | PromiseLike<R1>) | null,
+    aoRejeitar?: ((r: unknown) => R2 | PromiseLike<R2>) | null,
+  ): PromiseLike<R1 | R2> {
+    const executar = async (): Promise<RespostaFalsa<null>> => {
+      if (this.filtros.length === 0) {
+        throw new Error("[pg-como-supabase] delete sem filtro — recusado");
+      }
+      const valores: unknown[] = [];
+      const onde = this.filtros.map(([c, v]) => {
+        valores.push(v);
+        return `"${c}" = $${valores.length}`;
+      });
+      const texto = `delete from public."${this.tabela}" where ${onde.join(" and ")}`;
+      try {
+        await this.pool.query(texto, valores);
+        return { data: null, error: null };
+      } catch (e) {
+        return { data: null, error: erroDe(e) };
+      }
+    };
+    return executar().then(aoResolver, aoRejeitar);
+  }
+}
+
+/**
  * `rpc(nome, args)` — chamada de função por argumentos NOMEADOS, como o
  * PostgREST faz. Sem isto, todo caminho que emite evento (`emit_event`) morre no
  * meio do handler sob teste.
@@ -386,7 +431,7 @@ export function pgComoSupabase(pool: pg.Pool): SupabaseClient {
         select: (colunas = "*") => new ConsultaPg(pool, tabela, colunas),
         insert: (linha: Record<string, unknown>) => new InsercaoPg(pool, tabela, linha),
         update: (patch: Record<string, unknown>) => new AtualizacaoPg(pool, tabela, patch),
-        delete: () => naoImplementado("delete"),
+        delete: () => new ExclusaoPg(pool, tabela),
         upsert: () => naoImplementado("upsert"),
       };
     },

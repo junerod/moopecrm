@@ -85,6 +85,22 @@ export const aiModePatchSchema = z.object({
   ai_action_policy: aiActionPolicySchema.optional(),
 });
 
+/**
+ * `organizations.settings.crm` — knobs comerciais do tenant, sem coluna nova.
+ * `inbound_pipeline_id` é o funil onde conversa nova vira oportunidade.
+ * Ausente/null = cair no `is_default` (compatibilidade).
+ */
+export const crmSettingsSchema = z
+  .object({
+    inbound_pipeline_id: z.string().uuid().nullable().optional(),
+  })
+  .passthrough();
+
+export const crmInboundPatchSchema = z.object({
+  inbound_pipeline_id: z.string().uuid().nullable(),
+});
+export type CrmInboundPatch = z.infer<typeof crmInboundPatchSchema>;
+
 /** Semente de `organizations.settings` para INSERT de org nova. */
 export function settingsDeOrganizacaoNova(
   extra: Record<string, unknown> = {},

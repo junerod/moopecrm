@@ -115,6 +115,28 @@ describe("instalador genérico de Ready Model", () => {
     };
     expect(perfil?.settings?.[CHAVE_PERFIL]?.id).toBe("locacao");
     expect(perfil?.settings?.[CHAVE_PERFIL]?.version).toBe("1.0");
+    expect(
+      (perfil?.settings as { crm?: { inbound_pipeline_id?: string } } | undefined)?.crm
+        ?.inbound_pipeline_id,
+    ).toBe("padrao-velho");
+  });
+
+  it("G. escolha manual de inbound não é sobrescrita ao trocar de modelo", async () => {
+    const escolha = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const db = adminDeTeste({
+      perfil: {
+        [CHAVE_PERFIL]: { id: "comercial", version: "1.0", aplicado_em: "2026-01-01T00:00:00.000Z" },
+        crm: { inbound_pipeline_id: escolha },
+      },
+    });
+    const r = await aplicarReadyModel(db as never, "org-1", resolverDefinition("locacao")!, {
+      followup: false,
+    });
+    expect(r.ok && !r.noop).toBe(true);
+    const perfil = db.updates.find((u) => u.tabela === "organizations")?.row as {
+      settings?: { crm?: { inbound_pipeline_id?: string } };
+    };
+    expect(perfil?.settings?.crm?.inbound_pipeline_id).toBe(escolha);
   });
 
   it("B. locacao + maquinas_e_equipamentos grava subtype", async () => {

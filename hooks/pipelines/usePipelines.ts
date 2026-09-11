@@ -71,6 +71,20 @@ export function useEditarFunil() {
   });
 }
 
+export function useGravarFunilDeNovosLeads() {
+  const reler = useReler();
+  return useMutation({
+    mutationFn: (inbound_pipeline_id: string) =>
+      apiClient.patch<{
+        data: {
+          inbound_pipeline_id: string | null;
+          resolved_pipeline_id: string | null;
+        };
+      }>("/api/v1/settings/crm-inbound", { inbound_pipeline_id }),
+    onSettled: reler,
+  });
+}
+
 export function useArquivarFunil() {
   const reler = useReler();
   return useMutation({

@@ -27,17 +27,13 @@
  * vez de confiar numa tool: entrada de funil que depende de o modelo lembrar é
  * entrada que falha justamente no turno atípico.
  *
- * ═══ NADA É FIXO ═══
+ * ═══ DOIS CONCEITOS, NÃO UM ═══
  *
- * O funil de entrada é `crm_pipelines.is_default` — que já existe, já tem tela e
- * já tem regra de exclusividade (`lib/pipelines/pipeline-editing.ts`). A etapa é
- * a de menor `position` entre as não-arquivadas. **Nenhum campo novo**: criar
- * `is_entry_pipeline` ou uma flag de primeira etapa seria um segundo lugar para
- * uma verdade que já existe, e é daí que a divergência nasce.
- *
- * Isto vale para o produto inteiro, não para uma organização: uma clínica, uma
- * imobiliária e um infoprodutor montam funis diferentes, e nenhum nome de funil
- * aparece neste arquivo.
+ * `is_default` é o padrão técnico/legado (Kanban, seed, Ready Model). O funil
+ * onde conversa nova vira oportunidade pode ser OUTRO, e mora em
+ * `organizations.settings.crm.inbound_pipeline_id`. Resolução em
+ * `funil-de-nascimento.ts`: inbound válido → senão `is_default` → senão recusa.
+ * Nenhum nome de funil, vertical ou tenant aparece neste arquivo.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -46,6 +42,7 @@ import { logger } from "@/lib/logger";
 import { ehIdentificadorTecnico, rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 
 import { emitLeadActivity } from "./activity-emitter";
+import { resolverFunilDeNascimento } from "./funil-de-nascimento";
 import { listarLeadsAbertosDoContato } from "./leads-abertos-do-contato";
 import { reconciliarNascimentoAberto } from "./reconciliar-nascimento-aberto";
 
@@ -93,38 +90,16 @@ export interface DadosDoNascimento {
  * configura (spec 17 §7, invariante 6): uma tela que queira dizer "novos
  * contatos entram em X, etapa Y" pergunta aqui, em vez de reimplementar a regra
  * e divergir dela.
+ *
+ * A regra mora em `funil-de-nascimento.ts` — inbound configurado, senão
+ * `is_default`. Esta função só reexporta o resolvedor para não haver dois
+ * caminhos.
  */
 export async function funilDeEntrada(
   db: SupabaseClient,
   organizationId: string,
 ): Promise<{ pipelineId: string; stageId: string } | { erro: MotivoSemLead }> {
-  const { data: funil } = await db
-    .from("crm_pipelines")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .eq("is_default", true)
-    .eq("is_archived", false)
-    .maybeSingle();
-
-  if (!funil) return { erro: "sem_funil_de_entrada" };
-
-  // A PRIMEIRA etapa é a de menor `position` — a ordem do funil já diz qual é.
-  // Etapas de ganho/perda ficam de fora: um lead não nasce fechado, e um funil
-  // mal ordenado não pode fazer alguém entrar como "Perdido".
-  const { data: etapa } = await db
-    .from("crm_stages")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .eq("pipeline_id", funil.id)
-    .eq("is_archived", false)
-    .eq("is_won", false)
-    .eq("is_lost", false)
-    .order("position", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (!etapa) return { erro: "sem_etapa" };
-  return { pipelineId: funil.id as string, stageId: etapa.id as string };
+  return resolverFunilDeNascimento(db, organizationId);
 }
 
 /**
