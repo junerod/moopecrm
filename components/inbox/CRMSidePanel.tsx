@@ -3,11 +3,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { Tag, Receipt, ArrowRight } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -340,78 +338,72 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   }
 
   return (
-    <aside className="flex h-full min-w-0 flex-col gap-4 overflow-x-hidden overflow-y-auto border-l border-border bg-background p-4">
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Contato
-        </h3>
-        <Card className="mt-2 space-y-2 p-3 text-sm">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <div className="font-medium">{displayName}</div>
-            <SeloDaPessoa contact={contact} />
+    <aside className="flex h-full min-w-0 flex-col gap-0 overflow-x-hidden overflow-y-auto border-l border-border bg-background px-4 py-4">
+      <section className="space-y-2 pb-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="text-base font-medium leading-tight">{displayName}</div>
+          <SeloDaPessoa contact={contact} />
+        </div>
+        {contact?.phone_number && (
+          <div className="text-[13px] text-muted-foreground">{contact.phone_number}</div>
+        )}
+        {contactId ? (
+          <CadastrarNomeDoContato contactId={contactId} rotuloAtual={displayName} />
+        ) : null}
+        {contactId ? (
+          <ChipsDePapel
+            contactId={contactId}
+            papel={contact?.papel}
+            contactName={displayName}
+            summary={summary}
+            onAtualizou={recarregar}
+          />
+        ) : null}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((t) => (
+              <Badge key={t} variant="secondary" className="h-4 px-1.5 text-[10px]">
+                {t}
+              </Badge>
+            ))}
           </div>
-          {contact?.phone_number && (
-            <div className="text-xs text-muted-foreground">{contact.phone_number}</div>
-          )}
-          {contactId ? (
-            <div className="pt-1">
-              <CadastrarNomeDoContato contactId={contactId} rotuloAtual={displayName} />
-            </div>
-          ) : null}
-          {contactId ? (
-            <ChipsDePapel
-              contactId={contactId}
-              papel={contact?.papel}
-              contactName={displayName}
-              summary={summary}
-              onAtualizou={recarregar}
-            />
-          ) : null}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {tags.map((t) => (
-                <Badge key={t} variant="secondary" className="h-4 px-1.5 text-[10px]">
-                  {t}
-                </Badge>
-              ))}
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-xs"
-              disabled={!contactId}
-              aria-pressed={tagEditorOpen}
-              onClick={() => setTagEditorOpen((v) => !v)}
-            >
-              <Tag size={12} className="mr-1" weight="regular" aria-hidden /> Tag
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs"
+            disabled={!contactId}
+            aria-pressed={tagEditorOpen}
+            onClick={() => setTagEditorOpen((v) => !v)}
+          >
+            <Tag size={12} className="mr-1" weight="regular" aria-hidden /> Tag
+          </Button>
+          {contactId && (
+            <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+              <Link href={`/app/contacts/${contactId}`}>
+                Ver contato
+                <ArrowRight size={12} className="ml-1" weight="regular" aria-hidden />
+              </Link>
             </Button>
-            {contactId && (
-              <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
-                <Link href={`/app/contacts/${contactId}`}>
-                  Ver contato
-                  <ArrowRight size={12} className="ml-1" weight="regular" aria-hidden />
-                </Link>
-              </Button>
-            )}
-          </div>
-          {tagEditorOpen && contactId && <ContactTagsEditor contactId={contactId} tags={tags} />}
-        </Card>
+          )}
+        </div>
+        {tagEditorOpen && contactId && <ContactTagsEditor contactId={contactId} tags={tags} />}
       </section>
 
+      <div className="border-t border-border" />
+
+      <div className="py-4">
       {papelForaDoFunil(contact?.papel) ? (
         <section
           data-testid={contact?.papel === "ignorado" ? "conversa-ignorada" : "conversa-da-equipe"}
         >
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Negócio
-          </h3>
-          <Card className="mt-2 p-3 text-sm text-muted-foreground">
+          <h3 className="text-[13px] font-medium">Negócio</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
             {contact?.papel === "ignorado"
               ? "Marcados para ignorar. O automático não trata esta conversa como venda."
               : "Conversa da equipe. Não entra no funil comercial."}
-          </Card>
+          </p>
         </section>
       ) : contactId && summary && !erro ? (
         <BlocoNegocio
@@ -425,13 +417,13 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
       ) : contactId && sectionsLoading ? (
         <Skeleton className="h-28 w-full" />
       ) : null}
+      </div>
 
+      <div className="space-y-3 border-t border-border pt-4">
       <AssistenteIa conversationId={conversation.id} onUsarResposta={onUsarResposta} />
 
-      <Separator />
-
-      <details className="text-xs">
-        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <details className="text-sm">
+        <summary className="cursor-pointer text-[13px] font-medium">
           Tags da conversa
         </summary>
         <div className="mt-2">
@@ -443,12 +435,10 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
         </div>
       </details>
 
-      <Separator />
-
-      <section data-testid="inbox-demandas">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Demandas abertas
-        </h3>
+      <details className="text-sm" data-testid="inbox-demandas">
+        <summary className="cursor-pointer text-[13px] font-medium">
+          Demandas
+        </summary>
         {sectionsLoading ? (
           <Skeleton className="mt-2 h-14 w-full" />
         ) : demandas && demandas.length > 0 ? (
@@ -493,9 +483,7 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
             onTentarDeNovo={() => setTentativa((n) => n + 1)}
           />
         )}
-      </section>
-
-      <Separator />
+      </details>
 
       {orders && orders.length > 0 ? (
       <section>
@@ -529,12 +517,10 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
       </section>
       ) : null}
 
-      <Separator />
-
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <details className="text-sm" open={Boolean(activities && activities.length > 0) || undefined}>
+        <summary className="cursor-pointer text-[13px] font-medium">
           Atividade
-        </h3>
+        </summary>
         {sectionsLoading ? (
           <Skeleton className="mt-2 h-14 w-full" />
         ) : activities && activities.length > 0 ? (
@@ -568,7 +554,8 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
         ) : (
           <SemLista vazio="Sem atividade." erro={erro} onTentarDeNovo={() => setTentativa((n) => n + 1)} />
         )}
-      </section>
+      </details>
+      </div>
     </aside>
   );
 }

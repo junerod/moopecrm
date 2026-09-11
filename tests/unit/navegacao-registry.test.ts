@@ -85,12 +85,16 @@ describe("sidebarGroups", () => {
     const hrefs = sidebarGroups(true, null).flatMap((g) => g.items.map((i) => i.href));
     // Conhecimento existe no registro, mas é do hub — não do sidebar.
     expect(hrefs).not.toContain("/app/ai/knowledge/sources");
-    expect(hrefs).toContain("/app/ai/agents");
+    expect(hrefs).not.toContain("/app/ai/agents");
+    expect(hrefs).toContain("/app/inicio");
+    expect(hrefs).toContain("/app/inbox");
   });
 
-  it("promove Funis para o grupo de CRM — o achado que originou esta mudança", () => {
-    const crm = sidebarGroups(true, null).find((g) => g.group.id === "crm");
-    expect(crm?.items.map((i) => i.href)).toContain("/app/settings/tenant/pipelines");
+  it("Funis e Contatos sobem para a operação diária", () => {
+    const operacao = sidebarGroups(true, null).find((g) => g.group.id === "atendimento");
+    expect(operacao?.items.map((i) => i.href)).toEqual(
+      expect.arrayContaining(["/app/inicio", "/app/inbox", "/app/kanban", "/app/contacts"]),
+    );
   });
 
   it("omite o grupo inteiro quando o papel não vê nenhum item dele", () => {
@@ -106,11 +110,8 @@ describe("sidebarGroups", () => {
     // o padrão das outras nove telas do grupo — alcançáveis pelo hub "Ver tudo
     // em IA", que é o desenho existente para tela de configuração.
     const ia = sidebarGroups(true, null).find((g) => g.group.id === "ia");
-    expect(ia?.items.map((i) => i.href)).toEqual([
-      "/app/ai/agents",
-      "/app/ai/followups",
-      "/app/ai/routers",
-    ]);
+    expect(ia?.items.map((i) => i.href)).toEqual([]);
+    expect(ia?.group.hub?.href).toBe("/app/ai");
   });
 });
 

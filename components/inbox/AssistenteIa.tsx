@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { apiClient } from "@/lib/api/client";
 
 export interface SugestaoDoAssistente {
@@ -122,11 +121,14 @@ export function AssistenteIa({ conversationId, onUsarResposta }: Props) {
   const visivel = sugestao && sugestao.status !== "discarded";
 
   return (
-    <section data-testid="assistente-ia">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <details data-testid="assistente-ia" className="group text-sm" open={visivel || undefined}>
+      <summary className="cursor-pointer list-none text-[13px] font-medium text-foreground">
         Assistente IA
-      </h3>
-      <Card className="mt-2 space-y-3 p-3 text-sm">
+        {!visivel ? (
+          <span className="ml-2 font-normal text-muted-foreground">Nenhuma sugestão</span>
+        ) : null}
+      </summary>
+      <div className="mt-2 space-y-3">
         {carregando && !sugestao ? (
           <p className="text-xs text-muted-foreground">Carregando…</p>
         ) : null}
@@ -196,20 +198,17 @@ export function AssistenteIa({ conversationId, onUsarResposta }: Props) {
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Nenhuma sugestão para esta conversa.
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              data-testid="assistente-gerar"
-              disabled={gerando}
-              onClick={() => void gerar(false)}
-            >
-              {gerando ? "Gerando…" : "Gerar sugestão"}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs"
+            data-testid="assistente-gerar"
+            disabled={gerando}
+            onClick={() => void gerar(false)}
+          >
+            {gerando ? "Gerando…" : "Gerar sugestão"}
+          </Button>
         )}
 
         {pedidos.map((p) => (
@@ -232,8 +231,8 @@ export function AssistenteIa({ conversationId, onUsarResposta }: Props) {
             </Button>
           </div>
         ))}
-      </Card>
-    </section>
+      </div>
+    </details>
   );
 }
 

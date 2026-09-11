@@ -56,7 +56,14 @@ import {
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId = "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
+export type NavGroupId =
+  | "atendimento"
+  | "trabalho"
+  | "crm"
+  | "ia"
+  | "canais"
+  | "analise"
+  | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -100,9 +107,10 @@ export interface NavDestination {
  * dava para chegar.
  */
 export const NAV_GROUPS: NavGroup[] = [
-  { id: "atendimento", label: "Atendimento" },
+  { id: "atendimento", label: "Operação" },
+  { id: "trabalho", label: "Trabalho" },
   { id: "crm", label: "CRM" },
-  { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
+  { id: "ia", label: "IA", hub: { href: "/app/ai", label: "IA" } },
   { id: "canais", label: "Canais" },
   { id: "analise", label: "Análise" },
   {
@@ -141,12 +149,10 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/inicio",
     label: "Início",
-    description: "Primeiros passos e o que ainda falta configurar no CRM.",
+    description: "O que precisa da sua atenção hoje — e o que ainda falta configurar.",
     icon: House,
     group: "atendimento",
-    // SEM `sidebar: true`: o item extra estourou a dobra em 900px — medido
-    // pelo e2e `navegacao.spec.ts`. A porta continua no hub Atendimento, no
-    // ⌘K e nos atalhos do próprio /app/inicio.
+    sidebar: true,
   },
   {
     href: "/app/inbox",
@@ -161,7 +167,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Radar",
     description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
     icon: ClockCountdown,
-    group: "atendimento",
+    group: "trabalho",
     sidebar: true,
   },
   {
@@ -175,7 +181,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Agenda",
     description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
     icon: CalendarBlank,
-    group: "atendimento",
+    group: "trabalho",
     sidebar: true,
   },
   {
@@ -186,8 +192,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Respostas rápidas",
     description: "Scripts salvos para responder mais rápido, seus ou da equipe.",
     icon: FileText,
-    group: "atendimento",
-    sidebar: true,
+    group: "organizacao",
+    section: "Sua empresa",
   },
 
   // ---- CRM — o funil ----
@@ -206,7 +212,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Funis",
     description: "Seus funis de venda — clique em um para abrir o quadro de clientes.",
     icon: Kanban,
-    group: "crm",
+    group: "atendimento",
     sidebar: true,
   },
   {
@@ -214,7 +220,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Contatos",
     description: "As pessoas do outro lado da conversa e seu histórico.",
     icon: Users,
-    group: "crm",
+    group: "atendimento",
     sidebar: true,
   },
   {
@@ -253,9 +259,9 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Etapas do funil",
     description: "As colunas de cada funil, o vocabulário do negócio e os motivos de perda.",
     icon: Funnel,
-    group: "crm",
+    group: "organizacao",
+    section: "Sua empresa",
     minRole: "manager",
-    sidebar: true,
   },
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----
@@ -267,7 +273,6 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "ia",
     section: "Montar o agente",
     minRole: "manager",
-    sidebar: true,
   },
   {
     href: "/app/ai/followups",
@@ -280,7 +285,6 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "ia",
     section: "Montar o agente",
     minRole: "manager",
-    sidebar: true,
   },
   {
     href: "/app/ai/routers",
@@ -290,7 +294,6 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "ia",
     section: "Montar o agente",
     minRole: "manager",
-    sidebar: true,
   },
   {
     href: "/app/ai/credentials",
@@ -408,9 +411,9 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     description:
       "Seus números de WhatsApp: por QR ou canal oficial da Meta, com saúde, reconexão e templates.",
     icon: PlugsConnected,
-    group: "canais",
+    group: "organizacao",
+    section: "Canais",
     minRole: "admin",
-    sidebar: true,
     healthDot: true,
   },
   {
@@ -419,18 +422,18 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     description:
       "Chave e eventos para a frota ou o Facejus abrirem o CRM e mandarem cadastro.",
     icon: PuzzlePiece,
-    group: "canais",
+    group: "organizacao",
+    section: "Canais",
     minRole: "admin",
-    sidebar: true,
   },
   {
     href: "/app/webhooks",
     label: "Webhooks",
     description: "Avise outros sistemas quando algo acontecer aqui dentro.",
     icon: WebhooksLogo,
-    group: "canais",
+    group: "organizacao",
+    section: "Canais",
     minRole: "manager",
-    sidebar: true,
   },
 
   // ---- Análise — olhar o sistema funcionando ----
@@ -439,8 +442,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Desempenho",
     description: "Funil e performance por atendente nos últimos 30 dias.",
     icon: ChartBar,
-    group: "analise",
-    sidebar: true,
+    group: "organizacao",
+    section: "Análise",
   },
   {
     // Observabilidade, não configuração: por isso não fica junto dos agentes.
@@ -448,18 +451,18 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Evolução da IA",
     description: "Se o agente está melhorando, onde ele erra e o que falta ensinar.",
     icon: ChartLineUp,
-    group: "analise",
+    group: "organizacao",
+    section: "Análise",
     minRole: "manager",
-    sidebar: true,
   },
   {
     href: "/app/audit",
     label: "Audit Log",
     description: "Quem fez o quê, quando — o histórico que não se apaga.",
     icon: ClockCounterClockwise,
-    group: "analise",
+    group: "organizacao",
+    section: "Análise",
     minRole: "manager",
-    sidebar: true,
   },
 
   // ---- Organização — conta, empresa, acesso ----
@@ -614,7 +617,13 @@ export function sidebarGroups(
     items: NAV_DESTINATIONS.filter(
       (d) => d.group === group.id && d.sidebar && canSee(d, isPlatformAdmin, role),
     ),
-  })).filter((g) => g.items.length > 0);
+  })).filter((g) => {
+    if (g.items.length > 0) return true;
+    // Hub de IA sem itens no menu: o grupo continua, só com a porta do hub.
+    // Organização tem hub no rodapé — não repetir o grupo vazio na trilha.
+    if (g.group.id === GRUPO_NO_RODAPE) return false;
+    return Boolean(g.group.hub);
+  });
 }
 
 /**

@@ -35,6 +35,8 @@ export const DICIONARIO: Traducoes = {
   // português e nada ficava vermelho — `traduzir()` devolve a chave ausente
   // como está. Achado pelo cruzamento novo entre DICIONARIO e NAV_GROUPS.
   Atendimento: { es: "Atención" },
+  Operação: { es: "Operación" },
+  Trabalho: { es: "Trabajo" },
   CRM: { es: "CRM" },
   "Agente de IA": { es: "Agente de IA" },
   Canais: { es: "Canales" },
@@ -63,6 +65,7 @@ export const DICIONARIO: Traducoes = {
   "Meu Negócio": { es: "Mi negocio" },
   Roteadores: { es: "Enrutadores" },
   "Ver tudo em IA": { es: "Ver todo en IA" },
+  "Mais ações": { es: "Más acciones" },
   Conexões: { es: "Conexiones" },
   Webhooks: { es: "Webhooks" },
   Desempenho: { es: "Rendimiento" },

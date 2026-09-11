@@ -146,6 +146,13 @@ describe("listConversationsHandler — predicado", () => {
       chamadas.some((c) => c.metodo === "eq" && c.args[0] === "organization_id" && c.args[1] === "org-1"),
     ).toBe(true);
   });
+
+  it("filtro comercial usa referencedTable — o .or pontilhado o PostgREST recusa (PGRST100)", async () => {
+    const chamadas = await rodar({ papel: "comercial" });
+    const orCall = chamadas.find((c) => c.metodo === "or");
+    expect(orCall?.args[0]).toBe("papel.is.null,papel.eq.lead,papel.eq.cliente");
+    expect(orCall?.args[1]).toEqual({ referencedTable: "contacts" });
+  });
 });
 
 // ---------------------------------------------------------------------------

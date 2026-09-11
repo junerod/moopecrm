@@ -87,7 +87,8 @@ describe("CommandPalette", () => {
     const user = userEvent.setup();
     abrir();
     await user.type(screen.getByRole("combobox"), "conhec");
-    await user.keyboard("{Enter}");
+    // "conhec" também casa a descrição de Assistentes. O destino certo é o rótulo.
+    await user.click(screen.getByRole("option", { name: /^Conhecimento/ }));
     expect(push).toHaveBeenCalledWith("/app/ai/knowledge/sources");
   });
 

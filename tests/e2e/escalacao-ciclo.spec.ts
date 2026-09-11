@@ -228,6 +228,7 @@ test.describe("IA 360 W3 — o agente para, a pessoa continua, o agente retoma s
       page.getByTestId("badge-atendimento-humano"),
       "conversa com o robô calado não pode ter a mesma cara de uma conversa normal",
     ).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: "Mais ações" }).click();
     const botaoDevolver = page.getByTestId("devolver-ao-automatico");
     await expect(
       botaoDevolver,

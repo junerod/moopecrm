@@ -56,17 +56,14 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    expect(titulos).toEqual(["Atendimento", "CRM", "Agente de IA", "Canais", "Análise"]);
+    expect(titulos).toEqual(["Operação", "Trabalho", "IA"]);
   });
 
-  it("leva às Etapas do funil sem passar por Configurações", () => {
+  it("Etapas do funil saem da trilha e ficam no hub de Configurações", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    // O rótulo mudou: "Funis" passou a ser a LISTA (/app/kanban) e esta tela,
-    // que configura as colunas, virou "Etapas do funil". Antes as duas
-    // disputavam o mesmo nome no mesmo grupo do menu.
-    const etapas = screen.getByRole("link", { name: "Etapas do funil" });
-    expect(etapas).toHaveAttribute("href", "/app/settings/tenant/pipelines");
+    expect(screen.queryByRole("link", { name: "Etapas do funil" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
   });
 
   it("e os dois itens de funil não disputam o mesmo nome", () => {
@@ -75,14 +72,11 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
   });
 
-  it("desenterra Integração MOOPE e Audit Log", () => {
+  it("Integração MOOPE e Audit Log não competem com a operação diária", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    // A porta da integração de parceiro é Integração MOOPE. Audit Log só
-    // existia via card em Configurações. Canal oficial não está aqui de
-    // propósito: virou aba de Conexões no PR #105, e Conexões é a porta.
-    expect(screen.getByRole("link", { name: /Integração MOOPE/ })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Audit Log/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Integração MOOPE/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Audit Log/ })).toBeNull();
   });
 
   it("Configurações fica no rodapé, nunca dependendo de scroll", () => {
@@ -104,7 +98,7 @@ describe("Sidebar agrupado", () => {
     const nav = screen.getByRole("navigation", { name: "Navegação principal" });
     expect(nav.contains(ajuda)).toBe(false);
     const links = screen.getAllByRole("link");
-    expect(links.indexOf(ajuda)).toBe(links.indexOf(config) + 1);
+    expect(links.indexOf(ajuda)).toBeGreaterThan(links.indexOf(config));
   });
 
   it("admin da empresa NÃO vê a porta da plataforma — só o dono do servidor", () => {
@@ -129,13 +123,13 @@ describe("Sidebar agrupado", () => {
     render(<Sidebar collapsed={false} />);
     const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
     expect(titulos).not.toContain("Canais");
-    expect(titulos).toContain("Atendimento");
+    expect(titulos).toContain("Operação");
   });
 
   it("oferece o hub dos grupos que têm um", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: /Ver tudo em IA/ })).toHaveAttribute("href", "/app/ai");
+    expect(screen.getByRole("link", { name: /^IA$/ })).toHaveAttribute("href", "/app/ai");
   });
 
   it("colapsado esconde os títulos mas mantém os links", () => {

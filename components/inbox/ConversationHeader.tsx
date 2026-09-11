@@ -5,7 +5,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
-import { Phone, ArrowRight } from "@/lib/ui/icons";
+import { Phone, ArrowRight, DotsThree } from "@/lib/ui/icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useReleaseConversation } from "@/hooks/inbox/useReleaseConversation";
@@ -197,10 +203,6 @@ export function ConversationHeader({ conversation }: Props) {
             size="sm"
             variant="default"
             disabled={claim.isPending}
-            // O rótulo NÃO muda (é contrato: `inbox-header-nao-trava` e o
-            // dicionário de espanhol o citam). O que faltava era a consequência
-            // dita: desde a 0173 assumir também para o atendimento automático, e
-            // um botão que muda duas coisas precisa anunciar as duas.
             title="Você passa a responder esta conversa e o atendimento automático para aqui."
             onClick={() =>
               claim.mutate({
@@ -212,67 +214,8 @@ export function ConversationHeader({ conversation }: Props) {
             {t("Assumir")}
           </Button>
         )}
-        {isMineAssigned && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={release.isPending}
-            onClick={() => release.mutate({ conversation_id: conversation.id })}
-          >
-            {t("Liberar")}
-          </Button>
-        )}
-        {/* O INTERRUPTOR. Um botão, dois rótulos, um slot.
-            Fica ANTES de transferir/fechar porque é a ação que a pessoa procura
-            quando terminou o que tinha para fazer aqui.
-
-            Dois botões lado a lado foi medido e recusado: a barra de ações já
-            estourou a caixa útil de 392px em 1280px uma vez (ver o comentário no
-            topo do JSX), e um botão a mais custa ~85px — o cabeçalho ganharia uma
-            segunda fileira justo na largura mais apertada. Os dois estados são
-            mutuamente exclusivos, então nunca precisam existir juntos.
-
-            O `data-testid` do lado de VOLTA é o mesmo de antes: `escalacao-ciclo`
-            o clica, e rótulo/testid visível é contrato. */}
-        {podeDevolver && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={retomar.isPending}
-            data-testid="devolver-ao-automatico"
-            // O ALCANCE DA VOLTA NÃO É SEMPRE O MESMO, e a tela precisa dizer qual é.
-            //
-            // `devolverAtendimentoAoAgente` limpa `contacts.force_human`, que é do
-            // CLIENTE e não desta conversa: quando foi ela que travou, o clique
-            // religa o automático para TODAS as conversas daquela pessoa. Um botão
-            // que às vezes faz mais do que o nome promete precisa dizer quando.
-            title={
-              motivo === "contato_travado"
-                ? "Religa o atendimento automático para este cliente — vale para todas as conversas dele."
-                : "Devolve esta conversa ao atendimento automático."
-            }
-            onClick={() => retomar.mutate({ conversation_id: conversation.id })}
-          >
-            {retomar.isPending ? "Devolvendo..." : t("Devolver ao automático")}
-          </Button>
-        )}
-        {podePausar && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={pausar.isPending}
-            data-testid="pausar-o-automatico"
-            // `podePausar` já exige dono != null, então este botão NUNCA aparece
-            // sem dono — prometer "você assume" aqui seria prometer o que a rota
-            // não faz: com dono, ela só cala, nunca rouba a conversa de quem a tem.
-            title="O atendimento automático para nesta conversa. O dono não muda."
-            onClick={() => pausar.mutate({ conversation_id: conversation.id })}
-          >
-            {pausar.isPending ? "Pausando..." : t("Pausar o automático")}
-          </Button>
-        )}
         {status !== "closed" && status !== "archived" && (
-          <Button size="sm" variant="outline" onClick={() => setReassignOpen(true)}>
+          <Button size="sm" variant="ghost" onClick={() => setReassignOpen(true)}>
             {t("Transferir")}
           </Button>
         )}
@@ -282,19 +225,67 @@ export function ConversationHeader({ conversation }: Props) {
             snoozeUntil={conversation.snooze_until ?? null}
           />
         )}
-        {status !== "closed" && status !== "archived" && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={close.isPending}
-            onClick={() => {
-              if (confirm("Fechar esta conversa?")) {
-                close.mutate({ conversation_id: conversation.id });
-              }
-            }}
-          >
-            {t("Fechar")}
-          </Button>
+        {(isMineAssigned || podeDevolver || podePausar || (!encerrada && status !== "closed")) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={t("Mais ações")}
+                className="px-2"
+              >
+                <DotsThree size={18} weight="bold" aria-hidden />
+                <span className="sr-only">{t("Mais ações")}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-48">
+              {isMineAssigned && (
+                <DropdownMenuItem
+                  disabled={release.isPending}
+                  onClick={() => release.mutate({ conversation_id: conversation.id })}
+                >
+                  {t("Liberar")}
+                </DropdownMenuItem>
+              )}
+              {podeDevolver && (
+                <DropdownMenuItem
+                  disabled={retomar.isPending}
+                  data-testid="devolver-ao-automatico"
+                  title={
+                    motivo === "contato_travado"
+                      ? "Religa o atendimento automático para este cliente — vale para todas as conversas dele."
+                      : "Devolve esta conversa ao atendimento automático."
+                  }
+                  onClick={() => retomar.mutate({ conversation_id: conversation.id })}
+                >
+                  {retomar.isPending ? "Devolvendo..." : t("Devolver ao automático")}
+                </DropdownMenuItem>
+              )}
+              {podePausar && (
+                <DropdownMenuItem
+                  disabled={pausar.isPending}
+                  data-testid="pausar-o-automatico"
+                  title="O atendimento automático para nesta conversa. O dono não muda."
+                  onClick={() => pausar.mutate({ conversation_id: conversation.id })}
+                >
+                  {pausar.isPending ? "Pausando..." : t("Pausar o automático")}
+                </DropdownMenuItem>
+              )}
+              {status !== "closed" && status !== "archived" && (
+                <DropdownMenuItem
+                  disabled={close.isPending}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    if (confirm("Fechar esta conversa?")) {
+                      close.mutate({ conversation_id: conversation.id });
+                    }
+                  }}
+                >
+                  {t("Fechar")}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {/* `xl:hidden` porque a partir de 1280px o painel lateral de CRM entra
             na tela — e ele já tem um "Ver contato", para o MESMO contato, a um

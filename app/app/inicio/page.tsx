@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AtalhosDaOperacao } from "@/components/negocio/AtalhosDaOperacao";
 import { ChecklistPrimeirosPassos } from "@/components/negocio/ChecklistPrimeirosPassos";
-import { Button } from "@/components/ui/button";
+import { HojeOperacional } from "@/components/negocio/HojeOperacional";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { carregarEstadoDoSetup } from "@/lib/negocio/estado";
 import { createClient } from "@/lib/supabase/server";
@@ -20,8 +18,8 @@ export default async function InicioPage() {
   const completo = estado.checklist.every((i) => i.feito);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <header className="space-y-2">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 p-6">
+      <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Início</h1>
         <p className="text-sm text-muted-foreground">
           {estado.empresa}
@@ -31,16 +29,11 @@ export default async function InicioPage() {
         </p>
       </header>
 
-      <ChecklistPrimeirosPassos itens={estado.checklist} recolhidoInicial={completo} />
+      {!completo ? (
+        <ChecklistPrimeirosPassos itens={estado.checklist} recolhidoInicial />
+      ) : null}
 
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold">Operação diária</h2>
-        <AtalhosDaOperacao />
-      </div>
-
-      <Button asChild variant="outline" className="self-start">
-        <Link href="/app/settings/business">Abrir Meu Negócio</Link>
-      </Button>
+      <HojeOperacional />
     </div>
   );
 }

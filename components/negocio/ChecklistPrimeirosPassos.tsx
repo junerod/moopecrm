@@ -39,25 +39,23 @@ export function ChecklistPrimeirosPassos({
         </span>
         <span className="text-xs text-muted-foreground">{aberto ? "Recolher" : "Mostrar"}</span>
       </button>
-      {aberto ? (
-        <ul className="mt-3 space-y-2">
-          {itens.map((item) => (
-            <li key={item.id}>
-              <Link
-                href={item.href}
-                data-testid={`checklist-${item.id}`}
-                data-feito={item.feito ? "sim" : "nao"}
-                className="flex items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-muted/50"
-              >
-                <span aria-hidden>{item.feito ? "☑" : "☐"}</span>
-                <span className={item.feito ? "text-muted-foreground line-through" : ""}>
-                  {item.label}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <ul hidden={!aberto} className="mt-3 space-y-2">
+        {itens.map((item) => (
+          <li key={item.id}>
+            <Link
+              href={item.href}
+              data-testid={`checklist-${item.id}`}
+              data-feito={item.feito ? "sim" : "nao"}
+              className="flex items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-muted/50"
+            >
+              <span aria-hidden>{item.feito ? "☑" : "☐"}</span>
+              <span className={item.feito ? "text-muted-foreground line-through" : ""}>
+                {item.label}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

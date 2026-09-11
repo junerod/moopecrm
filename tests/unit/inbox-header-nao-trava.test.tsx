@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ConversationHeader } from "@/components/inbox/ConversationHeader";
@@ -48,6 +49,12 @@ vi.mock("@/hooks/inbox/useReleaseConversation", () => ({
 // que parece cobertura.
 vi.mock("@/hooks/inbox/useResumeAiAttendance", () => ({
   useResumeAiAttendance: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+vi.mock("@/hooks/inbox/usePauseAiAttendance", () => ({
+  usePauseAiAttendance: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+vi.mock("@/hooks/ai/useAutomaticoAtivo", () => ({
+  useAutomaticoAtivo: () => ({ data: false }),
 }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: "u-1" }, activeOrg: { orgId: "org-1", role: "manager" } }),
@@ -102,13 +109,16 @@ describe("header do inbox — não trava a largura da tela", () => {
     expect(acoes.className).toContain("min-w-0");
   });
 
-  it("as ações continuam TODAS no header — reorganizar não é esconder", () => {
+  it("a primária fica visível e o destrutivo vai para o overflow", async () => {
     renderHeader();
-    // Se um dia alguém "resolver" o aperto colapsando ações num menu, este caso
-    // reprova. Esconder ação de quem atende é pior que uma segunda linha.
-    for (const rotulo of ["Marcar", "Assumir", "Transferir", "Fechar"]) {
-      expect(screen.getByText(rotulo), `a ação "${rotulo}" sumiu do header`).toBeTruthy();
-    }
+    expect(screen.getByText("Assumir")).toBeTruthy();
+    expect(screen.getByText("Transferir")).toBeTruthy();
+    expect(screen.getByLabelText("Mais ações")).toBeTruthy();
+    await userEvent.click(screen.getByLabelText("Mais ações"));
+    expect(
+      await screen.findByRole("menuitem", { name: "Fechar" }),
+      "Fechar tem de continuar acessível no overflow",
+    ).toBeTruthy();
   });
 
   it('"Ver contato" existe no DOM e só se cala onde há outra porta', () => {

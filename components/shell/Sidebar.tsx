@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, Gear, Question, ShieldCheck } from "@/lib/ui/icons";
+import { CaretDoubleLeft, CaretDoubleRight, Gear, Question, Robot, ShieldCheck, Storefront } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -33,10 +33,10 @@ interface SidebarContentProps {
  */
 function classeDoItemDaTrilha(ativo: boolean): string {
   return cn(
-    "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
+    "relative flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
     ativo
-      ? "bg-accent text-accent-foreground shadow-sm"
-      : "text-white/75 hover:bg-white/10 hover:text-white",
+      ? "font-medium text-white before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-accent"
+      : "text-white/70 hover:bg-white/5 hover:text-white",
   );
 }
 
@@ -64,7 +64,11 @@ export function SidebarContent({
   // 1280x768, ele caía fora da dobra mesmo em telas de 1080px.
   const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE);
   const rodape = NAV_GROUPS.find((g) => g.id === GRUPO_NO_RODAPE)?.hub;
+  const meuNegocio = NAV_DESTINATIONS.find((d) => d.href === "/app/settings/business");
   const ajuda = NAV_DESTINATIONS.find((d) => d.href === "/app/manual");
+  const mostraMeuNegocio = Boolean(
+    meuNegocio && canSee(meuNegocio, user.is_platform_admin, activeOrg?.role ?? null),
+  );
   const mostraAjuda = Boolean(
     ajuda && canSee(ajuda, user.is_platform_admin, activeOrg?.role ?? null),
   );
@@ -147,7 +151,7 @@ export function SidebarContent({
               ) : (
                 <h2
                   id={tituloId}
-                  className="px-3 text-[10px] font-medium uppercase tracking-wider text-accent-300/80"
+                  className="px-3 text-[10px] font-medium uppercase tracking-wider text-white/40"
                 >
                   {t(group.label)}
                 </h2>
@@ -188,7 +192,7 @@ export function SidebarContent({
                         collapsed && "justify-center px-2",
                       )}
                     >
-                      <ArrowRight size={18} aria-hidden />
+                      <Robot size={18} weight={pathname === group.hub.href ? "fill" : "regular"} aria-hidden />
                       {!collapsed && <span className="truncate">{t(group.hub.label)}</span>}
                     </Link>
                   </li>
@@ -199,15 +203,40 @@ export function SidebarContent({
         })}
       </nav>
       <div className="border-t border-white/10 p-2">
+        {mostraMeuNegocio && meuNegocio ? (
+          <Link
+            href={meuNegocio.href}
+            title={collapsed ? t(meuNegocio.label) : undefined}
+            aria-current={pathname.startsWith(meuNegocio.href) ? "page" : undefined}
+            onClick={onNavigate}
+            className={cn(
+              "mb-1",
+              classeDoItemDaTrilha(pathname.startsWith(meuNegocio.href)),
+              collapsed && "justify-center px-2",
+            )}
+          >
+            <Storefront size={18} aria-hidden />
+            {!collapsed && <span className="truncate">{t(meuNegocio.label)}</span>}
+          </Link>
+        ) : null}
         {rodape && (
           <Link
             href={rodape.href}
             title={collapsed ? t(rodape.label) : undefined}
-            aria-current={pathname.startsWith(rodape.href) ? "page" : undefined}
+            aria-current={
+              pathname === rodape.href ||
+              (pathname.startsWith(`${rodape.href}/`) && !pathname.startsWith("/app/settings/business"))
+                ? "page"
+                : undefined
+            }
             onClick={onNavigate}
             className={cn(
               "mb-1",
-              classeDoItemDaTrilha(pathname.startsWith(rodape.href)),
+              classeDoItemDaTrilha(
+                pathname === rodape.href ||
+                  (pathname.startsWith(`${rodape.href}/`) &&
+                    !pathname.startsWith("/app/settings/business")),
+              ),
               collapsed && "justify-center px-2",
             )}
           >
@@ -292,7 +321,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         // `shrink-0` porque item de flex encolhe por padrão, e uma barra de 60
         // espremida para caber é o mesmo defeito por outro caminho.
         "sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r border-accent-900 bg-accent-950 transition-[width] duration-200",
-        collapsed ? "w-16" : "w-60",
+        collapsed ? "w-16" : "w-52",
       )}
     >
       <SidebarContent collapsed={collapsed} />

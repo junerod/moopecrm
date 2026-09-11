@@ -233,6 +233,7 @@ test.describe("Inbox — quem manda nesta conversa", () => {
     // -----------------------------------------------------------------
     // (6) A VOLTA existe e funciona — o interruptor tem os dois lados.
     // -----------------------------------------------------------------
+    await page.getByRole("button", { name: "Mais ações" }).click();
     const voltar = page.getByTestId("devolver-ao-automatico");
     await expect(voltar).toBeVisible();
     await voltar.click();

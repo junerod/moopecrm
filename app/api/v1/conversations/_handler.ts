@@ -123,7 +123,11 @@ export async function listConversationsHandler(
   // Comercial NÃO usa `neq equipe`: em SQL, NULL ≠ equipe é falso, e o
   // contato ainda sem papel sumiria da fila de venda.
   if (q.papel === "comercial") {
-    query = query.or("contacts.papel.is.null,contacts.papel.eq.lead,contacts.papel.eq.cliente");
+    // `referencedTable` é obrigatório neste PostgREST: o `.or("contacts.papel…")`
+    // é parseado como coluna `contacts` e vira 500 (PGRST100) em toda a Inbox.
+    query = query.or("papel.is.null,papel.eq.lead,papel.eq.cliente", {
+      referencedTable: "contacts",
+    });
   } else if (
     q.papel === "equipe" ||
     q.papel === "lead" ||

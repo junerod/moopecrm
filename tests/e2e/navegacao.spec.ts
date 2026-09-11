@@ -88,13 +88,7 @@ test.describe("navegação agrupada", () => {
     // Organização não aparece como título aqui: seu hub (Configurações) vive no
     // rodapé fixo — ver o teste de dobra abaixo.
     const titulos = sidebar(page).getByRole("heading");
-    await expect(titulos).toHaveText([
-      "Atendimento",
-      "CRM",
-      "Agente de IA",
-      "Canais",
-      "Análise",
-    ]);
+    await expect(titulos).toHaveText(["Operação", "Trabalho", "IA"]);
 
     await page.screenshot({
       path: path.join(EVIDENCE, "nav-sidebar-agrupado.png"),
@@ -102,17 +96,12 @@ test.describe("navegação agrupada", () => {
     });
   });
 
-  test("chega nas Etapas do funil pelo CRM, sem passar por Configurações", async ({ page }) => {
+  test("chega nas Etapas do funil pelo hub de Configurações", async ({ page }) => {
     await loginAdmin(page);
 
-    // O caso que originou tudo: o usuário não sabia que esta tela existia.
-    //
-    // ⚠️ O ITEM MUDOU DE NOME, e o nome antigo ("Funis") passou para o VIZINHO —
-    // a lista de funis, em /app/kanban. Um teste que continuasse clicando em
-    // "Funis" seguiria verde medindo a outra tela; por isso a asserção de URL
-    // abaixo é específica (`settings/tenant/pipelines`) e não o antigo
-    // /pipelines/, que casa com as duas.
-    await sidebar(page).getByRole("link", { name: "Etapas do funil" }).click();
+    await page.getByRole("link", { name: "Configurações" }).click();
+    await page.waitForURL(/\/app\/settings$/);
+    await page.getByRole("link", { name: "Etapas do funil" }).click();
     await page.waitForURL(/settings\/tenant\/pipelines/);
     await expect(page.getByRole("heading", { name: "Etapas do funil", level: 1 })).toBeVisible();
   });
@@ -127,7 +116,7 @@ test.describe("navegação agrupada", () => {
   test("chega em Conhecimento, que só existia atrás das abas de IA", async ({ page }) => {
     await loginAdmin(page);
 
-    await sidebar(page).getByRole("link", { name: "Ver tudo em IA" }).click();
+    await sidebar(page).getByRole("link", { name: /^IA$/ }).click();
     await page.waitForURL(/\/app\/ai$/);
 
     // O hub organiza por jornada, não numa grade solta.
@@ -146,10 +135,12 @@ test.describe("navegação agrupada", () => {
    * A porta, portanto, é Conexões — que agora vive no grupo CANAIS do sidebar,
    * e não mais como um card perdido em Configurações.
    */
-  test("chega ao canal oficial pelo grupo Canais, não por Configurações", async ({ page }) => {
+  test("chega ao canal oficial pelo hub de Configurações", async ({ page }) => {
     await loginAdmin(page);
 
-    await sidebar(page).getByRole("link", { name: "Conexões" }).click();
+    await page.getByRole("link", { name: "Configurações" }).click();
+    await page.waitForURL(/\/app\/settings$/);
+    await page.getByRole("link", { name: "Conexões" }).click();
     await page.waitForURL(/\/app\/connections/);
     await expect(page.getByRole("tab", { name: /oficial/i })).toBeVisible();
   });
@@ -260,6 +251,6 @@ test.describe("navegação agrupada", () => {
 
     // CANAIS é todo manager+/admin: o título não pode sobrar sozinho.
     await expect(sidebar(page).getByRole("heading", { name: "Canais" })).toHaveCount(0);
-    await expect(sidebar(page).getByRole("heading", { name: "Atendimento" })).toBeVisible();
+    await expect(sidebar(page).getByRole("heading", { name: "Operação" })).toBeVisible();
   });
 });

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { apiClient } from "@/lib/api/client";
 import type {
@@ -207,10 +206,8 @@ export function BlocoNegocio({
 
   return (
     <section data-testid="inbox-ficha-negocio">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Negócio
-      </h3>
-      <Card className="mt-2 space-y-3 p-3 text-sm">
+      <h3 className="text-[13px] font-medium">Negócio</h3>
+      <div className="mt-2 space-y-3 text-sm">
         {negocio.resolucao === "nenhum" ? (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">Nenhuma oportunidade aberta.</p>
@@ -418,7 +415,7 @@ export function BlocoNegocio({
             </Button>
           </div>
         </details>
-      </Card>
+      </div>
 
       {pipelines_utilizaveis[0] || funilEscolhido ? (
         <NewLeadDialog

@@ -133,8 +133,8 @@ export function ConversationListItem({
       data-conversation-id={conversation.id}
       onClick={() => onSelect(conversation.id)}
       className={cn(
-        "group flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left transition-colors hover:bg-accent/40",
-        isSelected && "bg-accent/60",
+        "group flex w-full items-start gap-2.5 border-b border-border px-2.5 py-2.5 text-left transition-colors hover:bg-muted/50",
+        isSelected && "bg-muted",
       )}
       aria-current={isSelected ? "true" : undefined}
     >
@@ -181,7 +181,7 @@ export function ConversationListItem({
         <div className="flex items-baseline justify-between gap-2">
           <span
             className={cn(
-              "truncate text-sm font-medium",
+              "truncate text-[15px] font-medium",
               c?.is_anonymized && "italic text-muted-foreground",
             )}
           >
