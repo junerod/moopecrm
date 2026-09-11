@@ -77,6 +77,12 @@ export const createLeadSchema = z.object({
     .optional(),
   tags: z.array(z.string()).default([]),
   source: z.string().min(1).default("manual"),
+  /**
+   * Cockpit da Inbox: "esta conversa ainda não tem oportunidade".
+   * Se já houver lead OPEN no contato, devolve o existente em vez de criar
+   * o segundo acidental. "Criar outra oportunidade" NÃO manda este flag.
+   */
+  reuse_open_if_exists: z.boolean().optional(),
 });
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 

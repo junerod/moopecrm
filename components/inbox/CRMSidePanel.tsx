@@ -8,32 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Tag, Receipt, Users, ArrowRight } from "@/lib/ui/icons";
+import { Tag, Receipt, ArrowRight } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
+import type { CrmSummaryData, LeadFicha } from "@/lib/inbox/crm-summary-tipos";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
-import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
-import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { cn } from "@/lib/utils";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { CadastrarNomeDoContato } from "./CadastrarNomeDoContato";
 import { AssistenteIa } from "./AssistenteIa";
+import { BlocoNegocio } from "./BlocoNegocio";
 
 interface Props {
   conversation: ConversationWithContact | null;
   onUsarResposta?: (texto: string) => void;
-}
-
-interface LeadRow {
-  id: string;
-  title: string;
-  status: string;
-  value_cents: number | null;
-  currency: string | null;
-  updated_at: string;
 }
 
 interface OrderRow {
@@ -234,7 +225,8 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   const contact = contatoDoEmbed(conversation?.contacts);
   const contactId = contact?.id ?? null;
 
-  const [leads, setLeads] = useState<LeadRow[] | null>(null);
+  const [leads, setLeads] = useState<LeadFicha[] | null>(null);
+  const [summary, setSummary] = useState<CrmSummaryData | null>(null);
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
   const [activities, setActivities] = useState<ActivityRow[] | null>(null);
   const [demandas, setDemandas] = useState<DemandaRow[] | null>(null);
@@ -249,19 +241,11 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   const [tentativa, setTentativa] = useState(0);
 
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
-  const [leadDialogOpen, setLeadDialogOpen] = useState(false);
-  const defaultPipeline = useDefaultPipeline(leadDialogOpen);
-
-  useEffect(() => {
-    if (leadDialogOpen && defaultPipeline.isError) {
-      toast.error("Nenhum funil configurado nesta organização.");
-      setLeadDialogOpen(false);
-    }
-  }, [leadDialogOpen, defaultPipeline.isError]);
 
   useEffect(() => {
     if (!contactId) {
       setLeads(null);
+      setSummary(null);
       setOrders(null);
       setActivities(null);
       setDemandas(null);
@@ -276,15 +260,11 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
     // (medido: role=anon com gerente logado). Ver o cabeçalho da rota.
     async function load() {
       try {
-        const r = await apiClient.get<{
-          data: {
-            leads: LeadRow[];
-            orders: OrderRow[];
-            activities: ActivityRow[];
-            demandas: DemandaRow[];
-          };
-        }>(`/api/v1/contacts/${contactId}/crm-summary`);
+        const r = await apiClient.get<{ data: CrmSummaryData }>(
+          `/api/v1/contacts/${contactId}/crm-summary`,
+        );
         if (cancelled) return;
+        setSummary(r.data);
         setLeads(r.data.leads);
         setOrders(r.data.orders);
         setActivities(r.data.activities);
@@ -299,6 +279,7 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
         // não conseguiu ler — nunca que não há.
         setErro(true);
         setLeads(null);
+        setSummary(null);
         setOrders(null);
         setActivities(null);
         setDemandas(null);
@@ -356,8 +337,7 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   }
 
   return (
-    <aside className="flex h-full flex-col gap-4 overflow-y-auto border-l border-border bg-background p-4">
-      <AssistenteIa conversationId={conversation.id} onUsarResposta={onUsarResposta} />
+    <aside className="flex h-full min-w-0 flex-col gap-4 overflow-x-hidden overflow-y-auto border-l border-border bg-background p-4">
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Contato
@@ -392,16 +372,6 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
             >
               <Tag size={12} className="mr-1" weight="regular" aria-hidden /> Tag
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-xs"
-              disabled={!contactId || (leadDialogOpen && defaultPipeline.isLoading)}
-              onClick={() => setLeadDialogOpen(true)}
-            >
-              <Users size={12} className="mr-1" weight="regular" aria-hidden />
-              {leadDialogOpen && defaultPipeline.isLoading ? "Carregando…" : "Lead"}
-            </Button>
             {contactId && (
               <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
                 <Link href={`/app/contacts/${contactId}`}>
@@ -415,30 +385,38 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
         </Card>
       </section>
 
-      {contactId && defaultPipeline.data && (
-        <NewLeadDialog
-          open={leadDialogOpen}
-          onOpenChange={setLeadDialogOpen}
-          pipelineId={defaultPipeline.data.pipeline.id}
-          stages={defaultPipeline.data.stages}
+      {contactId && summary && !erro ? (
+        <BlocoNegocio
+          key={`${negocioKey(summary)}-${tentativa}`}
           contactId={contactId}
+          conversationId={conversation.id}
+          contactName={displayName}
+          summary={summary}
+          onAtualizou={recarregar}
         />
-      )}
+      ) : contactId && sectionsLoading ? (
+        <Skeleton className="h-28 w-full" />
+      ) : null}
+
+      <AssistenteIa conversationId={conversation.id} onUsarResposta={onUsarResposta} />
 
       <Separator />
 
-      <ConversationTagsEditor
-        conversationId={conversation.id}
-        orgId={conversation.organization_id}
-        tags={conversation.tags ?? []}
-      />
+      <details className="text-xs">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Tags da conversa
+        </summary>
+        <div className="mt-2">
+          <ConversationTagsEditor
+            conversationId={conversation.id}
+            orgId={conversation.organization_id}
+            tags={conversation.tags ?? []}
+          />
+        </div>
+      </details>
 
       <Separator />
 
-      {/* ANTES dos negócios de propósito (doutrina cap. 5): lead é o negócio,
-          conversa é o canal, demanda é o que precisa acabar. Quem abre esta
-          conversa está atendendo alguém que pediu alguma coisa — a primeira
-          pergunta a responder é o que ainda está pendente, não quanto vale. */}
       <section data-testid="inbox-demandas">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Demandas abertas
@@ -491,35 +469,7 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
 
       <Separator />
 
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Leads recentes
-        </h3>
-        {sectionsLoading ? (
-          <Skeleton className="mt-2 h-14 w-full" />
-        ) : leads && leads.length > 0 ? (
-          <ul className="mt-2 space-y-1.5">
-            {leads.map((l) => (
-              <li
-                key={l.id}
-                className="flex items-center justify-between rounded-md border border-border p-2 text-xs"
-              >
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{l.title}</div>
-                  <div className="text-muted-foreground">
-                    {l.status} · {formatMoney(l.value_cents, l.currency)}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <SemLista vazio="Sem leads." erro={erro} onTentarDeNovo={() => setTentativa((n) => n + 1)} />
-        )}
-      </section>
-
-      <Separator />
-
+      {orders && orders.length > 0 ? (
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Pedidos recentes
@@ -549,6 +499,7 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
           <SemLista vazio="Sem pedidos." erro={erro} onTentarDeNovo={() => setTentativa((n) => n + 1)} />
         )}
       </section>
+      ) : null}
 
       <Separator />
 
@@ -592,4 +543,15 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
       </section>
     </aside>
   );
+}
+
+function negocioKey(summary: CrmSummaryData): string {
+  return [
+    summary.negocio.resolucao,
+    summary.negocio.lead_id ?? "",
+    summary.negocio.leads_abertos.map((l) => `${l.id}:${l.stage?.id ?? ""}:${l.updated_at}`).join(","),
+    summary.proximo_passo_comercial?.demanda_id ?? "",
+    summary.proximo_passo_comercial?.proximo_passo ?? "",
+    summary.proximo_passo_comercial?.proximo_passo_em ?? "",
+  ].join("|");
 }

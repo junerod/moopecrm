@@ -282,6 +282,30 @@ describe("UM lead por DEMANDA, não um por mensagem", () => {
     expect(rows[0]!.n, "um contato, um card").toBe("1");
   });
 
+  it("nascimento concorrente (ingest × ingest) não deixa segundo card acidental", async () => {
+    const contato = await criarContato(ORG_VIVA, "Corrida Silva");
+    const dados = {
+      organizationId: ORG_VIVA,
+      contactId: contato,
+      conversationId: CONVERSA,
+      nomeDoContato: "Corrida Silva",
+    };
+
+    const [a, b] = await Promise.all([
+      garantirLeadDaConversa(db, dados),
+      garantirLeadDaConversa(db, dados),
+    ]);
+
+    const criados = [a, b].filter((r) => r.criado);
+    expect(criados.length, "no máximo um nascimento vence").toBeLessThanOrEqual(1);
+
+    const { rows } = await pool.query<{ n: string }>(
+      "select count(*) as n from crm_leads where contact_id = $1 and status = 'open'",
+      [contato],
+    );
+    expect(rows[0]!.n, "corrida não duplica OPEN").toBe("1");
+  });
+
   it("depois de FECHADO, quem volta a escrever abre demanda nova", async () => {
     const contato = await criarContato(ORG_VIVA, "Voltou Pereira");
     const dados = {

@@ -8,13 +8,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ApiError } from "@/lib/api/types";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
-import { audit } from "@/lib/audit";
+import { audit, isServiceRoleConfigured } from "@/lib/audit";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveOwnerPatch, type OwnerPatch, type OwnerPatchInput } from "@/lib/leads/owner-patch";
 import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
 import { listaLegivel } from "@/lib/leads/activity-vocabulary";
 import { camposAlterados } from "@/lib/leads/campos-alterados";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import { filtrarCustomFieldsDoPipeline } from "@/lib/leads/custom-fields";
+import { listarLeadsAbertosDoContato } from "@/lib/leads/leads-abertos-do-contato";
+import { reconciliarNascimentoAberto } from "@/lib/leads/reconciliar-nascimento-aberto";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 import { ehCorrecaoDeMovimentoDaIa } from "@/lib/leads/correcao-humana";
 
@@ -253,6 +256,18 @@ export async function createLeadHandler(
     );
   }
 
+  // Cockpit: mesma regra do ingest (`garantirLeadDaConversa`). Sem unique
+  // global — N oportunidades legítimas continuam possíveis pelo POST sem flag.
+  if (input.reuse_open_if_exists && input.contact_id) {
+    const jaAbertos = await listarLeadsAbertosDoContato(supabase, {
+      organizationId: ctx.organization_id,
+      contactId: input.contact_id,
+    });
+    if (jaAbertos.length > 0) {
+      return getLeadHandler(supabase, ctx, jaAbertos[0]!.id);
+    }
+  }
+
   // next position_in_stage = MAX + 1000.
   const { data: maxRow, error: maxErr } = await supabase
     .from("crm_leads")
@@ -308,6 +323,18 @@ export async function createLeadHandler(
       ctx.requestId,
       insErr?.message ?? "Falha ao criar lead.",
     );
+  }
+
+  if (input.reuse_open_if_exists && input.contact_id) {
+    const escritor = isServiceRoleConfigured() ? createAdminClient() : supabase;
+    const reconciliado = await reconciliarNascimentoAberto(escritor, {
+      organizationId: ctx.organization_id,
+      contactId: input.contact_id,
+      leadIdCriado: (lead as { id: string }).id,
+    });
+    if (!reconciliado.manteve) {
+      return getLeadHandler(supabase, ctx, reconciliado.leadId);
+    }
   }
 
   const a = actorAuditPayload(ctx.actor);

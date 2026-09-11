@@ -46,6 +46,8 @@ import { logger } from "@/lib/logger";
 import { ehIdentificadorTecnico, rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 
 import { emitLeadActivity } from "./activity-emitter";
+import { listarLeadsAbertosDoContato } from "./leads-abertos-do-contato";
+import { reconciliarNascimentoAberto } from "./reconciliar-nascimento-aberto";
 
 /**
  * O rótulo que aparece no card do funil quando o lead nasceu de um clique em
@@ -152,17 +154,13 @@ export async function garantirLeadDaConversa(
 
   if (contato?.is_blocked === true) return { criado: false, motivo: "contato_bloqueado" };
 
-  // 2 · já existe demanda aberta?
-  const { data: existente } = await db
-    .from("crm_leads")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .eq("contact_id", contactId)
-    .eq("status", "open")
-    .limit(1)
-    .maybeSingle();
-
-  if (existente) return { criado: false, motivo: "ja_existe" };
+  // 2 · já existe demanda aberta? A mesma leitura da ficha e do POST
+  // `reuse_open_if_exists` — um critério, três portas.
+  const abertos = await listarLeadsAbertosDoContato(db, {
+    organizationId,
+    contactId,
+  });
+  if (abertos.length > 0) return { criado: false, motivo: "ja_existe" };
 
   // 3 · onde entra
   const destino = await funilDeEntrada(db, organizationId);
@@ -224,6 +222,17 @@ export async function garantirLeadDaConversa(
 
   if (error || !lead) {
     return { criado: false, motivo: "erro", detalhe: error?.message.slice(0, 120) };
+  }
+
+  // 4b · corrida com o clique "Adicionar ao funil": se outro OPEN mais antigo
+  // apareceu entre o SELECT e o INSERT, este card é o acidental.
+  const reconciliado = await reconciliarNascimentoAberto(db, {
+    organizationId,
+    contactId,
+    leadIdCriado: lead.id as string,
+  });
+  if (!reconciliado.manteve) {
+    return { criado: false, motivo: "ja_existe" };
   }
 
   // 5 · o registro, pelo EMISSOR CANÔNICO — não por insert cru.

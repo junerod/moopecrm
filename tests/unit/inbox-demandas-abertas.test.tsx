@@ -57,17 +57,32 @@ const conversation = {
   contacts: { id: CONTACT, display_name: "Fulana", name: null, phone_number: "5511999", tags: [] },
 } as unknown as React.ComponentProps<typeof CRMSidePanel>["conversation"];
 
+const LEAD_FICHA = {
+  id: "l-1",
+  title: "Negócio existente",
+  status: "open",
+  value_cents: 10_000,
+  currency: "BRL",
+  updated_at: "2026-08-01T00:00:00Z",
+  last_activity_at: null,
+  source: "whatsapp",
+  pipeline: { id: "p-1", name: "Comercial", is_default: true },
+  stage: { id: "s-1", name: "Novo", pipeline_id: "p-1", is_won: false, is_lost: false },
+  owner: { user_id: null, agent_id: null, display_name: null },
+};
+
 const RESPOSTA = {
-  leads: [
+  leads: [LEAD_FICHA],
+  negocio: { resolucao: "unico" as const, lead_id: "l-1", leads_abertos: [LEAD_FICHA] },
+  pipelines_utilizaveis: [
     {
-      id: "l-1",
-      title: "Negócio existente",
-      status: "open",
-      value_cents: 10_000,
-      currency: "BRL",
-      updated_at: "2026-08-01T00:00:00Z",
+      id: "p-1",
+      name: "Comercial",
+      is_default: true,
+      etapas: [{ id: "s-1", name: "Novo", pipeline_id: "p-1", is_won: false, is_lost: false }],
     },
   ],
+  proximo_passo_comercial: { demanda_id: "d-1", proximo_passo: null, proximo_passo_em: null },
   orders: [],
   activities: [],
   demandas: [
@@ -114,6 +129,9 @@ vi.mock("@/hooks/inbox/useConversationTags", () => ({
 }));
 vi.mock("@/hooks/contacts/useUpdateContact", () => ({
   useUpdateContact: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+vi.mock("@/hooks/kanban/useCreateLead", () => ({
+  useCreateLead: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 beforeEach(() => {
@@ -221,14 +239,12 @@ describe("painel do inbox — demandas abertas", () => {
     expect(campo.value).toBe("Ligar amanhã");
   });
 
-  it("a demanda vem ANTES do negócio — a unidade é ela (cap. 5)", async () => {
+  it("o negócio operacional vem ANTES das demandas — a ficha é o cockpit", async () => {
     renderPainel();
 
-    const secao = await screen.findByTestId("inbox-demandas");
-    const leads = screen.getByText("Leads recentes");
-    // `compareDocumentPosition` mede a ordem no documento, não a aparência —
-    // medida por ferramenta, nunca a olho.
-    const posicao = secao.compareDocumentPosition(leads);
+    const negocio = await screen.findByTestId("inbox-ficha-negocio");
+    const demandas = screen.getByTestId("inbox-demandas");
+    const posicao = negocio.compareDocumentPosition(demandas);
     expect(posicao & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

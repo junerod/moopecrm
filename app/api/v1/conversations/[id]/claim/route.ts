@@ -19,6 +19,8 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { invalidarJobsConversacionaisSupabase } from "@/lib/ai/execucao/invalidar-jobs";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
+import { espelharAssumirNoLeadAberto } from "@/lib/leads/espelhar-assumir-no-lead";
+import { logger } from "@/lib/logger";
 import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
@@ -116,6 +118,22 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     actor: { type: "user", id: user.id, role: authz.org.role },
     motivo: "Assumiu o atendimento desta conversa",
   });
+
+  // Dono APARENTE do negócio: só preenche se o lead OPEN único estiver vazio.
+  // Falha aqui NÃO desfaz o claim — comando da conversa e owner do lead são
+  // entidades distintas (Action Policy / takeover continuam neste POST).
+  try {
+    await espelharAssumirNoLeadAberto(supabase, {
+      organizationId: conv.organization_id,
+      contactId: conv.contact_id,
+      userId: user.id,
+    });
+  } catch (err) {
+    logger.warn("claim: espelho do owner do lead falhou; a conversa já foi assumida", {
+      conversation_id: conv.id,
+      detail: err instanceof Error ? err.message.slice(0, 120) : "desconhecido",
+    });
+  }
 
   return ok(conv, { requestId });
 }

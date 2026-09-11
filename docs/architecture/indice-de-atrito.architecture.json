@@ -180,7 +180,7 @@
       "col": 7,
       "type": "frontend",
       "label": "CRMSidePanel (inbox)",
-      "sublabel": "demandas ANTES dos negócios · falha não vira lista vazia"
+      "sublabel": "cockpit: negócio OPEN, etapa e próximo passo na conversa"
     },
     {
       "id": "ponte",

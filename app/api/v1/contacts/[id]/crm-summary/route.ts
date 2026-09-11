@@ -8,57 +8,32 @@
  * consultas saem como **anônimas** — provado lendo o `role` do token: `anon`,
  * com um gerente logado na tela.
  *
- * O efeito era pior que um erro:
- *   crm_leads           → a policy chama fn_can_view_lead, que `anon` não pode
- *                         executar → 401 / 42501
- *   crm_lead_activities → a policy usa fn_user_org_ids, que é PUBLIC → `anon`
- *                         chama, avalia falso → **200 com lista vazia**
- *   orders              → idem
- * Um erro e dois silêncios, e a tela traduzia os três para "Sem leads." — uma
- * afirmação sobre o NEGÓCIO feita em cima de uma falha de permissão.
+ * A correção **não** é dar EXECUTE a `anon`: é trazer a leitura para o
+ * servidor, onde a sessão existe.
  *
- * A correção **não** é dar EXECUTE a `anon`: `fn_can_view_lead` é primitiva de
- * autorização, e a policy a usa para decidir quem enxerga o quê. É trazer a
- * leitura para o servidor, onde a sessão existe — mesma decisão que o repo já
- * tomou para o fetch do board e para o token de realtime.
- *
- * **Um pedido, um veredito.** As três consultas falham juntas de propósito: a
- * alternativa (status por seção) triplicaria os estados no componente, e a
- * doença que esta rota cura é exatamente estados distintos colapsados num só.
+ * **Um pedido, um veredito.** As consultas falham juntas de propósito.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
+import {
+  resolverNegocioAberto,
+  type EtapaFicha,
+  type LeadFicha,
+  type PipelineFicha,
+  type PipelineUtilizavel,
+} from "@/lib/inbox/crm-summary-tipos";
 import { createClient } from "@/lib/supabase/server";
 import { nomesDosAtendentes } from "@/lib/users/nome-do-atendente";
 
 export const dynamic = "force-dynamic";
 
-const LEAD_COLS = "id, title, status, value_cents, currency, updated_at";
+const LEAD_COLS =
+  "id, title, status, value_cents, currency, updated_at, last_activity_at, source, pipeline_id, stage_id, owner_user_id, owner_agent_id, created_at";
 const ORDER_COLS = "id, external_id, status, total_cents, currency, created_at";
-/** Acompanha o que a timeline mostra — `reason` e `actor_kind` inclusive. */
-/**
- * `performed_by_user_id` entra porque a timeline dizia "Você/time" para TODA
- * ação humana — o painel sabia que uma pessoa agiu e nunca QUAL. Com a troca de
- * comando virando linha da timeline, "Transferiu a conversa · Você/time" seria a
- * resposta errada para a pergunta que a entrega existe para responder.
- */
 const ACTIVITY_COLS =
   "id, type, source_module, performed_at, payload, reason, actor_kind, performed_by_user_id";
-/**
- * Passo 4 do cap. 5 — a DEMANDA chega ao lugar onde o humano atende.
- *
- * O painel mostrava negócios, pedidos e histórico. Nenhum dos três responde à
- * pergunta que a pessoa do outro lado está fazendo: **o que ela pediu e ainda
- * não foi resolvido.** Lead é o negócio; conversa é o canal; demanda é o que
- * precisa acabar (doutrina cap. 5).
- *
- * O caso concreto que isto evita: o atendente encerra a conversa, a demanda
- * segue aberta e sem próximo passo, e o vazamento só aparece depois — como
- * número numa métrica que ele não abre. `proximo_passo` vem junto porque a
- * ausência dele é o próprio invariante 4, e é o que precisa saltar na tela.
- */
 const DEMANDA_COLS =
   "id, aberta_em, origem, estado, proximo_passo, proximo_passo_em, prazo_em";
 
@@ -78,34 +53,41 @@ export async function GET(
     return fail("unauthenticated", "Auth required.", 401, { requestId });
   }
 
-  const [leads, orders, activities, demandas] = await Promise.all([
+  const { data: contato, error: contatoErr } = await supabase
+    .from("contacts")
+    .select("id, organization_id")
+    .eq("id", contactId)
+    .maybeSingle();
+
+  if (contatoErr) {
+    return fail("internal_error", contatoErr.message, 500, { requestId });
+  }
+  if (!contato) {
+    return fail("not_found", "Contato não encontrado.", 404, { requestId });
+  }
+
+  const orgId = contato.organization_id as string;
+
+  const [leads, orders, activities, demandas, pipelines, stages] = await Promise.all([
     supabase
       .from("crm_leads")
       .select(LEAD_COLS)
+      .eq("organization_id", orgId)
       .eq("contact_id", contactId)
       .order("updated_at", { ascending: false })
-      .limit(3),
+      .limit(20),
     supabase
       .from("orders")
       .select(ORDER_COLS)
       .eq("contact_id", contactId)
       .order("created_at", { ascending: false })
       .limit(3),
-    // 12 e não 5. A janela de 5 foi dimensionada quando a timeline não recebia
-    // troca de comando: agora um atendimento normal (assumiu → transferiu →
-    // liberou → voltou ao automático) gasta QUATRO linhas sozinho, e com 5 o
-    // painel mostraria só a movimentação de dono, empurrando para fora o que o
-    // negócio fez. 12 cabe sem rolagem própria na coluna de 296px.
     supabase
       .from("crm_lead_activities")
       .select(ACTIVITY_COLS)
       .eq("contact_id", contactId)
       .order("performed_at", { ascending: false })
       .limit(12),
-    // Só as ABERTAS: demanda encerrada é histórico e já vive na timeline. Da
-    // mais antiga para a mais nova — quem espera há mais tempo aparece primeiro,
-    // mesma régua do Radar, para as duas telas não contarem histórias
-    // diferentes sobre o mesmo contato.
     supabase
       .from("demandas")
       .select(DEMANDA_COLS)
@@ -113,27 +95,120 @@ export async function GET(
       .is("fechada_em", null)
       .order("aberta_em", { ascending: true })
       .limit(5),
+    supabase
+      .from("crm_pipelines")
+      .select("id, name, is_default")
+      .eq("organization_id", orgId)
+      .eq("is_archived", false)
+      .order("is_default", { ascending: false })
+      .order("position", { ascending: true }),
+    supabase
+      .from("crm_stages")
+      .select("id, name, pipeline_id, is_won, is_lost")
+      .eq("organization_id", orgId)
+      .eq("is_archived", false)
+      .order("position", { ascending: true }),
   ]);
 
-  // A falha SOBE. Engolir aqui devolveria lista vazia ao cliente e recriaria,
-  // do lado do servidor, exatamente a mentira que esta rota veio desfazer.
-  const falha = leads.error ?? orders.error ?? activities.error ?? demandas.error;
+  const falha =
+    leads.error ??
+    orders.error ??
+    activities.error ??
+    demandas.error ??
+    pipelines.error ??
+    stages.error;
   if (falha) {
     return fail("internal_error", falha.message, 500, { requestId });
   }
 
-  // QUEM agiu, e não só "uma pessoa". O lookup roda sobre os autores DISTINTOS
-  // da janela (12 linhas, quase sempre 1 ou 2 pessoas), e degrada declarado
-  // quando não há service role — a tela cai no rótulo genérico que ela já usava.
+  const funis = (pipelines.data ?? []) as PipelineFicha[];
+  const etapas = (stages.data ?? []) as EtapaFicha[];
+  const funilPorId = new Map(funis.map((p) => [p.id, p]));
+  const etapaPorId = new Map(etapas.map((s) => [s.id, s]));
+
   const linhas = (activities.data ?? []) as Array<{
     performed_by_user_id?: string | null;
     [k: string]: unknown;
   }>;
-  const nomes = await nomesDosAtendentes(linhas.map((a) => a.performed_by_user_id ?? null));
+  const ownerIds = (leads.data ?? []).map((l) => (l as { owner_user_id?: string | null }).owner_user_id);
+  const nomes = await nomesDosAtendentes([
+    ...linhas.map((a) => a.performed_by_user_id ?? null),
+    ...ownerIds,
+  ]);
+
+  const leadsFicha: LeadFicha[] = ((leads.data ?? []) as Array<Record<string, unknown>>).map((l) => {
+    const pipelineId = l.pipeline_id as string;
+    const stageId = l.stage_id as string;
+    const ownerUser = (l.owner_user_id as string | null) ?? null;
+    const ownerAgent = (l.owner_agent_id as string | null) ?? null;
+    const funil = funilPorId.get(pipelineId) ?? null;
+    const etapa = etapaPorId.get(stageId) ?? null;
+    return {
+      id: l.id as string,
+      title: l.title as string,
+      status: l.status as string,
+      value_cents: (l.value_cents as number | null) ?? null,
+      currency: (l.currency as string | null) ?? null,
+      updated_at: l.updated_at as string,
+      last_activity_at: (l.last_activity_at as string | null) ?? null,
+      source: (l.source as string | null) ?? null,
+      pipeline: funil,
+      stage: etapa
+        ? {
+            id: etapa.id,
+            name: etapa.name,
+            pipeline_id: etapa.pipeline_id,
+            is_won: etapa.is_won,
+            is_lost: etapa.is_lost,
+          }
+        : null,
+      owner: {
+        user_id: ownerUser,
+        agent_id: ownerAgent,
+        display_name: ownerUser
+          ? (nomes.get(ownerUser) ?? null)
+          : ownerAgent
+            ? "Assistente"
+            : null,
+      },
+    };
+  });
+
+  const etapasPorFunil = new Map<string, EtapaFicha[]>();
+  for (const etapa of etapas) {
+    const lista = etapasPorFunil.get(etapa.pipeline_id) ?? [];
+    lista.push(etapa);
+    etapasPorFunil.set(etapa.pipeline_id, lista);
+  }
+
+  const pipelines_utilizaveis: PipelineUtilizavel[] = funis.map((p) => ({
+    id: p.id,
+    name: p.name,
+    is_default: p.is_default,
+    etapas: (etapasPorFunil.get(p.id) ?? []).filter((e) => !e.is_won && !e.is_lost),
+  }));
+
+  const demandasRows = demandas.data ?? [];
+  const primeiraDemanda = demandasRows[0] as
+    | {
+        id: string;
+        proximo_passo: string | null;
+        proximo_passo_em: string | null;
+      }
+    | undefined;
 
   return ok(
     {
-      leads: leads.data ?? [],
+      leads: leadsFicha,
+      negocio: resolverNegocioAberto(leadsFicha),
+      pipelines_utilizaveis,
+      proximo_passo_comercial: primeiraDemanda
+        ? {
+            demanda_id: primeiraDemanda.id,
+            proximo_passo: primeiraDemanda.proximo_passo,
+            proximo_passo_em: primeiraDemanda.proximo_passo_em,
+          }
+        : null,
       orders: orders.data ?? [],
       activities: linhas.map((a) => ({
         ...a,
@@ -141,7 +216,7 @@ export async function GET(
           ? (nomes.get(a.performed_by_user_id) ?? null)
           : null,
       })),
-      demandas: demandas.data ?? [],
+      demandas: demandasRows,
     },
     { requestId },
   );
