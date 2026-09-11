@@ -9,6 +9,9 @@ import { comandoDaConversa } from "@/lib/inbox/comando-da-conversa";
 import { cn } from "@/lib/utils";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { ehTemperaturaDoLead } from "@/lib/crm/papel-e-temperatura";
+import { CLASSE_DOT_TEMPERATURA } from "@/lib/crm/temperatura-visual";
+import { metaDaLinha } from "@/lib/inbox/meta-da-linha";
 import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
@@ -97,10 +100,17 @@ export function ConversationListItem({
   const visibleTags = tags.slice(0, 2);
   const overflow = tags.length - visibleTags.length;
   const preview = conversation.last_message_preview?.trim() || "Sem mensagens";
-  const truncated = preview.length > 60 ? `${preview.slice(0, 60)}…` : preview;
+  const truncated = preview.length > 72 ? `${preview.slice(0, 72)}…` : preview;
   const time = relativeTime(conversation.last_message_at);
   const unread = conversation.unread_count_for_assignee ?? 0;
   const dot = STATUS_DOT[conversation.status] ?? STATUS_DOT.open;
+  const meta = metaDaLinha({
+    papel: c?.papel,
+    crm_leads: c?.crm_leads,
+    demandas: c?.demandas,
+  });
+  const temp = (c?.crm_leads ?? []).find((l) => l.status === "open")?.temperatura;
+  const tempDot = ehTemperaturaDoLead(temp) ? CLASSE_DOT_TEMPERATURA[temp] : null;
 
   /**
    * Quem manda, pela MESMA regra do cabeçalho.
@@ -133,13 +143,14 @@ export function ConversationListItem({
       data-conversation-id={conversation.id}
       onClick={() => onSelect(conversation.id)}
       className={cn(
-        "group flex w-full items-start gap-2.5 border-b border-border px-2.5 py-2.5 text-left transition-colors hover:bg-muted/50",
-        isSelected && "bg-muted",
+        "group flex w-full items-start gap-2.5 border-b border-border/60 px-3 py-2 text-left transition-colors hover:bg-muted/60",
+        isSelected && "bg-muted/80",
+        unread > 0 && !isSelected && "bg-background",
       )}
       aria-current={isSelected ? "true" : undefined}
     >
       <div className="relative shrink-0">
-        <Avatar className="h-10 w-10">
+        <Avatar className="h-8 w-8">
           {/* Só monta a <img> quando existe arquivo: sem isso o browser pediria
               a rota para TODO contato da lista e levaria 404 em cada um sem
               foto — que é a maioria. O AvatarFallback do Radix já cobre o caso
@@ -181,23 +192,46 @@ export function ConversationListItem({
         <div className="flex items-baseline justify-between gap-2">
           <span
             className={cn(
-              "truncate text-[15px] font-medium",
+              "truncate text-base font-semibold leading-tight",
+              unread > 0 && "text-foreground",
               c?.is_anonymized && "italic text-muted-foreground",
             )}
           >
             {displayName}
           </span>
-          <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
             {time}
           </span>
         </div>
 
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {isAi ? <Robot size={10} weight="duotone" className="mr-1 inline" aria-hidden /> : null}
+        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+          {isAi ? <Robot size={12} weight="duotone" className="mr-1 inline" aria-hidden /> : null}
           {truncated}
         </p>
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+        {meta ? (
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {tempDot ? (
+              <span className={cn("mr-1.5 inline-block h-1.5 w-1.5 rounded-full", tempDot)} aria-hidden />
+            ) : null}
+            {meta.etapa}
+            {meta.passo ? (
+              <>
+                {meta.etapa ? " · " : null}
+                <span className={meta.atrasado ? "text-destructive" : undefined}>
+                  {meta.atrasado ? "atrasado" : meta.quando ?? meta.passo}
+                </span>
+              </>
+            ) : meta.semPasso ? (
+              <>
+                {meta.etapa ? " · " : null}
+                sem próximo passo
+              </>
+            ) : null}
+          </p>
+        ) : null}
+
+        <div className="mt-1 flex flex-wrap items-center gap-1">
           {visibleTags.map((t) => (
             <Badge key={t} variant="secondary" className="h-4 px-1.5 text-[10px]">
               {t}

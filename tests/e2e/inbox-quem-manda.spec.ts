@@ -262,6 +262,9 @@ test.describe("Inbox — quem manda nesta conversa", () => {
         last_handoff_at: new Date().toISOString(),
         last_handoff_reason: "cliente pediu para falar com uma pessoa",
         assigned_to_user_id: null,
+        // Fila ordena por last_inbound_at ASC (quem espera há mais tempo).
+        // Semear "agora" empurrava a linha para a última página.
+        last_inbound_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       })
       .eq("id", conversaId)
       .select("id, status")
@@ -272,8 +275,9 @@ test.describe("Inbox — quem manda nesta conversa", () => {
     await login(page, creds.users.agent!.email, creds.password);
     await page.goto("/app/inbox?filter=unassigned");
 
-    // A conversa está na lista da Fila, pelo nome do contato.
-    const naFila = page.getByText(NOME_DO_CONTATO, { exact: false }).first();
+    // A conversa está na lista da Fila — pelo id, não pelo texto: o nome
+    // pode estar fora da primeira página mesmo com a semântica correta.
+    const naFila = page.locator(`button[data-conversation-id="${conversaId}"]`);
     await expect(naFila).toBeVisible({ timeout: 30_000 });
     await captura(page, "4-escalada-aparece-na-fila");
 

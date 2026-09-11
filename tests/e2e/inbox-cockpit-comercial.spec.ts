@@ -238,6 +238,7 @@ test.describe("Inbox — cockpit comercial", () => {
     const { conversaId } = await semearConversa(nome, true);
     await login(page, creds.users.manager!.email);
     await page.goto(`/app/inbox/${conversaId}`);
+    await page.getByTestId("inbox-definir-proximo-passo").click();
     await expect(page.getByTestId("inbox-proximo-passo-texto")).toBeVisible({ timeout: 30_000 });
     await page.getByTestId("inbox-proximo-passo-texto").fill("Ligar amanhã");
     await page.getByTestId("inbox-proximo-passo-data").fill("2026-09-12");
@@ -245,6 +246,10 @@ test.describe("Inbox — cockpit comercial", () => {
     await page.getByTestId("inbox-salvar-proximo-passo").click();
     await page.waitForTimeout(800);
     await page.reload();
+    await expect(page.getByTestId("inbox-proximo-passo").getByText("Ligar amanhã")).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.getByTestId("inbox-editar-proximo-passo").click();
     await expect(page.getByTestId("inbox-proximo-passo-texto")).toHaveValue("Ligar amanhã", {
       timeout: 20_000,
     });
@@ -391,6 +396,7 @@ test.describe("Inbox — cockpit comercial", () => {
     expect(box!.width).toBeLessThanOrEqual(390);
     await expect(dialogo.getByTestId("inbox-negocio-etapa")).toBeVisible();
     await expect(dialogo.getByTestId("inbox-abrir-no-quadro")).toBeVisible();
+    await dialogo.getByTestId("inbox-definir-proximo-passo").click();
     await expect(dialogo.getByTestId("inbox-proximo-passo-texto")).toBeVisible();
     const overflow = await dialogo.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
     expect(overflow, "sem overflow horizontal").toBe(false);
@@ -427,7 +433,9 @@ test.describe("Inbox — cockpit comercial", () => {
       timeout: 30_000,
     });
     await expect(page.getByTestId("conversa-da-equipe")).toBeVisible();
+    await page.getByRole("button", { name: "Mais ações" }).click();
     await expect(page.getByTestId("marcar-pessoa")).toBeVisible();
+    await page.keyboard.press("Escape");
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("button", { name: /ficha/i }).click();

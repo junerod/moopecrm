@@ -153,7 +153,8 @@ test.describe("jornada WAHA — baseline do seam de canais", () => {
     await page.getByText(/Cliente Radar E2E/i).first().click();
     await expect(page.getByLabel("Mensagem")).toBeVisible({ timeout: 30_000 });
 
-    const lembrar = page.getByRole("button", { name: /Lembrar|Lembrete ativo/ });
+    await page.getByRole("button", { name: "Mais ações" }).click();
+    const lembrar = page.getByRole("menuitem", { name: /Lembrar|Lembrete ativo/ });
     await expect(lembrar).toBeVisible({ timeout: 30_000 });
     await lembrar.click();
     const opcao = page.getByRole("menuitem").first();

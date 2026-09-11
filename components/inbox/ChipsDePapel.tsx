@@ -15,7 +15,7 @@ interface Props {
   papel: string | null | undefined;
   contactName: string;
   summary: CrmSummaryData | null;
-  onAtualizou: () => void;
+  onAtualizou: (papel?: PapelDoContato | null) => void;
 }
 
 export function ChipsDePapel({
@@ -29,7 +29,7 @@ export function ChipsDePapel({
 
   return (
     <div className="space-y-1" data-testid="chips-papel">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Papel</div>
+      <div className="text-xs text-muted-foreground">Papel</div>
       <div className="flex flex-wrap gap-1">
         {PAPEIS_DO_CONTATO.map((p) => {
           const ativo = papel === p;

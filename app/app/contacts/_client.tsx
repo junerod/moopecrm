@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, MagnifyingGlass, UploadSimple, ArrowsClockwise } from "@/lib/ui/icons";
+import { Plus, MagnifyingGlass, UploadSimple, ArrowsClockwise, DotsThree } from "@/lib/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -95,29 +95,42 @@ export function ContactsListClient() {
           uma linha de dois botões sem isso comprime os rótulos.
         */}
         <div className="flex shrink-0 items-center gap-2">
-          {whatsappNoAr && (
-            <Button
-              variant="outline"
-              disabled={atualizando}
-              onClick={() => void atualizarAgora()}
-            >
-              <ArrowsClockwise
-                size={16}
-                weight="bold"
-                className={atualizando ? "animate-spin" : undefined}
-                aria-hidden
-              />
-              <span>{atualizando ? "Trazendo…" : "Atualizar do aparelho"}</span>
-            </Button>
-          )}
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <UploadSimple size={16} weight="bold" aria-hidden />
-            <span>Importar CSV</span>
-          </Button>
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)} className="min-h-11 md:min-h-9">
             <Plus size={16} weight="bold" aria-hidden />
             <span>Novo contato</span>
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11 min-w-11 px-2 md:min-h-9"
+                aria-label="Mais ações de contatos"
+              >
+                <DotsThree size={18} weight="bold" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {whatsappNoAr ? (
+                <DropdownMenuItem
+                  disabled={atualizando}
+                  onClick={() => void atualizarAgora()}
+                >
+                  <ArrowsClockwise
+                    size={16}
+                    weight="bold"
+                    className={atualizando ? "animate-spin" : undefined}
+                    aria-hidden
+                  />
+                  {atualizando ? "Trazendo…" : "Atualizar do aparelho"}
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                <UploadSimple size={16} weight="bold" aria-hidden />
+                Importar CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -238,7 +251,7 @@ export function ContactsListClient() {
         </Card>
       ) : (
         <>
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden overflow-x-hidden">
             <ContactsTable
               contacts={allContacts}
               orderBy={orderBy}

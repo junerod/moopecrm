@@ -79,7 +79,8 @@ test("o e-mail digitado na tela do contato fica salvo", async ({ page }) => {
   // tivesse funcionado.
   await expect(page.getByText(EMAIL)).toHaveCount(0);
 
-  await page.getByRole("button", { name: /editar/i }).first().click();
+  await page.getByRole("button", { name: "Mais ações do contato" }).click();
+  await page.getByRole("menuitem", { name: /editar/i }).click();
   const campo = page.locator("#ec-email");
   await campo.waitFor({ state: "visible", timeout: 10_000 });
   await campo.fill(EMAIL);

@@ -2,21 +2,21 @@
 import Link from "next/link";
 import { format, formatRelative, isToday, isYesterday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CaretDown, CaretUp, ChatCircle } from "@/lib/ui/icons";
+import { DotsThree } from "@/lib/ui/icons";
 import { ImportarConversaButton } from "@/components/contacts/ImportarConversaButton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { ContactOrderBy } from "@/lib/schemas/contacts";
 import type { Contact } from "@/lib/types/contacts";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { ROTULO_DO_PAPEL, ehPapelDoContato } from "@/lib/crm/papel-e-temperatura";
+import { cn } from "@/lib/utils";
 
 interface Props {
   contacts: Contact[];
@@ -29,7 +29,6 @@ function displayName(c: Contact): string {
   return rotuloDoContato(c);
 }
 
-/** Hoje/ontem: relativo ("há 2 horas", "ontem"). Mais antigo: data, não dia da semana. */
 function formatUltimaAtividade(iso: string, now = new Date()): string {
   const d = new Date(iso);
   if (isToday(d) || isYesterday(d)) {
@@ -38,154 +37,115 @@ function formatUltimaAtividade(iso: string, now = new Date()): string {
   return format(d, "dd/MM/yyyy", { locale: ptBR });
 }
 
-function SortableHead({
-  label,
-  column,
-  orderBy,
-  orderDir,
-  onSort,
-  className,
-}: {
-  label: string;
-  column: ContactOrderBy;
-  orderBy: ContactOrderBy;
-  orderDir: "asc" | "desc";
-  onSort: (column: ContactOrderBy) => void;
-  className?: string;
-}) {
-  const active = orderBy === column;
-  const muted = "text-muted-foreground/35";
-  const emphasis = "text-foreground";
-
-  return (
-    <TableHead className={className}>
-      <button
-        type="button"
-        onClick={() => onSort(column)}
-        className="inline-flex items-center gap-1 font-medium hover:text-foreground"
-        aria-sort={active ? (orderDir === "asc" ? "ascending" : "descending") : "none"}
-      >
-        {label}
-        <span className="inline-flex flex-col -space-y-1" aria-hidden>
-          <CaretUp
-            size={12}
-            weight="bold"
-            className={active && orderDir === "asc" ? emphasis : muted}
-          />
-          <CaretDown
-            size={12}
-            weight="bold"
-            className={active && orderDir === "desc" ? emphasis : muted}
-          />
-        </span>
-      </button>
-    </TableHead>
-  );
+function iniciais(nome: string): string {
+  const parts = nome.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return (parts[0] ?? "").slice(0, 2).toUpperCase();
+  return `${parts[0]?.[0] ?? ""}${parts[parts.length - 1]?.[0] ?? ""}`.toUpperCase();
 }
+
+const ORDEM: Array<{ coluna: ContactOrderBy; label: string }> = [
+  { coluna: "display_name", label: "Nome" },
+  { coluna: "last_activity_at", label: "Última atividade" },
+  { coluna: "email", label: "Email" },
+  { coluna: "phone_number", label: "Telefone" },
+];
 
 export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <SortableHead
-            label="Nome"
-            column="display_name"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <SortableHead
-            label="Email"
-            column="email"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <SortableHead
-            label="Telefone"
-            column="phone_number"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <TableHead>Tags</TableHead>
-          <SortableHead
-            label="Última atividade"
-            column="last_activity_at"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <TableHead>Status</TableHead>
-          <TableHead className="w-[220px]">
-            <span className="sr-only">Conversa</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {contacts.map((c) => (
-          <TableRow key={c.id} className="cursor-pointer">
-            <TableCell className="font-medium">
-              <Link href={`/app/contacts/${c.id}`} className="hover:underline">
-                {displayName(c)}
-              </Link>
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {c.email ?? "—"}
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {c.phone_number ?? "—"}
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-wrap gap-1">
-                {c.tags.length === 0
-                  ? <span className="text-muted-foreground text-xs">—</span>
-                  : c.tags.map((t) => (
-                      <Badge key={t} variant="neutral">{t}</Badge>
-                    ))}
+    <div className="overflow-x-hidden">
+      <div className="flex flex-wrap items-center gap-1 border-b border-border/70 px-3 py-2">
+        <span className="mr-1 text-xs text-muted-foreground">Ordenar</span>
+        {ORDEM.map((o) => {
+          const ativo = orderBy === o.coluna;
+          return (
+            <Button
+              key={o.coluna}
+              type="button"
+              size="sm"
+              variant="ghost"
+              className={cn("h-8 px-2 text-xs", ativo && "text-foreground")}
+              onClick={() => onSort(o.coluna)}
+              aria-sort={ativo ? (orderDir === "asc" ? "ascending" : "descending") : "none"}
+            >
+              {o.label}
+              {ativo ? (orderDir === "asc" ? " ↑" : " ↓") : ""}
+            </Button>
+          );
+        })}
+      </div>
+      <ul className="divide-y divide-border/60">
+        {contacts.map((c) => {
+          const nome = displayName(c);
+          const papel = ehPapelDoContato(c.papel) ? ROTULO_DO_PAPEL[c.papel] : null;
+          const meta = [
+            papel,
+            c.is_blocked ? "Bloqueado" : null,
+            c.is_anonymized ? "Anonimizado" : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <li key={c.id}>
+              <div className="flex items-start gap-3 px-3 py-3 hover:bg-muted/40">
+                <Avatar className="mt-0.5 h-9 w-9 shrink-0">
+                  <AvatarFallback className="text-xs">{iniciais(nome)}</AvatarFallback>
+                </Avatar>
+                <Link href={`/app/contacts/${c.id}`} className="min-w-0 flex-1">
+                  <div className="truncate text-base font-semibold leading-tight">{nome}</div>
+                  <div className="mt-0.5 truncate text-sm text-muted-foreground">
+                    {[c.email, c.phone_number].filter(Boolean).join(" · ") || "Sem email ou telefone"}
+                  </div>
+                  {meta ? (
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</div>
+                  ) : null}
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {c.last_activity_at
+                      ? `Último contato ${formatUltimaAtividade(c.last_activity_at)}`
+                      : "Sem atividade recente"}
+                  </div>
+                </Link>
+                <div className="flex shrink-0 items-center gap-1">
+                  {c.conversa ? (
+                    <Button asChild size="sm" variant="default" className="min-h-11 px-3 md:min-h-8">
+                      <Link
+                        href={`/app/inbox?id=${c.conversa.id}`}
+                        aria-label={`Abrir conversa com ${nome}`}
+                      >
+                        Abrir conversa
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-11 min-w-11 px-2 md:min-h-8"
+                        aria-label={`Mais ações para ${nome}`}
+                      >
+                        <DotsThree size={18} weight="bold" aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link href={`/app/contacts/${c.id}`}>Ver ficha</Link>
+                      </DropdownMenuItem>
+                      <div className="px-1 py-1">
+                        <ImportarConversaButton
+                          contact={c}
+                          compact
+                          jaTemFio={Boolean(c.conversa)}
+                        />
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-            </TableCell>
-            <TableCell className="text-muted-foreground text-sm">
-              {c.last_activity_at
-                ? formatUltimaAtividade(c.last_activity_at)
-                : "—"}
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-wrap gap-1">
-                {c.is_anonymized && <Badge variant="destructive">Anonimizado</Badge>}
-                {c.is_blocked && <Badge variant="warning">Bloqueado</Badge>}
-                {!c.is_anonymized && !c.is_blocked && (
-                  <Badge variant="success">Ativo</Badge>
-                )}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                {c.conversa && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                    <Link
-                      href={`/app/inbox?id=${c.conversa.id}`}
-                      title="Abrir conversa no Inbox"
-                      aria-label={`Abrir conversa com ${displayName(c)} no Inbox`}
-                    >
-                      <ChatCircle size={16} weight="regular" aria-hidden />
-                      {c.conversa.unread > 0 && (
-                        <span className="sr-only">{c.conversa.unread} sem ler</span>
-                      )}
-                    </Link>
-                  </Button>
-                )}
-                <ImportarConversaButton
-                  contact={c}
-                  compact
-                  jaTemFio={Boolean(c.conversa)}
-                />
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

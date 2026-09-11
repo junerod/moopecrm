@@ -56,6 +56,12 @@ vi.mock("@/hooks/inbox/usePauseAiAttendance", () => ({
 vi.mock("@/hooks/ai/useAutomaticoAtivo", () => ({
   useAutomaticoAtivo: () => ({ data: false }),
 }));
+vi.mock("@/hooks/inbox/useSnoozeConversation", () => ({
+  useSnoozeConversation: () => ({
+    snooze: { mutate: vi.fn(), isPending: false },
+    cancel: { mutate: vi.fn(), isPending: false },
+  }),
+}));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: "u-1" }, activeOrg: { orgId: "org-1", role: "manager" } }),
 }));
@@ -121,18 +127,13 @@ describe("header do inbox — não trava a largura da tela", () => {
     ).toBeTruthy();
   });
 
-  it('"Ver contato" existe no DOM e só se cala onde há outra porta', () => {
+  it('"Ver contato" fica no overflow — não compete na barra', async () => {
     renderHeader();
-    // Ele NÃO sai do markup: some por CSS a partir de `xl`, exatamente a largura
-    // em que o painel lateral entra na tela com um "Ver contato" próprio. A
-    // distinção importa — remover do DOM tiraria a ação de quem usa 1024px, que
-    // é onde o painel não existe e esta é a única porta para o contato.
-    const link = screen.getByText("Ver contato").closest("a, button") as HTMLElement;
-    expect(link, "o link para o contato sumiu do markup").toBeTruthy();
-    const classes = `${link.className} ${link.parentElement?.className ?? ""}`;
+    expect(screen.queryByText("Ver contato")).toBeNull();
+    await userEvent.click(screen.getByLabelText("Mais ações"));
     expect(
-      classes,
-      "sem `xl:hidden`, a duplicata volta e o header ganha uma segunda linha em 1280px",
-    ).toContain("xl:hidden");
+      await screen.findByRole("menuitem", { name: "Ver contato" }),
+      "a ficha do contato tem de continuar acessível no overflow",
+    ).toBeTruthy();
   });
 });

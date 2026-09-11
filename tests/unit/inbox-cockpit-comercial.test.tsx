@@ -112,7 +112,9 @@ describe("cockpit comercial na Inbox", () => {
 
   it("próximo passo já gravado continua visível e editável", async () => {
     renderPainel();
-    const texto = (await screen.findByTestId("inbox-proximo-passo-texto")) as HTMLInputElement;
+    expect(await screen.findByText(/ligar amanhã/i)).toBeTruthy();
+    await userEvent.click(screen.getByTestId("inbox-editar-proximo-passo"));
+    const texto = screen.getByTestId("inbox-proximo-passo-texto") as HTMLInputElement;
     expect(texto.value).toMatch(/ligar amanhã/i);
     expect((screen.getByTestId("inbox-proximo-passo-data") as HTMLInputElement).value).not.toBe("");
   });

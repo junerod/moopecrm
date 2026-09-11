@@ -18,7 +18,7 @@ export function useMarcarPapel(contactId: string) {
       atual: string | null | undefined;
       contactName: string;
       summary?: CrmSummaryData | null;
-      onAtualizou?: () => void;
+      onAtualizou?: (papel?: PapelDoContato | null) => void;
     },
   ) {
     const seguinte = opts.atual === proximo ? null : proximo;
@@ -33,7 +33,7 @@ export function useMarcarPapel(contactId: string) {
           summary,
         });
       }
-      opts.onAtualizou?.();
+      opts.onAtualizou?.(seguinte);
     } catch {
       toast.error("Não consegui gravar a marcação. Tente de novo.");
     } finally {

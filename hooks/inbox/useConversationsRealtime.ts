@@ -43,6 +43,13 @@ export interface ContactSummary {
     id: string;
     status: string;
     temperatura?: string | null;
+    stage_id?: string | null;
+    crm_stages?: { id: string; name: string } | Array<{ id: string; name: string }> | null;
+  }> | null;
+  demandas?: Array<{
+    proximo_passo?: string | null;
+    proximo_passo_em?: string | null;
+    estado?: string | null;
   }> | null;
 }
 

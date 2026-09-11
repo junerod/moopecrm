@@ -15,7 +15,7 @@ import type { CrmSummaryData, LeadFicha } from "@/lib/inbox/crm-summary-tipos";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
 import { cn } from "@/lib/utils";
-import { papelForaDoFunil } from "@/lib/crm/papel-e-temperatura";
+import { papelForaDoFunil, type PapelDoContato } from "@/lib/crm/papel-e-temperatura";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { CadastrarNomeDoContato } from "./CadastrarNomeDoContato";
 import { AssistenteIa } from "./AssistenteIa";
@@ -225,6 +225,16 @@ function SemLista({
 export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   const contact = contatoDoEmbed(conversation?.contacts);
   const contactId = contact?.id ?? null;
+  const [papelLocal, setPapelLocal] = useState<{
+    contactId: string;
+    papel: PapelDoContato | null;
+  } | null>(null);
+
+  const papelVisto =
+    papelLocal && contactId && papelLocal.contactId === contactId
+      ? papelLocal.papel
+      : contact?.papel;
+  const contactVisto = contact ? { ...contact, papel: papelVisto } : contact;
 
   const [leads, setLeads] = useState<LeadFicha[] | null>(null);
   const [summary, setSummary] = useState<CrmSummaryData | null>(null);
@@ -338,11 +348,11 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   }
 
   return (
-    <aside className="flex h-full min-w-0 flex-col gap-0 overflow-x-hidden overflow-y-auto border-l border-border bg-background px-4 py-4">
+    <aside className="flex h-full min-w-0 flex-col gap-0 overflow-x-hidden overflow-y-auto border-l border-border bg-muted/15 px-4 py-4">
       <section className="space-y-2 pb-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          <div className="text-base font-medium leading-tight">{displayName}</div>
-          <SeloDaPessoa contact={contact} />
+          <div className="text-lg font-semibold leading-tight">{displayName}</div>
+          <SeloDaPessoa contact={contactVisto} />
         </div>
         {contact?.phone_number && (
           <div className="text-[13px] text-muted-foreground">{contact.phone_number}</div>
@@ -353,10 +363,15 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
         {contactId ? (
           <ChipsDePapel
             contactId={contactId}
-            papel={contact?.papel}
+            papel={papelVisto}
             contactName={displayName}
             summary={summary}
-            onAtualizou={recarregar}
+            onAtualizou={(papel) => {
+              if (papel !== undefined) {
+                setPapelLocal({ contactId, papel: papel ?? null });
+              }
+              recarregar();
+            }}
           />
         ) : null}
         {tags.length > 0 && (
@@ -394,13 +409,13 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
       <div className="border-t border-border" />
 
       <div className="py-4">
-      {papelForaDoFunil(contact?.papel) ? (
+      {papelForaDoFunil(papelVisto) ? (
         <section
-          data-testid={contact?.papel === "ignorado" ? "conversa-ignorada" : "conversa-da-equipe"}
+          data-testid={papelVisto === "ignorado" ? "conversa-ignorada" : "conversa-da-equipe"}
         >
           <h3 className="text-[13px] font-medium">Negócio</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            {contact?.papel === "ignorado"
+            {papelVisto === "ignorado"
               ? "Marcados para ignorar. O automático não trata esta conversa como venda."
               : "Conversa da equipe. Não entra no funil comercial."}
           </p>

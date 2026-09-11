@@ -16,27 +16,27 @@ function recorteDeHoje(): { de: string; ate: string } {
   return { de: de.toISOString(), ate: ate.toISOString() };
 }
 
-function Linha({
+function Bloco({
   href,
-  titulo,
-  detalhe,
+  numero,
+  rotulo,
+  carregando,
 }: {
   href: string;
-  titulo: string;
-  detalhe?: string;
+  numero: number;
+  rotulo: string;
+  carregando?: boolean;
 }) {
   return (
-    <li>
-      <Link
-        href={href}
-        className="flex items-baseline justify-between gap-3 rounded-md py-1.5 text-sm hover:bg-muted/50"
-      >
-        <span className="truncate font-medium">{titulo}</span>
-        {detalhe ? (
-          <span className="shrink-0 text-[13px] text-muted-foreground">{detalhe}</span>
-        ) : null}
-      </Link>
-    </li>
+    <Link
+      href={href}
+      className="block rounded-lg bg-muted/40 px-4 py-3 transition-colors hover:bg-muted/70"
+    >
+      <div className="text-3xl font-semibold tabular-nums leading-none">
+        {carregando ? "…" : numero}
+      </div>
+      <div className="mt-2 text-sm text-muted-foreground">{rotulo}</div>
+    </Link>
   );
 }
 
@@ -54,82 +54,71 @@ export function HojeOperacional() {
   const compromissos = agenda.data ?? [];
 
   return (
-    <section className="space-y-5" data-testid="hoje-operacional">
+    <section className="space-y-6" data-testid="hoje-operacional">
       <header className="space-y-1">
-        <h2 className="text-lg font-medium">Hoje</h2>
-        <p className="text-[13px] text-muted-foreground">
-          O que pede atenção agora.
-        </p>
+        <h2 className="text-lg font-semibold">Hoje</h2>
+        <p className="text-[13px] text-muted-foreground">O que pede atenção agora.</p>
       </header>
 
-      <div className="space-y-1">
-        <h3 className="text-[13px] font-medium text-muted-foreground">Conversas</h3>
-        <ul>
-          <Linha
-            href="/app/inbox?filter=mine"
-            titulo="Nas suas mãos"
-            detalhe={counts.isLoading ? "…" : String(minhas)}
-          />
-          <Linha
-            href="/app/inbox?filter=unassigned"
-            titulo="Na fila"
-            detalhe={counts.isLoading ? "…" : String(fila)}
-          />
-        </ul>
-      </div>
-
-      <div className="space-y-1">
-        <h3 className="text-[13px] font-medium text-muted-foreground">Negócios</h3>
-        <ul>
-          <Linha
-            href="/app/radar"
-            titulo="Sem próximo passo"
-            detalhe={radar.isLoading ? "…" : String(semPasso)}
-          />
-          <Linha
-            href="/app/radar"
-            titulo="No radar"
-            detalhe={radar.isLoading ? "…" : String(emRisco)}
-          />
-        </ul>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Bloco
+          href="/app/inbox?filter=mine"
+          numero={minhas}
+          rotulo="nas suas mãos"
+          carregando={counts.isLoading}
+        />
+        <Bloco
+          href="/app/inbox?filter=unassigned"
+          numero={fila}
+          rotulo="na fila"
+          carregando={counts.isLoading}
+        />
+        <Bloco
+          href="/app/radar"
+          numero={semPasso}
+          rotulo="sem próximo passo"
+          carregando={radar.isLoading}
+        />
+        <Bloco
+          href="/app/radar"
+          numero={emRisco}
+          rotulo="no radar"
+          carregando={radar.isLoading}
+        />
       </div>
 
       {compromissos.length > 0 ? (
-        <div className="space-y-1">
-          <h3 className="text-[13px] font-medium text-muted-foreground">Agenda</h3>
-          <ul>
+        <div className="space-y-2">
+          <h3 className="text-xs text-muted-foreground">Agenda</h3>
+          <ul className="space-y-1">
             {compromissos.slice(0, 4).map((a) => (
-              <Linha
-                key={a.id}
-                href="/app/agenda"
-                titulo={a.titulo}
-                detalhe={new Date(a.comeca).toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              />
+              <li key={a.id}>
+                <Link
+                  href="/app/agenda"
+                  className="flex items-baseline justify-between gap-3 rounded-md py-1.5 text-sm hover:bg-muted/50"
+                >
+                  <span className="truncate font-medium">{a.titulo}</span>
+                  <span className="shrink-0 text-[13px] text-muted-foreground">
+                    {new Date(a.comeca).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </Link>
+              </li>
             ))}
           </ul>
         </div>
       ) : null}
 
       <nav aria-label="Atalhos" className="flex flex-wrap gap-2 pt-1">
-        <Link
-          href="/app/inbox"
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
-        >
+        <Link href="/app/inbox" className="rounded-md px-3 py-1.5 text-sm hover:bg-muted">
           Inbox
         </Link>
-        <Link
-          href="/app/kanban"
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
-        >
+        <Link href="/app/kanban" className="rounded-md px-3 py-1.5 text-sm hover:bg-muted">
           Funis
         </Link>
-        <Link
-          href="/app/contacts"
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
-        >
+        <Link href="/app/contacts" className="rounded-md px-3 py-1.5 text-sm hover:bg-muted">
           Contatos
         </Link>
       </nav>

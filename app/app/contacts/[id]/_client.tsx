@@ -1,13 +1,20 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ShieldCheck, PencilSimple } from "@/lib/ui/icons";
+import { ShieldCheck, PencilSimple, DotsThree } from "@/lib/ui/icons";
 import { ImportarConversaButton } from "@/components/contacts/ImportarConversaButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IndicadorDeCarga } from "@/components/feedback/IndicadorDeCarga";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContact } from "@/hooks/contacts/useContact";
@@ -23,6 +30,7 @@ import {
   SEM_NOME,
   telefoneApresentavel,
 } from "@/lib/contacts/rotulo-do-contato";
+import { ROTULO_DO_PAPEL, ehPapelDoContato } from "@/lib/crm/papel-e-temperatura";
 
 interface Props {
   contactId: string;
@@ -89,14 +97,14 @@ export function ContactDetailClient({ contactId }: Props) {
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          {/* Sem truncar: nome é dado que a tela existe pra mostrar, e cortar
-              com reticências sem um jeito de ver o resto violaria o princípio
-              de nunca esconder informação crítica. Deixa quebrar linha. */}
           <h1 className="text-2xl font-semibold tracking-tight break-words">{displayName}</h1>
+          {ehPapelDoContato(contact.papel) ? (
+            <p className="mt-1 text-sm text-muted-foreground">{ROTULO_DO_PAPEL[contact.papel]}</p>
+          ) : null}
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {contact.email && <span>{contact.email}</span>}
-            {contact.email && telefone && <span>•</span>}
             {telefone && <span>{telefone}</span>}
+            {contact.email && telefone && <span>·</span>}
+            {contact.email && <span>{contact.email}</span>}
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
             {contact.tags.map((t) => (
@@ -106,21 +114,42 @@ export function ContactDetailClient({ contactId }: Props) {
             {contact.is_anonymized && <Badge variant="destructive">Anonimizado</Badge>}
           </div>
         </div>
-        {!contact.is_anonymized && (
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <ImportarConversaButton
-              contact={contact}
-              jaTemFio={Boolean(contact.conversa)}
-            />
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <PencilSimple size={16} weight="bold" aria-hidden />
-              <span>Editar</span>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {contact.conversa ? (
+            <Button asChild className="min-h-11 md:min-h-9">
+              <Link href={`/app/inbox?id=${contact.conversa.id}`}>Abrir conversa</Link>
             </Button>
-          </div>
-        )}
+          ) : null}
+          {!contact.is_anonymized && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11 min-w-11 px-2 md:min-h-9"
+                  aria-label="Mais ações do contato"
+                >
+                  <DotsThree size={18} weight="bold" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <PencilSimple size={16} weight="bold" aria-hidden />
+                  Editar
+                </DropdownMenuItem>
+                <div className="px-1 py-1">
+                  <ImportarConversaButton
+                    contact={contact}
+                    jaTemFio={Boolean(contact.conversa)}
+                  />
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </header>
 
-      <ConversaNoDossie conversa={contact.conversa} />
+      {!contact.conversa ? <ConversaNoDossie conversa={contact.conversa} /> : null}
 
       {/* ANTES das abas, e não dentro de uma delas: é o único conteúdo desta
           tela que PEDE uma ação. Enterrado numa aba, viraria pendência que só
@@ -136,19 +165,33 @@ export function ContactDetailClient({ contactId }: Props) {
 
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Visão geral</TabsTrigger>
+          <TabsTrigger value="overview">Negócios</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="dados">Dados</TabsTrigger>
           {isAdmin && <TabsTrigger value="lgpd">LGPD</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4">
+        <TabsContent value="overview" className="mt-4 space-y-3">
           {cadastroVazio && (
-            <p className="mb-3 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               O WhatsApp ainda não entregou nome nem telefone deste contato
               — a conversa chegou com identidade temporária. Quando o
               número for conhecido, ele aparece aqui.
             </p>
           )}
+          <p className="text-sm text-muted-foreground">
+            {contact.last_activity_at
+              ? `Última atividade em ${format(new Date(contact.last_activity_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}.`
+              : "Ainda sem atividade registrada."}
+          </p>
+          {contact.conversa?.preview ? (
+            <p className="text-sm text-muted-foreground">
+              Última mensagem: {contact.conversa.preview}
+            </p>
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="dados" className="mt-4">
           <Card className="p-4">
             <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
               <div>

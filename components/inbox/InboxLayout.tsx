@@ -346,7 +346,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       */}
       <div
         className={cn(
-          "h-full min-h-0 flex-col border-r border-border md:flex",
+          "h-full min-h-0 flex-col border-r border-border/70 bg-muted/20 md:flex",
           colunas.lista,
         )}
       >
@@ -377,7 +377,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       */}
       <div
         className={cn(
-          "h-full min-h-0 flex-col md:flex",
+          "h-full min-h-0 flex-col bg-background md:flex",
           colunas.conversa,
         )}
       >

@@ -18,7 +18,7 @@ import type { Conversation } from "@/lib/types/messaging";
 type SB = SupabaseClient;
 
 const CONTACT_EMBED =
-  "id, display_name, name, phone_number, is_anonymized, tags, is_blocked, avatar_storage_path, force_human, source_metadata, papel, crm_leads(id,status,temperatura)";
+  "id, display_name, name, phone_number, is_anonymized, tags, is_blocked, avatar_storage_path, force_human, source_metadata, papel, crm_leads(id,status,temperatura,stage_id,crm_stages(id,name)), demandas(proximo_passo,proximo_passo_em,estado)";
 
 const SELECT_COLS = `
   id, organization_id, contact_id, channel_session_id, channel, status,
