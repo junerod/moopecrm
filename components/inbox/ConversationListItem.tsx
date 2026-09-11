@@ -9,6 +9,7 @@ import { comandoDaConversa } from "@/lib/inbox/comando-da-conversa";
 import { cn } from "@/lib/utils";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
   conversation: ConversationWithContact;
@@ -218,6 +219,7 @@ export function ConversationListItem({
               {rotuloCanal}
             </Badge>
           )}
+          <SeloDaPessoa contact={c} />
           {c?.is_blocked && (
             <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
               Bloqueado

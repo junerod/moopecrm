@@ -28,7 +28,7 @@ import { getWahaClient } from "@/lib/waha/client";
 type SB = SupabaseClient;
 
 const SELECT_COLS =
-  "id, organization_id, name, display_name, email, email_normalized, phone_number, cpf_hash, birthdate, is_blocked, blocked_reason, is_anonymized, anonymized_at, is_merged_into, merged_at, consent, tags, source, source_metadata, wa_lid, created_at, updated_at, last_activity_at";
+  "id, organization_id, name, display_name, email, email_normalized, phone_number, cpf_hash, birthdate, is_blocked, blocked_reason, is_anonymized, anonymized_at, is_merged_into, merged_at, consent, tags, source, source_metadata, wa_lid, papel, created_at, updated_at, last_activity_at";
 
 const ROLE_RANK: Record<string, number> = {
   viewer: 1,
@@ -441,7 +441,7 @@ export async function patchContactHandler(
     // e-mail foi substituído não tinha onde olhar. `consent` vem junto porque o
     // patch dele passou a ser MERGE (ver abaixo), e merge precisa do estado
     // anterior.
-    .select("id, organization_id, is_anonymized, tags, email, phone_number, name, display_name, consent")
+    .select("id, organization_id, is_anonymized, tags, email, phone_number, name, display_name, consent, papel")
     .eq("id", contactId)
     .maybeSingle();
 
@@ -478,6 +478,7 @@ export async function patchContactHandler(
   if (input.birthdate !== undefined) patch.birthdate = input.birthdate;
   if (input.tags !== undefined) patch.tags = input.tags;
   if (input.source !== undefined) patch.source = input.source;
+  if (input.papel !== undefined) patch.papel = input.papel;
   if (input.source_metadata !== undefined) patch.source_metadata = input.source_metadata;
   if (input.consent !== undefined) {
     // MERGE por finalidade, nunca substituição.
@@ -604,6 +605,22 @@ export async function patchContactHandler(
     requestId: ctx.requestId,
     metadata: { ...a.metadataActor, fields, ...sensiveis },
   });
+
+  if (input.papel !== undefined && input.papel !== (existing as { papel?: string | null }).papel) {
+    await audit({
+      action: "crm.papel_changed",
+      actorUserId: a.actorUserId,
+      organizationId: contact.organization_id,
+      resourceType: "contact",
+      resourceId: contact.id,
+      requestId: ctx.requestId,
+      metadata: {
+        ...a.metadataActor,
+        old_papel: (existing as { papel?: string | null }).papel ?? null,
+        new_papel: input.papel,
+      },
+    });
+  }
 
   return contact;
 }

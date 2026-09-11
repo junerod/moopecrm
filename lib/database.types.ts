@@ -2576,6 +2576,7 @@ export type Database = {
           merged_at: string | null
           name: string | null
           organization_id: string
+          papel: string | null
           phone_lookup_at: string | null
           phone_number: string | null
           source: string
@@ -2610,6 +2611,7 @@ export type Database = {
           merged_at?: string | null
           name?: string | null
           organization_id: string
+          papel?: string | null
           phone_lookup_at?: string | null
           phone_number?: string | null
           source?: string
@@ -2644,6 +2646,7 @@ export type Database = {
           merged_at?: string | null
           name?: string | null
           organization_id?: string
+          papel?: string | null
           phone_lookup_at?: string | null
           phone_number?: string | null
           source?: string
@@ -3220,6 +3223,7 @@ export type Database = {
           stage_id: string
           status: string
           tags: string[]
+          temperatura: string | null
           title: string
           updated_at: string
           value_cents: number | null
@@ -3250,6 +3254,7 @@ export type Database = {
           stage_id: string
           status?: string
           tags?: string[]
+          temperatura?: string | null
           title: string
           updated_at?: string
           value_cents?: number | null
@@ -3280,6 +3285,7 @@ export type Database = {
           stage_id?: string
           status?: string
           tags?: string[]
+          temperatura?: string | null
           title?: string
           updated_at?: string
           value_cents?: number | null

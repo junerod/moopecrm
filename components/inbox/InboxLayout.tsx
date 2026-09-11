@@ -115,6 +115,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const [aux, setAux] = useState<Omit<InboxFiltersValue, "tab">>({
     search: "",
     onlyUnread: false,
+    papel: "comercial",
   });
   const filterValue: InboxFiltersValue = { tab, ...aux };
   const setFilterValue = useCallback(
@@ -150,8 +151,15 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       search: filterValue.search || undefined,
       channel_session_id: filterValue.channel_session_id,
       tag: filterValue.tag,
+      papel: filterValue.papel,
     }),
-    [filterValue.tab, filterValue.search, filterValue.channel_session_id, filterValue.tag],
+    [
+      filterValue.tab,
+      filterValue.search,
+      filterValue.channel_session_id,
+      filterValue.tag,
+      filterValue.papel,
+    ],
   );
 
   const clientFilter = useMemo(

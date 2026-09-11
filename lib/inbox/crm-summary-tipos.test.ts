@@ -13,6 +13,7 @@ function lead(parcial: Partial<LeadFicha> & { id: string; status: string }): Lea
     pipeline: null,
     stage: null,
     owner: { user_id: null, agent_id: null, display_name: null },
+    temperatura: null,
     ...parcial,
   };
 }

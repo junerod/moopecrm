@@ -395,4 +395,52 @@ test.describe("Inbox — cockpit comercial", () => {
     const overflow = await dialogo.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
     expect(overflow, "sem overflow horizontal").toBe(false);
   });
+
+  test("E — Comercial esconde Equipe; ficha edita papel no viewport estreito", async ({ page }) => {
+    const equipe = await semearConversa(`Tec Equipe ${SUFIXO}`, false);
+    const { error: erroPapel } = await admin
+      .from("contacts")
+      .update({ papel: "equipe", name: `Tec Equipe ${SUFIXO}` })
+      .eq("id", equipe.contatoId);
+    if (erroPapel) throw new Error(`papel equipe: ${erroPapel.message}`);
+    const comercial = await semearConversa(`Lead Novo ${SUFIXO}`, false);
+
+    await login(page, creds.users.manager!.email);
+
+    const listaComercial = await page.request.get("/api/v1/conversations?papel=comercial&limit=100");
+    expect(listaComercial.ok(), await listaComercial.text()).toBeTruthy();
+    const idsComercial = ((await listaComercial.json()) as { data?: Array<{ id: string }> }).data?.map(
+      (c) => c.id,
+    ) ?? [];
+    expect(idsComercial).toContain(comercial.conversaId);
+    expect(idsComercial).not.toContain(equipe.conversaId);
+
+    const listaEquipe = await page.request.get("/api/v1/conversations?papel=equipe&limit=100");
+    expect(listaEquipe.ok(), await listaEquipe.text()).toBeTruthy();
+    const idsEquipe = ((await listaEquipe.json()) as { data?: Array<{ id: string }> }).data?.map(
+      (c) => c.id,
+    ) ?? [];
+    expect(idsEquipe).toContain(equipe.conversaId);
+
+    await page.goto(`/app/inbox/${equipe.conversaId}`);
+    await expect(page.getByTestId("selo-da-pessoa").first()).toHaveAttribute("data-selo", "equipe", {
+      timeout: 30_000,
+    });
+    await expect(page.getByTestId("conversa-da-equipe")).toBeVisible();
+    await expect(page.getByTestId("marcar-pessoa")).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: /ficha/i }).click();
+    const dialogo = page.getByRole("dialog", { name: /ficha do contato/i });
+    await expect(dialogo.getByTestId("chip-papel-lead")).toBeVisible();
+    await dialogo.getByTestId("chip-papel-lead").click();
+    await expect(dialogo.getByTestId("inbox-ficha-negocio")).toBeVisible({ timeout: 20_000 });
+
+    const { data: contato } = await admin
+      .from("contacts")
+      .select("papel")
+      .eq("id", equipe.contatoId)
+      .single();
+    expect((contato as { papel: string }).papel).toBe("lead");
+  });
 });

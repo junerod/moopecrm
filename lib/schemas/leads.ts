@@ -9,6 +9,8 @@
  */
 import { z } from "zod";
 
+import { TEMPERATURAS_DO_LEAD } from "@/lib/crm/papel-e-temperatura";
+
 /**
  * Accept either ISO 8601 (e.g. "2026-04-29T03:15:54.000Z") or Postgres-style
  * timestamptz (e.g. "2026-04-29 03:15:54.123456+00") since Supabase returns
@@ -112,6 +114,7 @@ export const updateLeadSchema = z.object({
   tags: z.array(z.string()).optional(),
   custom_fields: z.record(z.string(), z.unknown()).optional(),
   source: z.string().min(1).optional(),
+  temperatura: z.enum(TEMPERATURAS_DO_LEAD).nullable().optional(),
 });
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 

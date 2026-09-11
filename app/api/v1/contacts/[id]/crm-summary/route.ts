@@ -30,7 +30,7 @@ import { nomesDosAtendentes } from "@/lib/users/nome-do-atendente";
 export const dynamic = "force-dynamic";
 
 const LEAD_COLS =
-  "id, title, status, value_cents, currency, updated_at, last_activity_at, source, pipeline_id, stage_id, owner_user_id, owner_agent_id, created_at";
+  "id, title, status, value_cents, currency, updated_at, last_activity_at, source, pipeline_id, stage_id, owner_user_id, owner_agent_id, created_at, temperatura";
 const ORDER_COLS = "id, external_id, status, total_cents, currency, created_at";
 const ACTIVITY_COLS =
   "id, type, source_module, performed_at, payload, reason, actor_kind, performed_by_user_id";
@@ -152,6 +152,7 @@ export async function GET(
       updated_at: l.updated_at as string,
       last_activity_at: (l.last_activity_at as string | null) ?? null,
       source: (l.source as string | null) ?? null,
+      temperatura: (l.temperatura as string | null) ?? null,
       pipeline: funil,
       stage: etapa
         ? {

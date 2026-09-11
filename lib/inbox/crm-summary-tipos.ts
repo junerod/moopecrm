@@ -32,6 +32,7 @@ export interface LeadFicha {
   pipeline: PipelineFicha | null;
   stage: EtapaFicha | null;
   owner: OwnerFicha;
+  temperatura: string | null;
 }
 
 export interface PipelineUtilizavel {

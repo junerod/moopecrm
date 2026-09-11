@@ -9,6 +9,7 @@
  */
 import { z } from "zod";
 
+import { PAPEIS_DO_CONTATO } from "@/lib/crm/papel-e-temperatura";
 import { normalizePhoneBR } from "@/lib/webhooks/inbound";
 
 const CPF_DIGITS = /^\d{11}$/;
@@ -65,6 +66,7 @@ export type ContactCreate = z.infer<typeof contactCreateSchema>;
 
 export const contactPatchSchema = contactCreateSchema.partial().extend({
   source: z.string().min(1).optional(),
+  papel: z.enum(PAPEIS_DO_CONTATO).nullable().optional(),
 });
 export type ContactPatch = z.infer<typeof contactPatchSchema>;
 

@@ -41,6 +41,7 @@ function lead(parcial: Partial<LeadFicha> = {}): LeadFicha {
     pipeline: { id: "p-1", name: "Comercial MOOPE", is_default: true },
     stage: ETAPA_NOVO,
     owner: { user_id: null, agent_id: null, display_name: null },
+    temperatura: null,
     ...parcial,
   };
 }
@@ -170,5 +171,37 @@ describe("cockpit comercial na Inbox", () => {
     const links = screen.getAllByTestId("inbox-lead-aberto");
     expect(links[0]).toHaveAttribute("href", "/app/leads/l-a");
     expect(links[1]).toHaveAttribute("href", "/app/leads/l-b");
+  });
+
+  it("Equipe esconde o bloco comercial e diz que é conversa da equipe", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const base = conversation!;
+    const equipe = {
+      ...base,
+      contacts: { ...base.contacts, papel: "equipe", name: "TEC Paulo" },
+    } as NonNullable<typeof conversation>;
+    render(
+      <QueryClientProvider client={client}>
+        <CRMSidePanel conversation={equipe} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByTestId("conversa-da-equipe")).toBeTruthy();
+    expect(screen.queryByTestId("inbox-ficha-negocio")).toBeNull();
+  });
+
+  it("Ignorar também esconde o bloco comercial", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const base = conversation!;
+    const ignorado = {
+      ...base,
+      contacts: { ...base.contacts, papel: "ignorado", name: "Spam" },
+    } as NonNullable<typeof conversation>;
+    render(
+      <QueryClientProvider client={client}>
+        <CRMSidePanel conversation={ignorado} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByTestId("conversa-ignorada")).toBeTruthy();
+    expect(screen.queryByTestId("inbox-ficha-negocio")).toBeNull();
   });
 });

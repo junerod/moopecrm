@@ -38,6 +38,12 @@ export interface ContactSummary {
     telefone_em_conflito?: unknown;
     waha_chat_id?: unknown;
   } | null;
+  papel?: "equipe" | "lead" | "cliente" | "ignorado" | null;
+  crm_leads?: Array<{
+    id: string;
+    status: string;
+    temperatura?: string | null;
+  }> | null;
 }
 
 /**
@@ -93,6 +99,7 @@ export interface ConversationsFilters {
   search?: string;
   channel_session_id?: string;
   tag?: string;
+  papel?: "comercial" | "equipe" | "lead" | "cliente" | "ignorado" | "todos";
 }
 
 interface ListResponse {
@@ -126,6 +133,7 @@ export function useConversationsRealtime(
       if (filters.search) qs.set("search", filters.search);
       if (filters.channel_session_id) qs.set("channel_session_id", filters.channel_session_id);
       if (filters.tag) qs.set("tag", filters.tag);
+      if (filters.papel) qs.set("papel", filters.papel);
       if (pageParam) qs.set("cursor", pageParam);
       qs.set("limit", "50");
       try {

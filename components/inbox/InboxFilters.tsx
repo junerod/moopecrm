@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useConversationTagVocabulary } from "@/hooks/inbox/useConversationTags";
 import { useConversationCounts } from "@/hooks/inbox/useConversationCounts";
 import type { Role, VisibilityMode } from "@/lib/auth/types";
+import { type FiltroDePapel } from "@/lib/crm/papel-e-temperatura";
 
 export type InboxTab = "unassigned" | "mine" | "all" | "closed" | "ai";
 
@@ -39,12 +40,22 @@ export function visibleInboxTabs(role: Role, mode: VisibilityMode | undefined): 
   return INBOX_TABS.filter((t) => !(t.value === "all" && hideAll)).map((t) => t.value);
 }
 
+const FILTRO_PAPEL_OPCOES: { value: FiltroDePapel; label: string }[] = [
+  { value: "comercial", label: "Comercial" },
+  { value: "equipe", label: "Equipe" },
+  { value: "lead", label: "Leads" },
+  { value: "cliente", label: "Clientes" },
+  { value: "ignorado", label: "Ignorados" },
+  { value: "todos", label: "Todos" },
+];
+
 export interface InboxFiltersValue {
   tab: InboxTab;
   search: string;
   onlyUnread: boolean;
   channel_session_id?: string;
   tag?: string;
+  papel: FiltroDePapel;
 }
 
 interface Props {
@@ -131,6 +142,22 @@ export function InboxFilters({ value, onChange }: Props) {
           </SelectContent>
         </Select>
       )}
+
+      <Select
+        value={value.papel}
+        onValueChange={(v) => onChange({ ...value, papel: v as FiltroDePapel })}
+      >
+        <SelectTrigger className="h-8 text-sm" aria-label="Filtrar por papel">
+          <SelectValue placeholder={t("Comercial")} />
+        </SelectTrigger>
+        <SelectContent>
+          {FILTRO_PAPEL_OPCOES.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {(tagVocabulary?.length ?? 0) > 0 && (
         <Select

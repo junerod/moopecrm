@@ -18,6 +18,7 @@ import { estamparAtribuicaoDoContato } from "@/lib/leads/atribuicao-de-anuncio";
 import { extrairAtribuicaoWaha } from "@/lib/waha/atribuicao-de-anuncio";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { ackToStatus } from "@/lib/types/messaging";
+import { ehIdentificadorTecnico, ehLixoDeCanal } from "@/lib/contacts/rotulo-do-contato";
 import { nomeDoPayloadWaha, type WahaEnvelope, type WahaPayload } from "@/lib/waha/envelope";
 import { bareWaMessageId, chatIdFromWaMessageId } from "@/lib/waha/message-id";
 import { logger } from "@/lib/logger";
@@ -264,7 +265,10 @@ export function resolveMessageType(p: WahaPayload): string {
 }
 
 function notifyNameOf(p: WahaPayload): string | null {
-  return nomeDoPayloadWaha(p);
+  const cru = nomeDoPayloadWaha(p);
+  if (!cru) return null;
+  if (ehLixoDeCanal(cru) || ehIdentificadorTecnico(cru)) return null;
+  return cru;
 }
 
 /** Corpo textual: WAHA nem sempre preenche `body` em cartões de contato NOWEB. */

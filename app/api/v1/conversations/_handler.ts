@@ -17,6 +17,9 @@ import type { Conversation } from "@/lib/types/messaging";
 
 type SB = SupabaseClient;
 
+const CONTACT_EMBED =
+  "id, display_name, name, phone_number, is_anonymized, tags, is_blocked, avatar_storage_path, force_human, source_metadata, papel, crm_leads(id,status,temperatura)";
+
 const SELECT_COLS = `
   id, organization_id, contact_id, channel_session_id, channel, status,
   status_changed_at, assigned_to_user_id, assignee_kind, assigned_at, last_inbound_at,
@@ -24,9 +27,25 @@ const SELECT_COLS = `
   unread_count_for_assignee, is_group, group_chat_id, tags, metadata,
   snooze_until, created_at, updated_at,
   bot_silenced_until, last_handoff_at,
-  contacts:contact_id (id, display_name, name, phone_number, is_anonymized, tags, is_blocked, avatar_storage_path, force_human, source_metadata),
+  contacts:contact_id (${CONTACT_EMBED}),
   channel_sessions:channel_session_id (phone_number, display_name, provider)
 `;
+
+function selectDaLista(comInner: boolean): string {
+  const contacts = comInner
+    ? `contacts:contact_id!inner(${CONTACT_EMBED})`
+    : `contacts:contact_id (${CONTACT_EMBED})`;
+  return `
+  id, organization_id, contact_id, channel_session_id, channel, status,
+  status_changed_at, assigned_to_user_id, assignee_kind, assigned_at, last_inbound_at,
+  last_outbound_at, last_message_at, last_message_preview,
+  unread_count_for_assignee, is_group, group_chat_id, tags, metadata,
+  snooze_until, created_at, updated_at,
+  bot_silenced_until, last_handoff_at,
+  ${contacts},
+  channel_sessions:channel_session_id (phone_number, display_name, provider)
+`;
+}
 
 interface CursorPayload {
   sort: string | null;
@@ -91,14 +110,28 @@ export async function listConversationsHandler(
   const isQueue = q.assigned_to === "unassigned";
   const sortCol = isQueue ? "last_inbound_at" : "last_message_at";
   const asc = isQueue;
+  const filtraPapel = Boolean(q.papel && q.papel !== "todos");
 
   let query = supabase
     .from("conversations")
-    .select(SELECT_COLS)
+    .select(selectDaLista(filtraPapel))
     .eq("organization_id", ctx.organization_id)
     .order(sortCol, { ascending: asc, nullsFirst: false })
     .order("id", { ascending: asc })
     .limit(q.limit + 1);
+
+  // Comercial NÃO usa `neq equipe`: em SQL, NULL ≠ equipe é falso, e o
+  // contato ainda sem papel sumiria da fila de venda.
+  if (q.papel === "comercial") {
+    query = query.or("contacts.papel.is.null,contacts.papel.eq.lead,contacts.papel.eq.cliente");
+  } else if (
+    q.papel === "equipe" ||
+    q.papel === "lead" ||
+    q.papel === "cliente" ||
+    q.papel === "ignorado"
+  ) {
+    query = query.eq("contacts.papel", q.papel);
+  }
 
   // `.in` e não `.eq`: o filtro agora chega como LISTA (um valor vira lista de um,
   // e o SQL resultante é equivalente). É o que deixa a aba Fila pedir os dois

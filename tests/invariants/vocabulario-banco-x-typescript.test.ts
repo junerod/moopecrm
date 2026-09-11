@@ -235,6 +235,18 @@ const PARES: Array<{
     arquivo: "hooks/webhooks/useAutomationRules.ts",
     simbolo: "AutomationRunStatus",
   },
+  {
+    tabela: "contacts",
+    coluna: "papel",
+    arquivo: "lib/crm/papel-e-temperatura.ts",
+    simbolo: "PAPEIS_DO_CONTATO",
+  },
+  {
+    tabela: "crm_leads",
+    coluna: "temperatura",
+    arquivo: "lib/crm/papel-e-temperatura.ts",
+    simbolo: "TEMPERATURAS_DO_LEAD",
+  },
 ];
 
 /** Tira um nível de parênteses externos, se ele envolver a expressão inteira. */

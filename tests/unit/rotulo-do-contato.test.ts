@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   contatoDoEmbed,
+  contatoNaoSalvo,
   ehIdentificadorTecnico,
+  ehLixoDeCanal,
   rotuloDoContato,
   SEM_NOME,
 } from "@/lib/contacts/rotulo-do-contato";
@@ -58,10 +60,30 @@ describe("ehIdentificadorTecnico", () => {
 });
 
 describe("rotuloDoContato", () => {
-  it("prefere o nome que uma pessoa escolheu", () => {
+  it("prefere o cadastro ao pushName do WhatsApp", () => {
     expect(rotuloDoContato({ display_name: "Kaio Gomes", name: "Kaio G", phone_number: "+5531988887777" })).toBe(
-      "Kaio Gomes",
+      "Kaio G",
     );
+  });
+
+  it("recusa o título de 404 do nginx e cai no telefone", () => {
+    expect(
+      rotuloDoContato({
+        display_name: "But I still haven't found what I'm looking for",
+        name: null,
+        phone_number: "+5561983339961",
+      }),
+    ).toBe("+5561983339961");
+  });
+
+  it("cadastro vence o lixo de canal que ficou em display_name", () => {
+    expect(
+      rotuloDoContato({
+        display_name: "But I still haven't found what I'm looking for",
+        name: "TEC Paulo",
+        phone_number: "+5561983339961",
+      }),
+    ).toBe("TEC Paulo");
   });
 
   it("pula o display_name TÉCNICO e usa o que vier depois", () => {
@@ -128,6 +150,28 @@ describe("rotuloDoContato", () => {
     expect(rotuloDoContato({ display_name: "Contato 543134@lid", name: null, phone_number: null })).toBe(
       SEM_NOME,
     );
+  });
+});
+
+describe("ehLixoDeCanal", () => {
+  it("reconhece a página 404 do nginx e HTML", () => {
+    expect(ehLixoDeCanal("But I still haven't found what I'm looking for")).toBe(true);
+    expect(ehLixoDeCanal("<html><title>404</title></html>")).toBe(true);
+    expect(ehLixoDeCanal("TEC Paulo")).toBe(false);
+  });
+});
+
+describe("contatoNaoSalvo", () => {
+  it("é verdade só quando o WhatsApp tem nome e o cadastro não", () => {
+    expect(
+      contatoNaoSalvo({ display_name: "Paulo", name: null, phone_number: "+5561983339961" }),
+    ).toBe(true);
+    expect(
+      contatoNaoSalvo({ display_name: "Paulo", name: "TEC Paulo", phone_number: "+5561983339961" }),
+    ).toBe(false);
+    expect(
+      contatoNaoSalvo({ display_name: null, name: null, phone_number: "+5561983339961" }),
+    ).toBe(false);
   });
 });
 

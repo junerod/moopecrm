@@ -41,7 +41,12 @@ vi.mock("@/hooks/inbox/useConversationCounts", () => ({
   useConversationCounts: () => ({ data: { unassigned: 3, mine: 2, all: 5 } }),
 }));
 
-const VALUE: InboxFiltersValue = { tab: "unassigned", search: "", onlyUnread: false };
+const VALUE: InboxFiltersValue = {
+  tab: "unassigned",
+  search: "",
+  onlyUnread: false,
+  papel: "comercial",
+};
 
 function setOrg(role: ActiveOrg["role"], visibility_mode: ActiveOrg["visibility_mode"]) {
   activeOrgRef.current = { orgId: "org-1", name: "Org", role, visibility_mode };
@@ -110,6 +115,13 @@ describe("InboxFilters render — 3 visões + escopo", () => {
     setOrg("manager", "own_and_unassigned");
     render(<InboxFilters value={VALUE} onChange={() => {}} />);
     expect(screen.getByRole("tab", { name: /Todas/ })).toBeInTheDocument();
+  });
+
+  it("o filtro de papel existe e começa em Comercial", () => {
+    setOrg("manager", "all");
+    render(<InboxFilters value={VALUE} onChange={() => {}} />);
+    expect(screen.getByLabelText("Filtrar por papel")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filtrar por papel")).toHaveTextContent("Comercial");
   });
 
   it("contagens por visão são renderizadas (Fila=3, Minhas=2)", () => {

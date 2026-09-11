@@ -66,9 +66,27 @@ const ROTULO_DE_ANUNCIO: Record<string, string> = {
 export type MotivoSemLead =
   | "ja_existe" // o contato já tem lead aberto: um por demanda, não um por mensagem
   | "contato_bloqueado" // pediu para sair; criar oportunidade seria desrespeito registrado
+  | "contato_equipe" // conversa interna: o time marcou Equipe; card aberto não some
+  | "contato_ignorado" // marcado para ignorar: não é demanda comercial
+  | "contato_cliente" // já classificado: card novo só se alguém abrir na mão
   | "sem_funil_de_entrada" // a organização não tem funil padrão — falha de configuração, visível
   | "sem_etapa" // o funil existe e não tem etapa utilizável
   | "erro"; // qualquer falha de escrita
+
+/**
+ * Recusa ANTES de olhar funil. Extraída para o unitário provar Equipe sem
+ * Postgres: o skip não pode depender de um mock de insert que ninguém chama.
+ */
+export function motivoSemNascimentoDoContato(contato: {
+  is_blocked?: boolean | null;
+  papel?: string | null;
+} | null): MotivoSemLead | null {
+  if (contato?.is_blocked === true) return "contato_bloqueado";
+  if (contato?.papel === "equipe") return "contato_equipe";
+  if (contato?.papel === "ignorado") return "contato_ignorado";
+  if (contato?.papel === "cliente") return "contato_cliente";
+  return null;
+}
 
 export type NascimentoDoLead =
   | { criado: true; leadId: string; pipelineId: string; stageId: string }
@@ -122,12 +140,13 @@ export async function garantirLeadDaConversa(
   // lugar onde ninguém olharia.
   const { data: contato } = await db
     .from("contacts")
-    .select("is_blocked,display_name,name,phone_number,source,source_metadata")
+    .select("is_blocked,papel,display_name,name,phone_number,source,source_metadata")
     .eq("organization_id", organizationId)
     .eq("id", contactId)
     .maybeSingle();
 
-  if (contato?.is_blocked === true) return { criado: false, motivo: "contato_bloqueado" };
+  const recusa = motivoSemNascimentoDoContato(contato);
+  if (recusa) return { criado: false, motivo: recusa };
 
   // 2 · já existe demanda aberta? A mesma leitura da ficha e do POST
   // `reuse_open_if_exists` — um critério, três portas.

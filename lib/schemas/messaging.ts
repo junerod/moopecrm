@@ -7,6 +7,8 @@
  */
 import { z } from "zod";
 
+import { FILTROS_DE_PAPEL } from "@/lib/crm/papel-e-temperatura";
+
 /**
  * O que a API aceita ESCREVER. Cinco valores, e a ausência de `pending`/`resolved`
  * é deliberada: quem escreve esses dois é o MOTOR (`performHumanHandoff` grava
@@ -268,6 +270,11 @@ export const listConversationsQuerySchema = z.object({
   channel_session_id: z.string().uuid().optional(),
   tag: conversationTagSchema.optional(),
   search: z.string().optional(),
+  /**
+   * Quem é a pessoa do outro lado. `comercial` (padrão da Inbox) tira Equipe
+   * da fila de venda. Ausente = sem filtro (MCP e clientes velhos).
+   */
+  papel: z.enum(FILTROS_DE_PAPEL).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });

@@ -89,8 +89,12 @@ function conversationRow(shape: ConversationShape = {}): Row {
 function makeSupabase(
   conversation: Row,
   templateRow: Row | null = null,
-  /** `semColunaArquivada`: banco em que a migration 0106 ainda não rodou. */
-  opts: { semColunaArquivada?: boolean } = {},
+  /**
+   * `semColunaArquivada`: banco sem a migration 0106.
+   * `semColunaTwilio`: banco sem a 0201 — o SELECT do envio pedia `twilio_from`
+   * e o POST morria com 500 antes do INSERT (Inbox mudo, celular ainda mandava).
+   */
+  opts: { semColunaArquivada?: boolean; semColunaTwilio?: boolean } = {},
 ) {
   const state: { message: Row | null } = { message: null };
 
@@ -100,16 +104,28 @@ function makeSupabase(
         return {
           select: (cols?: string) => ({
             eq: () => ({
-              maybeSingle: async () =>
-                opts.semColunaArquivada === true && (cols ?? '').includes('archived_at')
-                  ? {
-                      data: null,
-                      error: {
-                        code: '42703',
-                        message: 'column channel_sessions_1.archived_at does not exist',
-                      },
-                    }
-                  : { data: conversation, error: null },
+              maybeSingle: async () => {
+                const select = cols ?? '';
+                if (opts.semColunaTwilio === true && select.includes('twilio_from')) {
+                  return {
+                    data: null,
+                    error: {
+                      code: '42703',
+                      message: 'column channel_sessions_1.twilio_from does not exist',
+                    },
+                  };
+                }
+                if (opts.semColunaArquivada === true && select.includes('archived_at')) {
+                  return {
+                    data: null,
+                    error: {
+                      code: '42703',
+                      message: 'column channel_sessions_1.archived_at does not exist',
+                    },
+                  };
+                }
+                return { data: conversation, error: null };
+              },
             }),
           }),
           update: () => ({ eq: async () => ({ error: null }) }),
@@ -261,7 +277,9 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     expect(msg.external_id).toBe('MEDIA1');
     expect(msg.ack).toBe(0);
     expect(msg.error_code).toBeNull();
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${WAHA_BASE}/api/sendImage`);
+    // O adapter confirma o JID (`contacts/check-exists`) antes de enviar.
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u === `${WAHA_BASE}/api/sendImage`)).toBe(true);
   });
 
   it('5. texto puro: sent + external_id + ack 0, pelo endpoint de texto', async () => {
@@ -275,12 +293,13 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
     expect(msg.external_id).toBe('TEXT1');
     expect(msg.ack).toBe(0);
     expect(msg.error_code).toBeNull();
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${WAHA_BASE}/api/sendText`);
+    const envio = fetchMock.mock.calls.find((c) => String(c[0]) === `${WAHA_BASE}/api/sendText`);
+    expect(envio).toBeDefined();
     // Task 7: a sessão que chega ao fio sai de `resolveSessionRef` (que escolhe a
     // COLUNA conforme o provider), não mais de um acesso direto à coluna do
     // provider legado. Sem esta linha, um resolvedor que devolva a coluna errada
     // manda `session: undefined` e a rede inteira continua verde — medido.
-    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as {
+    const body = JSON.parse(String((envio?.[1] as RequestInit).body)) as {
       session: string;
     };
     expect(body.session).toBe('default');
@@ -294,7 +313,7 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
 
     expect(msg.status).toBe('failed');
     expect(msg.error_code).toBe('waha_error');
-    expect(msg.error_message).toBe('waha_500');
+    expect(msg.error_message).toBe('waha_500: boom');
     expect(msg.external_id).toBeNull();
   });
 
@@ -507,5 +526,26 @@ describe('sendMessageHandler — os 6 desfechos do envio', () => {
 
     expect(msg.status).toBe('sent');
     expect(msg.external_id).toBe('TEXT9');
+  });
+
+  /**
+   * Mesmo caminho, outro furo de schema: a `main` passou a SELECT `twilio_from`
+   * (0201) e o clone que atualizou o código sem a migration ficou com o Inbox
+   * mudo — 42703 no primeiro SELECT, zero INSERT, toast internal_error. O
+   * celular ainda mandava porque o webhook não pede essa coluna.
+   */
+  it('10. banco sem a coluna twilio_from (migration 0201 não aplicada): o envio segue', async () => {
+    wahaConfigured(true);
+    const fetchMock = vi.fn(async (..._args: unknown[]) => Response.json({ key: { id: 'TEXT10' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const msg = await sendMessageHandler(
+      makeSupabase(conversationRow(), null, { semColunaTwilio: true }),
+      ctx,
+      textInput(),
+    );
+
+    expect(msg.status).toBe('sent');
+    expect(msg.external_id).toBe('TEXT10');
   });
 });

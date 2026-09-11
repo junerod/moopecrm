@@ -426,6 +426,7 @@ export async function updateLeadHandler(
   }
   if (input.tags !== undefined) patch.tags = input.tags;
   if (input.source !== undefined) patch.source = input.source;
+  if (input.temperatura !== undefined) patch.temperatura = input.temperatura;
   if (input.custom_fields !== undefined) {
     const { data: funil, error: funilErr } = await supabase
       .from("crm_pipelines")
@@ -558,6 +559,25 @@ export async function updateLeadHandler(
     requestId: ctx.requestId,
     metadata: { ...a.metadataActor, fields },
   });
+
+  if (
+    input.temperatura !== undefined &&
+    input.temperatura !== (existing as { temperatura?: string | null }).temperatura
+  ) {
+    await audit({
+      action: "crm.temperatura_changed",
+      actorUserId: a.actorUserId,
+      organizationId: existing.organization_id,
+      resourceType: "crm_lead",
+      resourceId: leadId,
+      requestId: ctx.requestId,
+      metadata: {
+        ...a.metadataActor,
+        old_temperatura: (existing as { temperatura?: string | null }).temperatura ?? null,
+        new_temperatura: input.temperatura,
+      },
+    });
+  }
 
   return updated as Record<string, unknown>;
 }

@@ -72,13 +72,17 @@ export async function invalidarJobsConversacionaisPg(
  */
 export async function invalidarJobsConversacionaisSupabase(
   alvo: AlvoDeInvalidacao,
-  admin: SupabaseClient = createAdminClient(),
+  admin?: SupabaseClient,
 ): Promise<ResultadoDeInvalidacao> {
   if (!alvo.contactId) return { pending: 0, running: 0 };
   const reason = alvo.reason ?? MOTIVO_ABORT_TAKEOVER;
   try {
-    const pending = await marcarPendentes(admin, alvo, reason);
-    const running = await marcarRunning(admin, alvo, reason);
+    // createAdminClient() NÃO pode ser default-arg: o default avalia ANTES
+    // do try, e um throw ali vira 500 no POST /messages (o claim do envio
+    // humano não pode derrubar a mensagem).
+    const client = admin ?? createAdminClient();
+    const pending = await marcarPendentes(client, alvo, reason);
+    const running = await marcarRunning(client, alvo, reason);
     registrarDecisaoDeExecucao({
       organization_id: alvo.organizationId,
       conversation_id: alvo.conversationId,

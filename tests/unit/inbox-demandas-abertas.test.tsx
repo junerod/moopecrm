@@ -69,6 +69,7 @@ const LEAD_FICHA = {
   pipeline: { id: "p-1", name: "Comercial", is_default: true },
   stage: { id: "s-1", name: "Novo", pipeline_id: "p-1", is_won: false, is_lost: false },
   owner: { user_id: null, agent_id: null, display_name: null },
+  temperatura: null,
 };
 
 const RESPOSTA = {

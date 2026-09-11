@@ -14,6 +14,11 @@ import type {
   PipelineUtilizavel,
 } from "@/lib/inbox/crm-summary-tipos";
 import { SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
+import {
+  ROTULO_DA_TEMPERATURA,
+  TEMPERATURAS_DO_LEAD,
+  type TemperaturaDoLead,
+} from "@/lib/crm/papel-e-temperatura";
 import { rotuloDaOrigem } from "@/lib/crm/origem-comercial";
 import type { Stage } from "@/lib/kanban/types";
 import { cn } from "@/lib/utils";
@@ -102,6 +107,7 @@ export function BlocoNegocio({
   const [passoData, setPassoData] = useState(passoInicial.data);
   const [passoHora, setPassoHora] = useState(passoInicial.hora);
   const [salvandoPasso, setSalvandoPasso] = useState(false);
+  const [salvandoTemp, setSalvandoTemp] = useState(false);
 
   const funilEscolhido = pipelines_utilizaveis.find((p) => p.id === funilNovo);
   const etapasNovas = funilEscolhido?.etapas ?? [];
@@ -133,6 +139,20 @@ export function BlocoNegocio({
       toast.error("Não consegui adicionar ao funil. Tente de novo.");
     } finally {
       setCriando(false);
+    }
+  }
+
+  async function gravarTemperatura(proxima: TemperaturaDoLead) {
+    if (!leadUnico) return;
+    const valor = leadUnico.temperatura === proxima ? null : proxima;
+    setSalvandoTemp(true);
+    try {
+      await apiClient.patch(`/api/v1/leads/${leadUnico.id}`, { temperatura: valor });
+      onAtualizou();
+    } catch {
+      toast.error("Não consegui gravar a temperatura. Tente de novo.");
+    } finally {
+      setSalvandoTemp(false);
     }
   }
 
@@ -305,6 +325,31 @@ export function BlocoNegocio({
                       ? "Atendente"
                       : "Sem responsável")}
               </p>
+            </div>
+            <div className="space-y-1" data-testid="chips-temperatura">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Temperatura
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {TEMPERATURAS_DO_LEAD.map((t) => {
+                  const ativo = leadUnico.temperatura === t;
+                  return (
+                    <Button
+                      key={t}
+                      type="button"
+                      size="sm"
+                      variant={ativo ? "default" : "outline"}
+                      className="h-6 px-2 text-[11px]"
+                      disabled={salvandoTemp}
+                      aria-pressed={ativo}
+                      data-testid={`chip-temperatura-${t}`}
+                      onClick={() => void gravarTemperatura(t)}
+                    >
+                      {ROTULO_DA_TEMPERATURA[t].replace("Lead ", "")}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
             {rotuloOrigem(leadUnico.source) ? (
               <p className="text-xs text-muted-foreground">

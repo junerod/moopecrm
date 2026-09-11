@@ -12,13 +12,12 @@ import { ApiError } from "@/lib/api/types";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
 import {
-  CHANNEL_SESSION_REF_COLUMNS,
   DEFAULT_CHANNEL_PROVIDER,
   getAdapter,
   resolveSessionRef,
   type ChannelSessionRef,
 } from "@/lib/channels";
-import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
+import { carregarConversaDoEnvio } from "@/lib/channels/select-conversa-envio";
 import { conferirDefinicao } from "@/lib/channels/conferir-definicao";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { isMediaPathOwnedBy } from "@/lib/messaging/media/upload-validation";
@@ -33,6 +32,7 @@ import { sendTemplateForSession } from "@/lib/channels/meta/send-template-for-se
 import { envioRespeitaComandoDaConversa, resolverIntencaoDeEnvio } from "@/lib/ai/execucao/intencao-de-envio";
 import { assumirPeloEnvioHumano, SILENCIO_DURAVEL } from "@/lib/inbox/assumir-pelo-envio";
 import { decidirEnvioConversacional } from "@/lib/inbox/comando-da-conversa";
+import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Message } from "@/lib/types/messaging";
 
@@ -251,20 +251,17 @@ export async function sendMessageHandler(
   ctx: HandlerCtx,
   input: SendMessageInput,
 ): Promise<Message> {
-  // `archived_at` entra pelo helper tolerante porque este é O caminho de saída do
-  // sistema inteiro (UI, automação, MCP e o agente passam por aqui): num clone que
-  // subiu o código sem a migration 0106, pedir a coluna direto derrubaria TODO
-  // envio com 42703. Sem a coluna, nada está arquivado — e a consulta sem ela é a
-  // consulta certa (ver lib/channels/archived).
-  const convSelect = (comArchived: boolean) =>
-    `id, organization_id, contact_id, channel_session_id, is_group, group_chat_id, status, assigned_to_user_id, assignee_kind, bot_silenced_until, provider_conversation_id, contacts:contact_id(phone_number, wa_identity, wa_lid, is_blocked, force_human), channel_sessions:channel_session_id(${CHANNEL_SESSION_REF_COLUMNS}, status${comArchived ? `, ${ARCHIVED_AT}` : ""})`;
-  const { data: conv, error: convErr } = await queryTolerantToMissingArchived(
-    () => supabase.from("conversations").select(convSelect(true)).eq("id", input.conversation_id).maybeSingle(),
-    () => supabase.from("conversations").select(convSelect(false)).eq("id", input.conversation_id).maybeSingle(),
+  // O SELECT nomeia colunas que um clone pode ainda não ter (0106 archived_at,
+  // 0201 twilio_from). Pedir direto derruba TODO envio com 42703 ANTES do
+  // INSERT — toast internal_error, zero linha, celular ainda manda. Sem a
+  // coluna o valor não existe: repetir sem ela é o resultado exato.
+  const { data: conv, error: convErr } = await carregarConversaDoEnvio(
+    supabase,
+    input.conversation_id,
   );
 
   if (convErr) {
-    throw new ApiError(500, "internal_error", undefined, ctx.requestId, convErr.message);
+    throw new ApiError(500, "internal_error", undefined, ctx.requestId, convErr.message ?? undefined);
   }
   if (!conv) {
     throw new ApiError(404, "not_found", undefined, ctx.requestId, "Conversa não encontrada.");
@@ -324,14 +321,26 @@ export async function sendMessageHandler(
   // que já estava gerando vence a corrida: o silêncio só nascia no update
   // de depois, e o last-second do before-send lia o estado velho.
   if (ctx.actor.type === "user") {
-    await assumirPeloEnvioHumano({
-      supabase,
-      organizationId: c.organization_id,
-      conversationId: c.id,
-      contactId: c.contact_id,
-      assignedToUserId: c.assigned_to_user_id,
-      actor: ctx.actor,
-    });
+    try {
+      await assumirPeloEnvioHumano({
+        supabase,
+        organizationId: c.organization_id,
+        conversationId: c.id,
+        contactId: c.contact_id,
+        assignedToUserId: c.assigned_to_user_id,
+        actor: ctx.actor,
+      });
+    } catch (err) {
+      // O comentário do claim já diz: o envio não pode falhar por isto.
+      // Sem o try, um throw em createAdminClient() (default-arg fora do
+      // catch da invalidação) virava toast internal_error com request_id
+      // e sem linha de mensagem.
+      logger.warn("[messages.send] assumir pelo envio não pode derrubar o POST", {
+        conversation_id: c.id,
+        request_id: ctx.requestId,
+        detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
+      });
+    }
   }
 
   if (input.media_storage_path && !isMediaPathOwnedBy(input.media_storage_path, c.organization_id, c.id)) {

@@ -229,6 +229,7 @@ aplica.
 | `20260901140000` | `0200_moope_partner_tenant_id` | **userid da locadora na conexão.** O POST /provision reabre o mesmo tenant na segunda chamada em vez de nascer outro. Unique parcial (só quando preenchido). |
 | `20260904200000` | `0201_canal_twilio_vocabulario` | **Quarto canal** (API de mensagens hospedada). Coluna `twilio_from` (sessionRef = número WhatsApp em dígitos), SID + token cifrado, CHECKs recriados (três → quatro providers), unique parcial nos ativos. |
 | `20260907140000` | `0202_copilot_e_action_policy` | **Copilot + Action Policy.** Kind `copilot_turn` na fila (com contato; não é turno conversacional). Tabelas `ai_copilot_suggestions` (unique org+conversa+mensagem inbound) e `ai_action_requests` (unique org+idempotency_key). RLS com `fn_user_org_ids` + `fn_role_at_least(agent)`. |
+| `20260911180000` | `0203_papel_do_contato_e_temperatura` | **Papel da pessoa e temperatura humana do negócio.** `contacts.papel` (equipe/lead/cliente/ignorado) e `crm_leads.temperatura` (frio/morno/quente). Anula `display_name` que é lixo de canal (título de 404, HTML, frase >80). Sem isto a Inbox não filtra equipe/ignorados nem escreve temperatura sem mentir o score de IA. |
 
 ## Reproducibility
 

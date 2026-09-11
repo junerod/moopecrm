@@ -19,6 +19,8 @@ import { ReassignDialog } from "@/components/inbox/ReassignDialog";
 import { SnoozeButton } from "@/components/inbox/SnoozeButton";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { MarcarPessoa } from "./MarcarPessoa";
+import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
   conversation: ConversationWithContact;
@@ -131,6 +133,7 @@ export function ConversationHeader({ conversation }: Props) {
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h2 className="truncate text-sm font-semibold">{displayName}</h2>
+          <SeloDaPessoa contact={c} />
           <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
             {t(STATUS_LABEL[status] ?? status)}
           </Badge>
@@ -186,6 +189,9 @@ export function ConversationHeader({ conversation }: Props) {
           barra pode encolher e quebrar internamente, e os botões continuam
           todos visíveis e clicáveis — só que em duas linhas quando preciso. */}
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        {c?.id ? (
+          <MarcarPessoa contactId={c.id} papel={c.papel} contactName={displayName} />
+        ) : null}
         {isOpen && (
           <Button
             size="sm"

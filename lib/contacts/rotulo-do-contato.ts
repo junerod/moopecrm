@@ -78,13 +78,51 @@ export function contatoDoEmbed<T extends ContatoNomeavel>(
   return bruto;
 }
 
-/** Tem nome de gente — não telefone, não id técnico, não vazio. */
+/**
+ * Lixo que o canal às vezes grava como se fosse nome: título de 404, HTML,
+ * frase longa demais para ser como a pessoa se chama.
+ */
+export function ehLixoDeCanal(valor: string): boolean {
+  const v = valor.trim();
+  if (v === "") return true;
+  if (v.length > 80) return true;
+  const baixo = v.toLowerCase();
+  if (baixo.includes("haven't found what i'm looking for")) return true;
+  if (baixo.includes("have not found what i'm looking for")) return true;
+  if (baixo.includes("<!doctype")) return true;
+  if (/<\/?[a-z][^>]*>/i.test(v)) return true;
+  if (baixo === "it works!") return true;
+  if (/^404(\s+not\s+found)?$/i.test(v)) return true;
+  return false;
+}
+
+function ehNomeDeGente(v: string): boolean {
+  return !ehIdentificadorTecnico(v) && !ehLixoDeCanal(v);
+}
+
+/** Tem nome de gente — não telefone, não id técnico, não lixo de canal. */
 export function temNomeApresentavel(c: ContatoNomeavel | null | undefined): boolean {
   if (!c) return false;
   const notify = textoDoMeta(c.source_metadata, "notify_name");
-  for (const bruto of [c.display_name, c.name, notify]) {
+  for (const bruto of [c.name, c.display_name, notify]) {
     const v = (bruto ?? "").trim();
-    if (v !== "" && !ehIdentificadorTecnico(v)) return true;
+    if (v !== "" && ehNomeDeGente(v)) return true;
+  }
+  return false;
+}
+
+/**
+ * O WhatsApp mandou um nome, o time ainda não gravou no cadastro.
+ * Chip some quando `name` é um nome de gente.
+ */
+export function contatoNaoSalvo(c: ContatoNomeavel | null | undefined): boolean {
+  if (!c) return false;
+  const cadastro = (c.name ?? "").trim();
+  if (cadastro !== "" && ehNomeDeGente(cadastro)) return false;
+  const notify = textoDoMeta(c.source_metadata, "notify_name");
+  for (const bruto of [c.display_name, notify]) {
+    const v = (bruto ?? "").trim();
+    if (v !== "" && ehNomeDeGente(v)) return true;
   }
   return false;
 }
@@ -127,8 +165,9 @@ export function ehIdentificadorTecnico(valor: string): boolean {
 }
 
 /**
- * O rótulo. Primeiro o que uma pessoa escolheu, depois o que o canal informou,
- * depois o número — e só então a admissão de que não se sabe o nome.
+ * O rótulo. Primeiro o cadastro (`name`), depois o que o canal informou
+ * se for nome de gente, depois o número — e só então a admissão de que
+ * não se sabe o nome.
  *
  * O telefone NÃO é reformatado: ele já é gravado em E.164 e é o mesmo texto que
  * o atendente copia para ligar ou buscar. Embelezá-lo aqui mudaria um rótulo
@@ -137,11 +176,15 @@ export function ehIdentificadorTecnico(valor: string): boolean {
 export function rotuloDoContato(c: ContatoNomeavel | null | undefined): string {
   if (!c) return SEM_NOME;
 
+  // Cadastro do time primeiro. Sem isto o pushName (ou um 404 do nginx
+  // gravado como display_name) vence o nome que o atendente acabou de salvar.
+  const cadastro = (c.name ?? "").trim();
+  if (cadastro !== "" && ehNomeDeGente(cadastro)) return cadastro;
+
   const notify = textoDoMeta(c.source_metadata, "notify_name");
-  const candidatos = [c.display_name, c.name, notify];
-  for (const bruto of candidatos) {
+  for (const bruto of [c.display_name, notify]) {
     const v = (bruto ?? "").trim();
-    if (v !== "" && !ehIdentificadorTecnico(v)) return v;
+    if (v !== "" && ehNomeDeGente(v)) return v;
   }
 
   const tel = telefoneApresentavel(c);

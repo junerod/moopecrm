@@ -17,10 +17,13 @@ import type { CrmSummaryData, LeadFicha } from "@/lib/inbox/crm-summary-tipos";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
 import { cn } from "@/lib/utils";
+import { papelForaDoFunil } from "@/lib/crm/papel-e-temperatura";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { CadastrarNomeDoContato } from "./CadastrarNomeDoContato";
 import { AssistenteIa } from "./AssistenteIa";
 import { BlocoNegocio } from "./BlocoNegocio";
+import { ChipsDePapel } from "./ChipsDePapel";
+import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
   conversation: ConversationWithContact | null;
@@ -343,7 +346,10 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
           Contato
         </h3>
         <Card className="mt-2 space-y-2 p-3 text-sm">
-          <div className="font-medium">{displayName}</div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="font-medium">{displayName}</div>
+            <SeloDaPessoa contact={contact} />
+          </div>
           {contact?.phone_number && (
             <div className="text-xs text-muted-foreground">{contact.phone_number}</div>
           )}
@@ -351,6 +357,15 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
             <div className="pt-1">
               <CadastrarNomeDoContato contactId={contactId} rotuloAtual={displayName} />
             </div>
+          ) : null}
+          {contactId ? (
+            <ChipsDePapel
+              contactId={contactId}
+              papel={contact?.papel}
+              contactName={displayName}
+              summary={summary}
+              onAtualizou={recarregar}
+            />
           ) : null}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
@@ -385,7 +400,20 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
         </Card>
       </section>
 
-      {contactId && summary && !erro ? (
+      {papelForaDoFunil(contact?.papel) ? (
+        <section
+          data-testid={contact?.papel === "ignorado" ? "conversa-ignorada" : "conversa-da-equipe"}
+        >
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Negócio
+          </h3>
+          <Card className="mt-2 p-3 text-sm text-muted-foreground">
+            {contact?.papel === "ignorado"
+              ? "Marcados para ignorar. O automático não trata esta conversa como venda."
+              : "Conversa da equipe. Não entra no funil comercial."}
+          </Card>
+        </section>
+      ) : contactId && summary && !erro ? (
         <BlocoNegocio
           key={`${negocioKey(summary)}-${tentativa}`}
           contactId={contactId}
