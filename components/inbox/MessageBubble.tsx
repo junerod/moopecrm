@@ -109,8 +109,10 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
             : cn(
                 "rounded-2xl px-3 py-2 shadow-sm",
                 isOutbound
-                  ? "rounded-br-sm bg-primary text-primary-foreground"
-                  : "rounded-bl-sm bg-muted text-foreground",
+                  ? message.sent_via === "ai"
+                    ? "rounded-br-sm bg-[var(--inbox-bubble-ai-bg)] text-[var(--inbox-bubble-ai-fg)]"
+                    : "rounded-br-sm bg-[var(--inbox-bubble-out-bg)] text-[var(--inbox-bubble-out-fg)]"
+                  : "rounded-bl-sm bg-[var(--inbox-bubble-in-bg)] text-[var(--inbox-bubble-in-fg)] ring-1 ring-[var(--color-border)]",
               ),
           isFailed && "border border-destructive",
         )}
@@ -126,8 +128,8 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
             className={cn(
               "mb-1 rounded border-l-2 px-2 py-1 text-xs",
               isOutbound
-                ? "border-primary-foreground/50 bg-primary-foreground/10"
-                : "border-primary bg-background/60",
+                ? "border-white/50 bg-white/10"
+                : "border-[var(--moope-primary)] bg-[var(--color-bg)]/60",
             )}
           >
             <div className="font-medium opacity-80">
@@ -189,7 +191,7 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
         <div
           className={cn(
             "mt-1 flex items-center justify-end gap-1 text-[10px]",
-            isOutbound ? "text-primary-foreground/70" : "text-muted-foreground",
+            isOutbound ? "text-white/70" : "text-muted-foreground",
           )}
         >
           {editada && (

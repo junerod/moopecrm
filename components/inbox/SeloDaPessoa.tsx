@@ -1,8 +1,9 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ds/StatusBadge";
 import { contatoNaoSalvo } from "@/lib/contacts/rotulo-do-contato";
 import { seloDaPessoa, temperaturaDoLeadAberto } from "@/lib/crm/papel-e-temperatura";
+import { tomDoSelo } from "@/lib/inbox/tom-da-tag";
 import type { ContactSummary } from "@/hooks/inbox/useConversationsRealtime";
 
 interface Props {
@@ -11,20 +12,21 @@ interface Props {
 
 export function SeloDaPessoa({ contact }: Props) {
   if (!contact) return null;
+  const temperatura = temperaturaDoLeadAberto(contact.crm_leads);
   const selo = seloDaPessoa({
     papel: contact.papel,
     naoSalvo: contatoNaoSalvo(contact),
-    temperatura: temperaturaDoLeadAberto(contact.crm_leads),
+    temperatura,
   });
   if (!selo) return null;
   return (
-    <Badge
-      variant="outline"
-      className="h-4 px-1.5 text-[10px] font-normal"
+    <StatusBadge
+      tone={tomDoSelo(selo.kind, temperatura)}
+      className="h-5 px-1.5 text-[10px]"
       data-testid="selo-da-pessoa"
       data-selo={selo.kind}
     >
       {selo.texto}
-    </Badge>
+    </StatusBadge>
   );
 }

@@ -45,6 +45,9 @@ export function useUpdateContact(id: string) {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       // Deep-link e conversa fora da lista comercial usam a chave singular.
       qc.invalidateQueries({ queryKey: ["conversation"] });
+      if ("tags" in patch) {
+        qc.invalidateQueries({ queryKey: ["contact-tag-vocabulary"] });
+      }
     },
   });
 }

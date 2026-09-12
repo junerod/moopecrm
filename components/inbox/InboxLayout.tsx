@@ -389,7 +389,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       */}
       <div
         className={cn(
-          "h-full min-h-0 flex-col bg-background md:flex",
+          "h-full min-h-0 flex-col bg-[var(--inbox-thread-bg)] md:flex",
           colunas.conversa,
         )}
       >

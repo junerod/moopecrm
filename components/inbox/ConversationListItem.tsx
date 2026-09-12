@@ -3,7 +3,8 @@ import { format, formatDistanceToNowStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, Robot } from "@/lib/ui/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ds/StatusBadge";
+import { TagChip } from "@/components/ds/TagChip";
 import { comandoDaConversa } from "@/lib/inbox/comando-da-conversa";
 import { rotuloDoDono } from "@/lib/inbox/rotulo-do-dono";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,8 @@ interface Props {
    */
   automaticoDaOrg?: boolean;
   viewerUserId?: string;
+  /** Índice 0-based na lista visível — fundo alternado (zebra). */
+  zebraImpar?: boolean;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -94,12 +97,18 @@ export function ConversationListItem({
   mostrarAtendente,
   automaticoDaOrg,
   viewerUserId,
+  zebraImpar,
 }: Props) {
   const c = contatoDoEmbed(conversation.contacts);
   const displayName = rotuloDoContato(c);
   const phoneFallback = c?.phone_number ?? "??";
-  const tags = c?.tags ?? [];
-  const visibleTags = tags.slice(0, 2);
+  const tagsDoContato = c?.tags ?? [];
+  const tagsDaConversa = conversation.tags ?? [];
+  const tags: string[] = [];
+  for (const t of [...tagsDoContato, ...tagsDaConversa]) {
+    if (!tags.includes(t)) tags.push(t);
+  }
+  const visibleTags = tags.slice(0, 3);
   const overflow = tags.length - visibleTags.length;
   const preview = conversation.last_message_preview?.trim() || "Sem mensagens";
   const truncated = preview.length > 72 ? `${preview.slice(0, 72)}…` : preview;
@@ -145,9 +154,10 @@ export function ConversationListItem({
       data-conversation-id={conversation.id}
       onClick={() => onSelect(conversation.id)}
       className={cn(
-        "group flex w-full items-start gap-2.5 border-b border-border/60 px-3 py-2 text-left transition-colors hover:bg-muted/60",
-        isSelected && "bg-muted/80",
-        unread > 0 && !isSelected && "bg-background",
+        "group flex w-full items-start gap-2.5 border-b border-border/60 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-[var(--color-surface-elevated)]",
+        zebraImpar && !isSelected && "bg-[var(--inbox-row-alt)]",
+        isSelected && "bg-[var(--moope-primary-bg)]",
+        unread > 0 && !isSelected && "font-medium",
       )}
       aria-current={isSelected ? "true" : undefined}
     >
@@ -234,10 +244,9 @@ export function ConversationListItem({
         ) : null}
 
         <div className="mt-1 flex flex-wrap items-center gap-1">
+          <SeloDaPessoa contact={c} />
           {visibleTags.map((t) => (
-            <Badge key={t} variant="secondary" className="h-4 px-1.5 text-[10px]">
-              {t}
-            </Badge>
+            <TagChip key={t} label={t} />
           ))}
           {overflow > 0 && (
             <span className="text-[10px] text-muted-foreground">+{overflow}</span>
@@ -248,28 +257,20 @@ export function ConversationListItem({
             </span>
           )}
           {mostrarCanal && rotuloCanal && (
-            <Badge
-              variant="outline"
-              className="h-4 gap-1 px-1.5 text-[10px] font-normal text-muted-foreground"
+            <span
+              className="inline-flex h-5 items-center gap-1 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
               title={`Entrou por ${rotuloCanal}`}
             >
               <Phone size={9} weight="regular" aria-hidden />
               {rotuloCanal}
-            </Badge>
+            </span>
           )}
-          <SeloDaPessoa contact={c} />
-          {c?.is_blocked && (
-            <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-              Bloqueado
-            </Badge>
-          )}
-          {c?.is_anonymized && (
-            <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
-              Anonimizado
-            </Badge>
-          )}
+          {c?.is_blocked && <StatusBadge tone="red">Bloqueado</StatusBadge>}
+          {c?.is_anonymized && <StatusBadge tone="indigo">Anonimizado</StatusBadge>}
           {unread > 0 && (
-            <Badge className="ml-auto h-4 min-w-4 px-1.5 text-[10px]">{unread}</Badge>
+            <StatusBadge tone="blue" className="ml-auto min-w-4 justify-center">
+              {unread}
+            </StatusBadge>
           )}
         </div>
       </div>

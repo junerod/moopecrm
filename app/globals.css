@@ -104,6 +104,16 @@
   --info-soft: var(--color-info-bg);
   --ai-soft: var(--color-ai-bg);
 
+  /* Inbox — thread, lista e balões (só tokens; dark redefine) */
+  --inbox-thread-bg: color-mix(in srgb, var(--moope-cyan) 9%, var(--color-bg));
+  --inbox-row-alt: color-mix(in srgb, var(--moope-primary) 5%, transparent);
+  --inbox-bubble-in-bg: var(--color-surface);
+  --inbox-bubble-in-fg: var(--color-text);
+  --inbox-bubble-out-bg: var(--moope-primary);
+  --inbox-bubble-out-fg: #ffffff;
+  --inbox-bubble-ai-bg: var(--color-ai);
+  --inbox-bubble-ai-fg: #ffffff;
+
   /* Spacing (4-base) */
   --space-0: 0px;
   --space-1: 4px;
@@ -425,6 +435,14 @@
   --funnel-3: color-mix(in srgb, var(--color-warning) 20%, var(--color-surface));
   --funnel-4: color-mix(in srgb, var(--color-warning) 28%, var(--color-surface));
   --funnel-5: color-mix(in srgb, var(--color-success) 20%, var(--color-surface));
+  --inbox-thread-bg: color-mix(in srgb, var(--moope-cyan) 10%, var(--color-bg));
+  --inbox-row-alt: color-mix(in srgb, var(--moope-primary) 8%, transparent);
+  --inbox-bubble-in-bg: var(--color-surface-elevated);
+  --inbox-bubble-in-fg: var(--color-text);
+  --inbox-bubble-out-bg: var(--moope-primary);
+  --inbox-bubble-out-fg: #ffffff;
+  --inbox-bubble-ai-bg: var(--color-ai);
+  --inbox-bubble-ai-fg: var(--color-text);
 
   /* Shadows — heavier in dark */
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);

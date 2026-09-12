@@ -27,14 +27,18 @@ import { PencilSimple } from "@/lib/ui/icons";
 export function CadastrarNomeDoContato({
   contactId,
   rotuloAtual,
+  naoSalvo = false,
 }: {
   contactId: string;
   rotuloAtual: string;
+  /** WhatsApp mandou nome, o cadastro ainda não gravou. */
+  naoSalvo?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const [nome, setNome] = useState("");
   const update = useUpdateContact(contactId);
   const semNome = rotuloAtual === SEM_NOME;
+  const destaque = naoSalvo || semNome;
 
   function abrir() {
     setNome(semNome ? "" : rotuloAtual);
@@ -56,22 +60,49 @@ export function CadastrarNomeDoContato({
 
   return (
     <>
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-7 px-2 text-xs"
-        onClick={abrir}
-      >
-        <PencilSimple size={12} className="mr-1" weight="regular" aria-hidden />
-        {semNome ? "Cadastrar nome" : "Trocar nome"}
-      </Button>
+      {destaque ? (
+        <div
+          className="space-y-2 rounded-lg border px-3 py-2"
+          style={{
+            background: "var(--color-warning-bg)",
+            borderColor: "color-mix(in srgb, var(--color-warning) 35%, transparent)",
+          }}
+          data-testid="salvar-nome-contato"
+        >
+          <p className="text-[12px] leading-snug text-[var(--color-warning-fg)]">
+            {naoSalvo
+              ? "Nome do WhatsApp ainda não está salvo no cadastro. Grave aqui para a lista e o funil usarem este nome."
+              : "Este contato não tem nome no cadastro. Grave um para achar depois."}
+          </p>
+          <Button
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={abrir}
+          >
+            <PencilSimple size={12} className="mr-1" weight="regular" aria-hidden />
+            Salvar nome na plataforma
+          </Button>
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs"
+          onClick={abrir}
+          data-testid="trocar-nome-contato"
+        >
+          <PencilSimple size={12} className="mr-1" weight="regular" aria-hidden />
+          Trocar nome
+        </Button>
+      )}
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{semNome ? "Cadastrar nome" : "Trocar nome"}</DialogTitle>
+            <DialogTitle>{destaque ? "Salvar nome na plataforma" : "Trocar nome"}</DialogTitle>
             <DialogDescription>
-              É o nome que aparece na lista do Inbox e no quadro. O WhatsApp
-              às vezes não manda o nome — aí você coloca.
+              O nome fica no cadastro desta instalação — Inbox, Contatos e
+              funil. Não grava na agenda do celular: o WhatsApp só envia o
+              nome do aparelho para cá, não o contrário.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={salvar} className="space-y-4">

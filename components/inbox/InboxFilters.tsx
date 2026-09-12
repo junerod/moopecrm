@@ -19,9 +19,11 @@ import { useConversationTagVocabulary } from "@/hooks/inbox/useConversationTags"
 import { useConversationCounts } from "@/hooks/inbox/useConversationCounts";
 import type { Role, VisibilityMode } from "@/lib/auth/types";
 import { type FiltroDePapel } from "@/lib/crm/papel-e-temperatura";
+import { ESTILO_DO_TOM } from "@/lib/design-system/tones";
+import { TOM_DA_ABA, type AbaDoInbox } from "@/lib/inbox/tom-da-tag";
 import { QueueWaitSummary } from "./QueueWaitSummary";
 
-export type InboxTab = "unassigned" | "mine" | "all" | "closed" | "ai";
+export type InboxTab = AbaDoInbox;
 
 const INBOX_TABS: { value: InboxTab; label: string }[] = [
   { value: "unassigned", label: "Fila" },
@@ -183,20 +185,27 @@ export function InboxFilters({ value, onChange }: Props) {
         value={value.tab}
         onValueChange={(v) => onChange({ ...value, tab: v as InboxTab })}
       >
-        <TabsList
-          className="grid h-8 w-full"
-          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
-        >
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 bg-transparent p-0">
           {tabs.map((tab) => {
             const meta = INBOX_TABS.find((t) => t.value === tab)!;
             const count = countFor[tab];
+            const cor = ESTILO_DO_TOM[TOM_DA_ABA[tab]];
+            const ativo = value.tab === tab;
             return (
-              <TabsTrigger key={tab} value={tab} className="gap-1 text-[11px]">
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                data-testid={`inbox-tab-${tab}`}
+                className="h-7 gap-1 rounded-full border px-2.5 text-[11px] font-medium shadow-none data-[state=active]:shadow-none"
+                style={
+                  ativo
+                    ? { background: cor.bg, color: cor.fg, borderColor: "transparent" }
+                    : { background: "transparent", color: cor.fg, borderColor: cor.bg }
+                }
+              >
                 {meta.label}
                 {typeof count === "number" && count > 0 && (
-                  <span className="text-[10px] tabular-nums text-muted-foreground">
-                    {count}
-                  </span>
+                  <span className="tabular-nums opacity-80">{count}</span>
                 )}
               </TabsTrigger>
             );

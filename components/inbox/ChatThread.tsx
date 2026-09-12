@@ -143,7 +143,7 @@ export function ChatThread({ conversationId, onResponder }: Props) {
     return (
       <div
         {...sinalDoCanal}
-        className="flex h-full items-center justify-center text-sm text-muted-foreground"
+        className="flex h-full items-center justify-center bg-[var(--inbox-thread-bg)] text-sm text-muted-foreground"
       >
         Selecione uma conversa
       </div>
@@ -152,7 +152,7 @@ export function ChatThread({ conversationId, onResponder }: Props) {
 
   if (q.isLoading) {
     return (
-      <div {...sinalDoCanal} className="space-y-3 p-4">
+      <div {...sinalDoCanal} className="space-y-3 bg-[var(--inbox-thread-bg)] p-4">
         {[1, 2, 3, 4].map((i) => (
           <Skeleton key={i} className="h-12 w-2/3" />
         ))}
@@ -164,7 +164,7 @@ export function ChatThread({ conversationId, onResponder }: Props) {
     return (
       <div
         {...sinalDoCanal}
-        className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
+        className="flex h-full flex-col items-center justify-center gap-2 bg-[var(--inbox-thread-bg)] text-sm text-muted-foreground"
       >
         <p>Erro ao carregar mensagens.</p>
         <Button size="sm" variant="outline" onClick={() => q.refetch()}>
@@ -178,7 +178,7 @@ export function ChatThread({ conversationId, onResponder }: Props) {
     return (
       <div
         {...sinalDoCanal}
-        className="flex h-full items-center justify-center text-sm text-muted-foreground"
+        className="flex h-full items-center justify-center bg-[var(--inbox-thread-bg)] text-sm text-muted-foreground"
       >
         Nenhuma mensagem nesta conversa.
       </div>
@@ -196,7 +196,7 @@ export function ChatThread({ conversationId, onResponder }: Props) {
   }
 
   return (
-    <div {...sinalDoCanal} className="flex h-full flex-col">
+    <div {...sinalDoCanal} className="flex h-full flex-col bg-[var(--inbox-thread-bg)]">
       <IndicadorDeCarga
         ativo={q.isFetching && !q.isLoading && !q.isFetchingNextPage}
         rotulo="Atualizando mensagens…"
@@ -218,7 +218,7 @@ export function ChatThread({ conversationId, onResponder }: Props) {
         {groups.map((g) => (
           <div key={g.key} className="space-y-1">
             <div className="sticky top-0 z-10 flex justify-center py-1">
-              <span className="rounded-full bg-background/80 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur">
+              <span className="rounded-full bg-[var(--color-surface)]/90 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shadow-sm backdrop-blur">
                 {dayLabel(g.date)}
               </span>
             </div>

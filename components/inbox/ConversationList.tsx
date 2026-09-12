@@ -140,6 +140,7 @@ export function ConversationList({
             mostrarAtendente={mostrarAtendente}
             automaticoDaOrg={automaticoDaOrg.data}
             viewerUserId={user.id}
+            zebraImpar={i % 2 === 1}
           />
         ))}
         {q.hasNextPage && (

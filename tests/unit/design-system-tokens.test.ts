@@ -18,6 +18,9 @@ describe("tokens do design system MOOPE", () => {
     expect(css).toMatch(/--nav-icon-cyan:\s*#12b8e8/);
     expect(css).toMatch(/--funnel-1:/);
     expect(css).toMatch(/\[data-theme="dark"\][\s\S]*--funnel-1:/);
+    expect(css).toMatch(/--inbox-thread-bg:/);
+    expect(css).toMatch(/--inbox-bubble-out-bg:/);
+    expect(css).toMatch(/\[data-theme="dark"\][\s\S]*--inbox-thread-bg:/);
   });
 
   it("mapeia ícones da nav por significado, não por enfeite", () => {

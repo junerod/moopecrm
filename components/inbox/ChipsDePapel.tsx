@@ -1,14 +1,14 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { ESTILO_DO_TOM } from "@/lib/design-system/tones";
 import { useMarcarPapel } from "@/hooks/inbox/useMarcarPapel";
 import {
   PAPEIS_DO_CONTATO,
   ROTULO_DO_PAPEL,
   type PapelDoContato,
 } from "@/lib/crm/papel-e-temperatura";
+import { TOM_DO_PAPEL } from "@/lib/inbox/tom-da-tag";
 import type { CrmSummaryData } from "@/lib/inbox/crm-summary-tipos";
-import { cn } from "@/lib/utils";
 
 interface Props {
   contactId: string;
@@ -33,13 +33,17 @@ export function ChipsDePapel({
       <div className="flex flex-wrap gap-1">
         {PAPEIS_DO_CONTATO.map((p) => {
           const ativo = papel === p;
+          const cor = ESTILO_DO_TOM[TOM_DO_PAPEL[p]];
           return (
-            <Button
+            <button
               key={p}
               type="button"
-              size="sm"
-              variant={ativo ? "default" : "outline"}
-              className={cn("h-6 px-2 text-[11px]", ativo && "pointer-events-auto")}
+              className="h-7 rounded-full border px-2.5 text-[11px] font-medium transition-colors duration-150 disabled:opacity-50"
+              style={
+                ativo
+                  ? { background: cor.bg, color: cor.fg, borderColor: "transparent" }
+                  : { background: "transparent", color: cor.fg, borderColor: cor.bg }
+              }
               disabled={isPending}
               aria-pressed={ativo}
               data-testid={`chip-papel-${p}`}
@@ -48,7 +52,7 @@ export function ChipsDePapel({
               }
             >
               {ROTULO_DO_PAPEL[p]}
-            </Button>
+            </button>
           );
         })}
       </div>

@@ -158,8 +158,17 @@ rollout**, não nesta rodada global — para não pintar 63 telas de uma vez.
 - **Tabela:** header leve, hover de linha, borda horizontal, badge de status.
 - **Kanban:** fundo `#F5F8FC`, colunas suaves, card branco, accent da etapa,
   badge de temperatura, avatar, próxima ação, valor.
-- **Inbox:** lista limpa, nome forte, preview muted, badge, dono, espera,
-  composer moderno.
+- **Inbox (Lote A, aplicado):**
+  - Abas Fila / Minhas / Todas / Fechadas / IA em chips coloridos (âmbar, azul,
+    teal, índigo, violeta) — não um grid embolado.
+  - Lista com zebra (`--inbox-row-alt`) e chips de papel/tag com tom semântico.
+  - Thread com `--inbox-thread-bg` (azul bem claro). Balão do cliente branco;
+    do atendente `--inbox-bubble-out` (azul MOOPE); da IA `--inbox-bubble-ai`.
+  - Tags do contato reutilizam o que a org já gravou (`GET /api/v1/contact-tags`).
+    Tags da conversa juntam canônico + em uso (`GET /api/v1/conversation-tags`).
+    Cor da tag = hash estável do nome (`tomDaTag`), sem coluna de cor.
+  - Nome do WhatsApp “não salvo” vira callout para gravar no cadastro. Não
+    escreve na agenda do celular (WAHA só puxa).
 
 Detalhe no relatório de resultado, lote A.
 

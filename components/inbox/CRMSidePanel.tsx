@@ -3,10 +3,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tag, Receipt, ArrowRight } from "@/lib/ui/icons";
+import { Receipt, ArrowRight } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
@@ -16,7 +15,7 @@ import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
 import { cn } from "@/lib/utils";
 import { papelForaDoFunil, type PapelDoContato } from "@/lib/crm/papel-e-temperatura";
-import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { contatoDoEmbed, contatoNaoSalvo, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { CadastrarNomeDoContato } from "./CadastrarNomeDoContato";
 import { AssistenteIa } from "./AssistenteIa";
 import { BlocoNegocio } from "./BlocoNegocio";
@@ -251,8 +250,6 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
   const [erro, setErro] = useState(false);
   const [tentativa, setTentativa] = useState(0);
 
-  const [tagEditorOpen, setTagEditorOpen] = useState(false);
-
   useEffect(() => {
     if (!contactId) {
       setLeads(null);
@@ -358,7 +355,11 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
           <div className="text-[13px] text-muted-foreground">{contact.phone_number}</div>
         )}
         {contactId ? (
-          <CadastrarNomeDoContato contactId={contactId} rotuloAtual={displayName} />
+          <CadastrarNomeDoContato
+            contactId={contactId}
+            rotuloAtual={displayName}
+            naoSalvo={contatoNaoSalvo(contact)}
+          />
         ) : null}
         {contactId ? (
           <ChipsDePapel
@@ -374,36 +375,21 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
             }}
           />
         ) : null}
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tags.map((t) => (
-              <Badge key={t} variant="secondary" className="h-4 px-1.5 text-[10px]">
-                {t}
-              </Badge>
-            ))}
-          </div>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-xs"
-            disabled={!contactId}
-            aria-pressed={tagEditorOpen}
-            onClick={() => setTagEditorOpen((v) => !v)}
-          >
-            <Tag size={12} className="mr-1" weight="regular" aria-hidden /> Tag
+        {contactId ? (
+          <ContactTagsEditor
+            contactId={contactId}
+            orgId={conversation.organization_id}
+            tags={tags}
+          />
+        ) : null}
+        {contactId && (
+          <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+            <Link href={`/app/contacts/${contactId}`}>
+              Ver contato
+              <ArrowRight size={12} className="ml-1" weight="regular" aria-hidden />
+            </Link>
           </Button>
-          {contactId && (
-            <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
-              <Link href={`/app/contacts/${contactId}`}>
-                Ver contato
-                <ArrowRight size={12} className="ml-1" weight="regular" aria-hidden />
-              </Link>
-            </Button>
-          )}
-        </div>
-        {tagEditorOpen && contactId && <ContactTagsEditor contactId={contactId} tags={tags} />}
+        )}
       </section>
 
       <div className="border-t border-border" />
@@ -437,7 +423,7 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
       <div className="space-y-3 border-t border-border pt-4">
       <AssistenteIa conversationId={conversation.id} onUsarResposta={onUsarResposta} />
 
-      <details className="text-sm">
+      <details className="text-sm" open>
         <summary className="cursor-pointer text-[13px] font-medium">
           Tags da conversa
         </summary>

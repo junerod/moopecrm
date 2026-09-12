@@ -1,21 +1,23 @@
 "use client";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Plus } from "@/lib/ui/icons";
+import { TagChip } from "@/components/ds/TagChip";
+import { Plus } from "@/lib/ui/icons";
 import { useUpdateContact } from "@/hooks/contacts/useUpdateContact";
+import { useContactTagVocabulary } from "@/hooks/inbox/useConversationTags";
 
 interface Props {
   contactId: string;
+  orgId: string;
   tags: string[];
 }
 
-/** Edita as tags do CONTATO (distinto de ConversationTagsEditor, que edita as
- * tags da conversa) — aberto pelo botão "Tag" do painel do Inbox. */
-export function ContactTagsEditor({ contactId, tags }: Props) {
+/** Edita as tags do CONTATO — persistem na pessoa e reaparecem como sugestão. */
+export function ContactTagsEditor({ contactId, orgId, tags }: Props) {
   const [draft, setDraft] = useState("");
   const mutation = useUpdateContact(contactId);
+  const { data: vocabulary } = useContactTagVocabulary(orgId);
 
   function apply(next: string[]) {
     mutation.mutate({ tags: next });
@@ -32,23 +34,27 @@ export function ContactTagsEditor({ contactId, tags }: Props) {
     apply(tags.filter((t) => t !== tag));
   }
 
+  const suggestions = (vocabulary ?? []).filter((t) => !tags.includes(t)).slice(0, 12);
+
   return (
-    <div className="mt-2 space-y-2 rounded-md border border-border p-2">
+    <div className="space-y-2">
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Tags do contato
+        </h3>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Ficam gravadas nesta pessoa. Crie uma vez — a próxima conversa sugere.
+        </p>
+      </div>
+
       <div className="flex flex-wrap gap-1">
         {tags.length > 0 ? (
           tags.map((t) => (
-            <Badge key={t} variant="secondary" className="h-5 gap-1 px-1.5 text-[10px]">
-              {t}
-              <button
-                type="button"
-                onClick={() => remove(t)}
-                disabled={mutation.isPending}
-                aria-label={`Remover tag ${t}`}
-                className="rounded-sm hover:text-destructive"
-              >
-                <X size={10} weight="bold" aria-hidden />
-              </button>
-            </Badge>
+            <TagChip
+              key={t}
+              label={t}
+              onRemove={mutation.isPending ? undefined : () => remove(t)}
+            />
           ))
         ) : (
           <span className="text-xs text-muted-foreground">Sem tags no contato.</span>
@@ -65,7 +71,7 @@ export function ContactTagsEditor({ contactId, tags }: Props) {
               add(draft);
             }
           }}
-          placeholder="Nova tag…"
+          placeholder="Ex.: plataforma, rastreamento…"
           maxLength={40}
           disabled={mutation.isPending || tags.length >= 20}
           className="h-7 text-xs"
@@ -82,6 +88,19 @@ export function ContactTagsEditor({ contactId, tags }: Props) {
           <Plus size={12} weight="regular" aria-hidden />
         </Button>
       </div>
+
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {suggestions.map((t) => (
+            <TagChip
+              key={t}
+              label={t}
+              dashed
+              onSelect={() => add(t)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -40,6 +40,9 @@ vi.mock("@/hooks/inbox/useConversationTags", () => ({
 vi.mock("@/hooks/inbox/useConversationCounts", () => ({
   useConversationCounts: () => ({ data: { unassigned: 3, mine: 2, all: 5 } }),
 }));
+vi.mock("@/hooks/inbox/useQueueStatus", () => ({
+  useQueueStatus: () => ({ data: null }),
+}));
 
 const VALUE: InboxFiltersValue = {
   tab: "unassigned",
