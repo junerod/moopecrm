@@ -51,21 +51,21 @@ async function shot(page: Page, nome: string): Promise<void> {
 
 async function garantirSessao(provider: "waha" | "meta_cloud"): Promise<string> {
   const nome = `e2e-mf-${provider}-${SUFIXO}`;
-  const row =
+  const insert =
     provider === "meta_cloud"
-      ? {
+      ? admin.from("channel_sessions").insert({
           organization_id: creds.org_id,
           webhook_secret_encrypted: "e2e",
-          provider,
+          provider: "meta_cloud" as const,
           meta_phone_number_id: `e2e-meta-${SUFIXO}`,
-        }
-      : {
+        })
+      : admin.from("channel_sessions").insert({
           organization_id: creds.org_id,
           webhook_secret_encrypted: "e2e",
-          provider,
+          provider: "waha" as const,
           waha_session_name: nome,
-        };
-  const { data, error } = await admin.from("channel_sessions").insert(row).select("id").single();
+        });
+  const { data, error } = await insert.select("id").single();
   if (error || !data) throw new Error(`sessão ${provider}: ${error?.message}`);
   return (data as { id: string }).id;
 }

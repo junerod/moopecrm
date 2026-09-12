@@ -24,6 +24,7 @@ import {
 import type { LeadCandidate } from "@/lib/leads/active-lead";
 import { createClient } from "@/lib/supabase/server";
 import type { BoardData, Pipeline, Stage } from "@/lib/kanban/types";
+import { withProximasAcoesComerciais } from "@/lib/demandas/anexar-ao-board";
 import type { Lead } from "@/lib/types/leads";
 
 export const dynamic = "force-dynamic";
@@ -425,10 +426,19 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     return fail("internal_error", leadsComConversa.error, 500, { requestId });
   }
 
+  const leadsComPasso = await withProximasAcoesComerciais(
+    supabase,
+    (pipeline as Pipeline).organization_id,
+    leadsComConversa.leads,
+  );
+  if (leadsComPasso.error) {
+    return fail("internal_error", leadsComPasso.error, 500, { requestId });
+  }
+
   const board: BoardData = {
     pipeline: pipeline as Pipeline,
     stages: (stages ?? []) as Stage[],
-    leads: leadsComConversa.leads,
+    leads: leadsComPasso.leads,
   };
 
   return ok(board, { requestId });

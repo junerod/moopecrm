@@ -208,6 +208,9 @@ export const AUDIT_ACTIONS = [
   // uma demanda, e qual. Sem isto, a única mutação que fecha o vazamento seria
   // a única sem rastro.
   "demanda.proximo_passo_definido",
+  "demanda.proximo_passo_concluido",
+  "demanda.alertas_enviados",
+  "me.alert_prefs_updated",
   "routing.worker_run",
   "attendant.heartbeat_swept",
   "webhook.source_created",

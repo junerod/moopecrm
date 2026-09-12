@@ -17,6 +17,8 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
+import { definirProximoPassoComercial } from "@/lib/demandas/definir-proximo-passo";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
@@ -137,6 +139,26 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     .eq("organization_id", row.organization_id)
     .eq("contact_id", row.contact_id);
   if (limpaErr) return fail("internal_error", limpaErr.message, 500, { requestId });
+
+  if (decision === "approve") {
+    try {
+      await definirProximoPassoComercial(createAdminClient(), {
+        organizationId: row.organization_id,
+        contactId: row.contact_id,
+        userId: user.id,
+        proximo_passo: atual,
+        proximo_passo_em: null,
+        leadId: row.id,
+      });
+    } catch (err) {
+      return fail(
+        "internal_error",
+        err instanceof Error ? err.message : "Falha ao gravar a próxima ação.",
+        500,
+        { requestId },
+      );
+    }
+  }
 
   return ok({ lead_id: row.id, decision, next_action: atual }, { requestId });
 }

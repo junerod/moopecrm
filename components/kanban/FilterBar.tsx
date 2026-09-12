@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -220,25 +220,42 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <label
-        className={cn(
-          "flex cursor-pointer select-none items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm",
-          filters.overdueOnly && "border-accent bg-accent/10",
-        )}
+      <Chip
+        ativo={!!filters.acaoAtrasada}
+        onChange={(v) => onChange({ ...filters, acaoAtrasada: v || undefined })}
+        testid="filtro-acao-atrasada"
       >
-        <input
-          type="checkbox"
-          checked={!!filters.overdueOnly}
-          onChange={(e) => onChange({ ...filters, overdueOnly: e.target.checked })}
-        />
-        Apenas atrasados
-      </label>
+        Atrasadas
+      </Chip>
+      <Chip
+        ativo={!!filters.semProximaAcao}
+        onChange={(v) => onChange({ ...filters, semProximaAcao: v || undefined })}
+        testid="filtro-sem-proxima-acao"
+      >
+        Sem próxima ação
+      </Chip>
+      <Chip
+        ativo={!!filters.quentes}
+        onChange={(v) => onChange({ ...filters, quentes: v || undefined })}
+        testid="filtro-quentes"
+      >
+        Quentes
+      </Chip>
+      <Chip
+        ativo={!!filters.overdueOnly}
+        onChange={(v) => onChange({ ...filters, overdueOnly: v || undefined })}
+      >
+        Fechamento atrasado
+      </Chip>
 
       {(filters.search ||
         filters.owner ||
         filters.tag ||
         filters.source ||
         filters.overdueOnly ||
+        filters.acaoAtrasada ||
+        filters.semProximaAcao ||
+        filters.quentes ||
         (filters.status && filters.status !== "all")) && (
         <Button
           variant="ghost"
@@ -252,5 +269,30 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
         </Button>
       )}
     </div>
+  );
+}
+
+function Chip({
+  ativo,
+  onChange,
+  children,
+  testid,
+}: {
+  ativo: boolean;
+  onChange: (v: boolean) => void;
+  children: ReactNode;
+  testid?: string;
+}) {
+  return (
+    <label
+      data-testid={testid}
+      className={cn(
+        "flex cursor-pointer select-none items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm",
+        ativo && "border-accent bg-accent/10",
+      )}
+    >
+      <input type="checkbox" checked={ativo} onChange={(e) => onChange(e.target.checked)} />
+      {children}
+    </label>
   );
 }

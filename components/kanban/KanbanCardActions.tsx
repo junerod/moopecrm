@@ -11,12 +11,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+import { apiClient } from "@/lib/api/client";
 import { DotsThree, PencilSimple, Users } from "@/lib/ui/icons";
+import { useQueryClient } from "@tanstack/react-query";
 import { useWinLead, useEditLead } from "@/hooks/kanban/useUpdateLead";
 import { useMoveCard } from "@/hooks/kanban/useMoveCard";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import { usePermission } from "@/hooks/auth/AuthProvider";
+import { ProximaAcaoControles } from "@/components/comercial/ProximaAcaoControles";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { LoseLeadDialog } from "./LoseLeadDialog";
 import { EditLeadDialog } from "./EditLeadDialog";
 import type { Lead } from "@/lib/types/leads";
@@ -31,6 +42,7 @@ interface KanbanCardActionsProps {
 export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardActionsProps) {
   const [loseOpen, setLoseOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [acaoOpen, setAcaoOpen] = useState(false);
   const winMutation = useWinLead(pipelineId);
   const editMutation = useEditLead(pipelineId);
   const moveMutation = useMoveCard(pipelineId);
@@ -60,6 +72,7 @@ export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardA
     });
   };
 
+  const queryClient = useQueryClient();
   const etapasAbertas = stages.filter((s) => !s.is_archived && !s.is_won && !s.is_lost);
   const etapaReativar =
     etapasAbertas.find((s) => /reativar/i.test(s.name)) ?? etapasAbertas[0];
@@ -100,6 +113,34 @@ export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardA
           >
             <PencilSimple size={14} className="mr-2" /> Editar
           </DropdownMenuItem>
+          {lead.conversa?.id ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                window.location.href = `/app/inbox/${lead.conversa!.id}`;
+              }}
+            >
+              Abrir conversa
+            </DropdownMenuItem>
+          ) : null}
+          {lead.proxima_acao?.demanda_id ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                void apiClient
+                  .post(`/api/v1/demandas/${lead.proxima_acao!.demanda_id}/concluir`, {})
+                  .then(() => {
+                    toast.success("Próxima ação concluída.");
+                    void queryClient.invalidateQueries({ queryKey: ["board", pipelineId] });
+                  })
+                  .catch(() => toast.error("Não consegui concluir."));
+              }}
+            >
+              Concluir próxima ação
+            </DropdownMenuItem>
+          ) : lead.status === "open" && lead.contact_id ? (
+            <DropdownMenuItem onSelect={() => setAcaoOpen(true)}>
+              Definir próxima ação
+            </DropdownMenuItem>
+          ) : null}
           {etapasAbertas.length > 0 && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Mover para…</DropdownMenuSubTrigger>
@@ -197,6 +238,31 @@ export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardA
         lead={lead}
         pipelineId={pipelineId}
       />
+      <Dialog open={acaoOpen} onOpenChange={setAcaoOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="definir-proxima-acao">
+          <DialogHeader>
+            <DialogTitle>Próxima ação</DialogTitle>
+          </DialogHeader>
+          <ProximaAcaoControles
+            textoInicial={lead.proxima_acao?.texto ?? ""}
+            emInicial={lead.proxima_acao?.em ?? null}
+            onSalvar={async (texto, em) => {
+              if (!lead.contact_id) return;
+              await apiClient.post("/api/v1/demandas", {
+                contact_id: lead.contact_id,
+                conversation_id: lead.conversa?.id ?? null,
+                lead_id: lead.id,
+                proximo_passo: texto,
+                proximo_passo_em: em,
+              });
+              toast.success("Próxima ação definida.");
+              setAcaoOpen(false);
+              void queryClient.invalidateQueries({ queryKey: ["board", pipelineId] });
+            }}
+            onCancelar={() => setAcaoOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

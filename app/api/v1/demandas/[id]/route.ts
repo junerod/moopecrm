@@ -81,6 +81,8 @@ export async function PATCH(
     .update({
       proximo_passo: parsed.data.proximo_passo,
       proximo_passo_em: parsed.data.proximo_passo_em ?? null,
+      dono_kind: "humano",
+      dono_user_id: user.id,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

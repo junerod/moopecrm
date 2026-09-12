@@ -14,6 +14,13 @@ export type LeadStatus = "open" | "won" | "lost";
  */
 export type OwnerKind = "user" | "ai" | null;
 
+export interface ProximaAcaoComercial {
+  demanda_id: string;
+  texto: string;
+  em: string | null;
+  dono_user_id: string | null;
+}
+
 /**
  * Identidade do agente dono, resolvida no servidor e anexada ao lead pela rota
  * do board. **Não é coluna** de `crm_leads`.
@@ -57,6 +64,11 @@ export interface Lead {
    * aparece quando o roteamento é inequívoco.
    */
   next_action?: { label: string; seq: number; proposed_at: string } | null;
+  /**
+   * Derivado (não é coluna de crm_leads): próxima ação CANÔNICA em
+   * `demandas.proximo_passo`. Distinta de `next_action` (proposta da IA).
+   */
+  proxima_acao?: ProximaAcaoComercial | null;
   /**
    * Derivado (não é coluna): o score vem de `crm_lead_scores` por LEFT JOIN.
    *

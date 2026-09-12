@@ -4,6 +4,7 @@ import { addDays, endOfMonth, format, startOfDay, startOfMonth, startOfWeek } fr
 import { ptBR } from "date-fns/locale";
 import * as React from "react";
 
+import { ObrigacoesComerciais } from "@/components/agenda/ObrigacoesComerciais";
 import { AvisoDaConexaoGoogle } from "./_components/AvisoDaConexaoGoogle";
 import { CartaoDaConexaoGoogle } from "./_components/CartaoDaConexaoGoogle";
 
@@ -272,6 +273,8 @@ export function AgendaClient({
           </Button>
         </div>
       </header>
+
+      <ObrigacoesComerciais />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">

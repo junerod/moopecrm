@@ -11,6 +11,7 @@ import { ReactivationSlot } from "./ReactivationSlot";
 import { ConversaSlot } from "./ConversaSlot";
 import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
+import { estadoDaProximaAcao, rotuloDoAtraso, rotuloDoQuando } from "@/lib/comercial/proxima-acao";
 import { ehTemperaturaDoLead, ROTULO_DA_TEMPERATURA } from "@/lib/crm/papel-e-temperatura";
 import { CLASSE_DOT_TEMPERATURA } from "@/lib/crm/temperatura-visual";
 
@@ -196,6 +197,11 @@ export function KanbanCard({
             {value ?? "—"}
           </p>
 
+          <LinhaProximaAcao
+            status={lead.status}
+            acao={card.proximaAcao}
+          />
+
           {/* ③ a linha do agente — um slot, três estados, nunca três blocos. */}
           <div className="mt-1.5 flex h-6 items-center gap-2 text-xs">
             {state.slot.type === "awaiting" && (
@@ -254,5 +260,36 @@ export function KanbanCard({
         </div>
       )}
     </Draggable>
+  );
+}
+
+function LinhaProximaAcao({
+  status,
+  acao,
+}: {
+  status: Lead["status"];
+  acao?: { demanda_id: string; texto: string; em: string | null } | null;
+}) {
+  const estado = estadoDaProximaAcao({ texto: acao?.texto, em: acao?.em });
+  if (estado === "sem") {
+    if (status !== "open") return null;
+    return (
+      <p className="mt-1 truncate text-[11px] text-text-muted" data-testid="kanban-sem-proxima-acao">
+        Sem próxima ação
+      </p>
+    );
+  }
+  const atraso = rotuloDoAtraso(acao?.em);
+  const quando = rotuloDoQuando(acao?.em);
+  return (
+    <p
+      className={cn(
+        "mt-1 truncate text-[11px]",
+        estado === "atrasada" ? "text-destructive" : "text-text",
+      )}
+      data-testid={estado === "atrasada" ? "kanban-acao-atrasada" : "kanban-proxima-acao"}
+    >
+      {atraso ?? quando ?? "Sem hora"} · {acao?.texto}
+    </p>
   );
 }

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ProximaAcaoControles } from "@/components/comercial/ProximaAcaoControles";
 import { Button } from "@/components/ui/button";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { apiClient } from "@/lib/api/client";
+import { estadoDaProximaAcao, rotuloDoAtraso, rotuloDoQuando } from "@/lib/comercial/proxima-acao";
 import type {
   CrmSummaryData,
   LeadFicha,
@@ -36,24 +38,6 @@ function rotuloOrigem(source: string | null): string | null {
   if (!source) return null;
   const rotulo = rotuloDaOrigem(source);
   return rotulo === "—" ? source : rotulo;
-}
-
-function isoParaCampos(iso: string | null): { data: string; hora: string } {
-  if (!iso) return { data: "", hora: "" };
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { data: "", hora: "" };
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    data: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    hora: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
-}
-
-function camposParaIso(data: string, hora: string): string | null {
-  if (!data || !hora) return null;
-  const d = new Date(`${data}T${hora}`);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
 }
 
 function etapasComoStage(funil: PipelineUtilizavel | undefined): Stage[] {
@@ -103,11 +87,8 @@ export function BlocoNegocio({
   const [movendo, setMovendo] = useState(false);
   const [outraOpen, setOutraOpen] = useState(false);
 
-  const passoInicial = isoParaCampos(proximo_passo_comercial?.proximo_passo_em ?? null);
-  const [passoTexto, setPassoTexto] = useState(proximo_passo_comercial?.proximo_passo ?? "");
-  const [passoData, setPassoData] = useState(passoInicial.data);
-  const [passoHora, setPassoHora] = useState(passoInicial.hora);
   const [salvandoPasso, setSalvandoPasso] = useState(false);
+  const [concluindoPasso, setConcluindoPasso] = useState(false);
   const [salvandoTemp, setSalvandoTemp] = useState(false);
   const [editandoPasso, setEditandoPasso] = useState(false);
   const [editandoTemp, setEditandoTemp] = useState(false);
@@ -176,12 +157,10 @@ export function BlocoNegocio({
     }
   }
 
-  async function salvarPasso() {
-    const texto = passoTexto.trim();
+  async function salvarPasso(texto: string, quando: string | null) {
     if (texto.length < 3) return;
     setSalvandoPasso(true);
     try {
-      const quando = camposParaIso(passoData, passoHora);
       if (proximo_passo_comercial?.demanda_id) {
         await apiClient.patch(`/api/v1/demandas/${proximo_passo_comercial.demanda_id}`, {
           proximo_passo: texto,
@@ -196,11 +175,26 @@ export function BlocoNegocio({
           proximo_passo_em: quando,
         });
       }
+      setEditandoPasso(false);
       onAtualizou();
     } catch {
       toast.error("Não consegui salvar o próximo passo. Tente de novo.");
     } finally {
       setSalvandoPasso(false);
+    }
+  }
+
+  async function concluirPasso() {
+    if (!proximo_passo_comercial?.demanda_id) return;
+    setConcluindoPasso(true);
+    try {
+      await apiClient.post(`/api/v1/demandas/${proximo_passo_comercial.demanda_id}/concluir`, {});
+      toast.success("Próxima ação concluída.");
+      onAtualizou();
+    } catch {
+      toast.error("Não consegui concluir. Tente de novo.");
+    } finally {
+      setConcluindoPasso(false);
     }
   }
 
@@ -383,86 +377,77 @@ export function BlocoNegocio({
         ) : null}
 
         <div className="space-y-1.5 border-t border-border/70 pt-3" data-testid="inbox-proximo-passo">
-          <div className="text-xs text-muted-foreground">Próximo passo</div>
+          <div className="text-xs text-muted-foreground">Próxima ação</div>
           {!editandoPasso && proximo_passo_comercial?.proximo_passo ? (
             <div className="space-y-1">
               <p className="text-sm font-medium">{proximo_passo_comercial.proximo_passo}</p>
-              {passoInicial.data ? (
-                <p className="text-xs text-muted-foreground">
-                  {passoInicial.data.split("-").reverse().join("/")}
-                  {passoInicial.hora ? ` · ${passoInicial.hora}` : ""}
-                </p>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs"
-                data-testid="inbox-editar-proximo-passo"
-                onClick={() => setEditandoPasso(true)}
-              >
-                Editar
-              </Button>
-            </div>
-          ) : !editandoPasso ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-8 px-0 text-sm"
-              data-testid="inbox-definir-proximo-passo"
-              onClick={() => setEditandoPasso(true)}
-            >
-              + Definir próximo passo
-            </Button>
-          ) : (
-            <>
-              <input
-                data-testid="inbox-proximo-passo-texto"
-                value={passoTexto}
-                onChange={(e) => setPassoTexto(e.target.value)}
-                maxLength={500}
-                placeholder="Ligar para confirmar proposta"
-                className="w-full min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-              />
-              <div className="grid grid-cols-2 gap-1.5">
-                <input
-                  type="date"
-                  data-testid="inbox-proximo-passo-data"
-                  value={passoData}
-                  onChange={(e) => setPassoData(e.target.value)}
-                  className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                />
-                <input
-                  type="time"
-                  data-testid="inbox-proximo-passo-hora"
-                  value={passoHora}
-                  onChange={(e) => setPassoHora(e.target.value)}
-                  className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                />
-              </div>
-              <div className="flex gap-1.5">
+              {(() => {
+                const estado = estadoDaProximaAcao({
+                  texto: proximo_passo_comercial.proximo_passo,
+                  em: proximo_passo_comercial.proximo_passo_em,
+                });
+                const atraso = rotuloDoAtraso(proximo_passo_comercial.proximo_passo_em);
+                const quando = rotuloDoQuando(proximo_passo_comercial.proximo_passo_em);
+                return (
+                  <p
+                    className={cn(
+                      "text-xs",
+                      estado === "atrasada" ? "text-destructive" : "text-muted-foreground",
+                    )}
+                    data-testid={estado === "atrasada" ? "inbox-acao-atrasada" : "inbox-acao-quando"}
+                  >
+                    {atraso ?? quando ?? "Sem hora marcada"}
+                  </p>
+                );
+              })()}
+              <div className="flex flex-wrap gap-1">
                 <Button
+                  type="button"
                   size="sm"
-                  variant="default"
-                  className="h-8 text-xs"
-                  disabled={salvandoPasso || passoTexto.trim().length < 3}
-                  data-testid="inbox-salvar-proximo-passo"
-                  onClick={() => void salvarPasso()}
+                  variant="ghost"
+                  className="h-8 px-2 text-xs"
+                  data-testid="inbox-editar-proximo-passo"
+                  onClick={() => setEditandoPasso(true)}
                 >
-                  {salvandoPasso ? "Salvando…" : "Salvar"}
+                  Editar
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="h-8 text-xs"
-                  onClick={() => setEditandoPasso(false)}
+                  className="h-8 px-2 text-xs"
+                  disabled={concluindoPasso}
+                  data-testid="inbox-concluir-proximo-passo"
+                  onClick={() => void concluirPasso()}
                 >
-                  Cancelar
+                  {concluindoPasso ? "Concluindo…" : "Concluir"}
                 </Button>
               </div>
-            </>
+            </div>
+          ) : !editandoPasso ? (
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground" data-testid="inbox-sem-proxima-acao">
+                Sem próxima ação
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-0 text-sm"
+                data-testid="inbox-definir-proximo-passo"
+                onClick={() => setEditandoPasso(true)}
+              >
+                Definir
+              </Button>
+            </div>
+          ) : (
+            <ProximaAcaoControles
+              textoInicial={proximo_passo_comercial?.proximo_passo ?? ""}
+              emInicial={proximo_passo_comercial?.proximo_passo_em ?? null}
+              salvando={salvandoPasso}
+              onSalvar={salvarPasso}
+              onCancelar={() => setEditandoPasso(false)}
+            />
           )}
         </div>
 

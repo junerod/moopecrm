@@ -11,6 +11,16 @@ import { useReactivations } from "@/hooks/leads/useReactivations";
 import { midpoint } from "@/lib/kanban/fractional-indexing";
 import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
+import { ProximaAcaoControles } from "@/components/comercial/ProximaAcaoControles";
+import { apiClient } from "@/lib/api/client";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { StageColumn } from "./StageColumn";
 import { LeadDossier } from "./LeadDossier";
 
@@ -123,6 +133,7 @@ export function KanbanBoard({
   // aberto, o estado local manda (fechar não reabre pela URL).
   const [dossieId, setDossieId] = useState<string | null>(leadInicial ?? null);
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
+  const [promptLead, setPromptLead] = useState<Lead | null>(null);
   const selectedLeadIds = useMemo(
     () => (selectedIds ? new Set(selectedIds) : internalSelected),
     [selectedIds, internalSelected],
@@ -203,12 +214,27 @@ export function KanbanBoard({
         return;
       }
 
-      moveCard.mutate({
-        leadId: lead.id,
-        stageId: destStageId,
-        positionInStage: newPosition,
-        expectedUpdatedAt: lead.updated_at,
-      });
+      const destStage = data.stages.find((s) => s.id === destStageId);
+      moveCard.mutate(
+        {
+          leadId: lead.id,
+          stageId: destStageId,
+          positionInStage: newPosition,
+          expectedUpdatedAt: lead.updated_at,
+        },
+        {
+          onSuccess: () => {
+            if (
+              destStage &&
+              !destStage.is_won &&
+              !destStage.is_lost &&
+              source.droppableId !== destStageId
+            ) {
+              setPromptLead(lead);
+            }
+          },
+        },
+      );
     },
     [data, grouped, moveCard],
   );
@@ -272,6 +298,45 @@ export function KanbanBoard({
           ownerNames={ownerNames}
         />
       )}
+      <Dialog open={!!promptLead} onOpenChange={(v) => !v && setPromptLead(null)}>
+        <DialogContent className="sm:max-w-md" data-testid="prompt-proximo-passo">
+          <DialogHeader>
+            <DialogTitle>Qual é o próximo passo?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Opcional — o card já mudou de etapa.</p>
+          {promptLead ? (
+            <ProximaAcaoControles
+              textoInicial={promptLead.proxima_acao?.texto ?? ""}
+              emInicial={promptLead.proxima_acao?.em ?? null}
+              onSalvar={async (texto, em) => {
+                if (!promptLead.contact_id) {
+                  setPromptLead(null);
+                  return;
+                }
+                await apiClient.post("/api/v1/demandas", {
+                  contact_id: promptLead.contact_id,
+                  conversation_id: promptLead.conversa?.id ?? null,
+                  lead_id: promptLead.id,
+                  proximo_passo: texto,
+                  proximo_passo_em: em,
+                });
+                toast.success("Próxima ação definida.");
+                setPromptLead(null);
+              }}
+              onCancelar={() => setPromptLead(null)}
+            />
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 text-xs"
+            data-testid="prompt-sem-proxima-acao"
+            onClick={() => setPromptLead(null)}
+          >
+            Sem próxima ação
+          </Button>
+        </DialogContent>
+      </Dialog>
     </DragDropContext>
   );
 }

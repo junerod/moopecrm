@@ -77,6 +77,7 @@ CRONS="
 # roda a cada 15.
 */5 * * * *|60|api/v1/cron/agenda-google-push
 */15 * * * *|60|api/v1/cron/risk-watcher
+*/5 * * * *|45|api/v1/cron/demanda-reminders
 */30 * * * *|60|api/v1/cron/contact-phones
 17 * * * *|60|api/v1/cron/contact-proposals-watcher
 0 12 * * *|60|api/v1/cron/lgpd-sla-watcher

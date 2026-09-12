@@ -30,6 +30,7 @@ import {
   SEM_NOME,
   telefoneApresentavel,
 } from "@/lib/contacts/rotulo-do-contato";
+import { Contato360Comercial } from "@/components/contacts/Contato360Comercial";
 import { ROTULO_DO_PAPEL, ehPapelDoContato } from "@/lib/crm/papel-e-temperatura";
 
 interface Props {
@@ -189,6 +190,7 @@ export function ContactDetailClient({ contactId }: Props) {
               Última mensagem: {contact.conversa.preview}
             </p>
           ) : null}
+          <Contato360Comercial contactId={contactId} />
         </TabsContent>
 
         <TabsContent value="dados" className="mt-4">

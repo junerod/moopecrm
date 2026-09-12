@@ -150,6 +150,13 @@ export const DICIONARIO: Traducoes = {
 
   // ─── Kanban ───
   "Apenas atrasados": { es: "Solo atrasados" },
+  "Fechamento atrasado": { es: "Cierre atrasado" },
+  Atrasadas: { es: "Atrasadas" },
+  "Sem próxima ação": { es: "Sin próxima acción" },
+  Quentes: { es: "Calientes" },
+  "Próxima ação": { es: "Próxima acción" },
+  Concluir: { es: "Concluir" },
+  Definir: { es: "Definir" },
   "Sem responsável": { es: "Sin responsable" },
   "Editar campos": { es: "Editar campos" },
   "Linha do tempo": { es: "Línea de tiempo" },

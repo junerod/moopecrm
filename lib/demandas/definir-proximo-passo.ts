@@ -72,6 +72,9 @@ export async function definirProximoPassoComercial(
       .update({
         proximo_passo: args.proximo_passo,
         proximo_passo_em: args.proximo_passo_em,
+        dono_kind: "humano",
+        dono_user_id: args.userId,
+        ...(args.leadId ? { lead_id: args.leadId } : {}),
         updated_at: agora,
       })
       .eq("id", demandaId)

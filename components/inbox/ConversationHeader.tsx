@@ -93,7 +93,10 @@ export function ConversationHeader({ conversation }: Props) {
   return (
     // `flex-wrap` permanece como catraca de largura (inbox-header-nao-trava).
     // No mobile a barra visível é nome + ⋯; Assumir só entra se for o gesto.
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-3 py-2 md:px-4 md:py-2.5">
+    <div
+      data-testid="conversation-header"
+      className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-3 py-2 md:px-4 md:py-2.5"
+    >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <h2 className="truncate text-base font-semibold md:text-lg">{displayName}</h2>

@@ -13,7 +13,9 @@ import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { definirProximoPassoComercial } from "@/lib/demandas/definir-proximo-passo";
+import { listarProximasAcoes, type VisaoDaAcao } from "@/lib/demandas/listar-proximas-acoes";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,37 @@ const bodySchema = z.object({
   proximo_passo: z.string().trim().min(3).max(500),
   proximo_passo_em: z.string().datetime({ offset: true }).nullish(),
 });
+
+export async function GET(req: NextRequest): Promise<Response> {
+  const requestId = randomUUID();
+  const authz = await requireRole("agent", { requestId, resource: "demandas" });
+  if (!authz.ok) return authz.response;
+
+  const visaoRaw = req.nextUrl.searchParams.get("visao") ?? "todas";
+  const visoes: VisaoDaAcao[] = ["hoje", "proximos", "atrasados", "sem_passo", "todas"];
+  const visao = visoes.includes(visaoRaw as VisaoDaAcao) ? (visaoRaw as VisaoDaAcao) : "todas";
+  const mine = req.nextUrl.searchParams.get("mine") === "1";
+  const ownerRaw = req.nextUrl.searchParams.get("owner");
+  const owner =
+    ownerRaw && /^[0-9a-f-]{36}$/i.test(ownerRaw) ? ownerRaw : undefined;
+
+  const supabase = await createClient();
+  try {
+    const data = await listarProximasAcoes(supabase, {
+      organizationId: authz.org.orgId,
+      visao,
+      ownerUserId: mine ? authz.user.id : owner,
+    });
+    return ok(data, { requestId });
+  } catch (err) {
+    return fail(
+      "internal_error",
+      err instanceof Error ? err.message : "Falha ao listar próximas ações.",
+      500,
+      { requestId },
+    );
+  }
+}
 
 export async function POST(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();

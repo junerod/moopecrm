@@ -61,6 +61,8 @@ export interface CardInput {
   tags: string[];
   /** Temperatura humana do negócio — não é o score de IA. */
   temperatura?: "frio" | "morno" | "quente" | null;
+  /** Próxima ação canônica (`demandas`). Distinta da proposta de IA. */
+  proximaAcao?: { demanda_id: string; texto: string; em: string | null } | null;
 }
 
 /**
@@ -83,6 +85,7 @@ export function buildCardInput(
     | "owner_agent_id"
     | "owner_agent"
     | "next_action"
+    | "proxima_acao"
     | "score"
     | "temperatura"
   >,
@@ -132,6 +135,13 @@ export function buildCardInput(
     canonicalTag: (opts.canonicalTags ?? []).find((t) => lead.tags.includes(t)) ?? null,
     tags: lead.tags,
     temperatura: lead.temperatura ?? null,
+    proximaAcao: lead.proxima_acao
+      ? {
+          demanda_id: lead.proxima_acao.demanda_id,
+          texto: lead.proxima_acao.texto,
+          em: lead.proxima_acao.em,
+        }
+      : null,
   };
 }
 

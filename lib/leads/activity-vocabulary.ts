@@ -100,7 +100,9 @@ export type ActivityType =
   | "conversation_claimed"
   | "conversation_transferred"
   | "conversation_released"
-  | "conversation_ai_paused";
+  | "conversation_ai_paused"
+  /** Humano concluiu o compromisso em `demandas.proximo_passo`. */
+  | "proximo_passo_concluido";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   lead_created: "Entrou pelo WhatsApp",
@@ -190,6 +192,7 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   // arquivos e o controle NEGATIVO de `handoff-por-orcamento.test.ts` usa
   // literalmente "Voltar para a IA" como a sabotagem que deve reprovar.
   conversation_ai_paused: "Pausou o automático",
+  proximo_passo_concluido: "Concluiu a próxima ação",
 };
 
 /** Quando o tipo é legado/desconhecido, a linha ainda é honesta — sem jargão. */

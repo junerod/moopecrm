@@ -3580,6 +3580,51 @@ export type Database = {
           },
         ]
       }
+      demanda_alert_deliveries: {
+        Row: {
+          created_at: string
+          demanda_id: string
+          dest_e164: string
+          id: string
+          kind: string
+          organization_id: string
+          scheduled_for: string
+        }
+        Insert: {
+          created_at?: string
+          demanda_id: string
+          dest_e164: string
+          id?: string
+          kind: string
+          organization_id: string
+          scheduled_for: string
+        }
+        Update: {
+          created_at?: string
+          demanda_id?: string
+          dest_e164?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          scheduled_for?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_alert_deliveries_demanda_id_fkey"
+            columns: ["demanda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demanda_alert_deliveries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demandas: {
         Row: {
           aberta_em: string
@@ -6343,6 +6388,9 @@ export type Database = {
       user_organizations: {
         Row: {
           accepted_at: string | null
+          alert_antecedencia_min: number
+          alert_proxima_acao: boolean
+          alert_whatsapp_phone: string | null
           calendar_trilha: number | null
           created_at: string
           id: string
@@ -6356,6 +6404,9 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          alert_antecedencia_min?: number
+          alert_proxima_acao?: boolean
+          alert_whatsapp_phone?: string | null
           calendar_trilha?: number | null
           created_at?: string
           id?: string
@@ -6369,6 +6420,9 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          alert_antecedencia_min?: number
+          alert_proxima_acao?: boolean
+          alert_whatsapp_phone?: string | null
           calendar_trilha?: number | null
           created_at?: string
           id?: string

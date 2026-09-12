@@ -23,6 +23,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { ApiError } from "@/lib/api/types";
 import { audit } from "@/lib/audit";
+import { limparProximoPassoAoEncerrar } from "@/lib/demandas/limpar-ao-encerrar";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 
@@ -150,6 +151,17 @@ export async function encerraDemanda(
     .eq("organization_id", ctx.organization_id)
     .maybeSingle();
   const finalLead = (fresh ?? lead) as Record<string, unknown>;
+
+  try {
+    await limparProximoPassoAoEncerrar(supabase, {
+      organizationId: ctx.organization_id,
+      leadId: input.leadId,
+      contactId: (finalLead as { contact_id?: string | null }).contact_id ?? null,
+      reason: input.desfecho,
+    });
+  } catch {
+    // O negócio já fechou. Perder a limpeza do passo é residual, não rollback.
+  }
 
   const a = actorAuditPayload(ctx.actor);
   const eventType = input.desfecho === "won" ? "lead.won" : "lead.lost";

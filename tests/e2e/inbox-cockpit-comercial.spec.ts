@@ -429,7 +429,9 @@ test.describe("Inbox — cockpit comercial", () => {
     expect(idsEquipe).toContain(equipe.conversaId);
 
     await page.goto(`/app/inbox/${equipe.conversaId}`);
-    await expect(page.getByTestId("selo-da-pessoa").first()).toHaveAttribute("data-selo", "equipe", {
+    await expect(
+      page.getByTestId("conversation-header").getByTestId("selo-da-pessoa"),
+    ).toHaveAttribute("data-selo", "equipe", {
       timeout: 30_000,
     });
     await expect(page.getByTestId("conversa-da-equipe")).toBeVisible();

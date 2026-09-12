@@ -1,3 +1,4 @@
+import { estadoDaProximaAcao } from "@/lib/comercial/proxima-acao";
 import type { Lead } from "@/lib/types/leads";
 
 /**
@@ -25,6 +26,10 @@ export interface LeadFilters {
   valueCentsMin?: number | null;
   valueCentsMax?: number | null;
   overdueOnly?: boolean;
+  /** Próxima ação comercial vencida — distinta de `overdueOnly` (expected_close_date). */
+  acaoAtrasada?: boolean;
+  semProximaAcao?: boolean;
+  quentes?: boolean;
   source?: string;
 }
 
@@ -49,6 +54,9 @@ export function filtersFromParams(
     tag: tag ?? undefined,
     search: search ?? undefined,
     overdueOnly: sp.get("overdue") === "1" || undefined,
+    acaoAtrasada: sp.get("acao_atrasada") === "1" || undefined,
+    semProximaAcao: sp.get("sem_acao") === "1" || undefined,
+    quentes: sp.get("quentes") === "1" || undefined,
     source: source ?? undefined,
   };
 }
@@ -60,6 +68,9 @@ export function filtersToParams(f: LeadFilters): string {
   if (f.tag) p.set("tag", f.tag);
   if (f.search?.trim()) p.set("q", f.search.trim());
   if (f.overdueOnly) p.set("overdue", "1");
+  if (f.acaoAtrasada) p.set("acao_atrasada", "1");
+  if (f.semProximaAcao) p.set("sem_acao", "1");
+  if (f.quentes) p.set("quentes", "1");
   if (f.source) p.set("source", f.source);
   return p.toString();
 }
@@ -99,6 +110,13 @@ export function applyFilters(leads: Lead[], f: LeadFilters): Lead[] {
       if (l.status !== "open") return false;
       if (!l.expected_close_date || l.expected_close_date >= today) return false;
     }
+    const estadoAcao = estadoDaProximaAcao({
+      texto: l.proxima_acao?.texto,
+      em: l.proxima_acao?.em,
+    });
+    if (f.acaoAtrasada && estadoAcao !== "atrasada") return false;
+    if (f.semProximaAcao && (l.status !== "open" || estadoAcao !== "sem")) return false;
+    if (f.quentes && l.temperatura !== "quente") return false;
     return true;
   });
 }
