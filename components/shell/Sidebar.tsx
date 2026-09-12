@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
+import { AppIcon } from "@/components/ds/AppIcon";
+import { tomDaNav } from "@/lib/design-system/tones";
 import { CaretDoubleLeft, CaretDoubleRight, Gear, Question, Robot, ShieldCheck, Storefront } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -26,17 +28,17 @@ interface SidebarContentProps {
 }
 
 /**
- * Trilha da marca: fundo no stop escuro da rampa (`accent-950`) e item ativo
- * no accent. Não é cor crua — quem pintou a instalação (ciano, navy, sage)
- * pinta o menu junto. Cinza `bg-card` deixava a marca só no botão e o menu
- * parecia de outro produto.
+ * Nav navy canônica (`--nav-bg`). A rampa Sage/marca continua pintando
+ * botões e anéis; a casca usa navy + azul ativo + barra cyan, como a
+ * referência visual. Residual white-label: `--nav-bg` ainda não sai do
+ * `cssDaMarca` — documentado no design system.
  */
 function classeDoItemDaTrilha(ativo: boolean): string {
   return cn(
-    "relative flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
+    "relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors duration-150",
     ativo
-      ? "font-medium text-white before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-accent"
-      : "text-white/70 hover:bg-white/5 hover:text-white",
+      ? "bg-[var(--nav-active)] font-medium text-white before:absolute before:inset-y-1.5 before:left-0 before:w-1 before:rounded-r-full before:bg-[var(--nav-indicator)]"
+      : "text-white/75 hover:bg-white/10 hover:text-white",
   );
 }
 
@@ -169,7 +171,11 @@ export function SidebarContent({
                         onClick={onNavigate}
                         className={cn(classeDoItemDaTrilha(isActive), collapsed && "justify-center px-2")}
                       >
-                        <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
+                        {isActive ? (
+                          <Icon size={18} weight="fill" aria-hidden />
+                        ) : (
+                          <AppIcon icon={Icon} tone={tomDaNav(item.href)} surface="nav" />
+                        )}
                         {!collapsed && <span className="truncate">{t(item.label)}</span>}
                         {item.healthDot && (
                           <ConnectionHealthDot
@@ -192,7 +198,11 @@ export function SidebarContent({
                         collapsed && "justify-center px-2",
                       )}
                     >
-                      <Robot size={18} weight={pathname === group.hub.href ? "fill" : "regular"} aria-hidden />
+                      {pathname === group.hub.href ? (
+                        <Robot size={18} weight="fill" aria-hidden />
+                      ) : (
+                        <AppIcon icon={Robot} tone={tomDaNav(group.hub.href)} surface="nav" />
+                      )}
                       {!collapsed && <span className="truncate">{t(group.hub.label)}</span>}
                     </Link>
                   </li>
@@ -215,7 +225,11 @@ export function SidebarContent({
               collapsed && "justify-center px-2",
             )}
           >
-            <Storefront size={18} aria-hidden />
+            {pathname.startsWith(meuNegocio.href) ? (
+              <Storefront size={18} aria-hidden />
+            ) : (
+              <AppIcon icon={Storefront} tone={tomDaNav(meuNegocio.href)} surface="nav" />
+            )}
             {!collapsed && <span className="truncate">{t(meuNegocio.label)}</span>}
           </Link>
         ) : null}
@@ -240,7 +254,13 @@ export function SidebarContent({
               collapsed && "justify-center px-2",
             )}
           >
-            <Gear size={18} aria-hidden />
+            {pathname === rodape.href ||
+            (pathname.startsWith(`${rodape.href}/`) &&
+              !pathname.startsWith("/app/settings/business")) ? (
+              <Gear size={18} aria-hidden />
+            ) : (
+              <AppIcon icon={Gear} tone={tomDaNav(rodape.href)} surface="nav" />
+            )}
             {!collapsed && <span className="truncate">{rodape.label}</span>}
           </Link>
         )}
@@ -256,7 +276,11 @@ export function SidebarContent({
               collapsed && "justify-center px-2",
             )}
           >
-            <Question size={18} aria-hidden />
+            {pathname.startsWith(ajuda.href) ? (
+              <Question size={18} aria-hidden />
+            ) : (
+              <AppIcon icon={Question} tone={tomDaNav(ajuda.href)} surface="nav" />
+            )}
             {!collapsed && <span className="truncate">Ajuda</span>}
           </Link>
         ) : null}
@@ -272,10 +296,19 @@ export function SidebarContent({
               collapsed && "justify-center px-2",
             )}
           >
-            <ShieldCheck size={18} aria-hidden />
+            {pathname.startsWith(PORTA_DA_PLATAFORMA.href) ? (
+              <ShieldCheck size={18} aria-hidden />
+            ) : (
+              <AppIcon icon={ShieldCheck} tone="indigo" surface="nav" />
+            )}
             {!collapsed && <span className="truncate">{t(PORTA_DA_PLATAFORMA.label)}</span>}
           </Link>
         )}
+        {!collapsed && activeOrg?.name && activeOrg.name !== nome ? (
+          <p className="truncate px-3 py-1 text-[11px] text-white/50" title={activeOrg.name}>
+            {activeOrg.name}
+          </p>
+        ) : null}
         <VersionFooter collapsed={collapsed} onNavigate={onNavigate} />
         {showCollapseControl && (
           <button
@@ -320,8 +353,8 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         //
         // `shrink-0` porque item de flex encolhe por padrão, e uma barra de 60
         // espremida para caber é o mesmo defeito por outro caminho.
-        "sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r border-accent-900 bg-accent-950 transition-[width] duration-200",
-        collapsed ? "w-16" : "w-52",
+        "sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r border-white/10 bg-[var(--nav-bg)] transition-[width] duration-200",
+        collapsed ? "w-16" : "w-56",
       )}
     >
       <SidebarContent collapsed={collapsed} />

@@ -55,7 +55,7 @@ export function HomeHoje({ acoes }: { acoes: AcaoDaHome[] }) {
         return (
           <li key={a.demanda_id}>
             <div
-              className="grid grid-cols-[3.1rem_0.75rem_1fr_auto] items-start gap-x-2 py-2"
+              className="group grid grid-cols-[3.1rem_0.75rem_1fr_auto] items-start gap-x-2 py-2"
               data-testid="item-proxima-acao"
               data-estado={a.estado}
               data-demanda={a.demanda_id}
@@ -91,9 +91,15 @@ export function HomeHoje({ acoes }: { acoes: AcaoDaHome[] }) {
               </Link>
               <div className="flex shrink-0 flex-col items-end gap-1">
                 {atrasada ? (
-                  <span className="text-[11px] font-medium text-[var(--color-error-fg)]">Atrasada</span>
-                ) : null}
-                <div className="flex gap-1">
+                  <span className="rounded-full bg-[var(--color-error-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-error-fg)]">
+                    Atrasada
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-[var(--moope-primary-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--moope-primary)]">
+                    Hoje
+                  </span>
+                )}
+                <div className="flex gap-1 md:opacity-0 md:transition-opacity md:duration-150 md:group-hover:opacity-100">
                   <Button
                     type="button"
                     size="sm"

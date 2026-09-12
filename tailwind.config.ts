@@ -85,6 +85,16 @@ const config: Config = {
           bg: "var(--color-info-bg)",
           fg: "var(--color-info-fg)",
         },
+        ai: {
+          DEFAULT: "var(--color-ai)",
+          bg: "var(--color-ai-bg)",
+          fg: "var(--color-ai-fg)",
+        },
+        nav: {
+          DEFAULT: "var(--nav-bg)",
+          active: "var(--nav-active)",
+          indicator: "var(--nav-indicator)",
+        },
 
         // shadcn aliases (compat com componentes ainda não migrados)
         border: "var(--color-border)",

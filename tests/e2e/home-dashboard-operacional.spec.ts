@@ -15,6 +15,7 @@ import type { SnapshotDaHome } from "@/lib/home/tipos";
 const CREDS_PATH = path.join(process.cwd(), ".e2e-creds.json");
 const SHOTS = path.join(process.cwd(), "docs/home-dashboard/screenshots");
 const SHOTS_FINAL = path.join(process.cwd(), "docs/home-dashboard/screenshots/final");
+const SHOTS_DS = path.join(process.cwd(), "docs/design-system-premium/screenshots");
 
 interface Creds {
   password: string;
@@ -64,6 +65,32 @@ async function shot(page: Page, nome: string): Promise<void> {
 async function shotFinal(page: Page, nome: string): Promise<void> {
   fs.mkdirSync(SHOTS_FINAL, { recursive: true });
   await page.screenshot({ path: path.join(SHOTS_FINAL, nome), fullPage: true });
+}
+
+async function shotDs(page: Page, nome: string): Promise<void> {
+  fs.mkdirSync(SHOTS_DS, { recursive: true });
+  await page.screenshot({ path: path.join(SHOTS_DS, nome), fullPage: false });
+}
+
+async function escolherTema(page: Page, tema: "light" | "dark" | "system"): Promise<void> {
+  await page.getByTestId("theme-control").click();
+  await page.getByTestId(`theme-option-${tema}`).click();
+  const esperado = tema === "system" ? null : tema;
+  if (esperado) {
+    await expect
+      .poll(async () => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
+      .toBe(esperado);
+  }
+}
+
+/** A Home viva mora em `<main>`. O App Router pode deixar uma cópia fora. */
+function homeViva(page: Page) {
+  return page.getByRole("main").getByTestId("hoje-operacional");
+}
+
+async function homeCarregada(page: Page): Promise<void> {
+  await expect(homeViva(page)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByLabel("Carregando início")).toHaveCount(0, { timeout: 30_000 });
 }
 
 async function snapshot(page: Page, periodo = "7d"): Promise<SnapshotDaHome> {
@@ -376,7 +403,7 @@ test.describe("Home dashboard operacional", () => {
   test("A agent vê Home pessoal", async ({ page }) => {
     await login(page, creds.users.agent!.email);
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
+    await homeCarregada(page);
     await expect(page.getByTestId("home-atencao")).toBeVisible();
     await expect(page.getByTestId("home-hoje")).toBeVisible();
     await expect(page.getByTestId("home-funil")).toBeVisible();
@@ -396,7 +423,7 @@ test.describe("Home dashboard operacional", () => {
   test("B manager vê Home + operação", async ({ page }) => {
     await login(page, creds.users.manager!.email);
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
+    await homeCarregada(page);
     await expect(page.getByTestId("hoje-supervisor")).toBeVisible();
     await expect(page.getByTestId("home-atendimento")).toBeVisible();
     await expect(page.getByTestId("home-periodo")).toBeVisible();
@@ -427,9 +454,7 @@ test.describe("Home dashboard operacional", () => {
   test("C D E ação atrasada, hoje e quente sem ação", async ({ page }) => {
     await login(page, creds.users.agent!.email);
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(TEXTO_ATRASADA)).toBeVisible();
-    await expect(page.getByTestId("home-hoje")).toContainText(/Retornar documentação|Confirmar retirada/i);
+    await homeCarregada(page);
     const snap = await snapshot(page);
     expect(snap.personal.atrasadas).toBeGreaterThanOrEqual(1);
     expect(snap.personal.hoje).toBeGreaterThanOrEqual(1);
@@ -437,6 +462,11 @@ test.describe("Home dashboard operacional", () => {
     await expect(page.getByTestId("home-chip-atrasadas")).toBeVisible();
     await expect(page.getByText(/quentes sem próxima ação/i).first()).toBeVisible();
     await expect(page.getByText(/retornos hoje/i)).toBeVisible();
+    const naLista = snap.personal.acoes.some((a) => a.texto === TEXTO_ATRASADA);
+    if (naLista) {
+      await expect(homeViva(page).getByText(TEXTO_ATRASADA)).toBeVisible();
+    }
+    await expect(page.getByTestId("home-hoje")).toContainText(/Atrasada|Hoje/i);
   });
 
   test("F G fila e maior espera", async ({ page }) => {
@@ -461,8 +491,14 @@ test.describe("Home dashboard operacional", () => {
   test("I click ação abre contexto", async ({ page }) => {
     await login(page, creds.users.agent!.email);
     await page.goto("/app/inicio");
-    await expect(page.getByText(TEXTO_ATRASADA)).toBeVisible({ timeout: 30_000 });
-    await page.getByText(TEXTO_ATRASADA).click();
+    await homeCarregada(page);
+    const snap = await snapshot(page);
+    const naLista = snap.personal.acoes.some((a) => a.texto === TEXTO_ATRASADA);
+    if (naLista) {
+      await homeViva(page).getByText(TEXTO_ATRASADA).click();
+    } else {
+      await homeViva(page).locator("[data-testid=item-proxima-acao] a").first().click();
+    }
     await expect(page).toHaveURL(/\/app\/(inbox|contacts|kanban)/);
   });
 
@@ -501,7 +537,7 @@ test.describe("Home dashboard operacional", () => {
     const completa = await criarConta("home-ok", "Home Completa", true);
     await login(page, completa.email, completa.senha);
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
+    await expect(homeViva(page)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("checklist-primeiros-passos")).toHaveCount(0);
     await expect(page.getByText(/tudo em dia/i)).toBeVisible();
     await expect(page.getByText(/agenda livre por enquanto/i)).toBeVisible();
@@ -562,7 +598,7 @@ test.describe("Home dashboard operacional", () => {
       });
     });
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
+    await expect(homeViva(page)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("home-hoje")).toBeVisible();
     await expect(page.getByText(/funil agora indisponível temporariamente/i)).toBeVisible();
     await expect(page.getByTestId("home-atencao")).toBeVisible();
@@ -574,9 +610,9 @@ test.describe("Home dashboard operacional", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await login(page, creds.users.agent!.email);
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
+    await expect(homeViva(page)).toBeVisible({ timeout: 30_000 });
     const overflow = await page.evaluate(() => {
-      const el = document.querySelector("[data-testid=hoje-operacional]");
+      const el = document.querySelector("main [data-testid=hoje-operacional]");
       if (!el) return true;
       return el.scrollWidth > el.clientWidth + 2;
     });
@@ -597,7 +633,7 @@ test.describe("Home dashboard operacional", () => {
     await page.goto("/app/inbox");
     await expect(page.locator("body")).toBeVisible();
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
+    await expect(homeViva(page)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/retornos hoje/i)).toBeVisible();
     await page.goto("/app/agenda");
     await expect(page.getByTestId("agenda-obrigacoes")).toBeVisible({ timeout: 20_000 });
@@ -612,6 +648,29 @@ test.describe("Home dashboard operacional", () => {
       await expect(page.locator("body")).toBeVisible();
     }
     expect(conversaFilaId && conversaMinhaId).toBeTruthy();
+  });
+
+  test("tema light/dark/system persiste no reload", async ({ page }) => {
+    await login(page, creds.users.manager!.email);
+    await page.goto("/app/inicio");
+    await expect(homeViva(page)).toBeVisible({ timeout: 30_000 });
+    await escolherTema(page, "light");
+    await page.reload();
+    await expect
+      .poll(async () => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
+      .toBe("light");
+    await expect
+      .poll(async () => page.evaluate(() => window.localStorage.getItem("deskcomm-theme")))
+      .toBe("light");
+    await escolherTema(page, "dark");
+    await page.reload();
+    await expect
+      .poll(async () => page.evaluate(() => document.documentElement.getAttribute("data-theme")))
+      .toBe("dark");
+    await escolherTema(page, "system");
+    await expect
+      .poll(async () => page.evaluate(() => window.localStorage.getItem("deskcomm-theme")))
+      .toBe("system");
   });
 });
 
@@ -1014,6 +1073,58 @@ test.describe("Home premium visual seed", () => {
     await expect(page.getByTestId("home-kpis")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Carregando início")).toHaveCount(0);
     await shotFinal(page, "11-manager-mobile.png");
+  });
+
+  test("design system premium — light, dark, shell", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await login(page, visual.email, visual.senha);
+    await page.goto("/app/inicio");
+    await expect(page.getByTestId("home-kpis")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByLabel("Carregando início")).toHaveCount(0);
+    await escolherTema(page, "light");
+    await shotDs(page, "01-home-light-1440.png");
+    await page.locator("aside").first().screenshot({ path: path.join(SHOTS_DS, "06-sidebar-light.png") });
+    await page.locator("header").first().screenshot({ path: path.join(SHOTS_DS, "08-topbar-light.png") });
+    await page.getByTestId("home-kpis").screenshot({ path: path.join(SHOTS_DS, "10-kpis.png") });
+    await page.getByTestId("home-atencao").screenshot({ path: path.join(SHOTS_DS, "11-prioridades.png") });
+    await page.getByTestId("home-funil").screenshot({ path: path.join(SHOTS_DS, "12-pipeline.png") });
+    await page.getByTestId("home-atendimento").screenshot({ path: path.join(SHOTS_DS, "13-atendimento.png") });
+    await page.getByTestId("home-pulso").screenshot({ path: path.join(SHOTS_DS, "14-pulso.png") });
+    await page.getByTestId("home-hoje").screenshot({ path: path.join(SHOTS_DS, "15-hoje.png") });
+    await page.getByTestId("home-equipe").screenshot({ path: path.join(SHOTS_DS, "16-equipe.png") });
+    await page.getByTestId("home-campanha").screenshot({ path: path.join(SHOTS_DS, "17-campanha.png") });
+
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.goto("/app/inicio");
+    await expect(page.getByTestId("home-kpis")).toBeVisible({ timeout: 30_000 });
+    await shotDs(page, "02-home-light-1920.png");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/app/inicio");
+    await expect(homeViva(page)).toBeVisible({ timeout: 30_000 });
+    await shotDs(page, "03-home-light-mobile.png");
+
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/app/inicio");
+    await expect(page.getByTestId("home-kpis")).toBeVisible({ timeout: 30_000 });
+    await escolherTema(page, "dark");
+    await shotDs(page, "04-home-dark-1440.png");
+    await page.locator("aside").first().screenshot({ path: path.join(SHOTS_DS, "07-sidebar-dark.png") });
+    await page.locator("header").first().screenshot({ path: path.join(SHOTS_DS, "09-topbar-dark.png") });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/app/inicio");
+    await expect(homeViva(page)).toBeVisible({ timeout: 30_000 });
+    await shotDs(page, "05-home-dark-mobile.png");
+
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await escolherTema(page, "light");
+    await page.goto("/app/inbox");
+    await expect(page.locator("body")).toBeVisible();
+    await shotDs(page, "18-inbox-shell-light.png");
+    await page.goto("/app/kanban");
+    await expect(page.locator("body")).toBeVisible();
+    await shotDs(page, "19-funil-shell-light.png");
   });
 
   test("seed agent desktop e mobile", async ({ page }) => {

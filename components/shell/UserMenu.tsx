@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useTransition } from "react";
-import { useUser, useAuth } from "@/hooks/auth/AuthProvider";
+import { useUser, useAuth, useActiveOrg } from "@/hooks/auth/AuthProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,18 +24,35 @@ function initials(name: string | null, email: string): string {
 
 export function UserMenu() {
   const user = useUser();
+  const activeOrg = useActiveOrg();
   const { signOut } = useAuth();
   const [isPending, startTransition] = useTransition();
+  const nome = user.full_name ?? user.email;
+  const empresa = activeOrg?.name;
 
   return (
     <div className="flex items-center gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="rounded-full" aria-label="Menu do usuário">
+          <Button
+            variant="ghost"
+            className="h-auto gap-2 rounded-full px-1.5 py-1 md:px-2"
+            aria-label="Menu do usuário"
+          >
             <Avatar className="h-8 w-8">
               {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" />}
               <AvatarFallback>{initials(user.full_name, user.email)}</AvatarFallback>
             </Avatar>
+            <span className="hidden min-w-0 flex-col items-start text-left md:flex">
+              <span className="max-w-[10rem] truncate text-[13px] font-medium leading-tight text-[var(--color-text)]">
+                {nome}
+              </span>
+              {empresa ? (
+                <span className="max-w-[10rem] truncate text-[11px] font-normal leading-tight text-[var(--color-text-muted)]">
+                  {empresa}
+                </span>
+              ) : null}
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[220px]">

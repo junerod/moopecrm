@@ -271,7 +271,9 @@ export async function carregarSnapshotDaHome(
           .order("started_at", { ascending: false, nullsFirst: false })
           .limit(1);
         if (error) throw new Error(error.message);
-        const camp = (data ?? [])[0] as { id: string; name: string } | undefined;
+        const camp = (data ?? [])[0] as
+          | { id: string; name: string; status: "running" | "completed" }
+          | undefined;
         if (!camp) return null;
         const { data: recs, error: e2 } = await db
           .from("campaign_recipients")
@@ -286,6 +288,7 @@ export async function carregarSnapshotDaHome(
           enviados: m.enviadas,
           respostas: m.respondidas,
           opt_outs: m.opt_outs,
+          status: camp.status,
         };
       }),
       fonte("kpis_anterior", async () => {

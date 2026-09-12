@@ -136,4 +136,10 @@ export {
   Car,
   Wrench,
   Handshake,
+  Trophy,
+  TrendUp,
+  Fire,
+  Pulse,
+  Headset,
+  Lightning,
 } from "@phosphor-icons/react/dist/ssr";

@@ -45,6 +45,8 @@ export interface UltimaCampanhaDaHome {
   enviados: number;
   respostas: number;
   opt_outs: number;
+  /** Dado real da campanha — `running` ou `completed`. Ausente = não mostrar badge. */
+  status?: "running" | "completed";
 }
 
 export interface SnapshotPessoal {

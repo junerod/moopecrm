@@ -416,7 +416,7 @@ test.describe("Mercado Forte — Bloco 3", () => {
     await page.goto("/app/agenda");
     await expect(page.getByTestId("agenda-obrigacoes")).toBeVisible({ timeout: 20_000 });
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("main").getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
     if (pipelineId) {
       await page.goto(`/app/pipelines/${pipelineId}`);
       await expect(page.locator("body")).toBeVisible();

@@ -24,7 +24,7 @@
 import type { Regua } from "./contraste";
 
 export const REGUA_DO_PRODUTO: Regua = {
-  rampaDoProduto: [
+  "rampaDoProduto": [
     "#f3f6f1",
     "#e4ebe0",
     "#c8d6c1",
@@ -35,288 +35,288 @@ export const REGUA_DO_PRODUTO: Regua = {
     "#41573b",
     "#374731",
     "#2f3c2b",
-    "#171f15",
+    "#171f15"
   ],
-  claro: {
-    nome: "claro",
-    base: [
+  "claro": {
+    "nome": "claro",
+    "base": [
       {
-        chave: "--color-bg",
-        hex: "#faf9f6",
+        "chave": "--color-bg",
+        "hex": "#f5f8fc"
       },
       {
-        chave: "--color-surface",
-        hex: "#ffffff",
+        "chave": "--color-surface",
+        "hex": "#ffffff"
       },
       {
-        chave: "--color-surface-elevated",
-        hex: "#f5f3ee",
-      },
+        "chave": "--color-surface-elevated",
+        "hex": "#eef3f9"
+      }
     ],
-    tingidas: [
+    "tingidas": [
       {
-        chave: "--color-accent-soft",
-        fonte: {
-          tipo: "grau",
-          indice: 1,
-          alfa: 1,
-        },
-      },
+        "chave": "--color-accent-soft",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 1,
+          "alfa": 1
+        }
+      }
     ],
-    papeis: [
+    "papeis": [
       {
-        token: "--color-accent",
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 6,
-          alfa: 1,
+        "token": "--color-accent",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 6,
+          "alfa": 1
         },
-        contra: null,
+        "contra": null
       },
       {
-        token: "--color-accent-fg",
-        tipo: "texto",
-        fonte: {
-          tipo: "frenteCalculada",
-          sobre: {
-            tipo: "grau",
-            indice: 6,
-            alfa: 1,
-          },
+        "token": "--color-accent-fg",
+        "tipo": "texto",
+        "fonte": {
+          "tipo": "frenteCalculada",
+          "sobre": {
+            "tipo": "grau",
+            "indice": 6,
+            "alfa": 1
+          }
         },
-        contra: [
+        "contra": [
           {
-            tipo: "grau",
-            indice: 6,
-            alfa: 1,
-          },
-        ],
+            "tipo": "grau",
+            "indice": 6,
+            "alfa": 1
+          }
+        ]
       },
       {
-        token: "--color-accent-hover",
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 7,
-          alfa: 1,
+        "token": "--color-accent-hover",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 7,
+          "alfa": 1
         },
-        contra: null,
+        "contra": null
       },
       {
-        token: "--ring",
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 5,
-          alfa: 1,
+        "token": "--ring",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 5,
+          "alfa": 1
         },
-        contra: null,
+        "contra": null
       },
       {
-        token: "::selection/color",
-        tipo: "texto",
-        fonte: {
-          tipo: "grau",
-          indice: 10,
-          alfa: 1,
+        "token": "::selection/color",
+        "tipo": "texto",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 10,
+          "alfa": 1
         },
-        contra: [
+        "contra": [
           {
-            tipo: "grau",
-            indice: 2,
-            alfa: 1,
-          },
-        ],
+            "tipo": "grau",
+            "indice": 2,
+            "alfa": 1
+          }
+        ]
       },
       {
-        token: ":focus-visible/outline",
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 5,
-          alfa: 1,
+        "token": ":focus-visible/outline",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 5,
+          "alfa": 1
         },
-        contra: null,
-      },
+        "contra": null
+      }
     ],
-    semanticas: [
+    "semanticas": [
       {
-        nome: "success",
-        hex: "#5a8a5f",
+        "nome": "success",
+        "hex": "#5a8a5f"
       },
       {
-        nome: "warning",
-        hex: "#b07a2b",
+        "nome": "warning",
+        "hex": "#b07a2b"
       },
       {
-        nome: "error",
-        hex: "#a94a3c",
+        "nome": "error",
+        "hex": "#a94a3c"
       },
       {
-        nome: "info",
-        hex: "#4a7a93",
-      },
+        "nome": "info",
+        "hex": "#4a7a93"
+      }
     ],
-    neutros: [
-      "#faf9f6",
-      "#f3f1ec",
-      "#e7e3da",
-      "#d2cdbf",
-      "#a9a395",
-      "#7d786c",
-      "#5d594f",
-      "#46433b",
-      "#2e2c26",
-      "#1c1a16",
-      "#0e0d0a",
+    "neutros": [
+      "#f5f8fc",
+      "#eef3f9",
+      "#e2e8f0",
+      "#cbd5e1",
+      "#94a3b8",
+      "#64748b",
+      "#5b6b7c",
+      "#334155",
+      "#1e293b",
+      "#0b1f3a",
+      "#071525"
     ],
-    indices: {
-      accent: 6,
-      hover: 7,
-      soft: 1,
+    "indices": {
+      "accent": 6,
+      "hover": 7,
+      "soft": 1
     },
-    alfaDoSoft: 1,
+    "alfaDoSoft": 1
   },
-  escuro: {
-    nome: "escuro",
-    base: [
+  "escuro": {
+    "nome": "escuro",
+    "base": [
       {
-        chave: "--color-bg",
-        hex: "#161510",
+        "chave": "--color-bg",
+        "hex": "#0b1220"
       },
       {
-        chave: "--color-surface",
-        hex: "#1d1c17",
+        "chave": "--color-surface",
+        "hex": "#121a2b"
       },
       {
-        chave: "--color-surface-elevated",
-        hex: "#272620",
-      },
+        "chave": "--color-surface-elevated",
+        "hex": "#1a2438"
+      }
     ],
-    tingidas: [
+    "tingidas": [
       {
-        chave: "--color-accent-soft",
-        fonte: {
-          tipo: "literal",
-          hex: "#82a077",
-          alfa: 0.16,
-        },
-      },
+        "chave": "--color-accent-soft",
+        "fonte": {
+          "tipo": "literal",
+          "hex": "#82a077",
+          "alfa": 0.16
+        }
+      }
     ],
-    papeis: [
+    "papeis": [
       {
-        token: "--color-accent",
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 4,
-          alfa: 1,
+        "token": "--color-accent",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 4,
+          "alfa": 1
         },
-        contra: null,
+        "contra": null
       },
       {
-        token: "--color-accent-fg",
-        tipo: "texto",
-        fonte: {
-          tipo: "frenteCalculada",
-          sobre: {
-            tipo: "grau",
-            indice: 4,
-            alfa: 1,
-          },
+        "token": "--color-accent-fg",
+        "tipo": "texto",
+        "fonte": {
+          "tipo": "frenteCalculada",
+          "sobre": {
+            "tipo": "grau",
+            "indice": 4,
+            "alfa": 1
+          }
         },
-        contra: [
+        "contra": [
           {
-            tipo: "grau",
-            indice: 4,
-            alfa: 1,
-          },
-        ],
+            "tipo": "grau",
+            "indice": 4,
+            "alfa": 1
+          }
+        ]
       },
       {
-        token: "--color-accent-hover",
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 3,
-          alfa: 1,
+        "token": "--color-accent-hover",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 3,
+          "alfa": 1
         },
-        contra: null,
+        "contra": null
       },
       {
-        token: "--ring",
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 4,
-          alfa: 1,
+        "token": "--ring",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 4,
+          "alfa": 1
         },
-        contra: null,
+        "contra": null
       },
       {
-        token: '[data-theme="dark"] ::selection/color',
-        tipo: "texto",
-        fonte: {
-          tipo: "grau",
-          indice: 0,
-          alfa: 1,
+        "token": "[data-theme=\"dark\"] ::selection/color",
+        "tipo": "texto",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 0,
+          "alfa": 1
         },
-        contra: [
+        "contra": [
           {
-            tipo: "grau",
-            indice: 7,
-            alfa: 1,
-          },
-        ],
+            "tipo": "grau",
+            "indice": 7,
+            "alfa": 1
+          }
+        ]
       },
       {
-        token: '[data-theme="dark"] :focus-visible/outline-color',
-        tipo: "componente",
-        fonte: {
-          tipo: "grau",
-          indice: 4,
-          alfa: 1,
+        "token": "[data-theme=\"dark\"] :focus-visible/outline-color",
+        "tipo": "componente",
+        "fonte": {
+          "tipo": "grau",
+          "indice": 4,
+          "alfa": 1
         },
-        contra: null,
-      },
+        "contra": null
+      }
     ],
-    semanticas: [
+    "semanticas": [
       {
-        nome: "success",
-        hex: "#82a077",
+        "nome": "success",
+        "hex": "#82a077"
       },
       {
-        nome: "warning",
-        hex: "#d09455",
+        "nome": "warning",
+        "hex": "#d09455"
       },
       {
-        nome: "error",
-        hex: "#c87263",
+        "nome": "error",
+        "hex": "#c87263"
       },
       {
-        nome: "info",
-        hex: "#7da9bf",
-      },
+        "nome": "info",
+        "hex": "#7da9bf"
+      }
     ],
-    neutros: [
-      "#f5f4ef",
-      "#e6e4dc",
-      "#bbb8ac",
-      "#8e8b7f",
-      "#605e54",
-      "#444239",
-      "#33312a",
-      "#272620",
-      "#1d1c17",
-      "#161510",
-      "#0c0b08",
+    "neutros": [
+      "#e8eef6",
+      "#c5d0de",
+      "#93a0b3",
+      "#6b7a90",
+      "#4a5a70",
+      "#334155",
+      "#243044",
+      "#1a2438",
+      "#121a2b",
+      "#0b1220",
+      "#070b14"
     ],
-    indices: {
-      accent: 4,
-      hover: 3,
-      soft: null,
+    "indices": {
+      "accent": 4,
+      "hover": 3,
+      "soft": null
     },
-    alfaDoSoft: 0.16,
-  },
+    "alfaDoSoft": 0.16
+  }
 } as const;

@@ -3,26 +3,27 @@
 @tailwind utilities;
 
 /* ─────────────────────────────────────────────────────────────────────────
-   DeskcommCRM — Design System tokens (Sage palette · density Aerada)
-   Source of truth: /app/design/lib/tokens.ts (PALETTES.sage)
+   MOOPE CRM — Design System tokens
+   Surfaces + neutrals: cool MOOPE (light #F5F8FC / dark navy-adjacent).
+   Accent ramp: Sage — a marca da instalação continua pintando via branding.
    Light + dark drawn separately (NOT inverted).
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
   /* Surfaces (light) */
-  --color-bg: #faf9f6;
+  --color-bg: #f5f8fc;
   --color-surface: #ffffff;
-  --color-surface-elevated: #f5f3ee;
-  --color-overlay: rgba(28, 26, 22, 0.42);
+  --color-surface-elevated: #eef3f9;
+  --color-overlay: rgba(11, 31, 58, 0.42);
 
   /* Text (light) */
-  --color-text: #1c1a16;
-  --color-text-muted: #5d594f;
-  --color-text-subtle: #7d786c;
+  --color-text: #0b1f3a;
+  --color-text-muted: #5b6b7c;
+  --color-text-subtle: #64748b;
 
   /* Borders (light) */
-  --color-border: #e7e3da;
-  --color-border-strong: #d2cdbf;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
 
   /* Accent — Sage (11 stops) */
   --color-accent-50:  #f3f6f1;
@@ -41,18 +42,18 @@
   --color-accent-soft: var(--color-accent-100);
   --color-accent-hover: var(--color-accent-700);
 
-  /* Neutrals — greige (11 stops, light) */
-  --color-neutral-50:  #faf9f6;
-  --color-neutral-100: #f3f1ec;
-  --color-neutral-200: #e7e3da;
-  --color-neutral-300: #d2cdbf;
-  --color-neutral-400: #a9a395;
-  --color-neutral-500: #7d786c;
-  --color-neutral-600: #5d594f;
-  --color-neutral-700: #46433b;
-  --color-neutral-800: #2e2c26;
-  --color-neutral-900: #1c1a16;
-  --color-neutral-950: #0e0d0a;
+  /* Neutrals — cool slate (11 stops, light) */
+  --color-neutral-50:  #f5f8fc;
+  --color-neutral-100: #eef3f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #5b6b7c;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0b1f3a;
+  --color-neutral-950: #071525;
 
   /* States (light) */
   --color-success: #5a8a5f;
@@ -67,6 +68,41 @@
   --color-info: #4a7a93;
   --color-info-bg: rgba(74, 122, 147, 0.12);
   --color-info-fg: #355d72;
+  --color-ai: #7c3aed;
+  --color-ai-bg: rgba(124, 58, 237, 0.12);
+  --color-ai-fg: #5b21b6;
+  --color-teal: #0f766e;
+  --color-teal-bg: rgba(15, 118, 110, 0.12);
+  --color-indigo: #3730a3;
+  --color-indigo-bg: rgba(55, 48, 163, 0.12);
+
+  /* Identidade MOOPE — nav e CTAs da casca. Accent Sage segue a marca. */
+  --moope-navy: #0b1f3a;
+  --moope-primary: #1677ff;
+  --moope-cyan: #12b8e8;
+  --moope-primary-bg: rgba(22, 119, 255, 0.10);
+  --nav-bg: #0b1f3a;
+  --nav-active: #1677ff;
+  --nav-indicator: #12b8e8;
+  /* Ícones da sidebar (sempre navy) — fg claro o bastante para AA no #0B1F3A */
+  --nav-icon-blue: #7eb6ff;
+  --nav-icon-cyan: #12b8e8;
+  --nav-icon-green: #6ee7b7;
+  --nav-icon-amber: #fbbf24;
+  --nav-icon-red: #fb7185;
+  --nav-icon-violet: #c4b5fd;
+  --nav-icon-teal: #5eead4;
+  --nav-icon-indigo: #a5b4fc;
+  --funnel-1: color-mix(in srgb, var(--moope-primary) 12%, #ffffff);
+  --funnel-2: color-mix(in srgb, var(--moope-cyan) 14%, #ffffff);
+  --funnel-3: color-mix(in srgb, var(--color-warning) 14%, #ffffff);
+  --funnel-4: color-mix(in srgb, var(--color-warning) 22%, #ffffff);
+  --funnel-5: color-mix(in srgb, var(--color-success) 14%, #ffffff);
+  --success-soft: var(--color-success-bg);
+  --warning-soft: var(--color-warning-bg);
+  --danger-soft: var(--color-error-bg);
+  --info-soft: var(--color-info-bg);
+  --ai-soft: var(--color-ai-bg);
 
   /* Spacing (4-base) */
   --space-0: 0px;
@@ -92,12 +128,12 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* Shadows — desaturated, neutral-based */
-  --shadow-xs: 0 1px 2px 0 rgba(20, 18, 14, 0.04);
-  --shadow-sm: 0 1px 2px 0 rgba(20, 18, 14, 0.05), 0 1px 1px 0 rgba(20, 18, 14, 0.03);
-  --shadow-md: 0 4px 12px -2px rgba(20, 18, 14, 0.06), 0 2px 4px -1px rgba(20, 18, 14, 0.04);
-  --shadow-lg: 0 12px 32px -6px rgba(20, 18, 14, 0.10), 0 4px 12px -2px rgba(20, 18, 14, 0.06);
-  --shadow-xl: 0 24px 48px -12px rgba(20, 18, 14, 0.16), 0 8px 16px -4px rgba(20, 18, 14, 0.08);
+  /* Shadows — navy-tinted, very soft */
+  --shadow-xs: 0 1px 2px 0 rgba(11, 31, 58, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(11, 31, 58, 0.05), 0 1px 1px 0 rgba(11, 31, 58, 0.03);
+  --shadow-md: 0 4px 12px -2px rgba(11, 31, 58, 0.06), 0 2px 4px -1px rgba(11, 31, 58, 0.04);
+  --shadow-lg: 0 12px 32px -6px rgba(11, 31, 58, 0.10), 0 4px 12px -2px rgba(11, 31, 58, 0.06);
+  --shadow-xl: 0 24px 48px -12px rgba(11, 31, 58, 0.16), 0 8px 16px -4px rgba(11, 31, 58, 0.08);
 
   /* Density — Aerada */
   --density-row: 56px;
@@ -228,30 +264,30 @@
    (lib/branding/css.ts), que só ganha consumidor com a tela de marca.
    ───────────────────────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-bg: #faf9f6;
+  --color-bg: #f5f8fc;
   --color-surface: #ffffff;
-  --color-surface-elevated: #f5f3ee;
-  --color-overlay: rgba(28, 26, 22, 0.42);
-  --color-text: #1c1a16;
-  --color-text-muted: #5d594f;
-  --color-text-subtle: #7d786c;
-  --color-border: #e7e3da;
-  --color-border-strong: #d2cdbf;
+  --color-surface-elevated: #eef3f9;
+  --color-overlay: rgba(11, 31, 58, 0.42);
+  --color-text: #0b1f3a;
+  --color-text-muted: #5b6b7c;
+  --color-text-subtle: #64748b;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
   --color-accent: var(--color-accent-600);
   --color-accent-fg: #ffffff;
   --color-accent-soft: var(--color-accent-100);
   --color-accent-hover: var(--color-accent-700);
-  --color-neutral-50: #faf9f6;
-  --color-neutral-100: #f3f1ec;
-  --color-neutral-200: #e7e3da;
-  --color-neutral-300: #d2cdbf;
-  --color-neutral-400: #a9a395;
-  --color-neutral-500: #7d786c;
-  --color-neutral-600: #5d594f;
-  --color-neutral-700: #46433b;
-  --color-neutral-800: #2e2c26;
-  --color-neutral-900: #1c1a16;
-  --color-neutral-950: #0e0d0a;
+  --color-neutral-50: #f5f8fc;
+  --color-neutral-100: #eef3f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #5b6b7c;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0b1f3a;
+  --color-neutral-950: #071525;
   --color-success: #5a8a5f;
   --color-success-bg: rgba(90, 138, 95, 0.12);
   --color-success-fg: #41673f;
@@ -264,11 +300,24 @@
   --color-info: #4a7a93;
   --color-info-bg: rgba(74, 122, 147, 0.12);
   --color-info-fg: #355d72;
-  --shadow-xs: 0 1px 2px 0 rgba(20, 18, 14, 0.04);
-  --shadow-sm: 0 1px 2px 0 rgba(20, 18, 14, 0.05), 0 1px 1px 0 rgba(20, 18, 14, 0.03);
-  --shadow-md: 0 4px 12px -2px rgba(20, 18, 14, 0.06), 0 2px 4px -1px rgba(20, 18, 14, 0.04);
-  --shadow-lg: 0 12px 32px -6px rgba(20, 18, 14, 0.10), 0 4px 12px -2px rgba(20, 18, 14, 0.06);
-  --shadow-xl: 0 24px 48px -12px rgba(20, 18, 14, 0.16), 0 8px 16px -4px rgba(20, 18, 14, 0.08);
+  --color-ai: #7c3aed;
+  --color-ai-bg: rgba(124, 58, 237, 0.12);
+  --color-ai-fg: #5b21b6;
+  --color-teal: #0f766e;
+  --color-teal-bg: rgba(15, 118, 110, 0.12);
+  --color-indigo: #3730a3;
+  --color-indigo-bg: rgba(55, 48, 163, 0.12);
+  --moope-primary-bg: rgba(22, 119, 255, 0.10);
+  --funnel-1: color-mix(in srgb, var(--moope-primary) 12%, #ffffff);
+  --funnel-2: color-mix(in srgb, var(--moope-cyan) 14%, #ffffff);
+  --funnel-3: color-mix(in srgb, var(--color-warning) 14%, #ffffff);
+  --funnel-4: color-mix(in srgb, var(--color-warning) 22%, #ffffff);
+  --funnel-5: color-mix(in srgb, var(--color-success) 14%, #ffffff);
+  --shadow-xs: 0 1px 2px 0 rgba(11, 31, 58, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(11, 31, 58, 0.05), 0 1px 1px 0 rgba(11, 31, 58, 0.03);
+  --shadow-md: 0 4px 12px -2px rgba(11, 31, 58, 0.06), 0 2px 4px -1px rgba(11, 31, 58, 0.04);
+  --shadow-lg: 0 12px 32px -6px rgba(11, 31, 58, 0.10), 0 4px 12px -2px rgba(11, 31, 58, 0.06);
+  --shadow-xl: 0 24px 48px -12px rgba(11, 31, 58, 0.16), 0 8px 16px -4px rgba(11, 31, 58, 0.08);
   --background: var(--color-bg);
   --foreground: var(--color-text);
   --card: var(--color-surface);
@@ -305,20 +354,20 @@
 }
 
 [data-theme="dark"] {
-  /* Surfaces (dark — drawn) */
-  --color-bg: #161510;
-  --color-surface: #1d1c17;
-  --color-surface-elevated: #272620;
+  /* Surfaces (dark — cool navy, not inverted greige) */
+  --color-bg: #0b1220;
+  --color-surface: #121a2b;
+  --color-surface-elevated: #1a2438;
   --color-overlay: rgba(0, 0, 0, 0.55);
 
   /* Text (dark) */
-  --color-text: #f5f4ef;
-  --color-text-muted: #8e8b7f;
-  --color-text-subtle: #605e54;
+  --color-text: #e8eef6;
+  --color-text-muted: #93a0b3;
+  --color-text-subtle: #6b7a90;
 
   /* Borders (dark) */
-  --color-border: #33312a;
-  --color-border-strong: #444239;
+  --color-border: #243044;
+  --color-border-strong: #334155;
 
   /* Accent stays same hex stops; default shifts up for dark contrast */
   --color-accent-50:  #f3f6f1;
@@ -333,22 +382,22 @@
   --color-accent-900: #2f3c2b;
   --color-accent-950: #171f15;
   --color-accent: var(--color-accent-400);
-  --color-accent-fg: #161510;
+  --color-accent-fg: #0b1220;
   --color-accent-soft: rgba(130, 160, 119, 0.16);
   --color-accent-hover: var(--color-accent-300);
 
-  /* Neutrals — greige (11 stops, dark) */
-  --color-neutral-50:  #f5f4ef;
-  --color-neutral-100: #e6e4dc;
-  --color-neutral-200: #bbb8ac;
-  --color-neutral-300: #8e8b7f;
-  --color-neutral-400: #605e54;
-  --color-neutral-500: #444239;
-  --color-neutral-600: #33312a;
-  --color-neutral-700: #272620;
-  --color-neutral-800: #1d1c17;
-  --color-neutral-900: #161510;
-  --color-neutral-950: #0c0b08;
+  /* Neutrals — cool slate (11 stops, dark) */
+  --color-neutral-50:  #e8eef6;
+  --color-neutral-100: #c5d0de;
+  --color-neutral-200: #93a0b3;
+  --color-neutral-300: #6b7a90;
+  --color-neutral-400: #4a5a70;
+  --color-neutral-500: #334155;
+  --color-neutral-600: #243044;
+  --color-neutral-700: #1a2438;
+  --color-neutral-800: #121a2b;
+  --color-neutral-900: #0b1220;
+  --color-neutral-950: #070b14;
 
   /* States (dark) */
   --color-success: #82a077;
@@ -363,6 +412,19 @@
   --color-info: #7da9bf;
   --color-info-bg: rgba(125, 169, 191, 0.18);
   --color-info-fg: #9bbfd2;
+  --color-ai: #a78bfa;
+  --color-ai-bg: rgba(167, 139, 250, 0.16);
+  --color-ai-fg: #c4b5fd;
+  --color-teal: #5eead4;
+  --color-teal-bg: rgba(94, 234, 212, 0.16);
+  --color-indigo: #a5b4fc;
+  --color-indigo-bg: rgba(165, 180, 252, 0.16);
+  --moope-primary-bg: rgba(22, 119, 255, 0.18);
+  --funnel-1: color-mix(in srgb, var(--moope-primary) 22%, var(--color-surface));
+  --funnel-2: color-mix(in srgb, var(--moope-cyan) 20%, var(--color-surface));
+  --funnel-3: color-mix(in srgb, var(--color-warning) 20%, var(--color-surface));
+  --funnel-4: color-mix(in srgb, var(--color-warning) 28%, var(--color-surface));
+  --funnel-5: color-mix(in srgb, var(--color-success) 20%, var(--color-surface));
 
   /* Shadows — heavier in dark */
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
@@ -655,5 +717,70 @@
   .agenda-coluna-horarios {
     transition: none;
     transform: none;
+  }
+}
+
+/* ---- Design system · pipeline em chevron -------------------------------- */
+.ds-funnel {
+  display: flex;
+  width: 100%;
+  min-height: 5.5rem;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+.ds-funnel-seg {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.75rem 1.25rem 0.75rem 1.5rem;
+  text-decoration: none;
+  transition: filter var(--duration-fast) var(--ease-out);
+}
+.ds-funnel-seg:hover {
+  filter: brightness(0.97);
+}
+[data-theme="dark"] .ds-funnel-seg:hover {
+  filter: brightness(1.08);
+}
+.ds-funnel-seg:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--color-info);
+  outline-offset: -2px;
+}
+.ds-funnel-seg:not(:first-child) {
+  margin-left: -0.7rem;
+  padding-left: 1.65rem;
+}
+.ds-funnel-seg:not(:last-child) {
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%);
+}
+.ds-funnel-seg:first-child {
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+}
+.ds-funnel-seg:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 14px 50%);
+}
+.ds-funnel-seg:only-child {
+  clip-path: none;
+}
+@media (max-width: 767px) {
+  .ds-funnel {
+    flex-direction: column;
+    min-height: 0;
+    gap: 0.35rem;
+    overflow: visible;
+  }
+  .ds-funnel-seg,
+  .ds-funnel-seg:first-child,
+  .ds-funnel-seg:last-child,
+  .ds-funnel-seg:not(:first-child),
+  .ds-funnel-seg:not(:last-child) {
+    margin-left: 0;
+    padding: 0.7rem 0.9rem;
+    clip-path: none;
+    border-radius: var(--radius-md);
   }
 }

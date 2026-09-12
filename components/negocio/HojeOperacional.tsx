@@ -59,7 +59,7 @@ export function HojeOperacional() {
   const lista = (hoje.data ?? []).slice(0, 6);
 
   return (
-    <section className="space-y-6" data-testid="hoje-operacional">
+    <section className="space-y-6" data-testid="hoje-operacional-legado">
       <header className="space-y-1">
         <h2 className="text-lg font-semibold">Hoje</h2>
         <p className="text-[13px] text-muted-foreground">

@@ -16,10 +16,16 @@ export function ChecklistCompacto({ itens }: { itens: ItemDoSetup[] }) {
 
   return (
     <div data-testid="checklist-primeiros-passos" className="inline-flex max-w-full flex-col gap-1">
-      <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-surface-elevated)] px-3 py-1.5 text-[12px] ring-1 ring-white/[0.06]">
+      <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-surface)] px-3 py-1.5 text-[12px] shadow-[var(--shadow-xs)] ring-1 ring-[var(--color-border)]">
         <Link href="/app/settings/business" className="hover:underline">
           Configuração {feitos}/{itens.length} concluída
         </Link>
+        <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-[var(--color-surface-elevated)] sm:block" aria-hidden>
+          <span
+            className="block h-full bg-[var(--moope-primary)]"
+            style={{ width: `${itens.length ? (feitos / itens.length) * 100 : 0}%` }}
+          />
+        </span>
         <button
           type="button"
           className="text-[var(--color-text-muted)] hover:underline"
@@ -30,19 +36,19 @@ export function ChecklistCompacto({ itens }: { itens: ItemDoSetup[] }) {
         </button>
         <Link
           href="/app/settings/business"
-          className="font-medium text-[var(--color-info-fg)] hover:underline"
+          className="font-medium text-[var(--moope-primary)] hover:underline"
         >
           Continuar
         </Link>
       </div>
-      <ul hidden={!aberto} className="space-y-1 rounded-lg bg-[var(--color-surface)] px-3 py-2">
+      <ul hidden={!aberto} className="space-y-1 rounded-lg bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]">
         {itens.map((item) => (
           <li key={item.id}>
             <Link
               href={item.href}
               data-testid={`checklist-${item.id}`}
               data-feito={item.feito ? "sim" : "nao"}
-              className="flex items-center gap-2 text-[13px] hover:text-[var(--color-info-fg)]"
+              className="flex items-center gap-2 text-[13px] hover:text-[var(--moope-primary)]"
             >
               <span aria-hidden>{item.feito ? "☑" : "☐"}</span>
               <span className={item.feito ? "text-[var(--color-text-muted)] line-through" : ""}>

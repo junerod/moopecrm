@@ -142,10 +142,11 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: /Caixa de entrada/ })).toBeTruthy();
   });
 
-  it("pinta a trilha com o stop escuro da marca, não com o cinza da superfície", () => {
+  it("pinta a trilha com navy da casca, não com o cinza da superfície", () => {
     comoPapel("admin");
     const { container } = render(<Sidebar collapsed={false} />);
-    expect(container.querySelector("aside")?.className).toMatch(/bg-accent-950/);
+    expect(container.querySelector("aside")?.className).toMatch(/--nav-bg/);
+    expect(container.querySelector("aside")?.className).not.toMatch(/bg-card|bg-surface|bg-background/);
   });
 
   it("marca a rota atual com aria-current", () => {

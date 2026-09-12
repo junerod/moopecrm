@@ -192,8 +192,8 @@ test.describe("Mercado Forte — Bloco 2", () => {
     await shot(page, "06-agenda-hoje.png");
 
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("hoje-operacional").getByText(/retornos hoje/i)).toBeVisible();
+    await expect(page.getByRole("main").getByTestId("hoje-operacional")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("main").getByTestId("hoje-operacional").getByText(/retornos hoje/i)).toBeVisible();
     const hojeApi = await page.request.get("/api/v1/demandas?visao=hoje");
     expect(hojeApi.ok(), await hojeApi.text()).toBeTruthy();
     const hojeCorpo = (await hojeApi.json()) as { data: Array<{ texto: string | null }> };
@@ -368,7 +368,7 @@ test.describe("Mercado Forte — Bloco 2", () => {
   test("M–P sem ação, quente, supervisor e contato 360", async ({ page }) => {
     await login(page, creds.users.manager!.email);
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("main").getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("home-atencao")).toBeVisible();
     await expect(page.getByText(/quentes sem próxima ação/i).first()).toBeVisible();
     await expect(page.getByTestId("hoje-supervisor")).toBeVisible();
@@ -512,7 +512,7 @@ test.describe("Mercado Forte — Bloco 2", () => {
     await expect(page.getByTestId("agenda-obrigacoes")).toBeVisible({ timeout: 20_000 });
     await shot(page, "16-mobile-agenda.png");
     await page.goto("/app/inicio");
-    await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("main").getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
     await shot(page, "17-mobile-home-hoje.png");
     await page.goto(`/app/contacts/${contatoId}`);
     await expect(page.getByTestId("contato-360-comercial")).toBeVisible({ timeout: 20_000 });

@@ -117,11 +117,11 @@ export const viewport: Viewport = {
   themeColor: coresDaBarraDoNavegador(REGUA_DO_PRODUTO),
 };
 
-// Inline FOUC-prevention. O produto tem um tema só — o escuro. Quem tinha
-// `light` gravado (o seletor antigo) é migrado aqui, antes do primeiro paint,
-// senão a tela branca pisca e some. A vitrine da agenda ainda pode pedir o
-// claro via `setTheme` depois de hidratar; um F5 volta ao escuro.
-const THEME_INIT_SCRIPT = `(function(){try{localStorage.setItem('deskcomm-theme','dark');}catch(e){}document.documentElement.setAttribute('data-theme','dark');})();`;
+// Inline FOUC-prevention. Lê a preferência persistida (light | dark | system)
+// e aplica o tema resolvido ANTES do primeiro paint. Não grava dark à força —
+// isso apagava a escolha a cada F5. Sem valor gravado, o default é light
+// (identidade visual canônica). ThemeProvider só alinha o estado depois de hidratar.
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('deskcomm-theme');if(t!=='light'&&t!=='dark'&&t!=='system')t='light';var r=t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 /**
  * Motivos já registrados neste processo. `EstiloDaMarca` roda em TODA
