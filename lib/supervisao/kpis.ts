@@ -28,6 +28,7 @@ export interface KpisDeSupervisao {
   funil: Array<{
     stage_id: string;
     stage_name: string;
+    pipeline_id: string;
     count: number;
     value_cents: number;
   }>;
@@ -179,6 +180,7 @@ export async function carregarKpisDeSupervisao(
   const funil = ((stages ?? []) as Array<{
     id: string;
     name: string;
+    pipeline_id: string;
     is_won: boolean;
     is_lost: boolean;
   }>)
@@ -186,6 +188,7 @@ export async function carregarKpisDeSupervisao(
     .map((s) => ({
       stage_id: s.id,
       stage_name: s.name,
+      pipeline_id: s.pipeline_id,
       count: valorPor[s.id]?.count ?? 0,
       value_cents: valorPor[s.id]?.value_cents ?? 0,
     }));

@@ -31,6 +31,7 @@ export function ListaDeAcoes({
   async function recarregar() {
     await qc.invalidateQueries({ queryKey: ["proximas-acoes"] });
     await qc.invalidateQueries({ queryKey: ["board"] });
+    await qc.invalidateQueries({ queryKey: ["home"] });
   }
 
   return (

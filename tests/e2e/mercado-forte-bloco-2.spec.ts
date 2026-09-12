@@ -369,7 +369,8 @@ test.describe("Mercado Forte — Bloco 2", () => {
     await login(page, creds.users.manager!.email);
     await page.goto("/app/inicio");
     await expect(page.getByTestId("hoje-operacional")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/quentes sem próxima ação/i)).toBeVisible();
+    await expect(page.getByTestId("home-atencao")).toBeVisible();
+    await expect(page.getByText(/quentes sem próxima ação/i).first()).toBeVisible();
     await expect(page.getByTestId("hoje-supervisor")).toBeVisible();
 
     await page.goto(`/app/contacts/${contatoId}`);
