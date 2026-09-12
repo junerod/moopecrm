@@ -41,6 +41,7 @@ import {
   Warning,
 } from "@/lib/ui/icons";
 import { lerEstadoDoCanal } from "@/lib/channels/estado";
+import { esperaAposQueda, fraseEsperaPareamento } from "@/lib/channels/pareamento-cooldown";
 import { ehResidualSupersedida } from "@/lib/channels/sessoes-residuais";
 
 type Variant = "success" | "warning" | "error" | "neutral";
@@ -393,6 +394,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
             // podendo ser excluído.
             const vivaNoTransporte = dependeDoTransporte(c);
             const residual = ehResidualSupersedida(c, list);
+            const espera = esperaAposQueda(c.status, c.last_status_change_at);
             const podeExcluir = wahaConfigured || !vivaNoTransporte;
             return (
               <Card key={c.id} className="flex flex-col gap-3 p-4">
@@ -415,6 +417,11 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     ? `Verificado ${new Date(c.last_health_check_at).toLocaleString("pt-BR")}`
                     : "Ainda não verificado"}
                 </p>
+                {espera.esperar && espera.until && c.status !== "WORKING" ? (
+                  <p className="text-xs text-warning-fg" data-testid="whatsapp-cooldown">
+                    {fraseEsperaPareamento(espera.until)}
+                  </p>
+                ) : null}
                 {vivaNoTransporte && c.status === "WORKING" && (
                   <LinhaDoHistorico
                     sessionId={c.id}
@@ -445,7 +452,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={busyId === c.id || !wahaConfigured}
+                      disabled={busyId === c.id || !wahaConfigured || espera.esperar}
                       onClick={() => handleReconnect(c)}
                     >
                       {busyId === c.id ? (
@@ -536,6 +543,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
           sessionId={qr.sessionId}
           title={qr.title}
           wahaConfigured={wahaConfigured}
+          lastStatusChangeAt={list.find((c) => c.id === qr.sessionId)?.last_status_change_at ?? null}
           onClose={() => setQr(null)}
           onConnected={handleConnected}
           onForcePair={forcePair}
@@ -697,6 +705,7 @@ function QrDialog({
   sessionId,
   title,
   wahaConfigured,
+  lastStatusChangeAt,
   onClose,
   onConnected,
   onForcePair,
@@ -704,6 +713,7 @@ function QrDialog({
   sessionId: string;
   title: string;
   wahaConfigured: boolean;
+  lastStatusChangeAt: string | null;
   onClose: () => void;
   onConnected: () => void;
   onForcePair: (sessionId: string) => Promise<void>;
@@ -786,13 +796,22 @@ function QrDialog({
             // Reconectar" levava de volta ao mesmo FAILED); agora ela oferece a
             // única ação que de fato resolve.
             <div className="flex flex-col items-center gap-3 text-center">
-              <p className="text-sm text-error-fg">
-                Este número foi desvinculado do WhatsApp. Para usá-lo de novo é preciso parear
-                outra vez.
-              </p>
+              {(() => {
+                const espera = esperaAposQueda(status, lastStatusChangeAt);
+                return espera.esperar && espera.until ? (
+                  <p className="text-sm text-warning-fg" data-testid="whatsapp-cooldown">
+                    {fraseEsperaPareamento(espera.until)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-error-fg">
+                    Este número foi desvinculado do WhatsApp. Para usá-lo de novo é preciso parear
+                    outra vez.
+                  </p>
+                );
+              })()}
               <Button
                 size="sm"
-                disabled={pairing}
+                disabled={pairing || esperaAposQueda(status, lastStatusChangeAt).esperar}
                 onClick={async () => {
                   setPairing(true);
                   try {

@@ -151,7 +151,7 @@ export function SidebarContent({
               ) : (
                 <h2
                   id={tituloId}
-                  className="px-3 text-[10px] font-medium uppercase tracking-wider text-white/40"
+                  className="px-3 text-[10px] font-medium uppercase tracking-wider text-white/70"
                 >
                   {t(group.label)}
                 </h2>

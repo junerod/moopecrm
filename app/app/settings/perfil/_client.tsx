@@ -7,15 +7,17 @@ import { toast } from "sonner";
 import { aplicarPerfilAction } from "@/app/actions/settings/aplicarPerfil";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { catalogoParaWizard, ROTULOS_SUBTYPE_LOCACAO } from "@/lib/ready-models/catalogo";
+import { catalogoParaWizard, resolverDefinition, ROTULOS_SUBTYPE_LOCACAO } from "@/lib/ready-models/catalogo";
 import { LOCACAO_SUBTYPES, type LocacaoSubtype, type ReadyModelId } from "@/lib/ready-models/tipos";
 
 export function PerfilDoNegocioForm({
   atual,
   subtypeAtual,
+  funisExistentes = [],
 }: {
   atual: string | null;
   subtypeAtual?: string | null;
+  funisExistentes?: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
   const [escolhido, setEscolhido] = useState<ReadyModelId | null>(
@@ -26,10 +28,22 @@ export function PerfilDoNegocioForm({
       ? (subtypeAtual as LocacaoSubtype)
       : null,
   );
+  const [confirmar, setConfirmar] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const def = escolhido ? resolverDefinition(escolhido, subtype) : null;
+  const nomeDoQuadroNovo = def?.pipeline.nome ?? null;
+  const funilNovoJaExiste = Boolean(
+    nomeDoQuadroNovo && funisExistentes.some((f) => f.name === nomeDoQuadroNovo),
+  );
+  const trocando = Boolean(escolhido && atual && escolhido !== atual);
 
   function aplicar() {
     if (!escolhido) return;
+    if (trocando && !confirmar) {
+      setConfirmar(true);
+      return;
+    }
     startTransition(async () => {
       const r = await aplicarPerfilAction({
         perfil: escolhido,
@@ -39,12 +53,17 @@ export function PerfilDoNegocioForm({
         toast.error(r.error);
         return;
       }
+      const rotulo = catalogoParaWizard().find((c) => c.id === escolhido)?.label ?? escolhido;
       toast.success(
         r.criouQuadroNovo
-          ? "Perfil ligado. O quadro antigo ficou de lado — os cards dele não foram apagados."
-          : "Perfil ligado. O quadro padrão já é este.",
+          ? `Perfil agora é ${rotulo}. O funil novo foi criado; os antigos continuam na lista.`
+          : funilNovoJaExiste
+            ? `Perfil agora é ${rotulo}. Funil ${nomeDoQuadroNovo} já existia.`
+            : `Perfil ligado. O quadro padrão já é este.`,
       );
+      setConfirmar(false);
       router.refresh();
+      router.push("/app/kanban");
     });
   }
 
@@ -68,7 +87,10 @@ export function PerfilDoNegocioForm({
                   name="perfil"
                   value={p.id}
                   checked={marcado}
-                  onChange={() => setEscolhido(p.id)}
+                  onChange={() => {
+                    setEscolhido(p.id);
+                    setConfirmar(false);
+                  }}
                   className="mt-1"
                 />
                 <span className="min-w-0">
@@ -103,8 +125,34 @@ export function PerfilDoNegocioForm({
           </div>
         </fieldset>
       ) : null}
-      <Button onClick={aplicar} disabled={!escolhido || isPending}>
-        {isPending ? "Aplicando…" : "Aplicar perfil"}
+      {confirmar && trocando && def ? (
+        <Card className="space-y-2 border-primary/40 p-4" data-testid="confirmar-troca-de-perfil">
+          <p className="text-sm font-medium">Seu perfil agora é {def.label}.</p>
+          {funisExistentes.length > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {funisExistentes.map((f) => `«${f.name}»`).join(", ")}{" "}
+              {funisExistentes.length === 1 ? "será mantido" : "serão mantidos"}.
+            </p>
+          ) : null}
+          <p className="text-sm">
+            {funilNovoJaExiste
+              ? `Funil ${nomeDoQuadroNovo} já existe.`
+              : `Vamos criar o funil ${nomeDoQuadroNovo}.`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Depois, em Funis, você escolhe onde os novos contatos entram. Nada
+            é movido nem apagado.
+          </p>
+        </Card>
+      ) : null}
+      <Button onClick={aplicar} disabled={!escolhido || isPending} data-testid="aplicar-perfil">
+        {isPending
+          ? "Aplicando…"
+          : confirmar
+            ? funilNovoJaExiste
+              ? "Confirmar troca"
+              : `Criar funil ${nomeDoQuadroNovo}`
+            : "Aplicar perfil"}
       </Button>
     </div>
   );

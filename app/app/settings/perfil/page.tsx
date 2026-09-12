@@ -34,6 +34,12 @@ export default async function PerfilDoNegocioPage() {
     .eq("is_default", true)
     .eq("is_archived", false)
     .maybeSingle();
+  const { data: funis } = await supabase
+    .from("crm_pipelines")
+    .select("id, name")
+    .eq("organization_id", activeOrg.orgId)
+    .eq("is_archived", false)
+    .order("position");
   const atual =
     lerPerfilGravado(data?.settings) ??
     inferirPerfilPeloNomeDoQuadro((padrao as { name?: string } | null)?.name);
@@ -50,6 +56,7 @@ export default async function PerfilDoNegocioPage() {
       <PerfilDoNegocioForm
         atual={lerPerfilDoNegocio(data?.settings)?.id ?? atual}
         subtypeAtual={lerPerfilDoNegocio(data?.settings)?.subtype}
+        funisExistentes={(funis ?? []).map((f) => ({ id: f.id, name: f.name }))}
       />
     </div>
   );

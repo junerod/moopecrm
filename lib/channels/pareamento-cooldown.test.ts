@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ESPERA_APOS_QUEDA_MS, esperaAposQueda } from "./pareamento-cooldown";
+import { ESPERA_APOS_QUEDA_MS, esperaAposQueda, fraseEsperaPareamento } from "./pareamento-cooldown";
 
 const AGORA = new Date("2026-09-04T19:10:00Z");
 
@@ -20,5 +20,20 @@ describe("esperaAposQueda", () => {
     expect(esperaAposQueda("FAILED", null, AGORA).esperar).toBe(false);
     expect(esperaAposQueda("STOPPED", AGORA, AGORA).esperar).toBe(false);
     expect(esperaAposQueda("WORKING", AGORA, AGORA).esperar).toBe(false);
+  });
+
+  it("SCAN_QR_CODE recente também espera — WORKING nunca", () => {
+    expect(esperaAposQueda("SCAN_QR_CODE", new Date("2026-09-04T16:10:00Z"), AGORA).esperar).toBe(
+      true,
+    );
+    expect(esperaAposQueda("WORKING", new Date("2026-09-04T16:10:00Z"), AGORA).esperar).toBe(false);
+  });
+
+  it("a frase mostra o horário, não o QR", () => {
+    const until = new Date("2026-09-04T22:10:00Z");
+    const frase = fraseEsperaPareamento(until, "UTC");
+    expect(frase).toMatch(/O WhatsApp pediu espera depois da queda/);
+    expect(frase).toMatch(/Escanear o QR agora piora/);
+    expect(frase).toMatch(/22:10/);
   });
 });

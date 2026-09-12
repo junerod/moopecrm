@@ -173,8 +173,9 @@ test.describe("C — Locação / máquinas + lead + fields + ganho/perda", () =>
     await page.getByTestId("forma-qr").locator("input").click();
     await page.getByTestId("idade-ja-em-uso").locator("input").click();
     const qr = page.locator('img[src*="/whatsapp/qr"]');
-    const aviso = page.getByText(/ainda não subiu|não está configurado/i);
-    await expect(qr.or(aviso).first()).toBeVisible({ timeout: 45_000 });
+    const aviso = page.getByText(/ainda não subiu|não está configurado|aguarde|daqui a/i);
+    const pular = page.getByRole("button", { name: /pular por enquanto/i });
+    await expect(qr.or(aviso).or(pular).first()).toBeVisible({ timeout: 45_000 });
     const qrVisivel = await qr.isVisible().catch(() => false);
     fs.mkdirSync(EVIDENCIA, { recursive: true });
     fs.writeFileSync(
@@ -381,8 +382,12 @@ test.describe("U — troca de Ready Model não apaga lead", () => {
 
     await page.goto("/app/settings/perfil");
     await page.getByText("Comercial / Vendas", { exact: true }).click();
-    await page.getByRole("button", { name: /aplicar perfil/i }).click();
-    await expect(page.getByText(/perfil ligado/i)).toBeVisible({ timeout: 20_000 });
+    await page.getByTestId("aplicar-perfil").click();
+    await expect(page.getByTestId("confirmar-troca-de-perfil")).toBeVisible();
+    await page.getByTestId("aplicar-perfil").click();
+    await expect(page.getByText(/perfil agora é|perfil ligado|funil novo/i)).toBeVisible({
+      timeout: 20_000,
+    });
 
     const { data: depois } = await svc
       .from("crm_leads")

@@ -110,8 +110,8 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "atendimento", label: "Operação" },
   { id: "trabalho", label: "Trabalho" },
   { id: "crm", label: "CRM" },
-  { id: "ia", label: "IA", hub: { href: "/app/ai", label: "IA" } },
-  { id: "canais", label: "Canais" },
+  { id: "ia", label: "Automação & IA", hub: { href: "/app/ai", label: "IA" } },
+  { id: "canais", label: "Integrações" },
   { id: "analise", label: "Análise" },
   {
     id: "organizacao",
@@ -163,28 +163,6 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     sidebar: true,
   },
   {
-    href: "/app/radar",
-    label: "Radar",
-    description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
-    icon: ClockCountdown,
-    group: "trabalho",
-    sidebar: true,
-  },
-  {
-    // Entra em "atendimento", e não em "organizacao", porque a Agenda é onde o
-    // dia acontece e não onde ele se configura: quem atende abre isto de manhã
-    // junto com o Inbox. Os TIPOS de agendamento — que são configuração de
-    // verdade — foram para Configurações, como este comentário previa: ver
-    // `/app/settings/tenant/agenda` no grupo "organizacao". A disponibilidade
-    // ainda não tem tela.
-    href: "/app/agenda",
-    label: "Agenda",
-    description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
-    icon: CalendarBlank,
-    group: "trabalho",
-    sidebar: true,
-  },
-  {
     // Renomeado de "Templates": estes são scripts do atendente, consumidos pelo
     // Composer do inbox. O nome "Templates" fica livre para os da Meta (HSM),
     // onde é o termo técnico correto.
@@ -220,6 +198,28 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Contatos",
     description: "As pessoas do outro lado da conversa e seu histórico.",
     icon: Users,
+    group: "atendimento",
+    sidebar: true,
+  },
+  {
+    // Entra em "atendimento", e não em "organizacao", porque a Agenda é onde o
+    // dia acontece e não onde ele se configura: quem atende abre isto de manhã
+    // junto com o Inbox. Os TIPOS de agendamento — que são configuração de
+    // verdade — foram para Configurações, como este comentário previa: ver
+    // `/app/settings/tenant/agenda` no grupo "organizacao". A disponibilidade
+    // ainda não tem tela.
+    href: "/app/agenda",
+    label: "Agenda",
+    description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
+    icon: CalendarBlank,
+    group: "atendimento",
+    sidebar: true,
+  },
+  {
+    href: "/app/radar",
+    label: "Radar",
+    description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
+    icon: ClockCountdown,
     group: "atendimento",
     sidebar: true,
   },
@@ -267,12 +267,13 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   // ---- Agente de IA — montar, ensinar, acompanhar ----
   {
     href: "/app/ai/agents",
-    label: "Assistentes",
+    label: "Assistentes IA",
     description: "Quem atende por você: instruções, conhecimento e publicação.",
     icon: Robot,
     group: "ia",
     section: "Montar o agente",
     minRole: "manager",
+    sidebar: true,
   },
   {
     href: "/app/ai/followups",
@@ -285,6 +286,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "ia",
     section: "Montar o agente",
     minRole: "manager",
+    sidebar: true,
   },
   {
     href: "/app/ai/routers",
@@ -329,6 +331,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     group: "ia",
     section: "Ensinar o agente",
     minRole: "manager",
+    sidebar: true,
   },
   {
     href: "/app/ai/memory",
@@ -411,20 +414,19 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     description:
       "Seus números de WhatsApp: por QR ou canal oficial da Meta, com saúde, reconexão e templates.",
     icon: PlugsConnected,
-    group: "organizacao",
-    section: "Canais",
+    group: "canais",
     minRole: "admin",
+    sidebar: true,
     healthDot: true,
   },
   {
     href: "/app/integrations/moope",
     label: "Integração MOOPE",
-    description:
-      "Chave e eventos para a frota ou o Facejus abrirem o CRM e mandarem cadastro.",
+    description: "CRM conectado à sua operação.",
     icon: PuzzlePiece,
-    group: "organizacao",
-    section: "Canais",
+    group: "canais",
     minRole: "admin",
+    sidebar: true,
   },
   {
     href: "/app/webhooks",

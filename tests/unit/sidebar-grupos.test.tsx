@@ -56,7 +56,7 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    expect(titulos).toEqual(["Operação", "Trabalho", "IA"]);
+    expect(titulos).toEqual(["Operação", "Automação & IA", "Integrações"]);
   });
 
   it("Etapas do funil saem da trilha e ficam no hub de Configurações", () => {
@@ -72,10 +72,13 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
   });
 
-  it("Integração MOOPE e Audit Log não competem com a operação diária", () => {
+  it("Audit Log continua no hub; Integração MOOPE volta ao menu", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.queryByRole("link", { name: /Integração MOOPE/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /Integração MOOPE/ })).toHaveAttribute(
+      "href",
+      "/app/integrations/moope",
+    );
     expect(screen.queryByRole("link", { name: /Audit Log/ })).toBeNull();
   });
 

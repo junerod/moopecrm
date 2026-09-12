@@ -83,18 +83,25 @@ describe("sidebarGroups", () => {
 
   it("só inclui destino marcado como sidebar", () => {
     const hrefs = sidebarGroups(true, null).flatMap((g) => g.items.map((i) => i.href));
-    // Conhecimento existe no registro, mas é do hub — não do sidebar.
-    expect(hrefs).not.toContain("/app/ai/knowledge/sources");
-    expect(hrefs).not.toContain("/app/ai/agents");
+    expect(hrefs).toContain("/app/ai/knowledge/sources");
+    expect(hrefs).toContain("/app/ai/agents");
+    expect(hrefs).toContain("/app/ai/followups");
     expect(hrefs).toContain("/app/inicio");
     expect(hrefs).toContain("/app/inbox");
+    expect(hrefs).not.toContain("/app/ai/credentials");
+    expect(hrefs).not.toContain("/app/webhooks");
   });
 
   it("Funis e Contatos sobem para a operação diária", () => {
     const operacao = sidebarGroups(true, null).find((g) => g.group.id === "atendimento");
-    expect(operacao?.items.map((i) => i.href)).toEqual(
-      expect.arrayContaining(["/app/inicio", "/app/inbox", "/app/kanban", "/app/contacts"]),
-    );
+    expect(operacao?.items.map((i) => i.href)).toEqual([
+      "/app/inicio",
+      "/app/inbox",
+      "/app/kanban",
+      "/app/contacts",
+      "/app/agenda",
+      "/app/radar",
+    ]);
   });
 
   it("omite o grupo inteiro quando o papel não vê nenhum item dele", () => {
@@ -110,8 +117,17 @@ describe("sidebarGroups", () => {
     // o padrão das outras nove telas do grupo — alcançáveis pelo hub "Ver tudo
     // em IA", que é o desenho existente para tela de configuração.
     const ia = sidebarGroups(true, null).find((g) => g.group.id === "ia");
-    expect(ia?.items.map((i) => i.href)).toEqual([]);
+    expect(ia?.items.map((i) => i.href)).toEqual([
+      "/app/ai/agents",
+      "/app/ai/followups",
+      "/app/ai/knowledge/sources",
+    ]);
     expect(ia?.group.hub?.href).toBe("/app/ai");
+    const integracoes = sidebarGroups(true, null).find((g) => g.group.id === "canais");
+    expect(integracoes?.items.map((i) => i.href)).toEqual([
+      "/app/connections",
+      "/app/integrations/moope",
+    ]);
   });
 });
 

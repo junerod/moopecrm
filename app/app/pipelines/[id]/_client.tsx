@@ -27,13 +27,18 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "@/lib/ui/icons";
 import type { LeadFilters } from "@/lib/kanban/filters";
 import { applyFilters, filtersFromParams, filtersToParams } from "@/lib/kanban/filters";
+import { idEfetivoDeNovosLeads } from "@/lib/leads/funil-de-nascimento";
 
 export function PipelinePageClient({
   pipelineId,
   initialName,
+  funis = [],
+  inboundPipelineId = null,
 }: {
   pipelineId: string;
   initialName: string;
+  funis?: Array<{ id: string; name: string; is_default: boolean }>;
+  inboundPipelineId?: string | null;
 }) {
   const { data, isLoading, error, pulses, realtimeStatus, seguranca } = useBoard(pipelineId);
   const router = useRouter();
@@ -51,6 +56,7 @@ export function PipelinePageClient({
   const [newOpen, setNewOpen] = useState(false);
 
   const filteredLeads = data ? applyFilters(data.leads, filters) : [];
+  const inboundEfetivo = idEfetivoDeNovosLeads(funis, inboundPipelineId);
 
   return (
     <div
@@ -79,9 +85,37 @@ export function PipelinePageClient({
           fora da viewport em telas estreitas. De `sm:` pra cima volta a ser
           uma linha só, como sempre foi. */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">
-          {data?.pipeline.name ?? initialName}
-        </h1>
+        <div className="min-w-0 space-y-2">
+          {funis.length > 1 ? (
+            <label className="block text-sm font-medium">
+              Funil
+              <select
+                className="mt-1 flex h-9 w-full max-w-md rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                value={pipelineId}
+                onChange={(e) => router.push(`/app/pipelines/${e.target.value}`)}
+                data-testid="seletor-de-funil"
+                aria-label="Funil"
+              >
+                {funis.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                    {inboundEfetivo === f.id ? " · Novos contatos" : ""}
+                    {f.is_default ? " · Padrão" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">
+              {data?.pipeline.name ?? initialName}
+            </h1>
+          )}
+          {funis.length > 1 ? (
+            <h1 className="truncate text-2xl font-semibold tracking-tight">
+              {data?.pipeline.name ?? initialName}
+            </h1>
+          ) : null}
+        </div>
         <Button onClick={() => setNewOpen(true)} disabled={!data} className="shrink-0">
           <Plus size={16} className="mr-2" /> Novo Lead
         </Button>

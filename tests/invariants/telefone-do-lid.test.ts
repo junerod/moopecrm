@@ -55,15 +55,17 @@ const pool = new pg.Pool({
  */
 function backfillDoBaseline(): string {
   const sql = fs.readFileSync(path.join(process.cwd(), "supabase/baseline.sql"), "utf8");
-  const alvo = /update public\.contacts\s+set display_name = null[\s\S]*?;/g;
-  const achados = sql.match(alvo);
-  if (!achados || achados.length !== 1) {
+  // Há outro `update contacts set display_name = null` no apêndice 0203
+  // (HTML / nomes longos). Este teste exercita o backfill do rótulo @lid.
+  const alvo =
+    /update public\.contacts\s+set display_name = null, updated_at = now\(\)\s+where display_name ~ '\^Contato \[0-9\]\+\(@lid\)\?\$'\s+and is_anonymized = false;/;
+  const achado = sql.match(alvo);
+  if (!achado) {
     throw new Error(
-      `esperava EXATAMENTE 1 backfill de display_name no baseline, achei ${achados?.length ?? 0} — ` +
-        "o teste perdeu o alvo e mediria o vazio",
+      "não achei o backfill do rótulo legado (`^Contato [0-9]+(@lid)?$`) no baseline — o teste perdeu o alvo",
     );
   }
-  return achados[0]!;
+  return achado[0]!;
 }
 
 const ORG = "11d7e100-0000-4000-8000-000000000001";

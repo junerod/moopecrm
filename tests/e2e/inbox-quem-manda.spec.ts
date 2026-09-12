@@ -264,7 +264,7 @@ test.describe("Inbox — quem manda nesta conversa", () => {
         assigned_to_user_id: null,
         // Fila ordena por last_inbound_at ASC (quem espera há mais tempo).
         // Semear "agora" empurrava a linha para a última página.
-        last_inbound_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        last_inbound_at: new Date("2018-01-01T00:00:00.000Z").toISOString(),
       })
       .eq("id", conversaId)
       .select("id, status")

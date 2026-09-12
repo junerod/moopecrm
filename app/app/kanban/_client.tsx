@@ -331,12 +331,20 @@ export function FunisClient({
                       <span className="flex items-center gap-2">
                         <span className="text-sm font-medium group-hover:underline">{funil.name}</span>
                         {funil.is_default && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] text-foreground"
+                            title="Usado como fallback técnico quando não há outro destino."
+                          >
                             Padrão
                           </Badge>
                         )}
                         {funis.length > 1 && efetivoDeNovos === funil.id && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] text-foreground"
+                            title="Onde oportunidades automáticas entram."
+                          >
                             Novos contatos
                           </Badge>
                         )}
