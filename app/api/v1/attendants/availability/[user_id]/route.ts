@@ -6,9 +6,10 @@
  * role>=manager). A RLS de attendant_availability (own OR manager) é backstop.
  *
  * Persistência do <AttendantStatusToggle> (spec 04 §8) + heartbeat AT-08:
- * quando is_available=true, bumpa last_heartbeat_at=now — "online" é também o
- * ping de vida (o useHeartbeat/60s do inbox chama este PATCH). O cron
- * attendant-heartbeat marca offline quem não pinga há 15min.
+ * quando is_available=true, bumpa last_heartbeat_at=now. O client autenticado
+ * também manda `{ heartbeat: true }` a cada 2 min (aba visível) — sem audit,
+ * sem mudar disponibilidade. O cron attendant-heartbeat marca offline quem
+ * não pinga há 15min.
  *
  * org_id de fonte confiável (activeOrg do cookie), NUNCA do body. Upsert por
  * unique(organization_id, user_id).
@@ -80,7 +81,39 @@ export async function PATCH(
     if (!member) return fail("not_found", "Atendente não encontrado na organização.", 404, { requestId });
   }
 
+  const soHeartbeat =
+    input.heartbeat === true &&
+    input.is_available === undefined &&
+    input.capacity === undefined &&
+    input.schedule === undefined;
+
   const now = new Date().toISOString();
+
+  if (soHeartbeat) {
+    // Só bumpa quem JÁ está disponível. Upsert aqui criaria linha "online"
+    // falsa; indisponível que pinga não vira disponível.
+    const { data: atual, error: readErr } = await supabase
+      .from("attendant_availability")
+      .select(SELECT_COLS)
+      .eq("organization_id", activeOrg.orgId)
+      .eq("user_id", targetUserId)
+      .maybeSingle();
+    if (readErr) return fail("internal_error", readErr.message, 500, { requestId });
+    if (!atual || atual.is_available !== true) {
+      return ok(atual ?? null, { requestId });
+    }
+    const { data: row, error } = await supabase
+      .from("attendant_availability")
+      .update({ last_heartbeat_at: now, updated_at: now })
+      .eq("organization_id", activeOrg.orgId)
+      .eq("user_id", targetUserId)
+      .eq("is_available", true)
+      .select(SELECT_COLS)
+      .maybeSingle();
+    if (error) return fail("internal_error", error.message, 500, { requestId });
+    return ok(row ?? atual, { requestId });
+  }
+
   const patch: Record<string, unknown> = {
     organization_id: activeOrg.orgId,
     user_id: targetUserId,

@@ -220,6 +220,7 @@ jobs:
         inbox-quem-manda.spec.ts
         inbox-assistente-ia.spec.ts
         inbox-cockpit-comercial.spec.ts
+        mercado-forte-bloco-1.spec.ts
         agenda-kit-visual.spec.ts
         agenda-conectar-google.spec.ts
         productization-3c.spec.ts

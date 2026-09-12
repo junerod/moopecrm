@@ -19,6 +19,7 @@ import { useConversationTagVocabulary } from "@/hooks/inbox/useConversationTags"
 import { useConversationCounts } from "@/hooks/inbox/useConversationCounts";
 import type { Role, VisibilityMode } from "@/lib/auth/types";
 import { type FiltroDePapel } from "@/lib/crm/papel-e-temperatura";
+import { QueueWaitSummary } from "./QueueWaitSummary";
 
 export type InboxTab = "unassigned" | "mine" | "all" | "closed" | "ai";
 
@@ -202,6 +203,8 @@ export function InboxFilters({ value, onChange }: Props) {
           })}
         </TabsList>
       </Tabs>
+
+      <QueueWaitSummary visible={value.tab === "unassigned"} />
 
       <div className="flex items-center justify-between">
         <Label htmlFor="only-unread" className="text-xs text-muted-foreground">

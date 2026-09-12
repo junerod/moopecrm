@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api/client";
 import type { VisibilityMode } from "@/lib/auth/types";
 import { ROUTING_MODES, VISIBILITY_MODES, type RoutingMode } from "@/lib/schemas/routing";
+import { useAttendants } from "@/hooks/team/useAttendants";
+import { statusDoAtendente } from "@/lib/inbox/heartbeat";
 
 export interface AtendimentoConfig {
   mode: RoutingMode;
@@ -27,17 +29,15 @@ export interface AtendimentoConfig {
 
 const MODO_COPY: Record<RoutingMode, { titulo: string; corpo: string }> = {
   manual: {
-    titulo: "Cada um pega o que quiser",
+    titulo: "Manual",
     corpo:
-      "Todo cliente novo cai numa fila aberta e o primeiro atendente que clicar assume. " +
-      "Simples, e é onde nasce a discussão de quem furou a fila.",
+      "As novas conversas entram na fila. O primeiro atendente que clicar assume.",
   },
   round_robin: {
-    titulo: "Rodízio automático entre os atendentes",
+    titulo: "Automática",
     corpo:
-      "Cliente 1 vai para o atendente A, cliente 2 para o B, e ao acabar a lista volta ao " +
-      "primeiro. Quem recebe é sempre quem está há mais tempo sem receber — entre os que " +
-      "estão disponíveis e dentro do horário. Ninguém escolhe, então não há fila furada.",
+      "Distribui novas conversas entre atendentes disponíveis (rodízio que já existe). " +
+      "Quem recebe é quem está há mais tempo sem receber — entre os disponíveis e no horário.",
   },
 };
 
@@ -108,6 +108,7 @@ export function AtendimentoForm({ initial }: { initial: AtendimentoConfig }) {
   const [form, setForm] = useState<AtendimentoConfig>(initial);
   const [salvo, setSalvo] = useState<AtendimentoConfig>(initial);
   const [isPending, startTransition] = useTransition();
+  const atendentes = useAttendants();
 
   const sujo = JSON.stringify(form) !== JSON.stringify(salvo);
 
@@ -135,7 +136,7 @@ export function AtendimentoForm({ initial }: { initial: AtendimentoConfig }) {
     <form onSubmit={salvar} className="flex max-w-3xl flex-col gap-6" data-testid="form-atendimento">
       <Card className="space-y-4 p-4">
         <div>
-          <h2 className="text-sm font-semibold">Quem recebe o cliente novo</h2>
+          <h2 className="text-sm font-semibold">Distribuição</h2>
           <p className="text-xs text-muted-foreground">
             Vale para conversa que chega sem dono.
           </p>
@@ -156,7 +157,27 @@ export function AtendimentoForm({ initial }: { initial: AtendimentoConfig }) {
         </div>
 
         {form.mode === "round_robin" ? (
-          <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+          <div className="space-y-3 border-t pt-4" data-testid="round-robin-participantes">
+            <p className="text-xs font-medium">Quem participa do rodízio</p>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {(atendentes.data?.data ?? []).map((a) => {
+                const st = statusDoAtendente({
+                  isAvailable: a.is_available,
+                  lastHeartbeatAt: a.last_heartbeat_at,
+                  agora: new Date(),
+                });
+                return (
+                  <li key={a.user_id}>
+                    {a.name ?? "Atendente"} · {st.rotulo}
+                    {a.capacity != null ? ` · capacidade ${a.capacity}` : ""}
+                  </li>
+                );
+              })}
+              {(atendentes.data?.data ?? []).length === 0 ? (
+                <li>Nenhum atendente cadastrado ainda.</li>
+              ) : null}
+            </ul>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="max_retries">Tentativas antes de desistir</Label>
               <Input
@@ -189,6 +210,7 @@ export function AtendimentoForm({ initial }: { initial: AtendimentoConfig }) {
                 }
               />
             </div>
+          </div>
           </div>
         ) : null}
       </Card>

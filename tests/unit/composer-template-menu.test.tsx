@@ -1,7 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { resolveSlash, TemplateMenu } from "@/components/inbox/composer/TemplateMenu";
+import {
+  deveReabrirMenuSlash,
+  resolveSlash,
+  TemplateMenu,
+} from "@/components/inbox/composer/TemplateMenu";
 
 describe("resolveSlash", () => {
   it("abre com / no início e captura o query", () => {
@@ -11,6 +15,17 @@ describe("resolveSlash", () => {
   it("não abre se tem espaço ou não começa com /", () => {
     expect(resolveSlash("/fech agora").open).toBe(false);
     expect(resolveSlash("oi")).toEqual({ open: false, query: "" });
+  });
+});
+
+describe("deveReabrirMenuSlash", () => {
+  it("reabre quando o texto sai do slash ou entra num slash novo", () => {
+    expect(deveReabrirMenuSlash("/oi", "Olá, time")).toBe(true);
+    expect(deveReabrirMenuSlash("Olá, time", "/oi")).toBe(true);
+    expect(deveReabrirMenuSlash("", "/")).toBe(true);
+  });
+  it("não reabre enquanto o slash atual continua (Escape manteve o dismiss)", () => {
+    expect(deveReabrirMenuSlash("/oi", "/oiz")).toBe(false);
   });
 });
 

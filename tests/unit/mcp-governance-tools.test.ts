@@ -317,7 +317,12 @@ describe("crm_get_queue_status", () => {
       ORG,
       now,
     );
-    expect(res).toEqual({ queue_size: 3, avg_wait_seconds: 20, online_eligible_count: 2 });
+    expect(res).toEqual({
+      queue_size: 3,
+      avg_wait_seconds: 20,
+      online_eligible_count: 2,
+      oldest_wait_seconds: 30,
+    });
   });
 
   it("tool handler retorna o shape documentado", async () => {
@@ -325,6 +330,7 @@ describe("crm_get_queue_status", () => {
     const res = (await crmGetQueueStatus.handler({}, makeCtx(resolve, cap))) as Record<string, unknown>;
     expect(Object.keys(res).sort()).toEqual([
       "avg_wait_seconds",
+      "oldest_wait_seconds",
       "online_eligible_count",
       "queue_size",
     ]);

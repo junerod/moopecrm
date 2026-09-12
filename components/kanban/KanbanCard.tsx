@@ -11,6 +11,8 @@ import { ReactivationSlot } from "./ReactivationSlot";
 import { ConversaSlot } from "./ConversaSlot";
 import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
+import { ehTemperaturaDoLead, ROTULO_DA_TEMPERATURA } from "@/lib/crm/papel-e-temperatura";
+import { CLASSE_DOT_TEMPERATURA } from "@/lib/crm/temperatura-visual";
 
 interface KanbanCardProps {
   /** O que o card mostra — explicitamente NÃO é a linha do banco. */
@@ -166,7 +168,22 @@ export function KanbanCard({
                 </button>
               </h3>
             </div>
-            <KanbanCardActions lead={lead} pipelineId={pipelineId} stages={stages} />
+            <div className="flex shrink-0 items-center gap-1.5">
+              {ehTemperaturaDoLead(card.temperatura) ? (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] text-text-muted"
+                  data-testid="kanban-temperatura"
+                  title={ROTULO_DA_TEMPERATURA[card.temperatura]}
+                >
+                  <span
+                    className={cn("h-1.5 w-1.5 rounded-full", CLASSE_DOT_TEMPERATURA[card.temperatura])}
+                    aria-hidden
+                  />
+                  {ROTULO_DA_TEMPERATURA[card.temperatura].replace("Lead ", "")}
+                </span>
+              ) : null}
+              <KanbanCardActions lead={lead} pipelineId={pipelineId} stages={stages} />
+            </div>
           </div>
 
           {/* ② valor — altura reservada mesmo sem valor, senão o card encolhe. */}

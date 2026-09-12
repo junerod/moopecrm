@@ -9,7 +9,7 @@ import {
   useUpdateRouting,
   type AttendantAvailability,
 } from "@/hooks/team/useAttendants";
-import { isHeartbeatStale } from "@/lib/routing/eligibility";
+import { statusDoAtendente, vistoHa } from "@/lib/inbox/heartbeat";
 import {
   ROUTING_MODES,
   type RoutingConfig,
@@ -74,13 +74,19 @@ function summarizeSchedule(windows: ScheduleWindow[]): string {
 
 function StatusBadge({ attendant, now }: { attendant: Attendant; now: Date }) {
   const a = attendant.availability;
-  const online = !!a?.is_available && !isHeartbeatStale(a.last_heartbeat_at, now);
-  return online ? (
-    <Badge variant="default">Online</Badge>
-  ) : (
-    <Badge variant="outline" className="text-muted-foreground">
-      Offline
-    </Badge>
+  const st = statusDoAtendente({
+    isAvailable: !!a?.is_available,
+    lastHeartbeatAt: a?.last_heartbeat_at,
+    agora: now,
+  });
+  const visto = vistoHa(a?.last_heartbeat_at, now);
+  return (
+    <span className="inline-flex flex-col items-end gap-0.5">
+      <Badge variant={st.chave === "disponivel" ? "default" : "outline"}>
+        {st.rotulo}
+      </Badge>
+      {visto ? <span className="text-[10px] text-muted-foreground">{visto}</span> : null}
+    </span>
   );
 }
 

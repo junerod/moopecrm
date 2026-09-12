@@ -31,6 +31,7 @@ import type { ListMessagesQuery, SendMessageInput } from "@/lib/schemas";
 import { sendTemplateForSession } from "@/lib/channels/meta/send-template-for-session";
 import { envioRespeitaComandoDaConversa, resolverIntencaoDeEnvio } from "@/lib/ai/execucao/intencao-de-envio";
 import { assumirPeloEnvioHumano, SILENCIO_DURAVEL } from "@/lib/inbox/assumir-pelo-envio";
+import { decisaoDeColisaoHumana } from "@/lib/inbox/colisao-humana";
 import { decidirEnvioConversacional } from "@/lib/inbox/comando-da-conversa";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -321,6 +322,19 @@ export async function sendMessageHandler(
   // que já estava gerando vence a corrida: o silêncio só nascia no update
   // de depois, e o last-second do before-send lia o estado velho.
   if (ctx.actor.type === "user") {
+    const colisao = decisaoDeColisaoHumana({
+      viewerUserId: ctx.actor.id,
+      assignedToUserId: c.assigned_to_user_id,
+    });
+    if (!colisao.podeEnviar) {
+      throw new ApiError(
+        403,
+        "forbidden",
+        undefined,
+        ctx.requestId,
+        "Esta conversa pertence a outro atendente. Assuma o atendimento para responder.",
+      );
+    }
     try {
       await assumirPeloEnvioHumano({
         supabase,

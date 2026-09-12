@@ -4,8 +4,8 @@ import { ptBR } from "date-fns/locale";
 import { Phone, Robot } from "@/lib/ui/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa } from "@/lib/inbox/comando-da-conversa";
+import { rotuloDoDono } from "@/lib/inbox/rotulo-do-dono";
 import { cn } from "@/lib/utils";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
@@ -45,6 +45,7 @@ interface Props {
    * afirme nada".
    */
   automaticoDaOrg?: boolean;
+  viewerUserId?: string;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -92,6 +93,7 @@ export function ConversationListItem({
   mostrarCanal,
   mostrarAtendente,
   automaticoDaOrg,
+  viewerUserId,
 }: Props) {
   const c = contatoDoEmbed(conversation.contacts);
   const displayName = rotuloDoContato(c);
@@ -240,8 +242,10 @@ export function ConversationListItem({
           {overflow > 0 && (
             <span className="text-[10px] text-muted-foreground">+{overflow}</span>
           )}
-          {mostrarAtendente && comando.quem === "humano" && (
-            <OwnerBadge ownerKind="user" ownerName={comando.nome ?? "Atendente"} compacto />
+          {mostrarAtendente && (
+            <span className="text-[10px] text-muted-foreground" data-testid="lista-rotulo-dono">
+              {rotuloDoDono({ viewerUserId: viewerUserId ?? "", comando }).texto}
+            </span>
           )}
           {mostrarCanal && rotuloCanal && (
             <Badge

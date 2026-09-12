@@ -97,6 +97,8 @@ export interface Lead {
   external_id: string | null;
   custom_fields: Record<string, unknown>;
   tags: string[];
+  /** frio / morno / quente — coluna de `crm_leads`, escrita por gente. */
+  temperatura?: "frio" | "morno" | "quente" | null;
   created_at: string;
   updated_at: string;
   created_by_user_id: string | null;

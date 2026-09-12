@@ -16,7 +16,11 @@ import { ContactPickerDialog } from "@/components/inbox/composer/ContactPickerDi
 import { AudioRecorder } from "@/components/inbox/composer/AudioRecorder";
 import { DraftReplyButton } from "@/components/inbox/composer/DraftReplyButton";
 import { EmojiButton } from "@/components/inbox/composer/EmojiButton";
-import { resolveSlash, TemplateMenu } from "@/components/inbox/composer/TemplateMenu";
+import {
+  deveReabrirMenuSlash,
+  resolveSlash,
+  TemplateMenu,
+} from "@/components/inbox/composer/TemplateMenu";
 import { useCreateNote } from "@/hooks/inbox/useCreateNote";
 import { useMessageTemplates, type MessageTemplate } from "@/hooks/inbox/useMessageTemplates";
 import { X } from "lucide-react";
@@ -30,6 +34,7 @@ export interface ComposerHandle {
   focus: () => void;
   /** Preenche o composer. NÃO envia — o atendente revisa. */
   aplicarRascunho: (texto: string) => void;
+  setMode: (mode: "reply" | "note") => void;
 }
 
 interface Props {
@@ -46,6 +51,8 @@ interface Props {
    * versão deste bloqueio usava `blockedReason` e levou a nota junto.
    */
   janelaFechada?: string | null;
+  /** Outro humano é o dono — nota interna segue; envio ao cliente não. */
+  envioBloqueadoPorDono?: boolean;
   /**
    * A mensagem que esta resposta CITA, quando o atendente escolheu responder
    * "em cima" de uma. `null` = envio solto, o caso comum.
@@ -68,6 +75,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     disabled,
     blockedReason,
     janelaFechada,
+    envioBloqueadoPorDono,
     contactName,
     currentContactId,
     respondendo,
@@ -80,6 +88,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [menuDismissed, setMenuDismissed] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickQuery, setQuickQuery] = useState("");
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const send = useSendMessage();
@@ -87,10 +97,13 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const createNote = useCreateNote();
   const templates = useMessageTemplates();
   const slash = resolveSlash(text);
-  const menuOpen = mode === "reply" && slash.open && !menuDismissed;
+  const slashMenu = slash.open && !menuDismissed;
+  const menuOpen = mode === "reply" && (slashMenu || quickOpen);
+  const menuQuery = quickOpen && !slashMenu ? quickQuery : slash.query;
 
   useImperativeHandle(ref, () => ({
     focus: () => taRef.current?.focus(),
+    setMode: (m) => setMode(m),
     aplicarRascunho: (texto: string) => {
       setText(texto);
       requestAnimationFrame(() => {
@@ -106,7 +119,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   // A janela só alcança o que SAI. Em modo nota o composer segue liberado: a
   // nota interna nunca chega ao cliente, e é onde o atendente registra por que
   // a conversa esfriou — barrá-la tira exatamente o que ainda dá para fazer.
-  const respostaBarrada = isDisabled || (mode === "reply" && !!janelaFechada);
+  const respostaBarrada =
+    isDisabled || (mode === "reply" && (!!janelaFechada || !!envioBloqueadoPorDono));
 
   function autoresize() {
     const ta = taRef.current;
@@ -157,6 +171,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     const filled = interpolateTemplate(t.body, { name: contactName ?? null });
     setText(filled);
     setMenuDismissed(true);
+    setQuickOpen(false);
+    setQuickQuery("");
     const ta = taRef.current;
     if (!ta) return;
     requestAnimationFrame(() => {
@@ -199,6 +215,13 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Escape" && menuOpen) {
       setMenuDismissed(true);
+      setQuickOpen(false);
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (menuOpen) return;
+      handleSubmit();
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
@@ -226,10 +249,15 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       >
         <TemplateMenu
           open={menuOpen}
-          query={slash.query}
+          query={menuQuery}
           templates={templates.data ?? []}
           onPick={applyTemplate}
-          onClose={() => setMenuDismissed(true)}
+          onClose={() => {
+            setMenuDismissed(true);
+            setQuickOpen(false);
+          }}
+          busca={quickOpen}
+          onBusca={setQuickQuery}
         />
         <div className="mb-1.5 flex gap-1">
           <button
@@ -298,6 +326,21 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           {mode === "reply" && (
             <DraftReplyButton conversationId={conversationId} disabled={isDisabled} onDraft={applyDraft} />
           )}
+          {mode === "reply" && (
+            <button
+              type="button"
+              data-testid="quick-replies"
+              className="shrink-0 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={() => {
+                setQuickOpen((v) => !v);
+                setQuickQuery("");
+                setMenuDismissed(true);
+              }}
+              title="Respostas rápidas — também dá para digitar /"
+            >
+              Respostas rápidas
+            </button>
+          )}
           <EmojiButton
             disabled={isDisabled}
             onPick={(emoji) => {
@@ -322,8 +365,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             data-testid="inbox-composer"
             value={text}
             onChange={(e) => {
-              setText(e.target.value);
-              if (!resolveSlash(e.target.value).open) setMenuDismissed(false);
+              const next = e.target.value;
+              if (deveReabrirMenuSlash(text, next)) setMenuDismissed(false);
+              setText(next);
               autoresize();
             }}
             onKeyDown={onKeyDown}

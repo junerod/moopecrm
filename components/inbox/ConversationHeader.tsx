@@ -25,6 +25,7 @@ import { useSnoozeConversation } from "@/hooks/inbox/useSnoozeConversation";
 import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa, ROTULO_DO_MOTIVO } from "@/lib/inbox/comando-da-conversa";
+import { rotuloDoDono } from "@/lib/inbox/rotulo-do-dono";
 import { ReassignDialog } from "@/components/inbox/ReassignDialog";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
@@ -67,7 +68,10 @@ export function ConversationHeader({ conversation }: Props) {
   const phone = c?.phone_number ?? null;
   const status = conversation.status;
   const isMineAssigned = conversation.assigned_to_user_id === user.id;
-  const isOpen = status === "open" || conversation.assigned_to_user_id == null;
+  const semDono = conversation.assigned_to_user_id == null;
+  const outroHumano =
+    conversation.assigned_to_user_id != null && conversation.assigned_to_user_id !== user.id;
+  const podeAssumir = (semDono || outroHumano) && status !== "closed" && status !== "archived";
   const lembreteAtivo = conversation.snooze_until != null;
 
   const { comando, automaticoAtivo, travaVigente, motivo } = comandoDaConversa({
@@ -120,6 +124,9 @@ export function ConversationHeader({ conversation }: Props) {
           ) : (
             <OwnerBadge ownerKind={null} ownerName={null} />
           )}
+          <span className="text-xs text-muted-foreground" data-testid="rotulo-do-dono">
+            {rotuloDoDono({ viewerUserId: user.id, comando }).texto}
+          </span>
           {phone ? (
             <p className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
               <Phone size={11} weight="regular" aria-hidden /> {phone}
@@ -129,7 +136,7 @@ export function ConversationHeader({ conversation }: Props) {
       </div>
 
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-        {isOpen && (
+        {podeAssumir && (
           <Button
             size="sm"
             variant="default"
@@ -143,7 +150,7 @@ export function ConversationHeader({ conversation }: Props) {
               })
             }
           >
-            {t("Assumir")}
+            {t(outroHumano ? "Assumir atendimento" : "Assumir")}
           </Button>
         )}
         {podeTransferir && (

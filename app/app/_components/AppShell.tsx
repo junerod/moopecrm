@@ -2,6 +2,8 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
+import { useAttendantHeartbeat } from "@/hooks/inbox/useAttendantHeartbeat";
+import { useTransferNotice } from "@/hooks/inbox/useTransferNotice";
 
 interface AppShellProps {
   sidebarCollapsed: boolean;
@@ -9,6 +11,8 @@ interface AppShellProps {
 }
 
 export function AppShell({ sidebarCollapsed, children }: AppShellProps) {
+  useAttendantHeartbeat();
+  useTransferNotice();
   return (
     <div className="flex min-h-screen w-full bg-background">
       <div className="hidden md:block">

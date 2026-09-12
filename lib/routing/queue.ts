@@ -19,11 +19,13 @@ import { loadEligibleAttendants } from "./eligibles";
  *   last_inbound_at conta como espera 0.
  * - online_eligible_count: atendentes elegíveis AGORA (disponível ∧ horário ∧
  *   com folga de capacidade) — quem pode puxar da fila neste instante.
+ * - oldest_wait_seconds: espera da conversa mais antiga da fila (0 se vazia).
  */
 export interface QueueStatus {
   queue_size: number;
   avg_wait_seconds: number;
   online_eligible_count: number;
+  oldest_wait_seconds: number;
 }
 
 export async function getQueueStatus(
@@ -42,13 +44,18 @@ export async function getQueueStatus(
   const queueSize = rows.length;
 
   let totalWaitMs = 0;
+  let oldestWaitMs = 0;
   for (const r of rows) {
     if (r.last_inbound_at) {
       const waited = now.getTime() - new Date(r.last_inbound_at).getTime();
-      if (waited > 0) totalWaitMs += waited;
+      if (waited > 0) {
+        totalWaitMs += waited;
+        if (waited > oldestWaitMs) oldestWaitMs = waited;
+      }
     }
   }
   const avgWaitSeconds = queueSize === 0 ? 0 : Math.round(totalWaitMs / queueSize / 1000);
+  const oldestWaitSeconds = queueSize === 0 ? 0 : Math.round(oldestWaitMs / 1000);
 
   const eligibles = await loadEligibleAttendants(supabase, organizationId, now);
 
@@ -56,6 +63,7 @@ export async function getQueueStatus(
     queue_size: queueSize,
     avg_wait_seconds: avgWaitSeconds,
     online_eligible_count: eligibles.length,
+    oldest_wait_seconds: oldestWaitSeconds,
   };
 }
 

@@ -7,6 +7,7 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onFocusReply: () => void;
+  onFocusNote: () => void;
   onClaim: () => void;
   onClose: () => void;
   onToggleHelp: () => void;
@@ -18,6 +19,7 @@ export function InboxKeyboardShortcuts({
   selectedId,
   onSelect,
   onFocusReply,
+  onFocusNote,
   onClaim,
   onClose,
   onToggleHelp,
@@ -43,6 +45,7 @@ export function InboxKeyboardShortcuts({
     selectedId,
   ]);
   useHotkeys("r", () => onFocusReply(), { enabled, preventDefault: true });
+  useHotkeys("i", () => onFocusNote(), { enabled, preventDefault: true });
   useHotkeys("a", () => onClaim(), { enabled, preventDefault: true });
   useHotkeys(
     "e",

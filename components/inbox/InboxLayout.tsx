@@ -17,8 +17,13 @@ import { useConversation, isNotFound } from "@/hooks/inbox/useConversation";
 import { ConversationList } from "./ConversationList";
 import { InboxFilters, type InboxFiltersValue, type InboxTab } from "./InboxFilters";
 import { ChatThread } from "./ChatThread";
+import { AssignmentHistory } from "./AssignmentHistory";
+import { CollisionBanner } from "./CollisionBanner";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ConversationHeader } from "./ConversationHeader";
+import { decisaoDeColisaoHumana } from "@/lib/inbox/colisao-humana";
+import { comandoDaConversa } from "@/lib/inbox/comando-da-conversa";
+import { rotuloDoDono } from "@/lib/inbox/rotulo-do-dono";
 import { RetentionNotice } from "./RetentionNotice";
 import { CRMSidePanel } from "./CRMSidePanel";
 import type { Message as ConversationMensagem } from "@/lib/types/messaging";
@@ -104,7 +109,7 @@ interface InboxLayoutProps {
 }
 
 export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {}) {
-  const { activeOrg } = useAuth();
+  const { user, activeOrg } = useAuth();
   const orgId = activeOrg?.orgId ?? null;
   useSincronizarContatosDoAparelho(Boolean(orgId));
 
@@ -216,7 +221,14 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
     setRespondendo(null);
   }, []);
   const handleVisibleChange = useCallback((ids: string[]) => setVisibleIds(ids), []);
-  const handleFocusReply = useCallback(() => composerRef.current?.focus(), []);
+  const handleFocusReply = useCallback(() => {
+    composerRef.current?.setMode("reply");
+    composerRef.current?.focus();
+  }, []);
+  const handleFocusNote = useCallback(() => {
+    composerRef.current?.setMode("note");
+    composerRef.current?.focus();
+  }, []);
   const handleUsarResposta = useCallback((texto: string) => {
     composerRef.current?.aplicarRascunho(texto);
   }, []);
@@ -418,28 +430,58 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         {selectedConversation ? (
           <>
             <ConversationHeader conversation={selectedConversation} />
+            <AssignmentHistory conversationId={selectedConversation.id} />
             <div className="min-h-0 flex-1 overflow-hidden">
               <ChatThread conversationId={selectedConversation.id} onResponder={setRespondendo} />
             </div>
             <RetentionNotice conversationId={selectedConversation.id} />
-            {motivoDaJanela && (
-              <JanelaFechadaAviso
-                conversationId={selectedConversation.id}
-                provider={selectedConversation.channel_sessions?.provider ?? null}
-                motivo={motivoDaJanela}
-              />
-            )}
-            <Composer
-              ref={composerRef}
-              conversationId={selectedConversation.id}
-              blockedReason={blockedReason}
-              janelaFechada={motivoDaJanela}
-              disabled={selectedConversation.status === "closed"}
-              contactName={rotuloDoContato(contatoDoEmbed(selectedConversation.contacts))}
-              respondendo={respondendo}
-              onCancelarResposta={() => setRespondendo(null)}
-              currentContactId={selectedConversation.contact_id}
-            />
+            {(() => {
+              const colisao = decisaoDeColisaoHumana({
+                viewerUserId: user.id,
+                assignedToUserId: selectedConversation.assigned_to_user_id,
+              });
+              const comando = comandoDaConversa({
+                status: selectedConversation.status,
+                assigned_to_user_id: selectedConversation.assigned_to_user_id,
+                assigned_to_user_name: selectedConversation.assigned_to_user_name ?? null,
+                assignee_kind: selectedConversation.assignee_kind ?? null,
+                bot_silenced_until: selectedConversation.bot_silenced_until ?? null,
+              }).comando;
+              const nomeOutro = rotuloDoDono({ viewerUserId: user.id, comando }).texto.replace(
+                / está atendendo$/,
+                "",
+              );
+              return (
+                <>
+                  {!colisao.podeEnviar && (
+                    <CollisionBanner
+                      conversationId={selectedConversation.id}
+                      expectedAssignee={colisao.ownerId}
+                      nome={nomeOutro}
+                    />
+                  )}
+                  {motivoDaJanela && colisao.podeEnviar && (
+                    <JanelaFechadaAviso
+                      conversationId={selectedConversation.id}
+                      provider={selectedConversation.channel_sessions?.provider ?? null}
+                      motivo={`Para iniciar/retomar esta conversa, escolha um modelo aprovado. ${motivoDaJanela}`}
+                    />
+                  )}
+                  <Composer
+                    ref={composerRef}
+                    conversationId={selectedConversation.id}
+                    blockedReason={blockedReason}
+                    janelaFechada={colisao.podeEnviar ? motivoDaJanela : null}
+                    envioBloqueadoPorDono={!colisao.podeEnviar}
+                    disabled={selectedConversation.status === "closed"}
+                    contactName={rotuloDoContato(contatoDoEmbed(selectedConversation.contacts))}
+                    respondendo={respondendo}
+                    onCancelarResposta={() => setRespondendo(null)}
+                    currentContactId={selectedConversation.contact_id}
+                  />
+                </>
+              );
+            })()}
           </>
         ) : selectionNotFound ? (
           <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
@@ -461,6 +503,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         selectedId={selectedId}
         onSelect={handleSelect}
         onFocusReply={handleFocusReply}
+        onFocusNote={handleFocusNote}
         onClaim={handleClaim}
         onClose={handleClose}
         onToggleHelp={() => setHelpOpen((v) => !v)}

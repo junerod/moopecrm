@@ -58,7 +58,7 @@ export function ReassignDialog({ conversationId, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-testid="transfer-dialog">
         <DialogHeader>
           <DialogTitle>Transferir conversa</DialogTitle>
           <DialogDescription>

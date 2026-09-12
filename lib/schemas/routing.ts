@@ -101,9 +101,11 @@ export const availabilityPatchSchema = z
     is_available: z.boolean(),
     capacity: z.number().int().min(1).max(1000),
     schedule: availabilityScheduleSchema,
+    /** Ping de vida — não muda disponibilidade; só bumpa `last_heartbeat_at`. */
+    heartbeat: z.literal(true),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, {
-    message: "Informe ao menos um campo (is_available, capacity ou schedule).",
+    message: "Informe ao menos um campo (is_available, capacity, schedule ou heartbeat).",
   });
 export type AvailabilityPatch = z.infer<typeof availabilityPatchSchema>;

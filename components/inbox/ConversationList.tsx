@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useChannelSessions } from "@/hooks/channels/useChannelSessions";
 
 import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
+import { useAuth } from "@/hooks/auth/AuthProvider";
 
 import { ConversationListItem } from "./ConversationListItem";
 import { EmptyInbox } from "@/components/empty";
@@ -41,6 +42,7 @@ export function ConversationList({
   //
   // `?? []` e não `undefined`: enquanto a lista de canais carrega, o certo é
   // NÃO mostrar. Mostrar e sumir depois é pior que aparecer um instante tarde.
+  const { user } = useAuth();
   const canais = useChannelSessions().data ?? [];
   const maisDeUmCanal = canais.length > 1;
 
@@ -137,6 +139,7 @@ export function ConversationList({
             mostrarCanal={maisDeUmCanal}
             mostrarAtendente={mostrarAtendente}
             automaticoDaOrg={automaticoDaOrg.data}
+            viewerUserId={user.id}
           />
         ))}
         {q.hasNextPage && (

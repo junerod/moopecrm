@@ -59,6 +59,8 @@ export interface CardInput {
   canonicalTag?: string | null;
   /** Todas as tags — fora do card, acessíveis no hover. */
   tags: string[];
+  /** Temperatura humana do negócio — não é o score de IA. */
+  temperatura?: "frio" | "morno" | "quente" | null;
 }
 
 /**
@@ -82,6 +84,7 @@ export function buildCardInput(
     | "owner_agent"
     | "next_action"
     | "score"
+    | "temperatura"
   >,
   opts: {
     stageName: string;
@@ -128,6 +131,7 @@ export function buildCardInput(
     nextAction: lead.next_action ? { label: lead.next_action.label } : null,
     canonicalTag: (opts.canonicalTags ?? []).find((t) => lead.tags.includes(t)) ?? null,
     tags: lead.tags,
+    temperatura: lead.temperatura ?? null,
   };
 }
 

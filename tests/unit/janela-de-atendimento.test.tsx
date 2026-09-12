@@ -155,7 +155,7 @@ describe("os elos que somem sem barulho", () => {
     // Por prop PRÓPRIA, não por `blockedReason`: a primeira versão passava por
     // ali e levava a nota interna junto, que nunca chega ao cliente.
     expect(fonte, "o motivo da janela não chega ao composer").toMatch(
-      /janelaFechada=\{motivoDaJanela\}/,
+      /janelaFechada=\{colisao\.podeEnviar \? motivoDaJanela : null\}/,
     );
   });
 
@@ -175,7 +175,7 @@ describe("os elos que somem sem barulho", () => {
     const fonte = readFileSync("components/inbox/Composer.tsx", "utf8");
     expect(fonte).toMatch(/janelaFechada/);
     expect(fonte, "a janela está barrando a nota").toMatch(
-      /mode === "reply" && !!janelaFechada/,
+      /mode === "reply" && \(\!\!janelaFechada \|\| \!\!envioBloqueadoPorDono\)/,
     );
   });
 
@@ -185,7 +185,8 @@ describe("os elos que somem sem barulho", () => {
     const fonte = readFileSync("components/inbox/InboxLayout.tsx", "utf8");
     // A GUARDA junto com a tag: `{false && (` deixava a tag na linha seguinte e
     // o caso passava verde com a saída removida da tela.
-    expect(fonte).toMatch(/\{motivoDaJanela && \(\s*\n\s*<JanelaFechadaAviso/);
+    expect(fonte).toMatch(/motivoDaJanela && colisao\.podeEnviar && \(/);
+    expect(fonte).toMatch(/<JanelaFechadaAviso/);
     const aviso = readFileSync("components/inbox/JanelaFechadaAviso.tsx", "utf8");
     expect(aviso).toMatch(/type: "template"/);
     expect(aviso).toMatch(/template_name/);
