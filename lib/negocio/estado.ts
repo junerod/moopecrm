@@ -6,7 +6,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { ehResidualSupersedida, orgTemSessaoWorking } from "@/lib/channels/sessoes-residuais";
+import { ehSessaoSupersedida, orgTemSessaoWorking } from "@/lib/channels/sessoes-residuais";
 import { lerAiMode, type AiMode } from "@/lib/ai/execucao/modos";
 import { lerPerfilDoNegocio } from "@/lib/ready-models/perfil";
 import type { ReadyModelId } from "@/lib/ready-models/tipos";
@@ -76,7 +76,7 @@ export function montarEstadoDoSetup(input: {
   const caidasReais = input.sessoes.filter(
     (s) =>
       (s.status === "FAILED" || s.status === "STOPPED" || s.status === "SCAN_QR_CODE") &&
-      !ehResidualSupersedida(s, input.sessoes),
+      !ehSessaoSupersedida(s, input.sessoes),
   );
   const whatsappOk = working && Boolean(principal);
   const whatsappNumero = principal ? telefoneVisivel(principal.phone_number) : null;

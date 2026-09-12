@@ -167,6 +167,42 @@ export const tenantSchema = z.object({
 });
 export type TenantInput = z.infer<typeof tenantSchema>;
 
+const textoOpcional = (max: number) =>
+  z.preprocess(
+    (v) => (v === "" ? null : v),
+    z.string().max(max).nullable().optional(),
+  );
+
+/**
+ * Ficha comercial em `organizations.settings.empresa` — sem coluna nova.
+ * Telefone/site/endereço não são hot path; jsonb basta (DIRC).
+ */
+export const empresaContatoSchema = z.object({
+  telefone: textoOpcional(40),
+  site: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z
+      .string()
+      .max(2048)
+      .nullable()
+      .optional()
+      .refine((v) => v == null || /^https?:\/\//i.test(v), {
+        message: "Use um endereço começando com http:// ou https://",
+      }),
+  ),
+  endereco: textoOpcional(400),
+});
+export type EmpresaContato = z.infer<typeof empresaContatoSchema>;
+
+/** O que Meu Negócio grava: identidade da org + contato, sem DPO/retenção. */
+export const fichaDaEmpresaSchema = z.object({
+  display_name: z.string().min(1).max(120),
+  legal_name: z.string().min(1).max(200),
+  cnpj: textoOpcional(20),
+  empresa: empresaContatoSchema,
+});
+export type FichaDaEmpresaInput = z.infer<typeof fichaDaEmpresaSchema>;
+
 export const NOTIFICATION_CATEGORIES = [
   "lead_assigned",
   "lead_won",

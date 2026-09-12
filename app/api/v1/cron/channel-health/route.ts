@@ -51,7 +51,10 @@ import {
   type ChannelProvider,
   type ChannelSessionRef,
 } from "@/lib/channels";
-import { sincronizarSaudeDaConexao } from "@/lib/channels/health";
+import {
+  resolverAvisosDeSessoesMortas,
+  sincronizarSaudeDaConexao,
+} from "@/lib/channels/health";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -99,8 +102,9 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   const sessoes = (data ?? []) as LinhaDeSessao[];
+  const avisosMortos = await resolverAvisosDeSessoesMortas(admin);
   let verificadas = 0;
-  const desfechos: Record<string, number> = {};
+  const desfechos: Record<string, number> = { avisos_mortos: avisosMortos };
 
   for (const s of sessoes) {
     // Pergunta ao CANAL, não ao provider: quem tem sessão para consultar

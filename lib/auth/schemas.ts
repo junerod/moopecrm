@@ -66,3 +66,20 @@ export const resetPasswordSchema = z
   });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+/** Troca de senha COM sessão — senha atual obrigatória. Não é o fluxo de recovery. */
+export const changePasswordSchema = z
+  .object({
+    current_password: z.string().min(1, "Informe a senha atual"),
+    password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
+    password_confirm: z.string(),
+  })
+  .refine((v) => v.password === v.password_confirm, {
+    path: ["password_confirm"],
+    message: "As senhas não coincidem",
+  })
+  .refine((v) => v.password !== v.current_password, {
+    path: ["password"],
+    message: "A nova senha precisa ser diferente da atual.",
+  });
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

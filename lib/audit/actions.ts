@@ -418,6 +418,7 @@ export const AUDIT_ACTIONS = [
   "crm.inbound_pipeline_changed",
   "crm.papel_changed",
   "crm.temperatura_changed",
+  "auth.password_changed",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

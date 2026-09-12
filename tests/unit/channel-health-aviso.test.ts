@@ -115,6 +115,12 @@ interface Op {
 }
 const ops: Op[] = [];
 let escalado: string | null = null;
+let sessoesDaOrg: Array<{
+  id: string;
+  status?: string | null;
+  phone_number?: string | null;
+  archived_at?: string | null;
+}> = [];
 
 function chain(tabela: string, op: string, payload?: unknown): Record<string, unknown> {
   const filtros: [string, unknown][] = [];
@@ -124,9 +130,18 @@ function chain(tabela: string, op: string, payload?: unknown): Record<string, un
     {
       get(_t, prop) {
         if (prop === "maybeSingle")
-          return async () => ({ data: { escalated_status: escalado }, error: null });
+          return async () => {
+            if (tabela === "channel_sessions") {
+              return { data: sessoesDaOrg[0] ?? null, error: null };
+            }
+            return { data: { escalated_status: escalado }, error: null };
+          };
         if (prop === "then")
-          return (ok: (v: unknown) => unknown) => ok({ data: [{ id: "x" }], error: null });
+          return (ok: (v: unknown) => unknown) =>
+            ok({
+              data: tabela === "channel_sessions" ? sessoesDaOrg : [{ id: "x" }],
+              error: null,
+            });
         return (...args: unknown[]) => {
           if (prop === "eq") filtros.push([String(args[0]), args[1]]);
           return proxy;
@@ -152,6 +167,7 @@ const caiu = { reachable: true, status: "FAILED", detail: null };
 beforeEach(() => {
   ops.length = 0;
   escalado = null;
+  sessoesDaOrg = [];
 });
 
 describe("avisar uma vez, e fechar quando volta", () => {
@@ -215,6 +231,22 @@ describe("avisar uma vez, e fechar quando volta", () => {
     const g = ops.find((o) => o.tabela === "channel_session_health" && o.op === "upsert");
     expect(g?.payload).toMatchObject({ escalated_status: null });
   });
+
+  it("STOPPED do mesmo número que já está WORKING não abre aviso", async () => {
+    // Produção: sessão antiga STOPPED 556194114879 + sessão viva WORKING.
+    // A faixa e a Central diziam "desconectado" com o badge Conectado ao lado.
+    sessoesDaOrg = [
+      { id: "sess-1", status: "STOPPED", phone_number: "556194114879", archived_at: null },
+      { id: "sess-2", status: "WORKING", phone_number: "556194114879", archived_at: null },
+    ];
+    escalado = "STOPPED";
+    const parada = { ...sessao, status: "STOPPED" };
+    const caiuParada = { reachable: true, status: "STOPPED", detail: null };
+    expect(await sincronizarSaudeDaConexao(admin, parada, caiuParada, "556194114879")).toBe(
+      "resolvido",
+    );
+    expect(ops.some((o) => o.tabela === "agent_inbox_items" && o.op === "insert")).toBe(false);
+  });
 });
 
 describe("os elos que somem sem barulho", () => {
@@ -256,6 +288,7 @@ describe("os elos que somem sem barulho", () => {
     // tenant, e o vigia é quem tem a linha na mão (`s.organization_id`).
     expect(cron).toMatch(/checkHealth\(\{[\s\S]{0,120}?organizationId: s\.organization_id/);
     expect(cron).toMatch(/await sincronizarSaudeDaConexao\(/);
+    expect(cron).toMatch(/await resolverAvisosDeSessoesMortas\(/);
   });
 
   it("o vigia está AGENDADO — rota sem cron nunca roda", () => {

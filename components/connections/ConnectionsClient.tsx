@@ -42,7 +42,7 @@ import {
 } from "@/lib/ui/icons";
 import { lerEstadoDoCanal } from "@/lib/channels/estado";
 import { esperaAposQueda, fraseEsperaPareamento } from "@/lib/channels/pareamento-cooldown";
-import { ehResidualSupersedida } from "@/lib/channels/sessoes-residuais";
+import { ehResidualSupersedida, ehSessaoSupersedida } from "@/lib/channels/sessoes-residuais";
 
 type Variant = "success" | "warning" | "error" | "neutral";
 
@@ -394,6 +394,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
             // podendo ser excluído.
             const vivaNoTransporte = dependeDoTransporte(c);
             const residual = ehResidualSupersedida(c, list);
+            const supersedida = ehSessaoSupersedida(c, list);
             const espera = esperaAposQueda(c.status, c.last_status_change_at);
             const podeExcluir = wahaConfigured || !vivaNoTransporte;
             return (
@@ -448,7 +449,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                       Trazer contatos do aparelho
                     </Button>
                   )}
-                  {vivaNoTransporte && !residual && (
+                  {vivaNoTransporte && !supersedida && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -467,6 +468,12 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     <p className="text-[11px] text-muted-foreground">
                       Sessão antiga sem número. A conexão em uso é outra — não
                       escaneie QR aqui.
+                    </p>
+                  )}
+                  {supersedida && !residual && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Este número já está conectado em outra sessão. Não
+                      reconecte daqui.
                     </p>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setAntiBanId(c.id)}>

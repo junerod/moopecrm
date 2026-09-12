@@ -30,7 +30,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { filtrarCaidasParaFaixa } from "./sessoes-residuais";
+import { ehSessaoSupersedida, filtrarCaidasParaFaixa } from "./sessoes-residuais";
 
 /** Único estado em que mensagem entra e sai. Contrato do CRM (uppercase). */
 export const STATUS_SAUDAVEL = "WORKING";
@@ -175,8 +175,9 @@ export interface ConexaoCaida {
  * Arquivada fica de fora: foi desligada de propósito, e anunciar que uma conexão
  * aposentada está parada é o ruído que ensina a ignorar a faixa.
  *
- * Residual sem telefone ao lado de uma WORKING também fica de fora: ela não
- * é o número em uso, e anunciá-la como "desconectado" + QR era o defeito
+ * Residual sem telefone ao lado de uma WORKING fica de fora — e também a
+ * sessão antiga do MESMO número que já está WORKING noutra linha. Anunciar
+ * "5561… está desconectado" com o badge Conectado ao lado era o defeito
  * medido. A regra está em `filtrarCaidasParaFaixa`.
  */
 export async function listarConexoesCaidas(
@@ -213,6 +214,7 @@ interface SessaoParaVigiar {
   id: string;
   organization_id: string;
   status: string | null;
+  phone_number?: string | null;
 }
 
 /**
@@ -258,7 +260,26 @@ export async function sincronizarSaudeDaConexao(
    */
   origem: "varredura" | "empurrao" = "varredura",
 ): Promise<"avisado" | "ja_avisado" | "resolvido" | "sem_mudanca"> {
-  const aviso = avisoDaConexao(saude, apelido);
+  const { data: irmas } = await admin
+    .from("channel_sessions")
+    .select("id, status, phone_number, archived_at")
+    .eq("organization_id", sessao.organization_id);
+  const linhas = (irmas ?? []) as Array<{
+    id: string;
+    status: string | null;
+    phone_number: string | null;
+    archived_at: string | null;
+  }>;
+  const atual = linhas.find((s) => s.id === sessao.id);
+  const ativas = linhas.filter((s) => !s.archived_at);
+  const classificar = {
+    id: sessao.id,
+    status: sessao.status ?? atual?.status ?? null,
+    phone_number: sessao.phone_number ?? atual?.phone_number ?? null,
+  };
+  // Arquivada ou substituída pela sessão viva do mesmo número: o aviso mentiria.
+  const morta = Boolean(atual?.archived_at) || ehSessaoSupersedida(classificar, ativas);
+  const aviso = morta ? null : avisoDaConexao(saude, apelido);
 
   const { data: linha } = await admin
     .from("channel_session_health")
@@ -306,6 +327,63 @@ export async function sincronizarSaudeDaConexao(
   });
   await gravarEpisodio(admin, sessao, episodio);
   return "avisado";
+}
+
+/**
+ * Fecha aviso que sobreviveu à reconexão: sessão arquivada, residual, ou o
+ * mesmo número já WORKING noutra linha. O vigia não visita arquivada — sem
+ * esta varredura o crítico de setembro ficava aberto com o número no ar.
+ */
+export async function resolverAvisosDeSessoesMortas(admin: SupabaseClient): Promise<number> {
+  const { data: abertos } = await admin
+    .from("agent_inbox_items")
+    .select("id, organization_id, ref_id")
+    .eq("ref_kind", REF_KIND_SESSAO)
+    .eq("status", "open")
+    .in("kind", ["qr_rescan", "channel_number_alert"]);
+  if (!abertos?.length) return 0;
+
+  const orgIds = [...new Set(abertos.map((a) => a.organization_id as string))];
+  const { data: todas } = await admin
+    .from("channel_sessions")
+    .select("id, organization_id, status, phone_number, archived_at")
+    .in("organization_id", orgIds);
+  const sessoes = (todas ?? []) as Array<{
+    id: string;
+    organization_id: string;
+    status: string | null;
+    phone_number: string | null;
+    archived_at: string | null;
+  }>;
+
+  let fechados = 0;
+  for (const aviso of abertos) {
+    const irmas = sessoes.filter((s) => s.organization_id === aviso.organization_id);
+    const ativas = irmas.filter((s) => !s.archived_at);
+    const alvo = irmas.find((s) => s.id === aviso.ref_id);
+    const morta =
+      !alvo || Boolean(alvo.archived_at) || ehSessaoSupersedida(alvo, ativas);
+    if (!morta) continue;
+    await admin
+      .from("agent_inbox_items")
+      .update({ status: "resolved" })
+      .eq("id", aviso.id)
+      .eq("organization_id", aviso.organization_id)
+      .eq("status", "open");
+    if (alvo) {
+      await gravarEpisodio(
+        admin,
+        {
+          id: alvo.id,
+          organization_id: alvo.organization_id,
+          status: alvo.status,
+        },
+        null,
+      );
+    }
+    fechados += 1;
+  }
+  return fechados;
 }
 
 /**

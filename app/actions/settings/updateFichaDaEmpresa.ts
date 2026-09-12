@@ -3,19 +3,22 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { audit } from "@/lib/audit";
-import { tenantSchema, type TenantInput } from "@/lib/schemas/settings";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { mesclarSettingsEmpresa } from "@/lib/negocio/ficha";
+import { fichaDaEmpresaSchema, type FichaDaEmpresaInput } from "@/lib/schemas/settings";
+import { logger } from "@/lib/logger";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-export type UpdateTenantResult =
+export type UpdateFichaDaEmpresaResult =
   | { ok: true }
   | { ok: false; error: string; details?: unknown };
 
-export async function updateTenant(input: TenantInput): Promise<UpdateTenantResult> {
-  const parsed = tenantSchema.safeParse(input);
+export async function updateFichaDaEmpresa(
+  input: FichaDaEmpresaInput,
+): Promise<UpdateFichaDaEmpresaResult> {
+  const parsed = fichaDaEmpresaSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "validation_failed", details: parsed.error.flatten() };
   }
@@ -28,32 +31,12 @@ export async function updateTenant(input: TenantInput): Promise<UpdateTenantResu
     return { ok: false, error: "forbidden_role" };
   }
 
-/**
- * A ESCRITA EM `organizations` VAI PELO ADMIN CLIENT — e não é preguiça.
- *
- * A única policy de escrita da tabela é `orgs_write_platform_admin`, com
- * `USING (fn_is_platform_admin())`. Pelo client de sessão, o UPDATE de quem não
- * é super-admin de plataforma casa ZERO linhas — e o PostgREST devolve sucesso,
- * porque "nenhuma linha casou o filtro" não é erro. Resultado: a tela dizia
- * "salvo", nada era gravado, e recarregar mostrava o estado antigo.
- *
- * Medido em Postgres com o baseline aplicado (issue #144): sob `authenticated`
- * com o JWT de um manager, `update organizations` devolve 0 linhas; sob
- * postgres, 1. Ninguém tinha notado porque o dono do repo e o owner criado pelo
- * `bootstrap-owner.ts` SÃO platform_admin — quem tropeça é o segundo admin
- * convidado e qualquer manager.
- *
- * O gate continua sendo o de cima (papel resolvido de fonte confiável), e o
- * filtro por `organization_id` é explícito, como a doutrina exige de todo
- * handler que usa service role.
- */
   const supabase = createAdminClient();
   const hdrs = await headers();
   const requestId = hdrs.get("x-request-id");
   const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const userAgent = hdrs.get("user-agent") ?? null;
 
-  // Read current settings jsonb to merge `lost_reasons_extra` non-destructively.
   const { data: orgRow, error: readErr } = await supabase
     .from("organizations")
     .select("settings")
@@ -61,11 +44,8 @@ export async function updateTenant(input: TenantInput): Promise<UpdateTenantResu
     .maybeSingle();
   if (readErr) return { ok: false, error: readErr.message };
 
-  const currentSettings = (orgRow?.settings as Record<string, unknown> | null) ?? {};
-  const nextSettings = {
-    ...currentSettings,
-    lost_reasons_extra: parsed.data.lost_reasons_extra,
-  };
+  const atuais = (orgRow?.settings as Record<string, unknown> | null) ?? {};
+  const nextSettings = mesclarSettingsEmpresa(atuais, parsed.data.empresa);
 
   const { error } = await supabase
     .from("organizations")
@@ -73,11 +53,6 @@ export async function updateTenant(input: TenantInput): Promise<UpdateTenantResu
       display_name: parsed.data.display_name,
       legal_name: parsed.data.legal_name,
       cnpj: parsed.data.cnpj ?? null,
-      timezone: parsed.data.timezone,
-      locale: parsed.data.locale,
-      media_retention_days: parsed.data.media_retention_days,
-      dpo_email: parsed.data.dpo_email ?? null,
-      privacy_policy_url: parsed.data.privacy_policy_url ?? null,
       settings: nextSettings,
     })
     .eq("id", activeOrg.orgId);
@@ -92,9 +67,7 @@ export async function updateTenant(input: TenantInput): Promise<UpdateTenantResu
     requestId,
     ip,
     userAgent,
-    metadata: {
-      fields_changed: Object.keys(parsed.data),
-    },
+    metadata: { origem: "ficha_da_empresa", fields_changed: Object.keys(parsed.data) },
   });
 
   await supabase
@@ -107,10 +80,10 @@ export async function updateTenant(input: TenantInput): Promise<UpdateTenantResu
       p_organization_id: activeOrg.orgId,
     })
     .then(({ error: e }) => {
-      if (e) console.error("[updateTenant] emit_event failed", e.message);
+      if (e) logger.error("[updateFichaDaEmpresa] emit_event failed", { detail: e.message });
     });
 
-  revalidatePath("/app/settings/tenant");
   revalidatePath("/app/settings/business");
+  revalidatePath("/app/settings/tenant");
   return { ok: true };
 }

@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
-import { ehResidualSupersedida } from "@/lib/channels/sessoes-residuais";
+import { ehSessaoSupersedida } from "@/lib/channels/sessoes-residuais";
 
 export interface ChannelSession {
   id: string;
@@ -74,8 +74,9 @@ export function useChannelSessions(opts?: { refetchInterval?: number; enabled?: 
 /**
  * Saúde agregada da organização.
  *
- * Residual sem telefone não entra: vermelho só vence quando o canal caído
- * é um número de verdade (tem telefone) ou quando não há WORKING nenhuma.
+ * Residual sem telefone e sessão antiga do mesmo número WORKING não entram:
+ * vermelho só vence quando um número de verdade está caído SEM irmã WORKING
+ * com o mesmo telefone, ou quando não há WORKING nenhuma.
  * Depois amarelo (conectando), senão verde.
  *
  * `none` é uma AFIRMAÇÃO ("esta org não tem número"), então só sai de uma
@@ -84,10 +85,10 @@ export function useChannelSessions(opts?: { refetchInterval?: number; enabled?: 
  */
 export function deriveOverallHealth(sessions: ChannelSession[] | undefined): ConnectionHealth {
   if (!sessions || sessions.length === 0) return "none";
-  // Residual sem telefone não decide o estado da organização: se há WORKING,
-  // ela prevalece. Número real caído (com telefone) continua vermelho — é
-  // multi-número, não lixo de pareamento. Ver `lib/channels/sessoes-residuais`.
-  const relevantes = sessions.filter((s) => !ehResidualSupersedida(s, sessions));
+  // Residual e número já reconectado não decidem o estado da organização.
+  // Número real caído COM telefone diferente continua vermelho — é
+  // multi-número. Ver `lib/channels/sessoes-residuais`.
+  const relevantes = sessions.filter((s) => !ehSessaoSupersedida(s, sessions));
   if (relevantes.length === 0) return "none";
   if (relevantes.some((s) => s.status === "FAILED" || s.status === "STOPPED")) return "down";
   if (relevantes.some((s) => s.status === "STARTING" || s.status === "SCAN_QR_CODE")) {

@@ -534,7 +534,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/settings/business",
     label: "Meu Negócio",
-    description: "Central da configuração: empresa, WhatsApp, conhecimento, IA e equipe.",
+    description: "Nome, contato e tipo da empresa.",
     icon: Storefront,
     group: "organizacao",
     section: "Sua empresa",

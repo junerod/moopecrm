@@ -193,6 +193,29 @@ describe("Reconectar não é oferecido a quem não vive no transporte", () => {
     expect(screen.queryByText(/Escanear o QR/)).not.toBeInTheDocument();
   });
 
+  it("mesmo número STOPPED + WORKING não oferece Reconectar na antiga", () => {
+    listagem.data = [
+      canal({
+        id: "viva",
+        display_name: null,
+        status: "WORKING",
+        phone_number: "556194114879",
+      }),
+      canal({
+        id: "arquivo",
+        display_name: null,
+        status: "STOPPED",
+        phone_number: "556194114879",
+        waha_session_name: "org_8f4b9d4d_338052",
+      }),
+    ];
+
+    render(wrap(<ConnectionsClient wahaConfigured />));
+
+    expect(screen.getAllByRole("button", { name: /Reconectar/ })).toHaveLength(1);
+    expect(screen.getByText(/já está conectado em outra sessão/)).toBeInTheDocument();
+  });
+
   it("bolinha fica verde com WORKING + residual FAILED", () => {
     listagem.data = [
       canal({ id: "viva", status: "WORKING", phone_number: "5511999" }),
@@ -202,6 +225,18 @@ describe("Reconectar não é oferecido a quem não vive no transporte", () => {
         phone_number: null,
         status: "FAILED",
       }),
+    ];
+
+    render(wrap(<ConnectionHealthDot />));
+
+    expect(screen.getByLabelText("Todas as conexões ativas")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Uma conexão caiu")).not.toBeInTheDocument();
+  });
+
+  it("bolinha fica verde com WORKING + STOPPED do mesmo número", () => {
+    listagem.data = [
+      canal({ id: "viva", status: "WORKING", phone_number: "556194114879" }),
+      canal({ id: "arquivo", status: "STOPPED", phone_number: "556194114879" }),
     ];
 
     render(wrap(<ConnectionHealthDot />));

@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/auth/server";
 import { ProfileForm } from "./_form";
+import { TrocarSenhaForm } from "./_senha";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function ProfilePage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Perfil</h1>
         <p className="text-sm text-muted-foreground">
-          Informações pessoais. Email só pode ser trocado em breve.
+          Seu nome nesta conta e a senha de entrada.
         </p>
       </header>
       <ProfileForm
@@ -21,6 +22,7 @@ export default async function ProfilePage() {
         initialFullName={meta.full_name}
         initialAvatarUrl={meta.avatar_url}
       />
+      <TrocarSenhaForm />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { deriveOverallHealth } from "@/hooks/channels/useChannelSessions";
 import { STATUS_QUE_AVISAM } from "@/lib/channels/health";
 import {
   ehResidualSupersedida,
+  ehSessaoSupersedida,
   filtrarCaidasParaFaixa,
   orgTemSessaoWorking,
 } from "@/lib/channels/sessoes-residuais";
@@ -84,6 +85,41 @@ describe("cenário E — dois números legítimos", () => {
     const lista = [s("lixo", "FAILED"), s("viva", "WORKING", "5511999")];
     expect(filtrarCaidasParaFaixa(lista)).toEqual([]);
     expect(deriveOverallHealth(lista as never)).toBe("connected");
+  });
+});
+
+describe("cenário F — mesmo número em duas sessões (o defeito medido em produção)", () => {
+  const lista = [
+    s("arquivo", "STOPPED", "556194114879"),
+    s("viva", "WORKING", "556194114879"),
+  ];
+
+  it("a sessão antiga NÃO é residual — ela tem telefone", () => {
+    expect(ehResidualSupersedida(lista[0]!, lista)).toBe(false);
+  });
+
+  it("mas está supersedida: o número JÁ está WORKING na irmã", () => {
+    expect(ehSessaoSupersedida(lista[0]!, lista)).toBe(true);
+    expect(filtrarCaidasParaFaixa(lista)).toEqual([]);
+    expect(deriveOverallHealth(lista as never)).toBe("connected");
+  });
+
+  it("+55 e só dígitos são o mesmo número", () => {
+    const comMais = [
+      s("arquivo", "FAILED", "+55 61 94114-4879"),
+      s("viva", "WORKING", "5561941144879"),
+    ];
+    expect(ehSessaoSupersedida(comMais[0]!, comMais)).toBe(true);
+    expect(filtrarCaidasParaFaixa(comMais)).toEqual([]);
+  });
+
+  it("dois FAILED do mesmo número, sem WORKING: continua anunciando — falha real", () => {
+    const soCaidas = [
+      s("a", "FAILED", "556194114879"),
+      s("b", "STOPPED", "556194114879"),
+    ];
+    expect(filtrarCaidasParaFaixa(soCaidas).map((x) => x.id)).toEqual(["a", "b"]);
+    expect(deriveOverallHealth(soCaidas as never)).toBe("down");
   });
 });
 

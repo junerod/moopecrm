@@ -273,13 +273,16 @@ describe("a varredura não fecha o que o provedor abriu", () => {
           return cadeia;
         }
         const itens: Record<string, unknown> = {
+          select: () => itens,
           insert: async () => ({ error: null }),
           update: () => {
             resolveu = true;
             return itens;
           },
           eq: () => itens,
-          then: (r: (v: unknown) => void) => Promise.resolve({ error: null }).then(r),
+          in: () => itens,
+          then: (r: (v: unknown) => void) =>
+            Promise.resolve({ data: [], error: null }).then(r),
         };
         return itens;
       },
