@@ -2,8 +2,10 @@
 import { useState } from "react";
 
 import { useAttendantMetrics, type AttendantMetric } from "@/hooks/metrics/useAttendantMetrics";
+import { useSupervisao } from "@/hooks/supervisao/useSupervisao";
 import { AtritoPanel } from "./AtritoPanel";
 import { useTeamMembers } from "@/hooks/team/useTeamMembers";
+import type { PeriodoPronto } from "@/lib/supervisao/periodo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -43,8 +45,10 @@ interface Props {
 
 export function MetricsClient({ canCompare, currentUserId }: Props) {
   const [owner, setOwner] = useState<string>(ALL);
+  const [periodo, setPeriodo] = useState<PeriodoPronto>("30d");
   const selectedOwner = owner === ALL ? null : owner;
   const { data, isLoading, isError } = useAttendantMetrics(selectedOwner);
+  const supervisao = useSupervisao(periodo, canCompare);
   // Opções do filtro: só manager+ (a rota /team é manager+). Agent nem vê o filtro.
   const team = useTeamMembers({ enabled: canCompare });
 
@@ -58,7 +62,19 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {canCompare ? (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2" data-testid="desempenho-periodo">
+            {(["hoje", "7d", "30d"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={`rounded-md border px-2 py-1 text-xs ${periodo === p ? "bg-primary text-primary-foreground" : "bg-background"}`}
+                onClick={() => setPeriodo(p)}
+              >
+                {p === "hoje" ? "Hoje" : p === "7d" ? "7 dias" : "30 dias"}
+              </button>
+            ))}
+          </div>
           <span className="text-sm text-muted-foreground">Atendente</span>
           <Select value={owner} onValueChange={setOwner}>
             <SelectTrigger className="w-64">
@@ -83,9 +99,64 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
           inteiro, ao qual as métricas de área se subordinam (doutrina §3.6).
           Não filtra por atendente — atrito é propriedade do sistema, e quebrá-lo
           por pessoa convida a otimização local que degrada o todo. */}
+      {canCompare && supervisao.data ? (
+        <>
+          <Card data-testid="desempenho-atendimento">
+            <CardHeader>
+              <CardTitle className="text-base">Atendimento</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <Kpi rotulo="Aguardando na fila" valor={supervisao.data.atendimento.fila} />
+              <Kpi
+                rotulo="Espera mais antiga"
+                valor={formatDuration(supervisao.data.atendimento.espera_mais_antiga_s)}
+              />
+              <Kpi
+                rotulo="1ª resposta média"
+                valor={formatDuration(supervisao.data.atendimento.primeira_resposta_media_s)}
+              />
+              <Kpi rotulo="Conversas abertas" valor={supervisao.data.atendimento.conversas_abertas} />
+            </CardContent>
+          </Card>
+          <Card data-testid="desempenho-comercial">
+            <CardHeader>
+              <CardTitle className="text-base">Comercial</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <Kpi rotulo="Leads novos" valor={supervisao.data.comercial.leads_novos} />
+              <Kpi rotulo="Oportunidades abertas" valor={supervisao.data.comercial.oportunidades_abertas} />
+              <Kpi rotulo="Sem próxima ação" valor={supervisao.data.comercial.sem_proxima_acao} />
+              <Kpi rotulo="Atrasadas" valor={supervisao.data.comercial.atrasadas} />
+              <Kpi rotulo="Ganhos" valor={supervisao.data.comercial.ganhos} />
+              <Kpi rotulo="Perdidos" valor={supervisao.data.comercial.perdidos} />
+              <Kpi
+                rotulo="Conversão"
+                valor={
+                  supervisao.data.comercial.conversao == null
+                    ? "—"
+                    : `${Math.round(supervisao.data.comercial.conversao * 100)}%`
+                }
+              />
+            </CardContent>
+          </Card>
+          <Card data-testid="desempenho-campanhas">
+            <CardHeader>
+              <CardTitle className="text-base">Campanhas</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
+              <Kpi rotulo="Executadas" valor={supervisao.data.campanhas.executadas} />
+              <Kpi rotulo="Enviados" valor={supervisao.data.campanhas.enviados} />
+              <Kpi rotulo="Respostas" valor={supervisao.data.campanhas.respostas} />
+              <Kpi rotulo="Leads associados" valor={supervisao.data.campanhas.leads_associados} />
+              <Kpi rotulo="Opt-outs" valor={supervisao.data.campanhas.opt_outs} />
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+
       <AtritoPanel podeEditarRegua={canCompare} />
 
-      <Card>
+      <Card data-testid="funil-gerencial">
         <CardHeader>
           <CardTitle className="text-base">
             Funil {selectedOwner ? "do atendente" : ""} · {funnelTotal}{" "}
@@ -105,14 +176,19 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
                     style={{ width: `${(s.count / maxCount) * 100}%` }}
                   />
                 </div>
-                <span className="w-8 shrink-0 text-right text-sm tabular-nums">{s.count}</span>
+                <span className="w-16 shrink-0 text-right text-sm tabular-nums">
+                  {s.count}
+                  {supervisao.data?.funil.find((f) => f.stage_id === s.stage_id)?.value_cents
+                    ? ` · ${((supervisao.data.funil.find((f) => f.stage_id === s.stage_id)?.value_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                    : ""}
+                </span>
               </div>
             ))
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-testid="desempenho-atendentes">
         <CardHeader>
           <CardTitle className="text-base">
             {canCompare ? "Performance por atendente" : "Sua performance"}
@@ -132,6 +208,13 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
                   <TableHead className="text-right">Perdidos</TableHead>
                   <TableHead className="text-right">Conversas</TableHead>
                   <TableHead className="text-right">1ª resposta (média)</TableHead>
+                  {canCompare ? (
+                    <>
+                      <TableHead className="text-right">Resolvidas</TableHead>
+                      <TableHead className="text-right">Leads</TableHead>
+                      <TableHead className="text-right">Atrasadas</TableHead>
+                    </>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,6 +234,19 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
                     <TableCell className="text-right tabular-nums">
                       {formatDuration(a.avg_first_response_seconds)}
                     </TableCell>
+                    {canCompare ? (
+                      <>
+                        <TableCell className="text-right tabular-nums">
+                          {supervisao.data?.atendentes.find((x) => x.user_id === a.user_id)?.resolvidas ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {supervisao.data?.atendentes.find((x) => x.user_id === a.user_id)?.leads ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {supervisao.data?.atendentes.find((x) => x.user_id === a.user_id)?.atrasadas ?? "—"}
+                        </TableCell>
+                      </>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>
@@ -158,6 +254,15 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function Kpi({ rotulo, valor }: { rotulo: string; valor: string | number }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{rotulo}</div>
+      <div className="text-lg tabular-nums">{valor}</div>
     </div>
   );
 }

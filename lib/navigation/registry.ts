@@ -9,6 +9,7 @@ import {
   Buildings,
   CalendarBlank,
   ChartBar,
+  Megaphone,
   ChartLineUp,
   ClipboardText,
   ClockCountdown,
@@ -214,6 +215,15 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     icon: CalendarBlank,
     group: "atendimento",
     sidebar: true,
+  },
+  {
+    href: "/app/campanhas",
+    label: "Campanhas",
+    description: "Disparo comercial essencial: quem recebe, a mensagem e o resultado.",
+    icon: Megaphone,
+    group: "atendimento",
+    sidebar: true,
+    minRole: "agent",
   },
   {
     href: "/app/radar",
@@ -442,7 +452,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/metrics",
     label: "Desempenho",
-    description: "Funil e performance por atendente nos últimos 30 dias.",
+    description: "Fila, funil, próxima ação e campanhas — Hoje, 7 ou 30 dias.",
     icon: ChartBar,
     group: "organizacao",
     section: "Análise",

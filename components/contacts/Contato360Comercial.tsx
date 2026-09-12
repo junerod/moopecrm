@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { ListaDeAcoes } from "@/components/comercial/ListaDeAcoes";
+import { RetratoMoope } from "@/components/moope/RetratoMoope";
 import { apiClient } from "@/lib/api/client";
 import { estadoDaProximaAcao, rotuloDoAtraso, rotuloDoQuando } from "@/lib/comercial/proxima-acao";
 import type { CrmSummaryData } from "@/lib/inbox/crm-summary-tipos";
@@ -33,6 +34,7 @@ export function Contato360Comercial({ contactId }: { contactId: string }) {
 
   return (
     <div className="space-y-4" data-testid="contato-360-comercial">
+      <RetratoMoope contactId={contactId} />
       <section className="rounded-lg border border-border p-3">
         <h3 className="text-xs font-medium text-muted-foreground">Próxima ação</h3>
         {passo?.proximo_passo ? (

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Queryable } from "@/lib/agent-engine/queue/queue";
 import { gerarSugestaoDoCopiloto, parsearSugestao } from "@/lib/ai/copiloto/gerar";
-import { RASCUNHO_SEM_FONTE } from "@/lib/ai/copiloto/anti-alucinacao";
+import { NAO_CONSEGUI_CONSULTAR_GESTAO, RASCUNHO_SEM_FONTE } from "@/lib/ai/copiloto/anti-alucinacao";
 import { resolveAiExecutionPolicy } from "@/lib/ai/execucao/politica";
 
 const COPILOT = resolveAiExecutionPolicy({
@@ -228,6 +228,30 @@ describe("Copilot + RAG — não inventa preço ausente", () => {
     });
     expect(systemVisto).toMatch(/R\$ 123/);
     expect(systemVisto).not.toMatch(/R\$ 999/);
+  });
+});
+
+describe("Copilot + Gestão — não inventa locação", () => {
+  it("sem retrato, admite que não consultou", async () => {
+    let chamadas = 0;
+    const { db, gravados } = dbComMemoria();
+    const r = await gerarSugestaoDoCopiloto({
+      db,
+      organizationId: "org-a",
+      conversationId: "conv",
+      contactId: "ct",
+      inboundMessageId: "msg-loc",
+      historico: [{ direction: "inbound", body: "Esse cliente tem locação ativa?" }],
+      politica: COPILOT,
+      llm: async () => {
+        chamadas += 1;
+        return { texto: JSON.stringify({ ...JSON.parse(JSON_OK), suggestedReply: "Sim, 2 locações." }) };
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(chamadas).toBe(0);
+    if (r.ok) expect(r.suggestion.suggested_reply).toBe(NAO_CONSEGUI_CONSULTAR_GESTAO);
+    expect(JSON.stringify(gravados[0])).not.toMatch(/2 locações/);
   });
 });
 

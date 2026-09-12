@@ -100,6 +100,7 @@ describe("sidebarGroups", () => {
       "/app/kanban",
       "/app/contacts",
       "/app/agenda",
+      "/app/campanhas",
       "/app/radar",
     ]);
   });

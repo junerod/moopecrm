@@ -68,6 +68,7 @@ export const AI_ACTIONS = [
   "send_message",
   "call_external_api",
   "operational_moope_action",
+  "campaign_dispatch",
 ] as const;
 export type AiAction = (typeof AI_ACTIONS)[number];
 export const aiActionSchema = z.enum(AI_ACTIONS);

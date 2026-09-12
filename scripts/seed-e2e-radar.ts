@@ -108,7 +108,12 @@ async function ensureConversation(orgId: string, contactId: string, sessionId: s
     .maybeSingle();
   if (existing) {
     const id = (existing as { id: string }).id;
-    await admin.from("conversations").update(state as never).eq("id", id);
+    const { error } = await admin
+      .from("conversations")
+      .update(state as never)
+      .eq("organization_id", orgId)
+      .eq("contact_id", contactId);
+    if (error) throw new Error(`reset conversas radar: ${error.message}`);
     return id;
   }
   const { data, error } = await admin
@@ -154,6 +159,8 @@ async function main(): Promise<void> {
     stage_id: stageId,
     contact_id: contactId,
     owner_user_id: null,
+    owner_agent_id: null,
+    owner_kind: null,
     last_activity_at: coldAt,
   };
 
@@ -168,6 +175,11 @@ async function main(): Promise<void> {
   if (existing) {
     leadId = (existing as { id: string }).id;
     await admin.from("crm_leads").update(leadFields as never).eq("id", leadId);
+    await admin
+      .from("demandas")
+      .update({ dono_user_id: null, dono_kind: "ia" } as never)
+      .eq("organization_id", orgId)
+      .eq("lead_id", leadId);
     console.info(`[seed] radar lead existing: ${leadId}`);
   } else {
     const { data, error } = await admin

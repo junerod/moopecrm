@@ -90,6 +90,15 @@ export function authorizeAiAction(pedido: PedidoDeAutorizacao): DecisaoDeAcao {
     return deny(action, `AI_MODE=${pedido.ai_mode} — nenhuma ação de IA.`);
   }
 
+  // Campanha comercial é massa. COPILOT e AUTONOMOUS não disparam nesta rodada
+  // mesmo se a policy genérica listar a ação. CONTROLLED só prepara + confirma.
+  if (action === "campaign_dispatch") {
+    if (pedido.ai_mode === "controlled") {
+      return confirmVerdict(action, "Campanha comercial exige confirmação humana.");
+    }
+    return deny(action, "Campanha comercial não dispara por IA nesta rodada.");
+  }
+
   if (LEITURA_OU_SUGESTAO.has(action)) {
     if (exec && !exec.suggestion_allowed && !exec.execution_allowed) {
       return deny(action, "IA sem permissão de leitura/sugestão neste contexto.");

@@ -72,6 +72,22 @@ describe("matriz OFF / COPILOT / CONTROLLED / AUTONOMOUS", () => {
     expect(
       authorizeAiAction({ action: "operational_moope_action", ai_mode: "copilot" }).verdict,
     ).toBe("DENY");
+    expect(
+      authorizeAiAction({ action: "campaign_dispatch", ai_mode: "copilot" }).verdict,
+    ).toBe("DENY");
+  });
+
+  it("campanha comercial nunca dispara sozinha", () => {
+    expect(
+      authorizeAiAction({ action: "campaign_dispatch", ai_mode: "controlled" }).verdict,
+    ).toBe("REQUIRE_CONFIRMATION");
+    expect(
+      authorizeAiAction({
+        action: "campaign_dispatch",
+        ai_mode: "autonomous",
+        configured: { allow: ["campaign_dispatch"], confirm: [] },
+      }).verdict,
+    ).toBe("DENY");
   });
 
   it("CONTROLLED: ação leve sem config é DENY — ausência não é ALLOW", () => {

@@ -41,6 +41,8 @@ import { logger } from "@/lib/logger";
 
 import { ehIdentificadorTecnico, rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 
+import { campanhaDeOrigemDoContato, marcarRespostaDaCampanha } from "@/lib/campanhas/atribuicao";
+
 import { emitLeadActivity } from "./activity-emitter";
 import { resolverFunilDeNascimento } from "./funil-de-nascimento";
 import { listarLeadsAbertosDoContato } from "./leads-abertos-do-contato";
@@ -154,6 +156,11 @@ export async function garantirLeadDaConversa(
     organizationId,
     contactId,
   });
+  void marcarRespostaDaCampanha(db, {
+    organizationId,
+    contactId,
+    leadId: abertos[0]?.id ?? null,
+  });
   if (abertos.length > 0) return { criado: false, motivo: "ja_existe" };
 
   // 3 · onde entra
@@ -195,6 +202,16 @@ export async function garantirLeadDaConversa(
   // contato pode ganhar conversas/leads futuros por outros canais sem que
   // isso reescreva a origem deste.
   const rotuloDeAnuncio = contato?.source ? ROTULO_DE_ANUNCIO[contato.source] : undefined;
+  let campanhaId: string | null = null;
+  try {
+    campanhaId = await campanhaDeOrigemDoContato(db, { organizationId, contactId });
+  } catch {
+    campanhaId = null;
+  }
+  const metaBase = rotuloDeAnuncio
+    ? ((contato!.source_metadata ?? {}) as Record<string, unknown>)
+    : {};
+  const sourceMetadata = campanhaId ? { ...metaBase, campaign_id: campanhaId } : metaBase;
 
   const { data: lead, error } = await db
     .from("crm_leads")
@@ -205,7 +222,7 @@ export async function garantirLeadDaConversa(
       contact_id: contactId,
       title: titulo,
       source: rotuloDeAnuncio ? contato!.source : "whatsapp",
-      source_metadata: rotuloDeAnuncio ? (contato!.source_metadata ?? {}) : {},
+      source_metadata: sourceMetadata,
       // O ponto ao lado do título só acende se a organização cadastrar este
       // rótulo em `crm_pipelines.settings.canonical_tags` (Configurações do
       // funil) — a tag sempre entra; o destaque visual é opt-in do operador.
@@ -217,6 +234,12 @@ export async function garantirLeadDaConversa(
   if (error || !lead) {
     return { criado: false, motivo: "erro", detalhe: error?.message.slice(0, 120) };
   }
+
+  void marcarRespostaDaCampanha(db, {
+    organizationId,
+    contactId,
+    leadId: lead.id as string,
+  });
 
   // 4b · corrida com o clique "Adicionar ao funil": se outro OPEN mais antigo
   // apareceu entre o SELECT e o INSERT, este card é o acidental.

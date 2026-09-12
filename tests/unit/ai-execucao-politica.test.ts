@@ -208,6 +208,8 @@ describe("TESTE 12 — CONVERSATION pausada", () => {
 describe("TESTE 13 — MOOPE operacional com humano no comando", () => {
   it("só send_intent explícito operacional_moope libera a exceção", () => {
     expect(ehEnvioOperacionalMoope("operational_moope")).toBe(true);
+    expect(ehEnvioOperacionalMoope("campaign_commercial")).toBe(false);
+    expect(envioRespeitaComandoDaConversa("campaign_commercial")).toBe(false);
     expect(envioRespeitaComandoDaConversa("operational_moope")).toBe(false);
     expect(
       resolverIntencaoDeEnvio({

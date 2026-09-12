@@ -183,6 +183,7 @@ test.describe("navegação agrupada", () => {
       "/app/kanban",
       "/app/contacts",
       "/app/agenda",
+      "/app/campanhas",
       "/app/radar",
       "/app/ai/followups",
       "/app/ai/agents",

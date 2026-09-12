@@ -73,6 +73,7 @@ export const DICIONARIO: Traducoes = {
   "Integração MOOPE": { es: "Integración MOOPE" },
   Conhecimento: { es: "Conocimiento" },
   Webhooks: { es: "Webhooks" },
+  Campanhas: { es: "Campañas" },
   Desempenho: { es: "Rendimiento" },
   "Evolução da IA": { es: "Evolución de la IA" },
   "Audit Log": { es: "Registro de auditoría" },

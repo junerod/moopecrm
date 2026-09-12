@@ -16,7 +16,12 @@ import {
   montarSystemDoCopiloto,
   type OverlayDoCopiloto,
 } from "@/lib/ai/copiloto/overlay";
-import { deveRecusarInventar, RASCUNHO_SEM_FONTE } from "@/lib/ai/copiloto/anti-alucinacao";
+import {
+  deveRecusarInventar,
+  NAO_CONSEGUI_CONSULTAR_GESTAO,
+  perguntaPedeDadoGestao,
+  RASCUNHO_SEM_FONTE,
+} from "@/lib/ai/copiloto/anti-alucinacao";
 import {
   montarSystemComConhecimento,
   type TrechoParaCopiloto,
@@ -101,8 +106,11 @@ export async function gerarSugestaoDoCopiloto(input: {
     .reverse()
     .find((m) => m.direction === "inbound" && (m.body ?? "").trim())?.body;
   const trechos = input.trechos;
+  const recusarGestao =
+    perguntaPedeDadoGestao(ultimaPergunta) && !overlay.moopeFatos;
   const recusar =
-    trechos !== undefined && deveRecusarInventar(ultimaPergunta, trechos.length);
+    recusarGestao ||
+    (trechos !== undefined && deveRecusarInventar(ultimaPergunta, trechos.length));
 
   let parsed;
   let bruto: CopilotLlmResultado = {
@@ -114,10 +122,14 @@ export async function gerarSugestaoDoCopiloto(input: {
 
   if (recusar) {
     parsed = {
-      summary: "O cliente pediu um dado que não está no conhecimento da empresa.",
-      intent: "PRICE" as const,
-      suggestedReply: RASCUNHO_SEM_FONTE,
-      suggestedNextAction: "Confirmar com a equipe antes de responder",
+      summary: recusarGestao
+        ? "O atendente perguntou dado operacional da Gestão sem fonte viva."
+        : "O cliente pediu um dado que não está no conhecimento da empresa.",
+      intent: recusarGestao ? ("OTHER" as const) : ("PRICE" as const),
+      suggestedReply: recusarGestao ? NAO_CONSEGUI_CONSULTAR_GESTAO : RASCUNHO_SEM_FONTE,
+      suggestedNextAction: recusarGestao
+        ? "Tentar consultar a Gestão de novo"
+        : "Confirmar com a equipe antes de responder",
       extractedFields: {},
       confidence: 0.2,
     };

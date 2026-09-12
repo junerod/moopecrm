@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ProximaAcaoControles } from "@/components/comercial/ProximaAcaoControles";
+import { RetratoMoope } from "@/components/moope/RetratoMoope";
 import { Button } from "@/components/ui/button";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { apiClient } from "@/lib/api/client";
@@ -203,6 +204,8 @@ export function BlocoNegocio({
     : [];
 
   return (
+    <div className="space-y-3">
+    <RetratoMoope contactId={contactId} />
     <section data-testid="inbox-ficha-negocio">
       <h3 className="text-xs font-medium text-muted-foreground">Negócio</h3>
       <div className="mt-2 space-y-3 text-sm">
@@ -480,5 +483,6 @@ export function BlocoNegocio({
         />
       ) : null}
     </section>
+    </div>
   );
 }

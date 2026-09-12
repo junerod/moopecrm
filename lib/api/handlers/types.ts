@@ -31,7 +31,8 @@ export type SendIntent =
   | "conversational_auto"
   | "operational_moope"
   | "integration_api"
-  | "system_notice";
+  | "system_notice"
+  | "campaign_commercial";
 
 export interface HandlerCtx {
   organization_id: string;

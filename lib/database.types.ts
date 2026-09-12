@@ -2176,6 +2176,165 @@ export type Database = {
           },
         ]
       }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          contact_id: string
+          created_at: string
+          delivered_at: string | null
+          error: string | null
+          failed_at: string | null
+          id: string
+          lead_id: string | null
+          message_id: string | null
+          organization_id: string
+          phone: string | null
+          read_at: string | null
+          replied_at: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          contact_id: string
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          failed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id?: string | null
+          organization_id: string
+          phone?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          contact_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          failed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id?: string | null
+          organization_id?: string
+          phone?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          body_text: string
+          channel_session_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          finished_at: string | null
+          id: string
+          last_sent_at: string | null
+          name: string
+          organization_id: string
+          scheduled_at: string | null
+          segment: Json
+          started_at: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_text?: string
+          channel_session_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          finished_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          name: string
+          organization_id: string
+          scheduled_at?: string | null
+          segment?: Json
+          started_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string
+          channel_session_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          finished_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          name?: string
+          organization_id?: string
+          scheduled_at?: string | null
+          segment?: Json
+          started_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_channel_session_id_fkey"
+            columns: ["channel_session_id"]
+            isOneToOne: false
+            referencedRelation: "channel_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_knobs: {
         Row: {
           allow_sunday: boolean | null

@@ -13,6 +13,7 @@ export const INTENCOES_DE_ENVIO = [
   "operational_moope",
   "integration_api",
   "system_notice",
+  "campaign_commercial",
 ] as const;
 
 export type IntencaoDeEnvio = (typeof INTENCOES_DE_ENVIO)[number];
@@ -32,4 +33,8 @@ export function envioRespeitaComandoDaConversa(intent: IntencaoDeEnvio): boolean
 
 export function ehEnvioOperacionalMoope(intent: IntencaoDeEnvio): boolean {
   return intent === "operational_moope";
+}
+
+export function ehEnvioCampanhaComercial(intent: IntencaoDeEnvio): boolean {
+  return intent === "campaign_commercial";
 }

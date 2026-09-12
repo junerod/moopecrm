@@ -123,6 +123,7 @@ export {
   // inbox no celular: voltar para a lista e abrir a ficha do contato
   IdentificationCard,
   // agenda (o barril não tinha NENHUM ícone de calendário até aqui)
+  Megaphone,
   CalendarBlank,
   CalendarDots,
   CalendarPlus,

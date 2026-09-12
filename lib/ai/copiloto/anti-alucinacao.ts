@@ -9,6 +9,15 @@
 const PIDE_DADO_CRITICO =
   /pre[cç]o|custa|valor|di[aá]ria|disponi|estoque|prazo|entrega|parcela|desconto|pol[ií]tica|garantia|pagamento|boleto|condi[cç][aã]o/i;
 
+const PIDE_DADO_GESTAO =
+  /loca[cç][aã]o|locat[aá]ri|ve[ií]culo|cobran[cç]a|contrato|gest[aã]o|placa|multa|sinistro|vistoria/i;
+
+export const NAO_CONSEGUI_CONSULTAR_GESTAO = "Não consegui consultar agora.";
+
+export function perguntaPedeDadoGestao(texto: string | null | undefined): boolean {
+  return PIDE_DADO_GESTAO.test((texto ?? "").trim());
+}
+
 export function perguntaPedeDadoCritico(texto: string | null | undefined): boolean {
   return PIDE_DADO_CRITICO.test((texto ?? "").trim());
 }

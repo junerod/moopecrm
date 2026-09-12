@@ -7,6 +7,8 @@ export interface OverlayDoCopiloto {
   instruction: string | null;
   fieldKeys: string[];
   fieldLabels: Array<{ key: string; label: string }>;
+  moopeFatos?: string | null;
+  moopeFalhou?: boolean;
 }
 
 export async function carregarOverlayDoFunilPadrao(
@@ -63,6 +65,14 @@ export function montarSystemDoCopiloto(base: string, overlay: OverlayDoCopiloto)
     partes.push(
       `extractedFields só pode usar estas chaves: ${lista}. ` +
         "Se a conversa não informou o valor, omita a chave. Não invente campo.",
+    );
+  }
+  if (overlay.moopeFatos) {
+    partes.push(`Fatos da Gestão (use só isto, não invente): ${overlay.moopeFatos}`);
+  } else {
+    partes.push(
+      "Não invente dado operacional da Gestão (locação, veículo, cobrança, contrato). " +
+        "Se perguntarem e não houver fato, diga: Não consegui consultar agora.",
     );
   }
   return partes.join(" ");
