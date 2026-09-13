@@ -4,6 +4,10 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ShieldCheck, PencilSimple, DotsThree } from "@/lib/ui/icons";
+import { StatusBadge } from "@/components/ds/StatusBadge";
+import { TagChip } from "@/components/ds/TagChip";
+import { formatarTelefone, iniciaisDoNome } from "@/lib/contacts/formatar-telefone";
+import { TOM_DO_PAPEL } from "@/lib/inbox/tom-da-tag";
 import { ImportarConversaButton } from "@/components/contacts/ImportarConversaButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -78,8 +82,10 @@ export function ContactDetailClient({ contactId }: Props) {
       : "";
   const cadastroVazio = displayName === SEM_NOME && !telefone;
 
+  const telefoneFormatado = formatarTelefone(telefone);
+
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 bg-[var(--color-bg)] p-6">
       <IndicadorDeCarga ativo={q.isFetching && !q.isLoading} rotulo="Atualizando contato…" />
       {contact.is_anonymized && (
         <div
@@ -97,22 +103,36 @@ export function ContactDetailClient({ contactId }: Props) {
       )}
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight break-words">{displayName}</h1>
-          {ehPapelDoContato(contact.papel) ? (
-            <p className="mt-1 text-sm text-muted-foreground">{ROTULO_DO_PAPEL[contact.papel]}</p>
-          ) : null}
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {telefone && <span>{telefone}</span>}
-            {contact.email && telefone && <span>·</span>}
-            {contact.email && <span>{contact.email}</span>}
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-teal-bg)] text-sm font-semibold text-[var(--color-teal)]"
+            aria-hidden
+          >
+            {iniciaisDoNome(displayName)}
           </div>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {contact.tags.map((t) => (
-              <Badge key={t} variant="neutral">{t}</Badge>
-            ))}
-            {contact.is_blocked && <Badge variant="warning">Bloqueado</Badge>}
-            {contact.is_anonymized && <Badge variant="destructive">Anonimizado</Badge>}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight break-words text-[var(--color-text)]">
+                {displayName}
+              </h1>
+              {ehPapelDoContato(contact.papel) ? (
+                <StatusBadge tone={TOM_DO_PAPEL[contact.papel]}>
+                  {ROTULO_DO_PAPEL[contact.papel]}
+                </StatusBadge>
+              ) : null}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-muted)]">
+              {telefoneFormatado && <span className="tabular-nums">{telefoneFormatado}</span>}
+              {contact.email && telefoneFormatado && <span>·</span>}
+              {contact.email && <span>{contact.email}</span>}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {contact.tags.map((t) => (
+                <TagChip key={t} label={t} />
+              ))}
+              {contact.is_blocked && <StatusBadge tone="amber">Bloqueado</StatusBadge>}
+              {contact.is_anonymized && <StatusBadge tone="red">Anonimizado</StatusBadge>}
+            </div>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">

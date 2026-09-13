@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatarTelefone } from "@/lib/contacts/formatar-telefone";
+import { formatarTelefone, iniciaisDoNome } from "@/lib/contacts/formatar-telefone";
 
 describe("formatarTelefone", () => {
   it("formata celular BR", () => {
@@ -14,5 +14,11 @@ describe("formatarTelefone", () => {
 
   it("não inventa máscara para número curto", () => {
     expect(formatarTelefone("1234")).toBe("1234");
+  });
+});
+
+describe("iniciaisDoNome", () => {
+  it("pega primeira e última", () => {
+    expect(iniciaisDoNome("Maria Silva")).toBe("MS");
   });
 });

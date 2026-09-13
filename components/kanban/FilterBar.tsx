@@ -150,12 +150,74 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
         Quentes
       </Chip>
 
-      <details className="w-full md:w-auto md:[&>summary]:hidden">
+      <details className="w-full md:hidden">
         <summary className="cursor-pointer text-[12px] font-medium text-[var(--color-text-muted)]">
           Filtros{avancadosAtivos ? ` (${avancadosAtivos})` : ""}
         </summary>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:!mt-0 md:!flex">
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <FiltrosAvancados
+            filters={filters}
+            onChange={onChange}
+            ownerLabel={ownerLabel}
+            statusLabel={statusLabel}
+            tagLabel={tagLabel}
+            tagOptions={tagOptions}
+            assignees={assignees}
+            userId={user.id}
+            searchInput={searchInput}
+            setSearchInput={setSearchInput}
+          />
+        </div>
+      </details>
+      <div className="hidden flex-wrap items-center gap-1.5 md:flex">
+        <FiltrosAvancados
+          filters={filters}
+          onChange={onChange}
+          ownerLabel={ownerLabel}
+          statusLabel={statusLabel}
+          tagLabel={tagLabel}
+          tagOptions={tagOptions}
+          assignees={assignees}
+          userId={user.id}
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+        />
+      </div>
+    </div>
+  );
+}
 
+function FiltrosAvancados({
+  filters,
+  onChange,
+  ownerLabel,
+  statusLabel,
+  tagLabel,
+  tagOptions,
+  assignees,
+  userId,
+  searchInput,
+  setSearchInput,
+}: {
+  filters: LeadFilters;
+  onChange: (next: LeadFilters) => void;
+  ownerLabel: string;
+  statusLabel: string;
+  tagLabel: string;
+  tagOptions: string[];
+  assignees: Array<{
+    key: string;
+    owner: string;
+    name: string;
+    kind: OwnerKind;
+    version: number | null;
+  }>;
+  userId: string;
+  searchInput: string;
+  setSearchInput: (v: string) => void;
+}) {
+  return (
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">Responsável: {ownerLabel}</Button>
@@ -169,7 +231,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
           <DropdownMenuItem onClick={() => onChange({ ...filters, owner: "unassigned" })}>
             Sem responsável
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onChange({ ...filters, owner: user.id })}>
+          <DropdownMenuItem onClick={() => onChange({ ...filters, owner: userId })}>
             Eu
           </DropdownMenuItem>
           {/*
@@ -282,9 +344,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
           Limpar filtros
         </Button>
       )}
-        </div>
-      </details>
-    </div>
+    </>
   );
 }
 

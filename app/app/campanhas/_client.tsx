@@ -14,7 +14,12 @@ import {
   useIniciarCampanha,
 } from "@/hooks/campanhas/useCampanhas";
 import { previewDaCampanha } from "@/lib/campanhas/preview";
+import { rotuloStatusCampanha, tomStatusCampanha } from "@/lib/campanhas/rotulos";
 import type { SegmentoDaCampanha } from "@/lib/campanhas/tipos";
+import { AppCard } from "@/components/ds/AppCard";
+import { EmptyState } from "@/components/ds/EmptyState";
+import { StatusBadge } from "@/components/ds/StatusBadge";
+import { Megaphone } from "@/lib/ui/icons";
 
 const PASSOS = ["Quem receberá", "Mensagem", "Revisar", "Enviar"] as const;
 
@@ -189,28 +194,51 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
         </div>
       ) : null}
 
-      <ul className="divide-y rounded-lg border border-border" data-testid="campanhas-lista">
+      <ul className="space-y-2" data-testid="campanhas-lista">
         {(lista.data ?? []).length === 0 ? (
-          <li className="p-4 text-sm text-muted-foreground">Nenhuma campanha ainda.</li>
+          <li>
+            <EmptyState
+              icon={Megaphone}
+              tone="violet"
+              titulo="Nenhuma campanha ainda"
+              frase="Monte um segmento, revise a mensagem e dispare quando estiver pronto."
+              acao={
+                podeEnviar ? (
+                  <Button data-testid="campanha-nova-empty" onClick={() => setWizard(true)}>
+                    Nova campanha
+                  </Button>
+                ) : undefined
+              }
+            />
+          </li>
         ) : (
           (lista.data ?? []).map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 p-3">
-              <div>
-                <Link href={`/app/campanhas/${c.id}`} className="text-sm font-medium hover:underline">
-                  {c.name}
-                </Link>
-                <p className="text-xs text-muted-foreground">{c.status}</p>
-              </div>
-              {podeEnviar && (c.status === "running" || c.status === "scheduled") ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  data-testid={`campanha-cancelar-${c.id}`}
-                  onClick={() => cancelar.mutate(c.id)}
-                >
-                  Cancelar
-                </Button>
-              ) : null}
+            <li key={c.id} data-status={c.status}>
+              <AppCard className="flex items-center justify-between gap-3" hover>
+                <div className="min-w-0">
+                  <Link
+                    href={`/app/campanhas/${c.id}`}
+                    className="text-sm font-semibold text-[var(--color-text)] hover:underline"
+                  >
+                    {c.name}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <StatusBadge tone={tomStatusCampanha(c.status)}>
+                      {rotuloStatusCampanha(c.status)}
+                    </StatusBadge>
+                  </div>
+                </div>
+                {podeEnviar && (c.status === "running" || c.status === "scheduled") ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-testid={`campanha-cancelar-${c.id}`}
+                    onClick={() => cancelar.mutate(c.id)}
+                  >
+                    Cancelar
+                  </Button>
+                ) : null}
+              </AppCard>
             </li>
           ))
         )}

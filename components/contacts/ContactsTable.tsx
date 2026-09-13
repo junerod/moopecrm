@@ -14,8 +14,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ContactOrderBy } from "@/lib/schemas/contacts";
 import type { Contact } from "@/lib/types/contacts";
+import { formatarTelefone, iniciaisDoNome } from "@/lib/contacts/formatar-telefone";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { ROTULO_DO_PAPEL, ehPapelDoContato } from "@/lib/crm/papel-e-temperatura";
+import { StatusBadge } from "@/components/ds/StatusBadge";
+import { TagChip } from "@/components/ds/TagChip";
+import { TOM_DO_PAPEL } from "@/lib/inbox/tom-da-tag";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -35,13 +39,6 @@ function formatUltimaAtividade(iso: string, now = new Date()): string {
     return formatRelative(d, now, { locale: ptBR });
   }
   return format(d, "dd/MM/yyyy", { locale: ptBR });
-}
-
-function iniciais(nome: string): string {
-  const parts = nome.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return (parts[0] ?? "").slice(0, 2).toUpperCase();
-  return `${parts[0]?.[0] ?? ""}${parts[parts.length - 1]?.[0] ?? ""}`.toUpperCase();
 }
 
 const ORDEM: Array<{ coluna: ContactOrderBy; label: string }> = [
@@ -77,29 +74,42 @@ export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
       <ul className="divide-y divide-border/60">
         {contacts.map((c) => {
           const nome = displayName(c);
-          const papel = ehPapelDoContato(c.papel) ? ROTULO_DO_PAPEL[c.papel] : null;
-          const meta = [
-            papel,
-            c.is_blocked ? "Bloqueado" : null,
-            c.is_anonymized ? "Anonimizado" : null,
-          ]
-            .filter(Boolean)
-            .join(" · ");
+          const telefone = formatarTelefone(c.phone_number);
           return (
             <li key={c.id}>
-              <div className="flex items-start gap-3 px-3 py-3 hover:bg-muted/40">
+              <div className="flex items-start gap-3 px-3 py-3 hover:bg-[var(--color-surface-elevated)]">
                 <Avatar className="mt-0.5 h-9 w-9 shrink-0">
-                  <AvatarFallback className="text-xs">{iniciais(nome)}</AvatarFallback>
+                  <AvatarFallback className="bg-[var(--color-teal-bg)] text-[11px] font-semibold text-[var(--color-teal)]">
+                    {iniciaisDoNome(nome)}
+                  </AvatarFallback>
                 </Avatar>
                 <Link href={`/app/contacts/${c.id}`} className="min-w-0 flex-1">
-                  <div className="truncate text-base font-semibold leading-tight">{nome}</div>
-                  <div className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {[c.email, c.phone_number].filter(Boolean).join(" · ") || "Sem email ou telefone"}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="truncate text-sm font-semibold leading-tight text-[var(--color-text)]">
+                      {nome}
+                    </span>
+                    {ehPapelDoContato(c.papel) ? (
+                      <StatusBadge tone={TOM_DO_PAPEL[c.papel]} className="h-5 px-1.5 text-[10px]">
+                        {ROTULO_DO_PAPEL[c.papel]}
+                      </StatusBadge>
+                    ) : null}
+                    {c.is_blocked ? (
+                      <StatusBadge tone="amber" className="h-5 px-1.5 text-[10px]">
+                        Bloqueado
+                      </StatusBadge>
+                    ) : null}
                   </div>
-                  {meta ? (
-                    <div className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</div>
+                  <div className="mt-0.5 truncate text-sm tabular-nums text-[var(--color-text-muted)]">
+                    {[telefone, c.email].filter(Boolean).join(" · ") || "Sem email ou telefone"}
+                  </div>
+                  {c.tags.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {c.tags.slice(0, 3).map((t) => (
+                        <TagChip key={t} label={t} />
+                      ))}
+                    </div>
                   ) : null}
-                  <div className="mt-0.5 text-xs text-muted-foreground">
+                  <div className="mt-0.5 text-xs text-[var(--color-text-muted)]">
                     {c.last_activity_at
                       ? `Último contato ${formatUltimaAtividade(c.last_activity_at)}`
                       : "Sem atividade recente"}
@@ -107,7 +117,7 @@ export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
                 </Link>
                 <div className="flex shrink-0 items-center gap-1">
                   {c.conversa ? (
-                    <Button asChild size="sm" variant="default" className="min-h-11 px-3 md:min-h-8">
+                    <Button asChild size="sm" variant="outline" className="hidden min-h-8 px-3 sm:inline-flex">
                       <Link
                         href={`/app/inbox?id=${c.conversa.id}`}
                         aria-label={`Abrir conversa com ${nome}`}
@@ -131,6 +141,11 @@ export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
                       <DropdownMenuItem asChild>
                         <Link href={`/app/contacts/${c.id}`}>Ver ficha</Link>
                       </DropdownMenuItem>
+                      {c.conversa ? (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/app/inbox?id=${c.conversa.id}`}>Abrir conversa</Link>
+                        </DropdownMenuItem>
+                      ) : null}
                       <div className="px-1 py-1">
                         <ImportarConversaButton
                           contact={c}

@@ -3,6 +3,8 @@
 import Link from "next/link";
 
 import { useCampanha, useCancelarCampanha, useDestinatarios } from "@/hooks/campanhas/useCampanhas";
+import { rotuloStatusCampanha, tomStatusCampanha } from "@/lib/campanhas/rotulos";
+import { StatusBadge } from "@/components/ds/StatusBadge";
 
 export function CampanhaDetalheClient({ id }: { id: string }) {
   const camp = useCampanha(id);
@@ -14,13 +16,20 @@ export function CampanhaDetalheClient({ id }: { id: string }) {
 
   const m = camp.data.metricas;
   return (
-    <div className="space-y-6" data-testid="campanha-resultado">
+    <div className="space-y-6 bg-[var(--color-bg)]" data-testid="campanha-resultado">
       <header>
-        <Link href="/app/campanhas" className="text-xs text-muted-foreground hover:underline">
+        <Link href="/app/campanhas" className="text-xs text-[var(--color-text-muted)] hover:underline">
           ← Campanhas
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">{camp.data.name}</h1>
-        <p className="text-sm text-muted-foreground" data-testid="campanha-status">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">
+            {camp.data.name}
+          </h1>
+          <StatusBadge tone={tomStatusCampanha(camp.data.status)}>
+            {rotuloStatusCampanha(camp.data.status)}
+          </StatusBadge>
+        </div>
+        <p className="sr-only" data-testid="campanha-status">
           {camp.data.status}
         </p>
         {camp.data.status === "running" || camp.data.status === "scheduled" ? (
@@ -61,9 +70,9 @@ export function CampanhaDetalheClient({ id }: { id: string }) {
 
 function Item({ rotulo, valor }: { rotulo: string; valor: number }) {
   return (
-    <div className="rounded-lg border border-border p-3">
-      <dt className="text-xs text-muted-foreground">{rotulo}</dt>
-      <dd className="text-lg tabular-nums">{valor}</dd>
+    <div className="rounded-[12px] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]">
+      <dt className="text-xs text-[var(--color-text-muted)]">{rotulo}</dt>
+      <dd className="text-lg font-semibold tabular-nums text-[var(--color-text)]">{valor}</dd>
     </div>
   );
 }

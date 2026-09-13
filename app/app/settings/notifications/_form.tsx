@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { FormSection } from "@/components/ds/FormSection";
 import { useAlertPrefs } from "@/hooks/comercial/useAlertPrefs";
 import { ANTECEDENCIAS_MIN } from "@/lib/comercial/alerta-interno";
 
@@ -22,14 +22,11 @@ export function AlertasPessoaisForm() {
   }, [data]);
 
   return (
-    <Card className="space-y-4 bg-[var(--color-surface)] p-4" data-testid="alertas-pessoais">
-      <header>
-        <h2 className="text-base font-semibold">Alertas pessoais</h2>
-        <p className="text-sm text-muted-foreground">
-          WhatsApp particular do atendente — nunca o número do cliente. Envio interno
-          MOOPE, sem conversa no CRM.
-        </p>
-      </header>
+    <FormSection
+      testid="alertas-pessoais"
+      titulo="Alertas pessoais"
+      descricao="WhatsApp particular do atendente — nunca o número do cliente. Envio interno, sem conversa no CRM."
+    >
       <label className="block text-sm">
         <span className="text-muted-foreground">WhatsApp para lembretes</span>
         <input
@@ -83,6 +80,6 @@ export function AlertasPessoaisForm() {
       >
         {salvar.isPending ? "Salvando…" : "Salvar"}
       </Button>
-    </Card>
+    </FormSection>
   );
 }

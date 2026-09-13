@@ -104,7 +104,7 @@ export function InboxFilters({ value, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  const extras = (
+  const extras = (idNaoLidos: string) => (
     <>
       {showChannelSwitch && (
         <Select
@@ -166,11 +166,11 @@ export function InboxFilters({ value, onChange }: Props) {
       )}
 
       <div className="flex items-center justify-between">
-        <Label htmlFor="only-unread" className="text-xs text-muted-foreground">
+        <Label htmlFor={idNaoLidos} className="text-xs text-muted-foreground">
           {t("Apenas não lidos")}
         </Label>
         <Switch
-          id="only-unread"
+          id={idNaoLidos}
           checked={value.onlyUnread}
           onCheckedChange={(v) => onChange({ ...value, onlyUnread: v })}
         />
@@ -196,11 +196,12 @@ export function InboxFilters({ value, onChange }: Props) {
         />
       </div>
 
-      <details className="md:[&>summary]:hidden">
+      <div className="hidden space-y-2 md:block">{extras("only-unread")}</div>
+      <details className="md:hidden">
         <summary className="cursor-pointer text-[12px] font-medium text-[var(--color-text-muted)]">
           Filtros
         </summary>
-        <div className="mt-2 space-y-2 md:!mt-0 md:!block">{extras}</div>
+        <div className="mt-2 space-y-2">{extras("only-unread-mobile")}</div>
       </details>
 
       <Tabs

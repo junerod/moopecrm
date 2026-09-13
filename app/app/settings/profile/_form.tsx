@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { FormSection } from "@/components/ds/FormSection";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,7 +59,7 @@ export function ProfileForm({ email, initialFullName, initialAvatarUrl }: Props)
 
   return (
     <form onSubmit={handleSubmit} className="max-w-xl">
-      <Card className="space-y-4 bg-[var(--color-surface)] p-6">
+      <FormSection titulo="Seus dados" descricao="Como você aparece para a equipe.">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input id="email" value={email} disabled />
@@ -128,7 +128,7 @@ export function ProfileForm({ email, initialFullName, initialAvatarUrl }: Props)
             {isPending ? "Salvando…" : "Salvar"}
           </Button>
         </div>
-      </Card>
+      </FormSection>
     </form>
   );
 }

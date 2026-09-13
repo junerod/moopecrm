@@ -124,9 +124,17 @@ test.describe("gestão de funis", () => {
     await page.getByTestId(`salvar-nome-${id}`).click();
     await expect(linhaDoFunil(page, RENOMEADO)).toBeVisible();
 
-    // ---- reordenar: sobe para o topo ----
-    await page.getByTestId(`subir-${id}`).click();
-    await expect(page.locator('li[data-testid^="funil-"]').first()).toContainText(RENOMEADO);
+    // ---- reordenar: sobe uma posição (org suja pode ter dezenas de funis) ----
+    const idsDaLista = () =>
+      page
+        .locator('li[data-testid^="funil-"]')
+        .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    const indiceAntes = (await idsDaLista()).indexOf(`funil-${id}`);
+    expect(indiceAntes).toBeGreaterThan(0);
+    const subir = page.getByTestId(`subir-${id}`);
+    await expect(subir).toBeEnabled();
+    await subir.click();
+    await expect.poll(async () => (await idsDaLista()).indexOf(`funil-${id}`)).toBe(indiceAntes - 1);
 
     // ---- tornar padrão ----
     await abrirMenuDoFunil(page, id);

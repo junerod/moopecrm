@@ -212,7 +212,9 @@ test.describe("Mercado Forte — Bloco 3", () => {
     await page.getByTestId("campanha-proximo").click();
     await page.getByTestId("campanha-enviar").click();
     const linha = page.locator("[data-testid=campanhas-lista] li").filter({ hasText: `Proposta ${SUFIXO}` });
-    await expect(linha.getByText(/running|completed|scheduled/i)).toBeVisible({ timeout: 20_000 });
+    await expect(linha).toHaveAttribute("data-status", /running|completed|scheduled/, {
+      timeout: 20_000,
+    });
 
     const listaCamp = await page.request.get("/api/v1/campanhas");
     const camps = (await listaCamp.json()) as { data: Array<{ id: string; name: string; status: string }> };

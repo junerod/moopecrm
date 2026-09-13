@@ -31,7 +31,7 @@ export default async function PublicLayout({ children }: { children: React.React
   const marca = await marcaDaSaida(null);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-accent-950 p-6">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--nav-bg)] p-6">
       <div className="w-full max-w-sm space-y-6">
         {marca.logoUrl && (
           <div className="flex justify-center">
@@ -60,7 +60,7 @@ export default async function PublicLayout({ children }: { children: React.React
             />
           </div>
         )}
-        <div className="rounded-2xl bg-surface px-6 py-7 shadow-2xl ring-1 ring-white/10">
+        <div className="rounded-2xl bg-[var(--color-surface)] px-6 py-7 shadow-[var(--shadow-md)] ring-1 ring-[var(--color-border)]">
           {children}
         </div>
       </div>

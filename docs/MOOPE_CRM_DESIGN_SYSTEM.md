@@ -133,6 +133,7 @@ Padrão: `<AppIcon icon={…} tone="blue|cyan|green|amber|red|violet|teal|indigo
 | `SectionHeader` | `components/ds/SectionHeader.tsx` | Título + CTA |
 | `PageHeader` | `components/ds/PageHeader.tsx` | Título de tela + ícone + ações |
 | `EmptyState` | `components/ds/EmptyState.tsx` | Vazio premium (ícone + frase + CTA) |
+| `FormSection` | `components/ds/FormSection.tsx` | Grupo de campos (não um card por input) |
 | `AlertRow` | `components/ds/AlertRow.tsx` | Prioridades, avisos |
 | `StatusBadge` | `components/ds/StatusBadge.tsx` | Estados |
 | `ThemeToggle` | já existia; agora menu de 3 opções | Topbar |

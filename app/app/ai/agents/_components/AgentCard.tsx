@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { AppCard } from "@/components/ds/AppCard";
+import { StatusBadge } from "@/components/ds/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import type { AgentRow } from "@/hooks/ai/useAgent";
 import { AgentStatusBadge, deriveAgentStatus } from "./AgentStatusBadge";
 import { AgentRowMenu } from "./AgentRowMenu";
@@ -55,10 +55,10 @@ export function AgentCard({ agent, canWrite }: Props) {
   const status = deriveAgentStatus(agent);
 
   return (
-    <Card className="flex h-full flex-col gap-3 p-4">
+    <AppCard className="flex h-full flex-col gap-3" hover>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-medium" title={agent.name}>
+          <h3 className="truncate text-sm font-semibold text-[var(--color-text)]" title={agent.name}>
             {agent.name}
           </h3>
           <p
@@ -74,9 +74,7 @@ export function AgentCard({ agent, canWrite }: Props) {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {agent.is_default && (
-            <Badge variant="secondary" className="text-xs">
-              default
-            </Badge>
+            <StatusBadge tone="green">Padrão</StatusBadge>
           )}
           <AgentStatusBadge status={status} />
           {canWrite && <AgentRowMenu agent={agent} />}
@@ -88,7 +86,7 @@ export function AgentCard({ agent, canWrite }: Props) {
       <dl className="grid grid-cols-2 gap-2 pt-1 text-xs">
         <div>
           <dt className="text-muted-foreground">Tipo</dt>
-          <dd className="font-mono">{agent.kind ?? "rag_bot"}</dd>
+          <dd>{agent.kind === "mcp_agent" ? "Avançado" : "Assistente"}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Prioridade</dt>
@@ -102,6 +100,6 @@ export function AgentCard({ agent, canWrite }: Props) {
           </Button>
         </Link>
       </div>
-    </Card>
+    </AppCard>
   );
 }

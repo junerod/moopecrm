@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { ListaDeAcoes } from "@/components/comercial/ListaDeAcoes";
+import { AppCard } from "@/components/ds/AppCard";
+import { StatusBadge } from "@/components/ds/StatusBadge";
 import { RetratoMoope } from "@/components/moope/RetratoMoope";
 import { apiClient } from "@/lib/api/client";
 import { estadoDaProximaAcao, rotuloDoAtraso, rotuloDoQuando } from "@/lib/comercial/proxima-acao";
 import type { CrmSummaryData } from "@/lib/inbox/crm-summary-tipos";
 import type { ProximaAcaoLinha } from "@/lib/demandas/listar-proximas-acoes";
 import { cn } from "@/lib/utils";
+import { isToday } from "date-fns";
 
 export function Contato360Comercial({ contactId }: { contactId: string }) {
   const summary = useQuery({
@@ -31,19 +34,29 @@ export function Contato360Comercial({ contactId }: { contactId: string }) {
     texto: passo?.proximo_passo,
     em: passo?.proximo_passo_em,
   });
+  const ehHoje = Boolean(passo?.proximo_passo_em && isToday(new Date(passo.proximo_passo_em)));
 
   return (
     <div className="space-y-4" data-testid="contato-360-comercial">
       <RetratoMoope contactId={contactId} />
-      <section className="rounded-lg border border-border p-3">
-        <h3 className="text-xs font-medium text-muted-foreground">Próxima ação</h3>
+      <AppCard
+        className={cn(
+          estado === "atrasada" && "ring-[var(--color-error-fg)]/20",
+          ehHoje && estado === "aberta" && "ring-[var(--moope-primary)]/25",
+        )}
+      >
+        <h3 className="text-xs font-medium text-[var(--color-text-muted)]">Próxima ação</h3>
         {passo?.proximo_passo ? (
           <div className="mt-1">
-            <p className="text-sm font-medium">{passo.proximo_passo}</p>
+            <p className="text-sm font-medium text-[var(--color-text)]">{passo.proximo_passo}</p>
             <p
               className={cn(
                 "text-xs",
-                estado === "atrasada" ? "text-destructive" : "text-muted-foreground",
+                estado === "atrasada"
+                  ? "text-[var(--color-error-fg)]"
+                  : ehHoje
+                    ? "text-[var(--moope-primary)]"
+                    : "text-[var(--color-text-muted)]",
               )}
             >
               {rotuloDoAtraso(passo.proximo_passo_em) ??
@@ -52,27 +65,33 @@ export function Contato360Comercial({ contactId }: { contactId: string }) {
             </p>
           </div>
         ) : (
-          <p className="mt-1 text-sm text-muted-foreground">Sem próxima ação</p>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Sem próxima ação</p>
         )}
-      </section>
+      </AppCard>
 
-      <section>
-        <h3 className="text-xs font-medium text-muted-foreground">Negócios</h3>
-        <ul className="mt-1 space-y-1">
+      <AppCard>
+        <h3 className="text-xs font-medium text-[var(--color-text-muted)]">Negócios</h3>
+        <ul className="mt-2 space-y-2">
           {(data?.leads ?? []).length === 0 ? (
-            <li className="text-sm text-muted-foreground">Nenhum negócio.</li>
+            <li className="text-sm text-[var(--color-text-muted)]">Nenhum negócio.</li>
           ) : (
             (data?.leads ?? []).map((l) => (
-              <li key={l.id}>
-                <Link href={`/app/leads/${l.id}`} className="text-sm hover:underline">
-                  {l.title} · {l.status}
-                  {l.stage?.name ? ` · ${l.stage.name}` : ""}
+              <li key={l.id} className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/app/leads/${l.id}`}
+                  className="text-sm font-medium text-[var(--color-text)] hover:underline"
+                >
+                  {l.title}
                 </Link>
+                {l.stage?.name ? (
+                  <StatusBadge tone="blue">{l.stage.name}</StatusBadge>
+                ) : null}
+                <span className="text-xs text-[var(--color-text-muted)]">{l.status}</span>
               </li>
             ))
           )}
         </ul>
-      </section>
+      </AppCard>
 
       {(acoes.data ?? []).length > 0 ? (
         <section>
