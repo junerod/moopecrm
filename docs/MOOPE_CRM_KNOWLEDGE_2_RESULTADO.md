@@ -184,7 +184,7 @@ Working tree ainda tem zips/xray/screenshots de fases visuais e `.cursor/` — *
 
 ## 39. Commit
 
-Local, mensagem pedida. Hash no veredito.
+`655661c6` local — `feat(ai): add document knowledge ingestion`. Sem push.
 
 ## 40. Veredito
 
