@@ -19,7 +19,10 @@ export default async function DonePage() {
   // Antes era uma terceira lista, fixa, e por isso ela listava "Loja Nuvemshop
   // (pulado)" em instalações que nunca ofereceram esse passo — o wizard
   // acusando a pessoa de não fazer o que ninguém lhe pediu.
-  const itens = resumoDoOnboarding(state, { lojaLigada: env.NUVEMSHOP_ENABLED });
+  const itens = resumoDoOnboarding(state, {
+    lojaLigada: env.NUVEMSHOP_ENABLED,
+    packId: state.welcome?.pack_id ?? null,
+  });
 
   return <DoneClient itens={itens} pecas={oQueMaisExiste()} />;
 }

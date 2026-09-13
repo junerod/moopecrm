@@ -34,6 +34,7 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
   const [displayName, setDisplayName] = useState(defaultOrgName);
   const [ramo, setRamo] = useState<IdDoRamo | null>(null);
   const [subtype, setSubtype] = useState<SubtypeLocacao | null>(null);
+  const [packId, setPackId] = useState<string>("");
   const [detalhe, setDetalhe] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -81,6 +82,39 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-zinc-100">Qual é o seu tipo de negócio?</legend>
+          <label
+            data-testid="pack-locadora-card"
+            className={cn(
+              "flex cursor-pointer flex-col gap-2 rounded-xl border p-4 transition-colors",
+              packId === "locadora_veiculos"
+                ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                : "border-white/10 hover:border-accent/40 hover:bg-white/5",
+            )}
+          >
+            <input
+              type="radio"
+              name="ready_model_id"
+              value="locacao"
+              checked={packId === "locadora_veiculos"}
+              onChange={() => {
+                setRamo("locacao");
+                setSubtype("veiculos");
+                setPackId("locadora_veiculos");
+              }}
+              className="sr-only"
+            />
+            <Car
+              size={22}
+              weight={packId === "locadora_veiculos" ? "fill" : "regular"}
+              className={packId === "locadora_veiculos" ? "text-accent" : "text-zinc-400"}
+              aria-hidden
+            />
+            <span className="text-sm font-medium text-zinc-100">Locadora de veículos</span>
+            <span className="text-xs leading-snug text-zinc-500">
+              Atendimento, vendas, disponibilidade, cobranças, pós-locação e relacionamento com
+              clientes.
+            </span>
+          </label>
           <div className="grid gap-2 sm:grid-cols-2">
             {RAMOS_DO_NEGOCIO.map((r) => {
               const Icone = ICONE_DO_RAMO[r.id];
@@ -102,6 +136,7 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
                     checked={marcada}
                     onChange={() => {
                       setRamo(r.id);
+                      setPackId("");
                       if (r.id !== "locacao") setSubtype(null);
                     }}
                     className="sr-only"
@@ -143,7 +178,10 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
                       name="ready_model_subtype"
                       value={s}
                       checked={marcada}
-                      onChange={() => setSubtype(s)}
+                      onChange={() => {
+                        setSubtype(s);
+                        setPackId(s === "veiculos" ? "locadora_veiculos" : "");
+                      }}
                       className="sr-only"
                     />
                     <Handshake
@@ -172,6 +210,10 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
 
         <input type="hidden" name="o_que_faz" value={oQueFaz} />
         <input type="hidden" name="timezone" value={FUSO_PADRAO} />
+        {packId ? <input type="hidden" name="pack_id" value={packId} /> : null}
+        {packId === "locadora_veiculos" && subtype === "veiculos" ? (
+          <input type="hidden" name="ready_model_subtype" value="veiculos" />
+        ) : null}
 
         <label className="flex items-start gap-2 text-sm text-zinc-300">
           <input
@@ -202,7 +244,11 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
               disabled={pending || !accepted || !ramo || locacaoSemSubtype}
               className="w-full sm:w-auto"
             >
-              {pending ? "Salvando..." : "Continuar"}
+              {pending
+                ? "Salvando..."
+                : packId === "locadora_veiculos"
+                  ? "Usar modelo para locadora"
+                  : "Continuar"}
             </Button>
           }
         />

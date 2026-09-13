@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Business Packs — configuração versionada do produto existente",
+    "subtitle": "o instalador copia dado; o runtime lê pipeline, agentes, coleções e router",
+    "output": "business-packs.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o humano vê" },
+    { "id": "dado", "label": "Definition" },
+    { "id": "copia", "label": "Instalador" },
+    { "id": "core", "label": "Core do CRM" }
+  ],
+  "mainPath": ["wizard", "catalogo", "instalador", "pipeline"],
+  "nodes": [
+    { "id": "wizard", "lane": "humano", "col": 1, "type": "frontend", "label": "/onboarding/pack", "sublabel": "revisar → preparar" },
+    { "id": "modelos", "lane": "humano", "col": 2, "type": "frontend", "label": "/app/modelos-prontos", "sublabel": "ativar · personalizar · test-drive" },
+    { "id": "catalogo", "lane": "dado", "col": 1, "type": "service", "label": "lib/business-packs/catalogo", "sublabel": "locadora_veiculos@1.0" },
+    { "id": "definition", "lane": "dado", "col": 2, "type": "service", "label": "BusinessPackDefinition", "sublabel": "funil · especialidades · intents" },
+    { "id": "instalador", "lane": "copia", "col": 2, "type": "service", "label": "aplicarBusinessPack", "sublabel": "idempotente · não sobrescreve" },
+    { "id": "ready", "lane": "copia", "col": 1, "type": "service", "label": "aplicarReadyModel", "sublabel": "pipeline override do pack" },
+    { "id": "pipeline", "lane": "core", "col": 2, "type": "database", "label": "crm_pipelines", "sublabel": "COMERCIAL — LOCADORA" },
+    { "id": "agentes", "lane": "core", "col": 3, "type": "database", "label": "ai_agents", "sublabel": "6 especialidades · 1 conversa" },
+    { "id": "colecoes", "lane": "core", "col": 3, "type": "database", "label": "settings.knowledge_collections", "sublabel": "vínculo no config do agente" },
+    { "id": "testdrive", "lane": "core", "col": 4, "type": "service", "label": "test-drive", "sublabel": "classifica · não envia · não chama tool" },
+    { "id": "runtime", "lane": "core", "col": 1, "type": "service", "label": "inbound / policy / router", "sublabel": "não lê pack id" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "wizard", "to": "catalogo", "label": "escolhe pack_id" },
+    { "id": "e2", "from": "catalogo", "to": "definition", "label": "resolve dado" },
+    { "id": "e3", "from": "definition", "to": "instalador", "label": "sem if de nicho no runtime" },
+    { "id": "e4", "from": "instalador", "to": "ready", "label": "reusa Ready Model" },
+    { "id": "e5", "from": "ready", "to": "pipeline", "label": "copia etapas" },
+    { "id": "e6", "from": "instalador", "to": "agentes", "label": "select-before-insert" },
+    { "id": "e7", "from": "instalador", "to": "colecoes", "label": "slugs estáveis" },
+    { "id": "e8", "from": "modelos", "to": "instalador", "label": "reaplicar" },
+    { "id": "e9", "from": "modelos", "to": "testdrive", "label": "mensagem de ensaio" },
+    { "id": "e10", "from": "testdrive", "to": "definition", "label": "mapa de intents" },
+    { "id": "e11", "from": "runtime", "to": "pipeline", "label": "lê settings, não o pack" },
+    { "id": "e12", "from": "runtime", "to": "agentes", "label": "default + router" }
+  ]
+}

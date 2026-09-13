@@ -8,6 +8,7 @@ import {
   Brain,
   Buildings,
   CalendarBlank,
+  Car,
   ChartBar,
   Megaphone,
   ChartLineUp,
@@ -275,6 +276,15 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   },
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----
+  {
+    href: "/app/modelos-prontos",
+    label: "Modelos prontos",
+    description: "Operação pronta: assistentes, funil, automações e teste sem WhatsApp.",
+    icon: Car,
+    group: "ia",
+    section: "Montar o agente",
+    minRole: "manager",
+  },
   {
     href: "/app/ai/agents",
     label: "Assistentes IA",

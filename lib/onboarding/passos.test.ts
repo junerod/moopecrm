@@ -14,6 +14,7 @@ import type { OnboardingState } from "@/lib/schemas/onboarding";
 
 const SEM_LOJA: ContextoDoPasso = { lojaLigada: false };
 const COM_LOJA: ContextoDoPasso = { lojaLigada: true };
+const COM_PACK: ContextoDoPasso = { lojaLigada: false, packId: "locadora_veiculos" };
 const VAZIO: OnboardingState = {};
 
 const ORDEM = [
@@ -36,6 +37,19 @@ describe("passos visíveis", () => {
 
   it("mesmo com a loja ligada o wizard não oferece Nuvemshop", () => {
     expect(passosVisiveis(COM_LOJA).map((p) => p.segmento)).toEqual(ORDEM);
+  });
+
+  it("pack escolhido abre o passo de revisão depois do negócio", () => {
+    expect(passosVisiveis(COM_PACK).map((p) => p.segmento)).toEqual([
+      "welcome",
+      "pack",
+      "connect-whatsapp",
+      "quem-atende",
+      "funil",
+      "follow-up",
+      "setup-ai",
+      "invite-team",
+    ]);
   });
 });
 

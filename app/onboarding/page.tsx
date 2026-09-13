@@ -20,6 +20,9 @@ export default async function OnboardingIndex() {
   const { state, onboardedAt } = await loadOnboardingState(activeOrg.orgId);
   if (onboardedAt) redirect("/app/inbox");
 
-  const passo = proximoPasso(state, { lojaLigada: env.NUVEMSHOP_ENABLED });
+  const passo = proximoPasso(state, {
+    lojaLigada: env.NUVEMSHOP_ENABLED,
+    packId: state.welcome?.pack_id ?? null,
+  });
   redirect(passo ? `/onboarding/${passo.segmento}` : "/onboarding/done");
 }

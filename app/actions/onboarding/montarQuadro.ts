@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizarProposta, validarProposta, type PropostaDeFunil } from "@/lib/onboarding/proposta-de-funil";
+import { resolverPack } from "@/lib/business-packs/catalogo";
 import { aplicarReadyModel } from "@/lib/ready-models/aplicar";
 import { resolverDefinition } from "@/lib/ready-models/catalogo";
 import { requireOnboardingCtx, patchOnboardingState, loadOnboardingState, OnboardingError } from "./_shared";
@@ -59,10 +60,12 @@ export async function dadosDoPasso(orgId: string): Promise<DadosDoPasso> {
   const atual = await carregarQuadroAtual(admin, orgId);
   let id = "personalizado";
   let subtype: string | undefined;
+  let packId: string | undefined;
   try {
     const { state } = await loadOnboardingState(orgId);
     id = state.welcome?.ready_model_id ?? "personalizado";
     subtype = state.welcome?.ready_model_subtype;
+    packId = state.welcome?.pack_id;
   } catch {
     id = "personalizado";
   }
@@ -76,10 +79,11 @@ export async function dadosDoPasso(orgId: string): Promise<DadosDoPasso> {
       editavel: true,
     };
   }
+  const pack = packId ? resolverPack(packId) : null;
   return {
     atual,
-    proposta: definition.pipeline,
-    rotulo: definition.label,
+    proposta: pack?.pipeline ?? definition.pipeline,
+    rotulo: pack?.label ?? definition.label,
     editavel: definition.id === "personalizado",
   };
 }

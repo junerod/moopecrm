@@ -15,6 +15,7 @@ import { capacidadesPadraoDoOnboarding } from "@/lib/ai/agents/capacidades-padra
 import { publicarMemoriaDaOrg } from "@/lib/ai/memoria-da-org";
 import { escolherModeloDoProvedor } from "@/lib/ai/agents/escolher-modelo";
 import { chaveDePlataforma } from "@/lib/ai/runtime/agent";
+import { adaptarAgentePadraoDoPack } from "@/lib/business-packs/aplicar";
 import {
   requireOnboardingCtx,
   patchOnboardingState,
@@ -414,6 +415,12 @@ export async function createDefaultAgent(formData: FormData): Promise<CreateAgen
       return { ok: false, error: "db_error", details: error?.message };
     }
     agent = data;
+  }
+
+  try {
+    await adaptarAgentePadraoDoPack(admin, ctx.orgId);
+  } catch {
+    // Pack é opcional. Falha aqui não pode travar o wizard.
   }
 
   // As regras da casa valem para QUALQUER agente da organização, então vão para

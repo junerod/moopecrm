@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 
+import { BUSINESS_PACK_IDS } from "@/lib/business-packs/tipos";
 import { READY_MODEL_IDS, LOCACAO_SUBTYPES } from "@/lib/ready-models/tipos";
 import { AI_MODES } from "@/lib/schemas/settings";
 
@@ -11,6 +12,7 @@ export const welcomeSchema = z.object({
   display_name: z.string().min(2).max(120),
   ready_model_id: z.enum(READY_MODEL_IDS).optional(),
   ready_model_subtype: z.enum(LOCACAO_SUBTYPES).optional(),
+  pack_id: z.enum(BUSINESS_PACK_IDS).optional(),
   /**
    * O que o negócio faz, na palavra do dono ("clínica odontológica", "vendo
    * roupa fitness pelo WhatsApp").
@@ -75,6 +77,7 @@ export const onboardingStateSchema = z.object({
       o_que_faz: z.string().optional(),
       ready_model_id: z.enum(READY_MODEL_IDS).optional(),
       ready_model_subtype: z.enum(LOCACAO_SUBTYPES).optional(),
+      pack_id: z.enum(BUSINESS_PACK_IDS).optional(),
     })
     .optional(),
   routing: z
@@ -133,6 +136,13 @@ export const onboardingStateSchema = z.object({
       pipeline_id: z.string().optional(),
       origem: z.enum(["ia", "pacote", "ready_model"]).optional(),
       etapas: z.number().optional(),
+      skipped: z.boolean().optional(),
+    })
+    .optional(),
+  pack: z
+    .object({
+      id: z.enum(BUSINESS_PACK_IDS),
+      version: z.string(),
       skipped: z.boolean().optional(),
     })
     .optional(),

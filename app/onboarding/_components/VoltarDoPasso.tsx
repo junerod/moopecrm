@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { usePackDoWizard } from "@/app/onboarding/_components/PackDoWizard";
 import { passoAnterior } from "@/lib/onboarding/passos";
 import { CaretLeft } from "@/lib/ui/icons";
 
@@ -12,8 +13,18 @@ import { CaretLeft } from "@/lib/ui/icons";
  *
  * Mesmo tamanho e peso do "Pular" — os dois ficam na mesma linha.
  */
-export function VoltarDoPasso({ segmento }: { segmento: string }) {
-  const anterior = passoAnterior(segmento, { lojaLigada: false });
+export function VoltarDoPasso({
+  segmento,
+  packId,
+}: {
+  segmento: string;
+  packId?: string | null;
+}) {
+  const doWizard = usePackDoWizard();
+  const anterior = passoAnterior(segmento, {
+    lojaLigada: false,
+    packId: packId ?? doWizard,
+  });
   if (!anterior) return null;
 
   return (
@@ -31,15 +42,17 @@ export function AcoesDoPasso({
   segmento,
   pular,
   avancar,
+  packId,
 }: {
   segmento: string;
   pular?: React.ReactNode;
   avancar?: React.ReactNode;
+  packId?: string | null;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
       <div className="flex flex-wrap items-center gap-2">
-        <VoltarDoPasso segmento={segmento} />
+        <VoltarDoPasso segmento={segmento} packId={packId} />
         {pular}
       </div>
       {avancar}

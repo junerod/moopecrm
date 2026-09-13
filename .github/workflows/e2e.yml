@@ -232,6 +232,7 @@ jobs:
         knowledge-documents-real.spec.ts
         knowledge-multimodal.spec.ts
         knowledge-vision-real.spec.ts
+        pack-locadora.spec.ts
       # Cada item aqui tem o motivo MEDIDO, não presumido — e o gate cobra que a
       # lista exista e some com as outras duas.
       #

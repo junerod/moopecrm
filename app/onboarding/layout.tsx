@@ -9,6 +9,7 @@ import { MarcaNoCabecalho } from "./_components/MarcaNoCanto";
 import { branding } from "@/lib/branding";
 import { passosVisiveis } from "@/lib/onboarding/passos";
 import { env } from "@/lib/env";
+import { PackDoWizardProvider } from "./_components/PackDoWizard";
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAuth();
@@ -20,7 +21,10 @@ export default async function OnboardingLayout({ children }: { children: React.R
 
   // Os passos que ESTA instalação oferece, com o que já foi resolvido. O
   // indicador não decide mais nada sozinho — ele desenha o que recebe.
-  const passos = passosVisiveis({ lojaLigada: env.NUVEMSHOP_ENABLED }).map((p) => ({
+  const passos = passosVisiveis({
+    lojaLigada: env.NUVEMSHOP_ENABLED,
+    packId: state.welcome?.pack_id ?? null,
+  }).map((p) => ({
     segmento: p.segmento,
     rotulo: p.rotulo,
     cumprido: p.cumprido(state),
@@ -29,7 +33,10 @@ export default async function OnboardingLayout({ children }: { children: React.R
   const isDev = process.env.NODE_ENV !== "production";
   const marca = branding();
 
+  const packId = state.welcome?.pack_id ?? null;
+
   return (
+    <PackDoWizardProvider packId={packId}>
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
       <ForcarTemaEscuro />
       <header className="border-b border-white/10 bg-zinc-900/80 backdrop-blur">
@@ -46,5 +53,6 @@ export default async function OnboardingLayout({ children }: { children: React.R
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">{children}</main>
     </div>
+    </PackDoWizardProvider>
   );
 }

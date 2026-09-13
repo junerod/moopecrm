@@ -422,6 +422,14 @@ export const AUDIT_ACTIONS = [
   "knowledge.source_uploaded",
   "knowledge.source_archived",
   "knowledge.source_reindexed",
+  "pack.installed",
+  "pack.updated",
+  "pack.configured",
+  "pack.agent.enabled",
+  "pack.agent.disabled",
+  "pack.automation.enabled",
+  "pack.knowledge.collection.linked",
+  "pack.integration.capability.used",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

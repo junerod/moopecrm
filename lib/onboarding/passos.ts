@@ -37,6 +37,8 @@ export interface PassoDoOnboarding {
 export interface ContextoDoPasso {
   /** A integração de loja está ligada nesta instalação? */
   lojaLigada: boolean;
+  /** Pack escolhido no welcome — passo de revisão só existe nesse caso. */
+  packId?: string | null;
 }
 
 /** Um passo marcado no estado — com ou sem `skipped`. */
@@ -55,6 +57,13 @@ export const PASSOS: readonly PassoDoOnboarding[] = [
     existe: () => true,
     cumprido: (s) => marcado(s.welcome),
     pulado: () => false,
+  },
+  {
+    segmento: "pack",
+    rotulo: "Sua operação",
+    existe: (ctx) => Boolean(ctx.packId),
+    cumprido: (s) => marcado(s.pack),
+    pulado: (s) => foiPulado(s.pack),
   },
   {
     segmento: "connect-whatsapp",

@@ -31,5 +31,6 @@ describe("runtime não ramifica por Ready Model", () => {
     const src = readFileSync(path, "utf8");
     expect(src).not.toMatch(PROIBIDO);
     expect(src).not.toMatch(/ready-models\/modelos/);
+    expect(src).not.toMatch(/business-packs\/modelos/);
   });
 });
