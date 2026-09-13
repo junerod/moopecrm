@@ -59,7 +59,7 @@ export function ProfileForm({ email, initialFullName, initialAvatarUrl }: Props)
 
   return (
     <form onSubmit={handleSubmit} className="max-w-xl">
-      <Card className="space-y-4 p-6">
+      <Card className="space-y-4 bg-[var(--color-surface)] p-6">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input id="email" value={email} disabled />

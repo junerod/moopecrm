@@ -1,11 +1,15 @@
 import Link from "next/link";
 
-import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
-import { ROLE_RANK } from "@/lib/auth/types";
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TeamMembersClient } from "./_components/TeamMembersClient";
+import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { ROLE_RANK } from "@/lib/auth/types";
+import { UsersThree } from "@/lib/ui/icons";
+
 import { AttendantsClient } from "./_components/AttendantsClient";
+import { TeamMembersClient } from "./_components/TeamMembersClient";
 
 export const dynamic = "force-dynamic";
 
@@ -16,20 +20,19 @@ export default async function TeamPage() {
   const isManager = !!activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Equipe</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestão de membros, roles e atendimento do tenant.
-          </p>
-        </div>
-        {isAdmin ? (
-          <Button asChild className="shrink-0">
-            <Link href="/app/team/invite">Convidar membros</Link>
-          </Button>
-        ) : null}
-      </header>
+    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={UsersThree} tone="teal" size="lg" />}
+        titulo="Equipe"
+        descricao="Gestão de membros, roles e atendimento do tenant."
+        acoes={
+          isAdmin ? (
+            <Button asChild className="shrink-0">
+              <Link href="/app/team/invite">Convidar membros</Link>
+            </Button>
+          ) : null
+        }
+      />
 
       <Tabs defaultValue="members" className="flex flex-1 flex-col">
         <TabsList>

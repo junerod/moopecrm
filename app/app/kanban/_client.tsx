@@ -9,7 +9,13 @@ import { EmptyPipeline } from "@/components/empty";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/types";
-import { Archive, CaretDown, CaretUp, Check, Kanban, PencilSimple, Plus } from "@/lib/ui/icons";
+import { Archive, CaretDown, CaretUp, Check, DotsThree, Kanban, PencilSimple, Plus } from "@/lib/ui/icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   useArquivarFunil,
   useCriarFunil,
@@ -369,40 +375,45 @@ export function FunisClient({
                 </div>
 
                 {podeGerenciar && !renomeandoAqui && (
-                  <div className="flex shrink-0 flex-wrap gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setRenomeando({ id: funil.id, nome: funil.name })}
-                      disabled={ocupado}
-                      data-testid={`renomear-${funil.id}`}
-                    >
-                      <PencilSimple size={16} className="mr-1" aria-hidden /> Renomear
-                    </Button>
-                    {!funil.is_default && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        onClick={() => aplicar(funil.id, { is_default: true })}
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
                         disabled={ocupado}
-                        data-testid={`padrao-${funil.id}`}
+                        aria-label={`Mais ações de ${funil.name}`}
+                        data-testid={`menu-${funil.id}`}
                       >
-                        <Check size={16} className="mr-1" aria-hidden /> Tornar padrão
+                        <DotsThree size={16} weight="bold" aria-hidden />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setErro(null);
-                        setArquivando({ id: funil.id, erro: null });
-                      }}
-                      disabled={ocupado}
-                      data-testid={`arquivar-${funil.id}`}
-                    >
-                      <Archive size={16} className="mr-1" aria-hidden /> Arquivar
-                    </Button>
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        data-testid={`renomear-${funil.id}`}
+                        onSelect={() => setRenomeando({ id: funil.id, nome: funil.name })}
+                      >
+                        <PencilSimple size={16} className="mr-2" aria-hidden /> Renomear
+                      </DropdownMenuItem>
+                      {!funil.is_default && (
+                        <DropdownMenuItem
+                          data-testid={`padrao-${funil.id}`}
+                          onSelect={() => aplicar(funil.id, { is_default: true })}
+                        >
+                          <Check size={16} className="mr-2" aria-hidden /> Tornar padrão
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        data-testid={`arquivar-${funil.id}`}
+                        onSelect={() => {
+                          setErro(null);
+                          setArquivando({ id: funil.id, erro: null });
+                        }}
+                      >
+                        <Archive size={16} className="mr-2" aria-hidden /> Arquivar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
 

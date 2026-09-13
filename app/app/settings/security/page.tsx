@@ -1,6 +1,10 @@
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
+import { empresaExigeMfa } from "@/lib/auth/politica-mfa";
 import { requireAuth, isMfaEnrolled, resolveActiveOrg, requiresMfa } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { empresaExigeMfa } from "@/lib/auth/politica-mfa";
+import { ShieldCheck } from "@/lib/ui/icons";
+
 import { SecurityClient } from "./_client";
 
 export const dynamic = "force-dynamic";
@@ -37,14 +41,12 @@ export default async function SecurityPage() {
   const obrigatorio = await requiresMfa(org?.role, user.is_platform_admin, user.id, org?.orgId);
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Segurança</h1>
-        <p className="text-sm text-muted-foreground">
-          A verificação em duas etapas da sua conta, os códigos de recuperação e as
-          sessões abertas.
-        </p>
-      </header>
+    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={ShieldCheck} tone="blue" size="lg" />}
+        titulo="Segurança"
+        descricao="A verificação em duas etapas da sua conta, os códigos de recuperação e as sessões abertas."
+      />
 
       <SecurityClient
         mfaEnrolled={enrolled}

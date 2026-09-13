@@ -104,24 +104,8 @@ export function InboxFilters({ value, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  return (
-    <div className="space-y-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
-      <div className="relative">
-        <MagnifyingGlass
-          size={14}
-          weight="regular"
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-          aria-hidden
-        />
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder={t("Buscar mensagens…")}
-          className="h-8 pl-8 text-sm"
-          aria-label="Buscar conversas"
-        />
-      </div>
-
+  const extras = (
+    <>
       {showChannelSwitch && (
         <Select
           value={value.channel_session_id ?? "all"}
@@ -181,6 +165,44 @@ export function InboxFilters({ value, onChange }: Props) {
         </Select>
       )}
 
+      <div className="flex items-center justify-between">
+        <Label htmlFor="only-unread" className="text-xs text-muted-foreground">
+          {t("Apenas não lidos")}
+        </Label>
+        <Switch
+          id="only-unread"
+          checked={value.onlyUnread}
+          onCheckedChange={(v) => onChange({ ...value, onlyUnread: v })}
+        />
+      </div>
+    </>
+  );
+
+  return (
+    <div className="space-y-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+      <div className="relative">
+        <MagnifyingGlass
+          size={14}
+          weight="regular"
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder={t("Buscar mensagens…")}
+          className="h-8 pl-8 text-sm"
+          aria-label="Buscar conversas"
+        />
+      </div>
+
+      <details className="md:[&>summary]:hidden">
+        <summary className="cursor-pointer text-[12px] font-medium text-[var(--color-text-muted)]">
+          Filtros
+        </summary>
+        <div className="mt-2 space-y-2 md:!mt-0 md:!block">{extras}</div>
+      </details>
+
       <Tabs
         value={value.tab}
         onValueChange={(v) => onChange({ ...value, tab: v as InboxTab })}
@@ -214,17 +236,6 @@ export function InboxFilters({ value, onChange }: Props) {
       </Tabs>
 
       <QueueWaitSummary visible={value.tab === "unassigned"} />
-
-      <div className="flex items-center justify-between">
-        <Label htmlFor="only-unread" className="text-xs text-muted-foreground">
-          {t("Apenas não lidos")}
-        </Label>
-        <Switch
-          id="only-unread"
-          checked={value.onlyUnread}
-          onCheckedChange={(v) => onChange({ ...value, onlyUnread: v })}
-        />
-      </div>
     </div>
   );
 }

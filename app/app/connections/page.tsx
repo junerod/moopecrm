@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 
+import { ConexoesShell } from "@/components/connections/ConexoesShell";
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { ConexoesShell } from "@/components/connections/ConexoesShell";
+import { PlugsConnected } from "@/lib/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +23,12 @@ export default async function ConnectionsPage() {
   );
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Conexões</h1>
-        <p className="text-sm text-muted-foreground">
-          Por onde seu negócio fala com o cliente. Conecte números por QR ou o número oficial
-          da Meta, e acompanhe a saúde de cada um.
-        </p>
-      </header>
+    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={PlugsConnected} tone="teal" size="lg" />}
+        titulo="Conexões"
+        descricao="Por onde seu negócio fala com o cliente. Conecte números por QR ou o número oficial da Meta, e acompanhe a saúde de cada um."
+      />
       <ConexoesShell wahaConfigured={wahaConfigured} />
     </div>
   );

@@ -64,7 +64,7 @@ export function SecurityClient({
           Ele recarrega a página ao terminar, e o servidor reavalia o estado. */}
       {ativando ? <MfaEnrollModal motivo="escolha" /> : null}
 
-      <Card className="space-y-3 p-6">
+      <Card className="space-y-3 bg-[var(--color-surface)] p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold">Verificação em duas etapas</h2>
@@ -122,7 +122,7 @@ export function SecurityClient({
       </Card>
 
       {podeExigirDaEquipe ? (
-        <Card className="space-y-3 p-6">
+        <Card className="space-y-3 bg-[var(--color-surface)] p-6">
           <h2 className="text-sm font-semibold">Exigir de quem administra</h2>
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -161,7 +161,7 @@ export function SecurityClient({
         </Card>
       ) : null}
 
-      <Card className="space-y-3 p-6">
+      <Card className="space-y-3 bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-semibold">Códigos de recuperação</h2>
         <p className="text-xs text-muted-foreground">
           Use se perder acesso ao autenticador. Cada código é de uso único.
@@ -184,7 +184,7 @@ export function SecurityClient({
         )}
       </Card>
 
-      <Card className="space-y-3 p-6">
+      <Card className="space-y-3 bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-semibold">Sessões ativas</h2>
         <p className="text-xs text-muted-foreground">
           Listagem de sessões — em breve. Por enquanto, deslogue todos os dispositivos:

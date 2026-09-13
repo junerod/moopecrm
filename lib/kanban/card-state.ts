@@ -63,6 +63,10 @@ export interface CardInput {
   temperatura?: "frio" | "morno" | "quente" | null;
   /** Próxima ação canônica (`demandas`). Distinta da proposta de IA. */
   proximaAcao?: { demanda_id: string; texto: string; em: string | null } | null;
+  /** Telefone do contato — só quando o board já trouxe. */
+  phone?: string | null;
+  /** Papel da pessoa (lead/cliente/equipe/ignorado), não do negócio. */
+  papel?: string | null;
 }
 
 /**
@@ -88,6 +92,7 @@ export function buildCardInput(
     | "proxima_acao"
     | "score"
     | "temperatura"
+    | "contato"
   >,
   opts: {
     stageName: string;
@@ -142,6 +147,8 @@ export function buildCardInput(
           em: lead.proxima_acao.em,
         }
       : null,
+    phone: lead.contato?.phone_number ?? null,
+    papel: lead.contato?.papel ?? null,
   };
 }
 

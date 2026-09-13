@@ -4,8 +4,12 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import type { FollowupFlowPointerRow } from "@/hooks/followup/useFollowupFlows";
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ehFollowupDeSilencio } from "@/lib/negocio/followup-24h";
+import { FlowArrow } from "@/lib/ui/icons";
+
 import { FlowsList } from "./_components/FlowsList";
 import { ProntasTab } from "./_components/ProntasTab";
 import { QueueTab } from "./_components/QueueTab";
@@ -42,16 +46,12 @@ export default async function FollowupFlowsPage() {
   );
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Automações</h1>
-          <p className="text-sm text-text-muted">
-            Recados e tarefas que o sistema faz sozinho. Se o cliente responder
-            ou pedir para parar, o retorno para.
-          </p>
-        </div>
-      </header>
+    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={FlowArrow} tone="cyan" size="lg" />}
+        titulo="Automações"
+        descricao="Recados e tarefas que o sistema faz sozinho. Se o cliente responder ou pedir para parar, o retorno para."
+      />
       <Tabs defaultValue="minhas" className="flex flex-1 flex-col">
         <TabsList>
           <TabsTrigger value="prontas">Prontas</TabsTrigger>

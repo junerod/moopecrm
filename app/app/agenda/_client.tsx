@@ -21,7 +21,9 @@ import { useHorariosLivres } from "@/hooks/agenda/useHorariosLivres";
 import { useMarcarAgendamento } from "@/hooks/agenda/useMarcarAgendamento";
 import { useCancelarAgendamento, useRemarcarAgendamento } from "@/hooks/agenda/useRemarcarAgendamento";
 import { usePessoasDaAgenda } from "@/hooks/agenda/usePessoasDaAgenda";
-import { CalendarPlus, CaretLeft, CaretRight } from "@/lib/ui/icons";
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
+import { CalendarPlus, CalendarBlank, CaretLeft, CaretRight } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const VISOES: Array<{ id: VisaoDaAgenda; rotulo: string }> = [
@@ -210,7 +212,7 @@ export function AgendaClient({
       data-testid="tela-agenda"
       data-fonte={agendamentosIniciais.length > 0 ? "api" : "api-sem-dado"}
       data-fuso={fusoDeApresentacao ?? "organizacao"}
-      className="flex h-full flex-col gap-4 p-6"
+      className="flex h-full flex-col gap-4 bg-[var(--color-bg)] p-6"
     >
       {/*
         Em Suspense porque `useSearchParams` obriga: sem a fronteira, o Next
@@ -228,13 +230,11 @@ export function AgendaClient({
         enderecoDeRetorno={enderecoDeRetorno}
       />
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
-          <p className="text-sm text-muted-foreground">
-            O que está marcado, com quem, e quem atende — seu e da equipe.
-          </p>
-        </div>
+      <PageHeader
+        icon={<AppIcon icon={CalendarBlank} tone="amber" size="lg" />}
+        titulo="Agenda"
+        descricao="O que está marcado, com quem, e quem atende — seu e da equipe."
+        acoes={
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setAncora(new Date())}>
             Hoje
@@ -272,7 +272,8 @@ export function AgendaClient({
             <span>Novo agendamento</span>
           </Button>
         </div>
-      </header>
+        }
+      />
 
       <ObrigacoesComerciais />
 

@@ -13,7 +13,14 @@ import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
 import { StatusBadge } from "@/components/ds/StatusBadge";
 import { estadoDaProximaAcao, rotuloDoAtraso, rotuloDoQuando } from "@/lib/comercial/proxima-acao";
-import { ehTemperaturaDoLead, ROTULO_DA_TEMPERATURA } from "@/lib/crm/papel-e-temperatura";
+import { formatarTelefone } from "@/lib/contacts/formatar-telefone";
+import {
+  ehPapelDoContato,
+  ehTemperaturaDoLead,
+  ROTULO_DA_TEMPERATURA,
+  ROTULO_DO_PAPEL,
+} from "@/lib/crm/papel-e-temperatura";
+import { TOM_DO_PAPEL } from "@/lib/inbox/tom-da-tag";
 import { tomDaTemperatura } from "@/lib/kanban/tom-da-etapa";
 
 interface KanbanCardProps {
@@ -159,20 +166,40 @@ export function KanbanCard({
                   acessibilidade; deixar só onKeyDown daria uma ação que existe
                   e NÃO É DESCOBERTA por leitor de tela. O título como button
                   atende mouse, teclado e leitor sem desfazer a decisão antiga. */}
-              <h3 className="line-clamp-2 h-10 text-sm font-medium leading-5 text-text">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpen?.(card.id);
-                  }}
-                  className="text-left hover:underline"
-                >
-                  {card.title}
-                </button>
-              </h3>
+              <div className="min-w-0">
+                <h3 className="line-clamp-2 text-sm font-medium leading-5 text-text">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpen?.(card.id);
+                    }}
+                    className="text-left hover:underline"
+                  >
+                    {card.title}
+                  </button>
+                </h3>
+                {formatarTelefone(card.phone) ? (
+                  <p
+                    className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--color-text-muted)]"
+                    data-testid="kanban-telefone"
+                  >
+                    {formatarTelefone(card.phone)}
+                  </p>
+                ) : null}
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
+              {ehPapelDoContato(card.papel) ? (
+                <StatusBadge
+                  tone={TOM_DO_PAPEL[card.papel]}
+                  className="h-5 px-1.5 text-[10px]"
+                  data-testid="kanban-papel"
+                  title={ROTULO_DO_PAPEL[card.papel]}
+                >
+                  {ROTULO_DO_PAPEL[card.papel]}
+                </StatusBadge>
+              ) : null}
               {ehTemperaturaDoLead(card.temperatura) && tomDaTemperatura(card.temperatura) ? (
                 <StatusBadge
                   tone={tomDaTemperatura(card.temperatura)!}

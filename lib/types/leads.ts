@@ -92,6 +92,15 @@ export interface Lead {
     last_message_at: string | null;
     unread: number;
   } | null;
+  /**
+   * Derivado (não é coluna de crm_leads): identidade do contato para o card.
+   * Ausente = lead sem contato, ou contato sem telefone/papel.
+   */
+  contato?: {
+    phone_number: string | null;
+    papel: string | null;
+    display_name: string | null;
+  } | null;
   score?: {
     probability: number;
     reason: string;

@@ -347,13 +347,17 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
 
   return (
     <aside className="flex h-full min-w-0 flex-col gap-0 overflow-x-hidden overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4">
-      <section className="space-y-2 pb-4">
+      <section className="space-y-1.5 pb-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          <div className="text-lg font-semibold leading-tight">{displayName}</div>
+          <div className="text-lg font-semibold leading-tight text-[var(--color-text)]">
+            {displayName}
+          </div>
           <SeloDaPessoa contact={contactVisto} />
         </div>
         {contact?.phone_number && (
-          <div className="text-[13px] text-muted-foreground">{contact.phone_number}</div>
+          <div className="text-[13px] tabular-nums text-[var(--color-text-muted)]">
+            {contact.phone_number}
+          </div>
         )}
         {contactId ? (
           <CadastrarNomeDoContato
@@ -362,40 +366,9 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
             naoSalvo={contatoNaoSalvo(contact)}
           />
         ) : null}
-        {contactId ? (
-          <ChipsDePapel
-            contactId={contactId}
-            papel={papelVisto}
-            contactName={displayName}
-            summary={summary}
-            onAtualizou={(papel) => {
-              if (papel !== undefined) {
-                setPapelLocal({ contactId, papel: papel ?? null });
-              }
-              recarregar();
-            }}
-          />
-        ) : null}
-        {contactId ? (
-          <ContactTagsEditor
-            contactId={contactId}
-            orgId={conversation.organization_id}
-            tags={tags}
-          />
-        ) : null}
-        {contactId && (
-          <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
-            <Link href={`/app/contacts/${contactId}`}>
-              Ver contato
-              <ArrowRight size={12} className="ml-1" weight="regular" aria-hidden />
-            </Link>
-          </Button>
-        )}
       </section>
 
-      <div className="border-t border-border" />
-
-      <div className="py-4">
+      <div className="border-t border-[var(--color-border)] py-4">
       {papelForaDoFunil(papelVisto) ? (
         <section
           data-testid={papelVisto === "ignorado" ? "conversa-ignorada" : "conversa-da-equipe"}
@@ -420,6 +393,41 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
         <Skeleton className="h-28 w-full" />
       ) : null}
       </div>
+
+      {contactId ? (
+        <div className="space-y-3 border-t border-[var(--color-border)] py-4">
+          <ChipsDePapel
+            contactId={contactId}
+            papel={papelVisto}
+            contactName={displayName}
+            summary={summary}
+            onAtualizou={(papel) => {
+              if (papel !== undefined) {
+                setPapelLocal({ contactId, papel: papel ?? null });
+              }
+              recarregar();
+            }}
+          />
+          <details className="text-sm">
+            <summary className="cursor-pointer text-[13px] font-medium text-[var(--color-text)]">
+              Tags do contato
+            </summary>
+            <div className="mt-2">
+              <ContactTagsEditor
+                contactId={contactId}
+                orgId={conversation.organization_id}
+                tags={tags}
+              />
+            </div>
+          </details>
+          <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+            <Link href={`/app/contacts/${contactId}`}>
+              Ver contato
+              <ArrowRight size={12} className="ml-1" weight="regular" aria-hidden />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="space-y-3 border-t border-border pt-4">
       <AssistenteIa conversationId={conversation.id} onUsarResposta={onUsarResposta} />

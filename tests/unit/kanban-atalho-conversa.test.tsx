@@ -127,7 +127,10 @@ describe("o elo que some sem barulho", () => {
       /withProximasAcoesComerciais\([\s\S]*leadsComConversa\.leads/,
     );
     expect(fonte, "o quadro responde com a cadeia que inclui a conversa").toMatch(
-      /leads:\s*leadsComPasso\.leads/,
+      /withContatos\([\s\S]*leadsComPasso\.leads/,
+    );
+    expect(fonte, "o quadro responde com a cadeia que inclui contato e conversa").toMatch(
+      /leads:\s*leadsComContato\.leads/,
     );
   });
 

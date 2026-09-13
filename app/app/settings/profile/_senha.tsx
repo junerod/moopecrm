@@ -49,7 +49,7 @@ export function TrocarSenhaForm() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-xl">
-      <Card className="space-y-4 p-6">
+      <Card className="space-y-4 bg-[var(--color-surface)] p-6">
         <div>
           <h2 className="text-sm font-semibold">Trocar senha</h2>
           <p className="mt-1 text-xs text-muted-foreground">

@@ -1,5 +1,8 @@
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { Megaphone } from "@/lib/ui/icons";
 
 import { CampanhasClient } from "./_client";
 
@@ -11,13 +14,12 @@ export default async function CampanhasPage() {
   const podeEnviar = !!org && ROLE_RANK[org.role] >= ROLE_RANK.manager;
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Campanhas</h1>
-        <p className="text-sm text-muted-foreground">
-          Disparo comercial essencial: segmento, mensagem, revisão e resultado.
-        </p>
-      </header>
+    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={Megaphone} tone="violet" size="lg" />}
+        titulo="Campanhas"
+        descricao="Disparo comercial essencial: segmento, mensagem, revisão e resultado."
+      />
       <CampanhasClient podeEnviar={podeEnviar} />
     </div>
   );

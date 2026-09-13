@@ -1,5 +1,8 @@
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { ChartBar } from "@/lib/ui/icons";
 
 import { MetricsClient } from "./_components/MetricsClient";
 
@@ -12,15 +15,16 @@ export default async function MetricsPage() {
   const canCompare = !!activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Desempenho</h1>
-        <p className="text-sm text-muted-foreground">
-          {canCompare
+    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={ChartBar} tone="blue" size="lg" />}
+        titulo="Desempenho"
+        descricao={
+          canCompare
             ? "Fila, funil, próxima ação e campanhas. Escolha Hoje, 7 ou 30 dias."
-            : "Atrito, seu funil e sua performance no período."}
-        </p>
-      </header>
+            : "Atrito, seu funil e sua performance no período."
+        }
+      />
 
       <MetricsClient canCompare={canCompare} currentUserId={user.id} />
     </div>

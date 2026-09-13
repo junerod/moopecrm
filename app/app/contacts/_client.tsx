@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, MagnifyingGlass, UploadSimple, ArrowsClockwise, DotsThree } from "@/lib/ui/icons";
+import { Plus, MagnifyingGlass, UploadSimple, ArrowsClockwise, DotsThree, Users } from "@/lib/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSincronizarContatosDoAparelho } from "@/hooks/channels/useSincronizarContatosDoAparelho";
 import { useContactList } from "@/hooks/contacts/useContactList";
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { ContactsTable } from "@/components/contacts/ContactsTable";
 import { NewContactDialog } from "@/components/contacts/NewContactDialog";
 import { ImportContactsDialog } from "@/components/contacts/ImportContactsDialog";
@@ -80,20 +82,12 @@ export function ContactsListClient() {
   );
 
   return (
-    <div className="space-y-4 p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Contatos</h1>
-          <p className="text-sm text-muted-foreground">
-            Quem já está no aparelho entra aqui sozinho. A conversa antiga
-            só vem se você importar — ou atualizar — no contato.
-          </p>
-        </div>
-        {/*
-          A estrutura é a da main (o "Importar CSV" do PR #313); o `shrink-0`
-          vem do PR #267, e vale para os DOIS botões agora: numa tela de 390px
-          uma linha de dois botões sem isso comprime os rótulos.
-        */}
+    <div className="space-y-4 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={Users} tone="teal" size="lg" />}
+        titulo="Contatos"
+        descricao="Gerencie pessoas e clientes da sua operação."
+        acoes={
         <div className="flex shrink-0 items-center gap-2">
           <Button onClick={() => setCreateOpen(true)} className="min-h-11 md:min-h-9">
             <Plus size={16} weight="bold" aria-hidden />
@@ -132,7 +126,8 @@ export function ContactsListClient() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </header>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
         <div className="relative w-full sm:w-72">

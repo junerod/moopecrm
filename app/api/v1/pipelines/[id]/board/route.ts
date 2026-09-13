@@ -252,6 +252,52 @@ async function withScores(
  * Ordena por `last_message_at` e fica com a primeira de cada contato — as
  * conversas já vêm ordenadas, então o primeiro visto é o mais recente.
  */
+/**
+ * Telefone e papel do contato — o card identifica a pessoa sem abrir o dossiê.
+ * Mesma doutrina do URI: lote curto, `organization_id` explícito, match em memória.
+ */
+async function withContatos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  leads: Lead[],
+): Promise<{ leads: Lead[]; error: string | null }> {
+  const contactIds = [...new Set(leads.map((l) => l.contact_id).filter((c): c is string => !!c))];
+  if (contactIds.length === 0) return { leads, error: null };
+
+  const { data, error } = await consultarInEmLotes<{
+    id: string;
+    phone_number: string | null;
+    papel: string | null;
+    display_name: string | null;
+    name: string | null;
+  }>(contactIds, (lote) =>
+    supabase
+      .from("contacts")
+      .select("id, phone_number, papel, display_name, name")
+      .eq("organization_id", organizationId)
+      .in("id", lote),
+  );
+  if (error) return { leads, error };
+
+  const porId = new Map((data ?? []).map((c) => [c.id, c]));
+  return {
+    leads: leads.map((lead) => {
+      if (!lead.contact_id) return lead;
+      const c = porId.get(lead.contact_id);
+      if (!c) return lead;
+      return {
+        ...lead,
+        contato: {
+          phone_number: c.phone_number,
+          papel: c.papel,
+          display_name: c.display_name ?? c.name,
+        },
+      };
+    }),
+    error: null,
+  };
+}
+
 async function withConversas(
   supabase: Awaited<ReturnType<typeof createClient>>,
   organizationId: string,
@@ -455,10 +501,19 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     return fail("internal_error", leadsComPasso.error, 500, { requestId });
   }
 
+  const leadsComContato = await withContatos(
+    supabase,
+    (pipeline as Pipeline).organization_id,
+    leadsComPasso.leads,
+  );
+  if (leadsComContato.error) {
+    return fail("internal_error", leadsComContato.error, 500, { requestId });
+  }
+
   const board: BoardData = {
     pipeline: pipeline as Pipeline,
     stages: (stages ?? []) as Stage[],
-    leads: leadsComPasso.leads,
+    leads: leadsComContato.leads,
   };
 
   return ok(board, { requestId });

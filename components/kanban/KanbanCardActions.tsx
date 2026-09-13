@@ -22,6 +22,8 @@ import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import { usePermission } from "@/hooks/auth/AuthProvider";
 import { ProximaAcaoControles } from "@/components/comercial/ProximaAcaoControles";
+import { useMarcarPapel } from "@/hooks/inbox/useMarcarPapel";
+import { PAPEIS_DO_CONTATO, ROTULO_DO_PAPEL } from "@/lib/crm/papel-e-temperatura";
 import {
   Dialog,
   DialogContent,
@@ -113,6 +115,14 @@ export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardA
           >
             <PencilSimple size={14} className="mr-2" /> Editar
           </DropdownMenuItem>
+          {lead.contact_id ? (
+            <PapelNoMenu
+              contactId={lead.contact_id}
+              nome={lead.contato?.display_name ?? lead.title}
+              atual={lead.contato?.papel}
+              pipelineId={pipelineId}
+            />
+          ) : null}
           {lead.conversa?.id ? (
             <DropdownMenuItem
               onSelect={() => {
@@ -264,5 +274,45 @@ export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardA
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function PapelNoMenu({
+  contactId,
+  nome,
+  atual,
+  pipelineId,
+}: {
+  contactId: string;
+  nome: string;
+  atual: string | null | undefined;
+  pipelineId: string;
+}) {
+  const { marcar, isPending } = useMarcarPapel(contactId);
+  const queryClient = useQueryClient();
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>Tipo da pessoa</DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        {PAPEIS_DO_CONTATO.map((p) => (
+          <DropdownMenuItem
+            key={p}
+            disabled={isPending}
+            onSelect={() => {
+              void marcar(p, {
+                atual,
+                contactName: nome,
+                onAtualizou: () => {
+                  void queryClient.invalidateQueries({ queryKey: ["board", pipelineId] });
+                },
+              });
+            }}
+          >
+            {ROTULO_DO_PAPEL[p]}
+            {atual === p ? " · atual" : ""}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

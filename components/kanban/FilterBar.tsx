@@ -111,6 +111,13 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
 
   const tagLabel = filters.tag ?? "Tag: todas";
 
+  const avancadosAtivos = [
+    filters.owner && filters.owner !== "any",
+    filters.source,
+    filters.status && filters.status !== "all",
+    filters.tag,
+  ].filter(Boolean).length;
+
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-[12px] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]">
       <Input
@@ -120,6 +127,34 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
         onChange={(e) => setSearchInput(e.target.value)}
         className="h-9 w-full sm:w-64"
       />
+
+      <Chip
+        ativo={!!filters.acaoAtrasada}
+        onChange={(v) => onChange({ ...filters, acaoAtrasada: v || undefined })}
+        testid="filtro-acao-atrasada"
+      >
+        Atrasadas
+      </Chip>
+      <Chip
+        ativo={!!filters.semProximaAcao}
+        onChange={(v) => onChange({ ...filters, semProximaAcao: v || undefined })}
+        testid="filtro-sem-proxima-acao"
+      >
+        Sem próxima ação
+      </Chip>
+      <Chip
+        ativo={!!filters.quentes}
+        onChange={(v) => onChange({ ...filters, quentes: v || undefined })}
+        testid="filtro-quentes"
+      >
+        Quentes
+      </Chip>
+
+      <details className="w-full md:w-auto md:[&>summary]:hidden">
+        <summary className="cursor-pointer text-[12px] font-medium text-[var(--color-text-muted)]">
+          Filtros{avancadosAtivos ? ` (${avancadosAtivos})` : ""}
+        </summary>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:!mt-0 md:!flex">
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -221,27 +256,6 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
       </DropdownMenu>
 
       <Chip
-        ativo={!!filters.acaoAtrasada}
-        onChange={(v) => onChange({ ...filters, acaoAtrasada: v || undefined })}
-        testid="filtro-acao-atrasada"
-      >
-        Atrasadas
-      </Chip>
-      <Chip
-        ativo={!!filters.semProximaAcao}
-        onChange={(v) => onChange({ ...filters, semProximaAcao: v || undefined })}
-        testid="filtro-sem-proxima-acao"
-      >
-        Sem próxima ação
-      </Chip>
-      <Chip
-        ativo={!!filters.quentes}
-        onChange={(v) => onChange({ ...filters, quentes: v || undefined })}
-        testid="filtro-quentes"
-      >
-        Quentes
-      </Chip>
-      <Chip
         ativo={!!filters.overdueOnly}
         onChange={(v) => onChange({ ...filters, overdueOnly: v || undefined })}
       >
@@ -268,6 +282,8 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
           Limpar filtros
         </Button>
       )}
+        </div>
+      </details>
     </div>
   );
 }

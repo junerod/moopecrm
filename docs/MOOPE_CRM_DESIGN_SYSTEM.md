@@ -131,6 +131,8 @@ Padrão: `<AppIcon icon={…} tone="blue|cyan|green|amber|red|violet|teal|indigo
 | `AppIcon` | `components/ds/AppIcon.tsx` | Sidebar, KPIs, alertas, empty |
 | `MetricCard` | `components/ds/MetricCard.tsx` | KPIs |
 | `SectionHeader` | `components/ds/SectionHeader.tsx` | Título + CTA |
+| `PageHeader` | `components/ds/PageHeader.tsx` | Título de tela + ícone + ações |
+| `EmptyState` | `components/ds/EmptyState.tsx` | Vazio premium (ícone + frase + CTA) |
 | `AlertRow` | `components/ds/AlertRow.tsx` | Prioridades, avisos |
 | `StatusBadge` | `components/ds/StatusBadge.tsx` | Estados |
 | `ThemeToggle` | já existia; agora menu de 3 opções | Topbar |
@@ -173,8 +175,11 @@ rollout**, não nesta rodada global — para não pintar 63 telas de uma vez.
 - Lista de funis: cards horizontais (`AppCard` + `AppIcon`), CTA Abrir funil.
 - Board: fundo `--color-bg`. Coluna com tom pastel por índice (`tomDaEtapa`).
   Ganho = green; perdido = red. Não persiste cor no banco.
-- Card: surface + shadow-sm, temperatura `StatusBadge`, próxima ação soft
-  (atrasada danger / hoje blue). Drag: shadow-lg + ring primary.
+- Card: surface + shadow-sm, **telefone do contato abaixo do nome** quando o
+  board trouxe (`contato.phone_number`, lote curto), papel `StatusBadge`
+  (Lead/Cliente/Equipe/Ignorar). Troca de papel no menu `…` (API de contato
+  existente — não é editor permanente no card). Temperatura e próxima ação
+  soft (atrasada danger / hoje blue). Drag: shadow-lg + ring primary.
 - Toolbar: chips compactos. Contadores de etapa só com dado real.
 
 ---

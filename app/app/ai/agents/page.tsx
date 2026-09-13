@@ -6,11 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 import type { AgentRow } from "@/hooks/ai/useAgent";
 import Link from "next/link";
 
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { Button } from "@/components/ui/button";
-import { AgentsList } from "./_components/AgentsList";
+import { lerAiMode } from "@/lib/ai/execucao/modos";
 import { logger } from "@/lib/logger";
 import { rotuloDoModoIa } from "@/lib/negocio/rotulos";
-import { lerAiMode } from "@/lib/ai/execucao/modos";
+import { Robot } from "@/lib/ui/icons";
+
+import { AgentsList } from "./_components/AgentsList";
 
 export const dynamic = "force-dynamic";
 
@@ -62,21 +66,19 @@ export default async function AgentsListPage() {
   const aiMode = lerAiMode((org?.settings as { ai_mode?: unknown } | null)?.ai_mode ?? "off");
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Meus Assistentes</h1>
-          <p className="text-sm text-muted-foreground">
-            Quem ajuda no atendimento. Um assistente novo nasce desligado até
-            você ativar.
-          </p>
-        </div>
-        {canWrite ? (
-          <Button asChild>
-            <Link href="/app/ai/agents/simples">Criar assistente</Link>
-          </Button>
-        ) : null}
-      </header>
+    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={Robot} tone="green" size="lg" />}
+        titulo="Meus Assistentes"
+        descricao="Quem ajuda no atendimento. Um assistente novo nasce desligado até você ativar."
+        acoes={
+          canWrite ? (
+            <Button asChild>
+              <Link href="/app/ai/agents/simples">Criar assistente</Link>
+            </Button>
+          ) : null
+        }
+      />
 
       <ul className="grid gap-3 md:grid-cols-2" data-testid="meus-assistentes">
         {agents.map((a) => {

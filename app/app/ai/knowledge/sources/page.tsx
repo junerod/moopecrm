@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
 import { Button } from "@/components/ui/button";
+import type { SourceRow } from "@/hooks/ai/useKnowledgeSources";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { garantirAgenteDoAcervo } from "@/lib/negocio/garantir-acervo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { SourceRow } from "@/hooks/ai/useKnowledgeSources";
+import { BookOpen } from "@/lib/ui/icons";
+
 import { ConhecimentoDaEmpresaClient } from "./_empresa";
 
 export const dynamic = "force-dynamic";
@@ -62,14 +66,12 @@ export default async function KnowledgeSourcesPage() {
   const initialSources = (sourcesRaw ?? []) as unknown as SourceRow[];
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Conhecimento da Empresa</h1>
-        <p className="text-sm text-muted-foreground">
-          Ensine o sistema sobre sua empresa. O assistente e as sugestões de
-          resposta consultam isto — não inventam o que não estiver aqui.
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 bg-[var(--color-bg)] p-6">
+      <PageHeader
+        icon={<AppIcon icon={BookOpen} tone="amber" size="lg" />}
+        titulo="Conhecimento da Empresa"
+        descricao="Ensine o sistema sobre sua empresa. O assistente e as sugestões de resposta consultam isto — não inventam o que não estiver aqui."
+      />
 
       <ConhecimentoDaEmpresaClient agentId={agent.id} initialSources={initialSources} />
 
