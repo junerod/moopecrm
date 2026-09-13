@@ -6,7 +6,11 @@
 import { ehExtensaoImagem } from "@/lib/ai/rag/extractors/imagem";
 import type { PaginaOuSecao } from "@/lib/ai/rag/extractors/contrato";
 import { renderizarPaginasPdf } from "@/lib/ai/rag/ocr/render-pdf";
-import { analisarDocumentoVisual, type AnaliseVisual } from "@/lib/ai/knowledge/visual/analisar";
+import {
+  analisarDocumentoVisual,
+  type AnaliseVisual,
+  type UsoVision,
+} from "@/lib/ai/knowledge/visual/analisar";
 import { chunksDoDerivado, gerarConhecimentoDerivado } from "@/lib/ai/knowledge/visual/derivado";
 import { paginasQuePedemVision } from "@/lib/ai/knowledge/visual/heuristica";
 import { normalizarParaRetrieval } from "@/lib/ai/knowledge/visual/normalizar";
@@ -26,6 +30,14 @@ export interface ProcessamentoDocumental {
   pages_vision: number;
   vision_status: "done" | "unavailable" | "skipped" | "partial";
   extract_status: string;
+  vision_requested: boolean;
+  vision_completed: boolean;
+  vision_processed_at?: string;
+  vision_model?: string;
+  vision_provider?: string;
+  vision_latency_ms?: number;
+  vision_usage?: UsoVision;
+  derived_revision: number;
 }
 
 export interface Enriquecimento {
@@ -64,6 +76,19 @@ export async function enriquecerDocumento(
   const derived_chunks: Enriquecimento["derived_chunks"] = [];
   let pagesVision = 0;
   let visionStatus: ProcessamentoDocumental["vision_status"] = "skipped";
+  let visionRequested = false;
+  let visionModel: string | undefined;
+  let visionProvider: string | undefined;
+  let visionLatency = 0;
+  let visionUsage: UsoVision | undefined;
+
+  const registrarAnalise = (analise: AnaliseVisual) => {
+    if (analise.vision_requested) visionRequested = true;
+    if (analise.model) visionModel = analise.model;
+    if (analise.provider) visionProvider = analise.provider;
+    if (typeof analise.latency_ms === "number") visionLatency += analise.latency_ms;
+    if (analise.usage) visionUsage = analise.usage;
+  };
 
   if (ehExtensaoImagem(args.ext)) {
     const analise = await analisar({
@@ -71,6 +96,7 @@ export async function enriquecerDocumento(
       mime: mimeDaImagem(args.ext),
       modelId: args.modelId,
     });
+    registrarAnalise(analise);
     if (analise.realizada && analise.descricao_factual) {
       pagesVision = 1;
       visionStatus = "done";
@@ -92,13 +118,15 @@ export async function enriquecerDocumento(
       visionStatus = "unavailable";
     }
   } else if (args.ext === "pdf") {
-    const candidatas = paginasQuePedemVision(
-      pages.map((p, i) => ({
-        pagina: typeof p.pagina === "number" ? p.pagina : i + 1,
-        texto: p.texto,
-        temImagem: p.texto.trim().length < 80,
-      })),
-    );
+    const paraHeuristica = pages.map((p, i) => ({
+      pagina: typeof p.pagina === "number" ? p.pagina : i + 1,
+      texto: p.texto,
+      temImagem: p.texto.trim().length < 80,
+    }));
+    if (paraHeuristica.length === 0) {
+      paraHeuristica.push({ pagina: 1, texto: "", temImagem: true });
+    }
+    const candidatas = paginasQuePedemVision(paraHeuristica);
     if (candidatas.length > 0) {
       try {
         const renders = await renderizar(args.buffer, args.pages.length || 1);
@@ -113,6 +141,7 @@ export async function enriquecerDocumento(
             mime: "image/png",
             modelId: args.modelId,
           });
+          registrarAnalise(analise);
           if (!analise.realizada || !analise.descricao_factual) {
             falha += 1;
             continue;
@@ -127,6 +156,8 @@ export async function enriquecerDocumento(
               ...pages[idx]!,
               texto: original ? `${original}\n\n${bloco}` : bloco,
             };
+          } else {
+            pages.push({ pagina: d.pagina, texto: bloco });
           }
           visual_pages.push({
             pagina: d.pagina,
@@ -148,8 +179,13 @@ export async function enriquecerDocumento(
     }
   }
 
-  const textoBase = [args.extractedText, ...visual_pages.map((v) => v.descricao)]
-    .filter((t) => t.trim().length > 0)
+  // Páginas já carregam o bloco visual (descrição + texto visível). Usar só
+  // a prosa da descrição descartava o código que o Vision leu nos pixels.
+  const textoDasPaginas = pages
+    .map((p) => p.texto)
+    .filter((t) => t.trim().length > 0);
+  const textoBase = [args.extractedText, ...textoDasPaginas]
+    .filter((t, i, arr) => t.trim().length > 0 && arr.indexOf(t) === i)
     .join("\n\n");
 
   const norm = await normalizar(textoBase);
@@ -186,6 +222,13 @@ export async function enriquecerDocumento(
       pages_vision: pagesVision,
       vision_status: visionStatus,
       extract_status: extractStatus,
+      vision_requested: visionRequested,
+      vision_completed: pagesVision > 0 && visionStatus !== "unavailable",
+      vision_model: visionModel,
+      vision_provider: visionProvider,
+      ...(visionRequested ? { vision_latency_ms: visionLatency } : {}),
+      ...(visionUsage ? { vision_usage: visionUsage } : {}),
+      derived_revision: 0,
     },
   };
 }

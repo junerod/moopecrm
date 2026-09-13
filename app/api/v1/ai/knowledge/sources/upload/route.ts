@@ -29,6 +29,7 @@ import { storagePadrao } from "@/lib/ai/knowledge/storage/resolver";
 import { resolverExtensaoDocumental } from "@/lib/ai/rag/extractors/registro";
 import { ehExtensaoImagem } from "@/lib/ai/rag/extractors/imagem";
 import { enriquecerDocumento } from "@/lib/ai/knowledge/enriquecer";
+import { carimbarProcessamentoInicial } from "@/lib/ai/knowledge/reprocessar-visual";
 import { audit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 
@@ -140,18 +141,20 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
 
-  const needsOcr = ingest.errorCode === "pdf_needs_ocr" && ingest.charCount < 40;
+  const precisaOcr = ingest.errorCode === "pdf_needs_ocr" && ingest.charCount < 40;
   let pages = ingest.pages;
   let extractedText = ingest.extractedText;
   let chunkCount = ingest.chunkCount;
-  let extractStatus = needsOcr ? "needs_ocr" : "ready";
+  let extractStatus = precisaOcr ? "needs_ocr" : "ready";
   let visualPages: unknown[] = [];
   let derivedChunks: unknown[] = [];
   let derived: Record<string, unknown> = {};
   let processing: Record<string, unknown> | null = null;
   let normalizedText: string | undefined;
+  let pagesVision = 0;
 
-  if (!needsOcr && (ehExtensaoImagem(ext) || ext === "pdf")) {
+  // PDF só-imagem (needs_ocr) também tenta Vision — OCR e Vision não são a mesma coisa.
+  if (ehExtensaoImagem(ext) || ext === "pdf") {
     try {
       const extra = await enriquecerDocumento({
         buffer: fileBuffer,
@@ -166,14 +169,21 @@ export async function POST(req: NextRequest): Promise<Response> {
       visualPages = extra.visual_pages;
       derivedChunks = extra.derived_chunks;
       derived = extra.derived;
-      processing = { ...extra.processing };
+      processing = { ...carimbarProcessamentoInicial(extra) };
       normalizedText = extra.normalized_text;
+      pagesVision = extra.processing.pages_vision;
       extractStatus = extra.processing.extract_status;
       chunkCount = Math.max(ingest.chunkCount, extra.derived_chunks.length);
     } catch {
       if (ehExtensaoImagem(ext)) extractStatus = "vision_unavailable";
     }
   }
+
+  // Sem Vision útil, PDF escaneado continua needs_ocr — não vira "ready" vazio.
+  if (precisaOcr && pagesVision === 0) {
+    extractStatus = "needs_ocr";
+  }
+  const needsOcr = extractStatus === "needs_ocr";
 
   const storage = storagePadrao();
   const sourceId = randomUUID();

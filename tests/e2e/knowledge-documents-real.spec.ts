@@ -152,10 +152,25 @@ test.describe("Knowledge documentos reais", () => {
     const scanBody = (await scan.json()) as {
       data?: { extract_status?: string; error_code?: string };
     };
-    expect(scanBody.data?.extract_status).toBe("needs_ocr");
-    await expect(page.getByText(/OCR necessário|digitalizado/i).first()).toBeVisible({
-      timeout: 15_000,
-    });
+    const scanStatus = scanBody.data?.extract_status;
+    expect(["needs_ocr", "ready"]).toContain(scanStatus);
+    if (scanStatus === "needs_ocr") {
+      await expect(page.getByText(/OCR necessário|digitalizado/i).first()).toBeVisible({
+        timeout: 15_000,
+      });
+    } else {
+      const fontesScan = await page.request.get("/api/v1/ai/knowledge/sources");
+      const fontesScanJson = (await fontesScan.json()) as {
+        data?: Array<{ source_metadata?: { filename?: string; processing?: { pages_vision?: number } } }>;
+      };
+      const escaneado = (fontesScanJson.data ?? []).find((f) =>
+        (f.source_metadata?.filename ?? "").includes("pdf-escaneado"),
+      );
+      expect(
+        (escaneado?.source_metadata?.processing?.pages_vision ?? 0) > 0,
+        "PDF escaneado só fica ready se Vision leu a página",
+      ).toBeTruthy();
+    }
 
     const upEnc = page.waitForResponse(
       (r) => r.url().includes("/sources/upload") && r.request().method() === "POST",

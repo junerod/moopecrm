@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { fontePermitidaNaColecao, idsDeColecaoDoAgente, idsDeColecaoDoMeta } from "@/lib/ai/knowledge/colecoes";
 import { enriquecerDocumento } from "@/lib/ai/knowledge/enriquecer";
+import { fundirReprocessamentoVisual, carimbarProcessamentoInicial } from "@/lib/ai/knowledge/reprocessar-visual";
 import { documentoPareceInstrucao, embrulharComoConteudo } from "@/lib/ai/knowledge/injecao";
 import { citacaoDaFonteOriginal, ehTrechoDerivado, metadadoDeChunk } from "@/lib/ai/knowledge/provenance";
 import { statusDoDocumento, rotuloDoStatus } from "@/lib/ai/knowledge/status-do-documento";
-import { analisarDocumentoVisual } from "@/lib/ai/knowledge/visual/analisar";
+import { analisarDocumentoVisual, escolherModeloVision } from "@/lib/ai/knowledge/visual/analisar";
 import { consolidarOriginalEDerivado } from "@/lib/ai/knowledge/visual/dedup";
 import { chunksDoDerivado } from "@/lib/ai/knowledge/visual/derivado";
 import { decidirVisionNaPagina, paginasQuePedemVision } from "@/lib/ai/knowledge/visual/heuristica";
@@ -13,8 +14,9 @@ import { normalizarStorageProvider } from "@/lib/ai/knowledge/storage/resolver";
 import { chaveDocumental, chavePertenceAOrg } from "@/lib/ai/knowledge/storage/caminho";
 import { bufferPareceImagem, extractImagem } from "@/lib/ai/rag/extractors/imagem";
 import { resolverExtensaoDocumental } from "@/lib/ai/rag/extractors/registro";
-import { pngCampanhaLocadoras } from "@/tests/fixtures/knowledge/campanha-png";
-import { TEXTO_INJECAO } from "@/tests/fixtures/knowledge/manual-misto";
+import { pngCampanhaLocadoras, TOKEN_VISUAL_CAMPANHA } from "@/tests/fixtures/knowledge/campanha-png";
+import { TOKEN_VISUAL_PDF, pdfComScreenshotVisual } from "@/tests/fixtures/knowledge/pdf-visual";
+import { TEXTO_COMERCIAL, TEXTO_INJECAO } from "@/tests/fixtures/knowledge/manual-misto";
 import { normalizarParaRetrieval } from "@/lib/ai/knowledge/visual/normalizar";
 
 const PNG_1x1 = Buffer.from(
@@ -177,6 +179,67 @@ describe("conhecimento derivado", () => {
   });
 });
 
+describe("enriquecer com Vision", () => {
+  it("extractedText guarda o texto visível, não só a prosa", async () => {
+    const r = await enriquecerDocumento(
+      {
+        buffer: PNG_1x1,
+        ext: "png",
+        filename: "Campanha-Locadoras.png",
+        pages: [{ secao: "Campanha-Locadoras.png", texto: "" }],
+        extractedText: "",
+        ocrUsed: false,
+      },
+      {
+        analisar: async () => ({
+          realizada: true,
+          descricao_factual: "Propaganda da MOOPE para locadoras.",
+          tipo: "marketing",
+          texto_visivel: ["VISION-MOOPE-7319", "Locações e contratos"],
+          elementos: ["título"],
+          vision_requested: true,
+          vision_completed: true,
+          model: "openai/gpt-4o",
+          provider: "openai",
+        }),
+        normalizar: async (t) => ({ realizada: false, texto: t }),
+        derivado: async () => ({ realizada: false }),
+      },
+    );
+    expect(r.extractedText).toContain("VISION-MOOPE-7319");
+    expect(r.derived_chunks.some((c) => c.content.includes("VISION-MOOPE-7319"))).toBe(true);
+    expect(r.processing.pages_vision).toBe(1);
+  });
+
+  it("PDF sem páginas nativas ainda grava o bloco visual na página 1", async () => {
+    const r = await enriquecerDocumento(
+      {
+        buffer: Buffer.from("%PDF"),
+        ext: "pdf",
+        filename: "Manual-Teste.pdf",
+        pages: [],
+        extractedText: "",
+        ocrUsed: false,
+      },
+      {
+        analisar: async () => ({
+          realizada: true,
+          descricao_factual: "Screenshot da gestão de sinistros.",
+          tipo: "screenshot",
+          texto_visivel: ["TELA-VISION-8821"],
+          vision_requested: true,
+          vision_completed: true,
+        }),
+        normalizar: async (t) => ({ realizada: false, texto: t }),
+        derivado: async () => ({ realizada: false }),
+        renderizar: async () => [{ pagina: 1, png: PNG_1x1 }],
+      },
+    );
+    expect(r.pages[0]?.texto).toContain("TELA-VISION-8821");
+    expect(r.extractedText).toContain("TELA-VISION-8821");
+  });
+});
+
 describe("enriquecer sem Vision", () => {
   it("imagem sem Vision marca unavailable e não inventa texto", async () => {
     const r = await enriquecerDocumento(
@@ -189,7 +252,12 @@ describe("enriquecer sem Vision", () => {
         ocrUsed: false,
       },
       {
-        analisar: async () => ({ realizada: false, motivo: "vision_unavailable" }),
+        analisar: async () => ({
+          realizada: false,
+          motivo: "vision_unavailable",
+          vision_requested: false,
+          vision_completed: false,
+        }),
         normalizar: async (t) => ({ realizada: false, texto: t }),
         derivado: async () => ({ realizada: false }),
       },
@@ -227,9 +295,113 @@ describe("fixture comercial", () => {
     expect(extractImagem(buf, "Campanha-Locadoras.png").metadata.ocrUsed).toBe(false);
   });
 
+  it("token visual não vive em TXT/PDF auxiliar", () => {
+    expect(TEXTO_COMERCIAL).not.toContain(TOKEN_VISUAL_CAMPANHA);
+    expect(TEXTO_COMERCIAL).not.toContain(TOKEN_VISUAL_PDF);
+    expect(pdfComScreenshotVisual().toString("utf8")).not.toContain(TOKEN_VISUAL_PDF);
+    expect(pdfComScreenshotVisual().toString("utf8")).not.toContain(TOKEN_VISUAL_CAMPANHA);
+  });
+
   it("texto de injeção é conteúdo, não some no embrulho", () => {
     expect(documentoPareceInstrucao(TEXTO_INJECAO)).toBe(true);
     expect(embrulharComoConteudo(TEXTO_INJECAO, "politica.txt")).toContain("12 por cento");
+  });
+});
+
+describe("escolha do modelo Vision", () => {
+  it("devolve diagnóstico sem secret", () => {
+    const d = escolherModeloVision();
+    expect(d.model).toBeTruthy();
+    expect(d.provider).toBeTruthy();
+    expect(typeof d.ok).toBe("boolean");
+    expect(typeof d.resolvable).toBe("boolean");
+  });
+});
+
+describe("reprocess visual", () => {
+  const extraOk = {
+    pages: [{ secao: "Campanha-Locadoras.png", texto: "VISION-MOOPE-7319" }],
+    extractedText: "VISION-MOOPE-7319",
+    visual_pages: [{ pagina: 1, descricao: "campanha", texto_visivel: ["VISION-MOOPE-7319"] }],
+    derived_chunks: [{ content: "VISION-MOOPE-7319", derived_from: "visual_image" }],
+    derived: { summary: "campanha" },
+    processing: {
+      pages_total: 1,
+      pages_text: 1,
+      pages_ocr: 0,
+      pages_vision: 1,
+      vision_status: "done" as const,
+      extract_status: "ready",
+      vision_requested: true,
+      vision_completed: true,
+      vision_model: "openai/gpt-4o",
+      vision_provider: "openai",
+      derived_revision: 0,
+    },
+  };
+
+  const extraFalha = {
+    ...extraOk,
+    pages: [],
+    extractedText: "",
+    visual_pages: [],
+    derived_chunks: [],
+    derived: {},
+    processing: {
+      ...extraOk.processing,
+      pages_vision: 0,
+      vision_status: "unavailable" as const,
+      extract_status: "vision_unavailable",
+      vision_requested: true,
+      vision_completed: false,
+    },
+  };
+
+  it("primeiro processamento bem-sucedido vira revisão 1", () => {
+    const p = carimbarProcessamentoInicial(extraOk, new Date("2026-09-13T12:00:00Z"));
+    expect(p.derived_revision).toBe(1);
+    expect(p.vision_processed_at).toBe("2026-09-13T12:00:00.000Z");
+  });
+
+  it("reprocess bem-sucedido incrementa revisão e troca o derivado", () => {
+    const r = fundirReprocessamentoVisual({
+      anterior: {
+        filename: "Campanha-Locadoras.png",
+        collection_ids: ["comercial"],
+        derived_chunks: [{ content: "antigo", derived_from: "visual_image" }],
+        processing: { derived_revision: 1, pages_vision: 1 },
+      },
+      extra: extraOk,
+      agora: new Date("2026-09-13T13:00:00Z"),
+    });
+    expect(r.usouAnterior).toBe(false);
+    expect(r.derived_revision).toBe(2);
+    expect(r.meta.collection_ids).toEqual(["comercial"]);
+    expect(r.meta.filename).toBe("Campanha-Locadoras.png");
+    expect(JSON.stringify(r.meta.derived_chunks)).toContain("VISION-MOOPE-7319");
+    expect((r.meta.processing as { vision_processed_at?: string }).vision_processed_at).toBe(
+      "2026-09-13T13:00:00.000Z",
+    );
+  });
+
+  it("falha de Vision preserva derivado anterior válido", () => {
+    const r = fundirReprocessamentoVisual({
+      anterior: {
+        filename: "Campanha-Locadoras.png",
+        collection_ids: ["comercial"],
+        extracted_text: "VISION-MOOPE-7319 antigo",
+        derived_chunks: [{ content: "VISION-MOOPE-7319 antigo", derived_from: "visual_image" }],
+        processing: { derived_revision: 1, pages_vision: 1 },
+      },
+      extra: extraFalha,
+    });
+    expect(r.usouAnterior).toBe(true);
+    expect(r.derived_revision).toBe(1);
+    expect(JSON.stringify(r.meta.derived_chunks)).toContain("VISION-MOOPE-7319 antigo");
+    expect(r.meta.collection_ids).toEqual(["comercial"]);
+    expect((r.meta.processing as { vision_reprocess_preserved_previous?: boolean }).vision_reprocess_preserved_previous).toBe(
+      true,
+    );
   });
 });
 

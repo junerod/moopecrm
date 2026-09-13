@@ -311,9 +311,7 @@ test.describe("Knowledge multimodal", () => {
     });
 
     await page.getByTestId("aba-conhecimento-testar").click();
-    await page.getByTestId("testar-conhecimento-pergunta").fill(
-      "Qual o preço exclusivo TESTE-MULTIMODAL-9271?",
-    );
+    await page.getByTestId("testar-conhecimento-pergunta").fill("TESTE-MULTIMODAL-9271");
     await page.getByRole("button", { name: "Perguntar" }).click();
     await expect(page.getByTestId("testar-conhecimento-vazio")).toBeVisible({ timeout: 20_000 });
 

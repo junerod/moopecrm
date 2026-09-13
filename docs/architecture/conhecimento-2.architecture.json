@@ -24,6 +24,7 @@
     { "id": "colecoes", "lane": "app", "col": 0, "type": "api", "label": "Coleções", "sublabel": "settings + config do agente" },
     { "id": "evento", "lane": "app", "col": 2, "type": "api", "label": "event_log", "sublabel": "knowledge_source.updated" },
     { "id": "organizar", "lane": "app", "col": 0, "type": "api", "label": "POST knowledge/organizar", "sublabel": "preview, não grava" },
+    { "id": "reindex", "lane": "app", "col": 1, "type": "api", "label": "POST sources/:id/reindex", "sublabel": "reexecuta Vision" },
     { "id": "indexer", "lane": "engine", "col": 3, "type": "lib", "label": "rag-indexer", "sublabel": "embed + versão" },
     { "id": "chunks", "lane": "engine", "col": 3, "type": "db", "label": "ai_chunks", "sublabel": "pgvector 1536" },
     { "id": "retrieve", "lane": "engine", "col": 4, "type": "lib", "label": "retrieve_top_k_chunks", "sublabel": "buscarConhecimento" },
@@ -48,6 +49,9 @@
     { "id": "e13", "from": "extrair", "to": "vision", "label": "página pobre / imagem" },
     { "id": "e14", "from": "vision", "to": "evento", "label": "derivado + original" },
     { "id": "e15", "from": "tela", "to": "colecoes", "label": "organizar / restringir" },
-    { "id": "e16", "from": "colecoes", "to": "retrieve", "label": "filtro de fonte" }
+    { "id": "e16", "from": "colecoes", "to": "retrieve", "label": "filtro de fonte" },
+    { "id": "e17", "from": "tela", "to": "reindex", "label": "Reprocessar" },
+    { "id": "e18", "from": "reindex", "to": "vision", "label": "relê original" },
+    { "id": "e19", "from": "reindex", "to": "evento", "label": "rebuild sem duplicar fonte" }
   ]
 }

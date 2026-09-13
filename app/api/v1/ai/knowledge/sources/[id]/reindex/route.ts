@@ -18,7 +18,9 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { reprocessarFonteVisual } from "@/lib/ai/knowledge/reprocessar-visual";
 import { audit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -63,25 +65,30 @@ export async function POST(
   const supabase = await createClient();
   const { data: existing, error: fetchErr } = await supabase
     .from("ai_knowledge_sources")
-    .select("id, agent_id, source_type")
+    .select("id, agent_id, source_type, name, source_metadata")
     .eq("id", id)
     .eq("organization_id", activeOrg.orgId)
     .maybeSingle();
 
   if (fetchErr) {
-    console.error("[ai-knowledge-reindex] fetch failed:", fetchErr.message);
+    logger.error("knowledge.reindex.fetch", { request_id: requestId, erro: fetchErr.message });
     return fail("internal_error", "Erro ao verificar fonte.", 500, { requestId });
   }
   if (!existing) {
     return fail("not_found", "Fonte de conhecimento não encontrada.", 404, { requestId });
   }
 
-  const ksRow = existing as { id: string; agent_id: string; source_type: string };
+  const ksRow = existing as {
+    id: string;
+    agent_id: string;
+    source_type: string;
+    name: string;
+    source_metadata: Record<string, unknown> | null;
+  };
 
   const admin = createAdminClient();
 
-  // Limpa apenas o erro anterior — `last_index_status` não tem estado
-  // legítimo para "pending", então NÃO escrevemos nele.
+  // Limpa o erro anterior ANTES do Vision — o reprocess pode gravar um novo.
   const { error: clearErr } = await admin
     .from("ai_knowledge_sources")
     .update({ last_index_error: null })
@@ -89,7 +96,29 @@ export async function POST(
     .eq("organization_id", activeOrg.orgId);
 
   if (clearErr) {
-    console.warn("[ai-knowledge-reindex] clear last_index_error failed (non-blocking):", clearErr.message);
+    logger.warn("knowledge.reindex.clear_error", { request_id: requestId, erro: clearErr.message });
+  }
+
+  let vision: {
+    aplicou: boolean;
+    usouAnterior: boolean;
+    derived_revision: number;
+    vision_completed: boolean;
+  } | null = null;
+  try {
+    vision = await reprocessarFonteVisual({
+      organizationId: activeOrg.orgId,
+      sourceId: id,
+      name: ksRow.name,
+      meta: (ksRow.source_metadata ?? {}) as Record<string, unknown>,
+      admin,
+    });
+  } catch (err) {
+    logger.warn("knowledge.reindex.vision", {
+      request_id: requestId,
+      source_id: id,
+      erro: err instanceof Error ? err.message.slice(0, 240) : "vision_reprocess_failed",
+    });
   }
 
   // Emit knowledge_source.updated (fire-and-forget).
@@ -117,8 +146,24 @@ export async function POST(
     resourceType: "ai_knowledge_source",
     resourceId: id,
     requestId,
-    metadata: { source_type: ksRow.source_type },
+    metadata: {
+      source_type: ksRow.source_type,
+      vision_reprocess: vision?.aplicou === true,
+      vision_completed: vision?.vision_completed === true,
+      derived_revision: vision?.derived_revision,
+    },
   });
 
-  return ok({ id, queued: true as const, agent_id: ksRow.agent_id }, { requestId });
+  return ok(
+    {
+      id,
+      queued: true as const,
+      agent_id: ksRow.agent_id,
+      vision_reprocess: vision?.aplicou === true,
+      vision_completed: vision?.vision_completed === true,
+      derived_revision: vision?.derived_revision ?? null,
+      preserved_previous: vision?.usouAnterior === true,
+    },
+    { requestId },
+  );
 }
