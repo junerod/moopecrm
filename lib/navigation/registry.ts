@@ -277,15 +277,6 @@ export const NAV_DESTINATIONS: NavDestination[] = [
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----
   {
-    href: "/app/modelos-prontos",
-    label: "Modelos prontos",
-    description: "Operação pronta: assistentes, funil, automações e teste sem WhatsApp.",
-    icon: Car,
-    group: "ia",
-    section: "Montar o agente",
-    minRole: "manager",
-  },
-  {
     href: "/app/ai/agents",
     label: "Assistentes IA",
     description: "Quem atende por você: instruções, conhecimento e publicação.",
@@ -546,6 +537,15 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     label: "Meu Negócio",
     description: "Nome, contato e tipo da empresa.",
     icon: Storefront,
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+  },
+  {
+    href: "/app/modelos-prontos",
+    label: "Modelos prontos",
+    description: "Ative um modelo de negócio pronto: assistentes, funil e conhecimento.",
+    icon: Car,
     group: "organizacao",
     section: "Sua empresa",
     minRole: "manager",

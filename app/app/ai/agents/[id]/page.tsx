@@ -10,6 +10,13 @@ import type { CredentialRow } from "@/hooks/ai/useCredentials";
 
 import { AgentEditorClient } from "./_client";
 import { AgentTabs } from "./_components/AgentTabs";
+import { especialidadeDoAgente, TEXTO_DO_PACK } from "@/lib/business-packs/apresentacao";
+import { catalogoAmigavel } from "@/lib/business-packs/capacidades";
+import { resolverPack } from "@/lib/business-packs/catalogo";
+import { lerPackGravado } from "@/lib/business-packs/perfil";
+import { carregarConexaoLocadora, urlDaApiDaLocadora } from "@/lib/moope/cliente-locadora";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { lerAiMode } from "@/lib/ai/execucao/modos";
 import type { FunilDaResposta } from "@/hooks/pipelines/usePipelines";
 import { coberturaDoFunil, type EtapaDoMapa } from "@/lib/leads/agent-mapping";
 import type { CoberturaPorFunil } from "./_components/FunisDoAgente";
@@ -71,9 +78,36 @@ export default async function AgentEditorPage({
 
   // Caminho legado: rag_bot continua usando o editor pré-EPIC-13.
   if ((agent.kind ?? "rag_bot") !== "mcp_agent") {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("settings")
+      .eq("id", activeOrg.orgId)
+      .maybeSingle();
+    const pack = lerPackGravado(org?.settings);
+    const definition = pack ? resolverPack(pack.id) : null;
+    const spec = especialidadeDoAgente(agent, definition);
+    const papel = spec
+      ? (TEXTO_DO_PACK[spec.key]?.papel ?? spec.description)
+      : agent.description;
+    let gestaoOk = false;
+    try {
+      const conexao = await carregarConexaoLocadora(createAdminClient(), activeOrg.orgId);
+      gestaoOk = Boolean(conexao && urlDaApiDaLocadora(conexao));
+    } catch {
+      gestaoOk = false;
+    }
+    const capacidades = definition ? catalogoAmigavel(definition.capabilities, gestaoOk) : [];
+    const aiMode = lerAiMode((org?.settings as { ai_mode?: unknown } | null)?.ai_mode ?? "off");
     return (
-      <div className="flex h-full flex-col gap-6 p-6">
-        <AgentEditorClient agentId={agent.id} initialData={agent} readOnly={readOnly} />
+      <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+        <AgentEditorClient
+          agentId={agent.id}
+          initialData={agent}
+          readOnly={readOnly}
+          papel={papel}
+          capacidades={capacidades}
+          aiMode={aiMode}
+        />
       </div>
     );
   }

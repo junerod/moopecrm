@@ -20,11 +20,19 @@ interface Props {
 }
 
 const KIND_LABELS: Record<GuardrailKind, string> = {
-  regex_output_block: "Regex output block",
-  rag_must_hit: "RAG must hit",
-  regex_input_block: "Regex input block",
-  window_check: "Janela horária",
-  contact_flag: "Contact flag",
+  regex_output_block: "Bloquear padrões na resposta",
+  rag_must_hit: "Exigir fonte de conhecimento",
+  regex_input_block: "Bloquear padrões na mensagem recebida",
+  window_check: "Horário de funcionamento",
+  contact_flag: "Regra por marcador do contato",
+};
+
+const KIND_HELP: Record<GuardrailKind, string> = {
+  regex_output_block: "Impede que a resposta contenha um padrão que você definir.",
+  rag_must_hit: "Só responde se encontrar trecho no conhecimento da empresa.",
+  regex_input_block: "Impede atender mensagens que contenham um padrão proibido.",
+  window_check: "Fora deste horário, o assistente não responde sozinho.",
+  contact_flag: "Aplica a regra quando o contato tem um marcador específico.",
 };
 
 function defaultForKind(kind: GuardrailKind): GuardrailItem {
@@ -83,7 +91,7 @@ export function GuardrailsEditor({ value, onChange, disabled }: Props) {
     <div className="space-y-4">
       <div className="flex items-end gap-2">
         <div className="flex-1 space-y-1">
-          <Label className="text-xs">Tipo do novo guardrail</Label>
+          <Label className="text-xs">Tipo da nova regra</Label>
           <Select
             value={pendingKind}
             onValueChange={(v) => setPendingKind(v as GuardrailKind)}
@@ -102,13 +110,13 @@ export function GuardrailsEditor({ value, onChange, disabled }: Props) {
           </Select>
         </div>
         <Button type="button" onClick={add} disabled={disabled}>
-          Adicionar guardrail
+          Adicionar regra
         </Button>
       </div>
 
       {value.length === 0 ? (
         <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nenhum guardrail definido. O agent responde sem restrições adicionais.
+          Nenhuma regra técnica extra. O assistente segue só as instruções e o conhecimento.
         </p>
       ) : (
         <ul className="space-y-3">
@@ -120,10 +128,15 @@ export function GuardrailsEditor({ value, onChange, disabled }: Props) {
                 key={idx}
                 className={`rounded-md border p-3 ${invalid ? "border-destructive/60" : ""}`}
               >
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {KIND_LABELS[item.kind]}
-                  </span>
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {KIND_LABELS[item.kind]}
+                    </span>
+                    <p className="text-xs font-normal normal-case text-muted-foreground">
+                      {KIND_HELP[item.kind]}
+                    </p>
+                  </div>
                   <Button
                     type="button"
                     size="sm"

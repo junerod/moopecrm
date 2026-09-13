@@ -2,19 +2,15 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { especialidadeDoAgente } from "@/lib/business-packs/apresentacao";
+import { resolverPack } from "@/lib/business-packs/catalogo";
+import { lerPackGravado } from "@/lib/business-packs/perfil";
 import { createClient } from "@/lib/supabase/server";
-import type { AgentRow } from "@/hooks/ai/useAgent";
-import Link from "next/link";
-
-import { AppIcon } from "@/components/ds/AppIcon";
-import { PageHeader } from "@/components/ds/PageHeader";
-import { Button } from "@/components/ui/button";
-import { lerAiMode } from "@/lib/ai/execucao/modos";
 import { logger } from "@/lib/logger";
-import { rotuloDoModoIa } from "@/lib/negocio/rotulos";
-import { Robot } from "@/lib/ui/icons";
+import type { AgentRow } from "@/hooks/ai/useAgent";
 
 import { AgentsList } from "./_components/AgentsList";
+import { LandingAssistentes, type CardAssistente } from "./_components/LandingAssistentes";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +39,6 @@ export default async function AgentsListPage() {
     .eq("organization_id", activeOrg.orgId)
     .order("created_at", { ascending: false });
 
-  // Sem ler o `error`, "não consegui perguntar" e "você não tem agente nenhum"
-  // pintam a MESMA tela — e a segunda é uma afirmação forte sobre o trabalho de
-  // quem instalou. O join por nome de constraint (`versao_publicada`) acrescentou
-  // uma causa nova de erro a esta consulta, então a distinção passou a importar.
-  // Degradar para lista vazia continua sendo o comportamento (a tela não pode
-  // quebrar), mas agora deixa rastro.
   if (error) {
     logger.error("[ai/agents] não consegui listar os agentes — a tela vai parecer vazia", {
       organization_id: activeOrg.orgId,
@@ -63,56 +53,40 @@ export default async function AgentsListPage() {
     .select("settings")
     .eq("id", activeOrg.orgId)
     .maybeSingle();
-  const aiMode = lerAiMode((org?.settings as { ai_mode?: unknown } | null)?.ai_mode ?? "off");
+  const pack = lerPackGravado(org?.settings);
+  const definition = pack ? resolverPack(pack.id) : null;
+
+  const cards: CardAssistente[] = agents.map((a) => {
+    const spec = especialidadeDoAgente(a, definition);
+    const ativo = a.kind === "mcp_agent" ? Boolean(a.published_version_id) && !a.archived_at : a.is_active && !a.archived_at;
+    return {
+      id: a.id,
+      name: a.name,
+      description: a.description ?? spec?.description ?? "Assistente da empresa",
+      ativo,
+      specialtyKey: spec?.key ?? null,
+      principal: Boolean(spec?.isPrincipal),
+      jaExistia: !spec,
+    };
+  });
+
+  if (definition) {
+    const ordem = new Map(definition.specialties.map((s, i) => [s.key, i]));
+    cards.sort((a, b) => {
+      const ia = a.specialtyKey ? (ordem.get(a.specialtyKey) ?? 100) : 200;
+      const ib = b.specialtyKey ? (ordem.get(b.specialtyKey) ?? 100) : 200;
+      return ia - ib;
+    });
+  }
 
   return (
-    <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
-      <PageHeader
-        icon={<AppIcon icon={Robot} tone="green" size="lg" />}
-        titulo="Meus Assistentes"
-        descricao="Quem ajuda no atendimento. Um assistente novo nasce desligado até você ativar."
-        acoes={
-          canWrite ? (
-            <Button asChild>
-              <Link href="/app/ai/agents/simples">Criar assistente</Link>
-            </Button>
-          ) : null
-        }
+    <div className="flex h-full flex-col gap-6 overflow-y-auto bg-[var(--color-bg)] p-6">
+      <LandingAssistentes
+        packAtivo={Boolean(pack)}
+        packLabel={definition?.label ?? null}
+        cards={cards}
+        canWrite={canWrite}
       />
-
-      <ul className="grid gap-3 md:grid-cols-2" data-testid="meus-assistentes">
-        {agents.map((a) => {
-          const status = a.archived_at
-            ? "archived"
-            : a.published_version_id
-              ? "published"
-              : "draft";
-          return (
-            <li key={a.id} className="rounded-lg border border-border p-4 text-sm">
-              <p className="font-medium">{a.name}</p>
-              <p className="text-muted-foreground">Conhecimento: Empresa</p>
-              <p className="text-muted-foreground">Modo: {rotuloDoModoIa(aiMode)}</p>
-              <p data-testid={`assistente-status-${a.id}`}>
-                Status: {status === "published" ? "Ativo" : status === "draft" ? "Rascunho" : status}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Link href={`/app/ai/agents/${a.id}`} className="underline">
-                  Editar
-                </Link>
-                {status === "draft" ? (
-                  <Link href={`/app/ai/agents/${a.id}`} className="underline">
-                    Ativar
-                  </Link>
-                ) : (
-                  <Link href={`/app/ai/agents/${a.id}`} className="underline">
-                    Desativar
-                  </Link>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
 
       <details className="rounded-lg border border-border p-4">
         <summary className="cursor-pointer text-sm font-medium">Avançado</summary>

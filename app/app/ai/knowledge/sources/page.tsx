@@ -18,7 +18,11 @@ import { ConhecimentoDaEmpresaClient } from "./_empresa";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Conhecimento da Empresa" };
 
-export default async function KnowledgeSourcesPage() {
+export default async function KnowledgeSourcesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string }>;
+}) {
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) redirect("/app");
@@ -27,7 +31,21 @@ export default async function KnowledgeSourcesPage() {
     redirect("/403");
   }
 
+  const { agent: agentParam } = await searchParams;
   const supabase = await createClient();
+
+  let contexto: { id: string; name: string } | null = null;
+  if (agentParam) {
+    const { data: pedido } = await supabase
+      .from("ai_agents")
+      .select("id, name")
+      .eq("organization_id", activeOrg.orgId)
+      .eq("id", agentParam)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (pedido) contexto = { id: pedido.id, name: pedido.name };
+  }
+
   let { data: agent } = await supabase
     .from("ai_agents")
     .select("id, name, is_default")
@@ -78,7 +96,37 @@ export default async function KnowledgeSourcesPage() {
       />
       <h2 className="sr-only">Conhecimento da Empresa</h2>
 
-      <ConhecimentoDaEmpresaClient agentId={agent.id} initialSources={initialSources} />
+      {contexto ? (
+        <div
+          className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          data-testid="conhecimento-do-assistente"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Conhecimento do assistente
+          </p>
+          <p className="mt-1 font-medium">{contexto.name}</p>
+          <p className="text-sm text-muted-foreground">
+            Este assistente consulta apenas as coleções selecionadas abaixo.
+          </p>
+        </div>
+      ) : (
+        <div
+          className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          data-testid="conhecimento-da-empresa"
+        >
+          <p className="font-medium">Conhecimento da empresa</p>
+          <p className="text-sm text-muted-foreground">
+            Materiais que todos os assistentes podem usar. Isto não configura um assistente
+            específico.
+          </p>
+        </div>
+      )}
+
+      <ConhecimentoDaEmpresaClient
+        agentId={agent.id}
+        initialSources={initialSources}
+        contextoAgente={contexto}
+      />
 
       <p className="text-xs text-muted-foreground">
         Precisa de um assistente publicado?{" "}

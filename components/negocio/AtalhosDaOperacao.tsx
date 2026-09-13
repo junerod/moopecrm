@@ -3,6 +3,8 @@ import Link from "next/link";
 const ATALHOS = [
   { href: "/app/inbox", label: "Inbox" },
   { href: "/app/kanban", label: "Leads" },
+  { href: "/app/ai/agents", label: "Assistentes" },
+  { href: "/app/modelos-prontos", label: "Modelos prontos" },
   { href: "/app/ai/followups", label: "Automações" },
   { href: "/app/ai/knowledge/sources", label: "Conhecimento" },
   { href: "/app/settings/atendimento", label: "IA e Assistentes" },

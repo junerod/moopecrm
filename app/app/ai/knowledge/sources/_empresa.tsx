@@ -24,9 +24,11 @@ type Aba = (typeof ABAS)[number]["id"];
 export function ConhecimentoDaEmpresaClient({
   agentId,
   initialSources,
+  contextoAgente = null,
 }: {
   agentId: string;
   initialSources: SourceRow[];
+  contextoAgente?: { id: string; name: string } | null;
 }) {
   const qc = useQueryClient();
   const [aba, setAba] = useState<Aba>("documentos");
@@ -78,7 +80,11 @@ export function ConhecimentoDaEmpresaClient({
         />
       ) : null}
       {aba === "colecoes" ? (
-        <ColecoesDaEmpresa agentId={agentId} initialSources={initialSources} />
+        <ColecoesDaEmpresa
+          agentId={contextoAgente?.id ?? agentId}
+          initialSources={initialSources}
+          contextoAgente={contextoAgente}
+        />
       ) : null}
       {aba === "fontes" ? (
         <FontesDaEmpresa agentId={agentId} initialSources={initialSources} />

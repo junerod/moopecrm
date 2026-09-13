@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { lerAiMode } from "@/lib/ai/execucao/modos";
+import { lerColecoesDoSettings } from "@/lib/ai/knowledge/colecoes";
 import { listSelectableChannels } from "@/lib/channels/selectable";
 import { createClient } from "@/lib/supabase/server";
 import { AssistenteSimplesForm } from "./_client";
@@ -37,6 +38,7 @@ export default async function AssistenteSimplesPage() {
       <AssistenteSimplesForm
         channelSessionId={working?.id ?? canais[0]?.id ?? null}
         aiMode={lerAiMode(settings?.ai_mode ?? "off")}
+        colecoes={lerColecoesDoSettings(org.data?.settings)}
       />
     </div>
   );

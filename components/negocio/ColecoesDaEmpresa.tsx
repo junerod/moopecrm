@@ -14,9 +14,11 @@ type Colecao = { id: string; name: string; slug: string };
 export function ColecoesDaEmpresa({
   agentId,
   initialSources,
+  contextoAgente = null,
 }: {
   agentId: string;
   initialSources?: SourceRow[];
+  contextoAgente?: { id: string; name: string } | null;
 }) {
   const { data: sources, refetch } = useKnowledgeSources(agentId, {
     initialData: initialSources,
@@ -142,8 +144,16 @@ export function ColecoesDaEmpresa({
 
       <FormSection
         testid="assistente-colecoes"
-        titulo="Conhecimento permitido neste assistente"
-        descricao="Nenhuma marcada = vê tudo (como hoje). Marque para restringir."
+        titulo={
+          contextoAgente
+            ? `Conhecimento permitido em ${contextoAgente.name}`
+            : "Escopo do assistente padrão da empresa"
+        }
+        descricao={
+          contextoAgente
+            ? "Este assistente consulta apenas as coleções selecionadas abaixo. Nenhuma marcada = vê tudo."
+            : "Isto altera o assistente padrão da empresa, não um assistente específico. Nenhuma marcada = vê tudo."
+        }
       >
         <div className="flex flex-wrap gap-3">
           {colecoes.map((c) => (

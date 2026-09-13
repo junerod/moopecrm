@@ -320,7 +320,7 @@ test.describe("3C — assistente nasce rascunho", () => {
     await page.waitForURL(/\/app\//, { timeout: 30_000 });
     await page.goto("/app/ai/agents/simples");
     await expect(page.getByTestId("wizard-assistente")).toBeVisible();
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 8 && !(await page.getByTestId("wizard-assistente-revisao").isVisible()); i += 1) {
       await page.getByRole("button", { name: "Continuar" }).click();
     }
     await expect(page.getByTestId("wizard-assistente-revisao")).toBeVisible();

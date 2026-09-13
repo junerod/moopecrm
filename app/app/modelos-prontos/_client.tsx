@@ -109,9 +109,21 @@ export function ModelosProntosClient(props: {
     <div className="space-y-8">
       {props.instalado ? (
         <section className="space-y-3" data-testid="pack-pronto">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Seu CRM para locadora está pronto
-          </h2>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Modelo ativo
+              </p>
+              <h2 className="text-lg font-semibold tracking-tight">Locadora de veículos</h2>
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400" data-testid="pack-loja-ativo">
+                ATIVO
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/app/ai/agents">Ver configuração</Link>
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">Seu CRM para locadora está pronto.</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <ResumoCard titulo="Atendimento" valor={`${props.specialties.length} especialidades configuradas`} />
             <ResumoCard titulo="Funil" valor={`${props.etapas} etapas prontas`} />
@@ -121,11 +133,11 @@ export function ModelosProntosClient(props: {
             />
             <ResumoCard titulo="Conhecimento" valor="Adicione seus manuais e materiais" href="/app/ai/knowledge/sources" />
             <ResumoCard titulo="WhatsApp" valor="Conectar número" href="/app/connections" />
-            <ResumoCard titulo="MOOPE Gestão" valor={rotuloGestao} href="/app/integrations/moope" />
+            <ResumoCard titulo="Sistema de gestão" valor={rotuloGestao} href="/app/integrations/moope" />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link href="/app/ai/knowledge/sources">Começar a configurar</Link>
+              <Link href="/app/ai/agents">Ver meus assistentes</Link>
             </Button>
             {props.podeInstalar ? (
               <Button variant="outline" disabled={pending} onClick={() => instalar(props.instalado!.id)}>
@@ -135,13 +147,13 @@ export function ModelosProntosClient(props: {
           </div>
           {props.aiMode === "autonomous" ? null : (
             <p className="text-xs text-muted-foreground">
-              A IA está em modo seguro ({props.aiMode}). Ela não envia sozinha.
+              A IA está em modo seguro. Ela não envia sozinha.
             </p>
           )}
         </section>
       ) : (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight">Locadoras</h2>
+        <section className="space-y-3" id="o-que-instala">
+          <h2 className="text-lg font-semibold tracking-tight">Locadora de veículos</h2>
           {props.catalogo.map((p) => (
             <div
               key={p.id}
@@ -150,10 +162,18 @@ export function ModelosProntosClient(props: {
               <div>
                 <p className="font-medium">{p.label}</p>
                 <p className="text-sm text-muted-foreground">{p.description}</p>
+                <ul className="mt-3 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                  <li>6 assistentes</li>
+                  <li>1 funil</li>
+                  <li>4 coleções</li>
+                  <li>automações</li>
+                  <li>respostas</li>
+                  <li>campanhas</li>
+                </ul>
               </div>
               {props.podeInstalar ? (
                 <Button data-testid="usar-modelo-locadora" disabled={pending} onClick={() => instalar(p.id)}>
-                  {pending ? "Preparando..." : "Usar modelo para locadora"}
+                  {pending ? "Preparando..." : "Ativar modelo"}
                 </Button>
               ) : (
                 <p className="text-sm text-muted-foreground">Peça a quem administra para instalar.</p>

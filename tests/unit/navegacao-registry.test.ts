@@ -144,6 +144,14 @@ describe("hubSections", () => {
     expect(hrefs).toContain("/app/ai/knowledge/sources");
   });
 
+  it("Modelos prontos mora em Meu Negócio, não enterrado só na URL", () => {
+    expect(dest("/app/modelos-prontos").group).toBe("organizacao");
+    expect(dest("/app/modelos-prontos").section).toBe("Sua empresa");
+    const hrefs = hubSections("organizacao", true, null).flatMap((s) => s.items.map((i) => i.href));
+    expect(hrefs).toContain("/app/modelos-prontos");
+    expect(hrefs).toContain("/app/settings/business");
+  });
+
   it("não vaza destino acima do papel", () => {
     const hrefs = hubSections("organizacao", VIEWER.platform, VIEWER.role).flatMap((s) =>
       s.items.map((i) => i.href),
@@ -163,6 +171,7 @@ describe("searchable", () => {
     const hrefs = searchable(ADMIN.platform, ADMIN.role).map((d) => d.href);
     expect(hrefs).toContain("/app/ai/knowledge/sources");
     expect(hrefs).toContain("/app/inbox");
+    expect(hrefs).toContain("/app/modelos-prontos");
   });
 
   it("respeita o papel", () => {

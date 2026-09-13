@@ -2,8 +2,11 @@ import { redirect } from "next/navigation";
 
 import { AtalhosDaOperacao } from "@/components/negocio/AtalhosDaOperacao";
 import { CardDeSetupNegocio } from "@/components/negocio/CardDeSetup";
+import { ModeloDoNegocio } from "@/components/negocio/ModeloDoNegocio";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { resolverPack } from "@/lib/business-packs/catalogo";
+import { lerPackGravado } from "@/lib/business-packs/perfil";
 import { lerEmpresaDoSettings } from "@/lib/negocio/ficha";
 import { carregarEstadoDoSetup } from "@/lib/negocio/estado";
 import { createClient } from "@/lib/supabase/server";
@@ -29,9 +32,23 @@ export default async function MeuNegocioPage() {
   const podeEditar =
     user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin;
   const pendentes = estado.cards.filter((c) => c.estado !== "ok");
+  const pack = lerPackGravado(org?.settings);
+  const definition = pack ? resolverPack(pack.id) : null;
+  const { count: assistentesConfigurados } = await supabase
+    .from("ai_agents")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", activeOrg.orgId)
+    .is("archived_at", null);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 p-6">
+      <ModeloDoNegocio
+        pack={pack}
+        definition={definition}
+        assistentesConfigurados={assistentesConfigurados ?? 0}
+        podeInstalar={podeEditar}
+      />
+
       <FichaDaEmpresaForm
         displayName={(org?.display_name as string | null) ?? estado.empresa}
         legalName={(org?.legal_name as string | null) ?? estado.empresa}
