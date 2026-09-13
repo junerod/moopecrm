@@ -10,6 +10,7 @@ interface Trecho {
   texto: string;
   fonte: string | null;
   pagina?: number;
+  secao?: string;
 }
 
 export function TestarConhecimento({
@@ -98,6 +99,7 @@ export function TestarConhecimento({
                   <li key={`${t.fonte}-${i}`}>
                     {t.fonte}
                     {typeof t.pagina === "number" ? ` · página ${t.pagina}` : ""}
+                    {t.secao ? ` · seção "${t.secao}"` : ""}
                   </li>
                 ))}
             </ul>

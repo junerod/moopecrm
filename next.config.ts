@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   // pdfjs-dist 6 instancia DOMMatrix no import e precisa do binário
   // `@napi-rs/canvas`. Bundlar os dois no traço do Next quebra a extração
   // de PDF em `next start` (422 "sem texto" em arquivo textual).
-  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas"],
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "mammoth", "tesseract.js", "@aws-sdk/client-s3"],
   /**
    * O `standalone` copia SÓ o que o file tracing detecta — e ele não detecta
    * tudo de `@swc/helpers`.

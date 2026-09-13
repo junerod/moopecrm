@@ -13,6 +13,8 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { chavePertenceAOrg } from "@/lib/ai/knowledge/storage/caminho";
+import { chaveDaFonte, storageDaFonte } from "@/lib/ai/knowledge/storage/resolver";
 import { audit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 
@@ -240,13 +242,19 @@ export async function DELETE(
     logger.warn("knowledge.delete.chunks", { request_id: requestId, erro: chunksErr.message });
   }
 
-  const blobPath =
-    typeof ks.source_metadata?.blob_path === "string" ? ks.source_metadata.blob_path : "";
-  if (blobPath.startsWith(`${activeOrg.orgId}/`)) {
-    const { error: rmErr } = await admin.storage.from("ai-policy").remove([blobPath]);
-    if (rmErr) {
-      logger.warn("knowledge.delete.blob", { request_id: requestId, erro: rmErr.message });
+  try {
+    const key = chaveDaFonte(ks.source_metadata);
+    if (chavePertenceAOrg(key, activeOrg.orgId)) {
+      await storageDaFonte(ks.source_metadata).delete({
+        organizationId: activeOrg.orgId,
+        key,
+      });
     }
+  } catch (err) {
+    logger.warn("knowledge.delete.blob", {
+      request_id: requestId,
+      erro: err instanceof Error ? err.message : "storage_failed",
+    });
   }
 
   const { error: emitErr } = await admin.rpc("emit_event" as never, {

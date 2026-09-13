@@ -49,6 +49,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           texto: t.content,
           fonte: t.fonte,
           ...(t.pagina !== undefined ? { pagina: t.pagina } : {}),
+          ...(t.secao ? { secao: t.secao } : {}),
         })),
       },
       { requestId },

@@ -55,6 +55,7 @@ describe("alterarSenhaDaConta", () => {
       full_name: null,
       avatar_url: null,
       is_platform_admin: false,
+      organizations: [],
     });
   });
 

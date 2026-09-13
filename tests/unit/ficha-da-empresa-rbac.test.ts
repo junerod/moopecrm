@@ -42,6 +42,7 @@ describe("updateFichaDaEmpresa — só admin grava", () => {
       full_name: null,
       avatar_url: null,
       is_platform_admin: false,
+      organizations: [],
     });
     vi.mocked(resolveActiveOrg).mockResolvedValue({
       orgId: "o1",

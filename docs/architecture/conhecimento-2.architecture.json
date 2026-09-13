@@ -16,8 +16,10 @@
   "nodes": [
     { "id": "tela", "lane": "humano", "col": 0, "type": "frontend", "label": "Conhecimento da Empresa", "sublabel": "/app/ai/knowledge/sources" },
     { "id": "testar", "lane": "humano", "col": 4, "type": "frontend", "label": "Testar", "sublabel": "pergunta + fontes" },
-    { "id": "upload", "lane": "app", "col": 1, "type": "api", "label": "POST sources/upload", "sublabel": "bucket ai-policy" },
-    { "id": "extrair", "lane": "app", "col": 2, "type": "lib", "label": "ingestPolicyFile", "sublabel": "pdfjs + chunker" },
+    { "id": "upload", "lane": "app", "col": 1, "type": "api", "label": "POST sources/upload", "sublabel": "DocumentStorage" },
+    { "id": "storage", "lane": "app", "col": 1, "type": "db", "label": "DocumentStorage", "sublabel": "supabase | R2" },
+    { "id": "extrair", "lane": "app", "col": 2, "type": "lib", "label": "extractDocument", "sublabel": "pdfjs + fluxo + mammoth" },
+    { "id": "ocr", "lane": "app", "col": 2, "type": "lib", "label": "OCR opcional", "sublabel": "OCR_PROVIDER" },
     { "id": "evento", "lane": "app", "col": 2, "type": "api", "label": "event_log", "sublabel": "knowledge_source.updated" },
     { "id": "organizar", "lane": "app", "col": 0, "type": "api", "label": "POST knowledge/organizar", "sublabel": "preview, não grava" },
     { "id": "indexer", "lane": "engine", "col": 3, "type": "lib", "label": "rag-indexer", "sublabel": "embed + versão" },
@@ -27,8 +29,10 @@
     { "id": "mcp", "lane": "engine", "col": 5, "type": "lib", "label": "MCP knowledge", "sublabel": "crm_search_knowledge" }
   ],
   "edges": [
-    { "id": "e1", "from": "tela", "to": "upload", "label": "PDF/MD/TXT" },
-    { "id": "e2", "from": "upload", "to": "extrair", "label": "valida texto" },
+    { "id": "e1", "from": "tela", "to": "upload", "label": "PDF/DOCX/MD/TXT" },
+    { "id": "e1b", "from": "upload", "to": "storage", "label": "original" },
+    { "id": "e2", "from": "upload", "to": "extrair", "label": "classifica" },
+    { "id": "e2b", "from": "extrair", "to": "ocr", "label": "só se LOW_TEXT" },
     { "id": "e3", "from": "extrair", "to": "evento", "label": "fonte ready" },
     { "id": "e4", "from": "evento", "to": "indexer", "label": "drain/worker" },
     { "id": "e5", "from": "indexer", "to": "chunks", "label": "embedding" },

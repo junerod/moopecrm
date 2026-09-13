@@ -234,6 +234,7 @@ aplica.
 | `20260912200000` | `0205_campanhas_comerciais` | **Campanha comercial mínima.** Tabelas `campaigns` + `campaign_recipients` (status curtos, unique campanha+contato). Não reutiliza `operational_moope` nem alerta interno. `message_id` aponta para `messages` quando houver mensagem real; nesta rodada o envio é mock. RLS com `fn_user_org_ids` + `fn_role_at_least(agent)`. |
 | `20260912210000` | `0206_lgpd_alcanca_destinatario_campanha` | **Forward-fix LGPD.** `fn_lgpd_cascade_redact_contact` zera `campaign_recipients.phone` e `error` do contato anonimizado. Status e timestamps da campanha ficam. |
 | `20260913120000` | `0207_varios_documentos_de_politica` | **N PDFs ativos por agente.** O unique `(agent_id, source_type) WHERE is_active` impedia o segundo documento. FAQ/conversas/catálogo continuam singleton; `policy` sai do predicado. |
+| `20260913180000` | `0208_ai_policy_aceita_docx` | Bucket `ai-policy` passa a aceitar DOCX (`wordprocessingml`). PDF/MD/TXT seguem. Sem coluna nova. |
 
 ## Reproducibility
 

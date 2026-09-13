@@ -68,7 +68,7 @@ describe("home/insights", () => {
         conversao: 0.25, sem_proxima_acao: 0, atrasadas: 0, paradas: 0,
         vs_anterior: { leads_novos: 0, ganhos: 0, conversao: 0.22, primeira_resposta_media_s: null },
       },
-    } as SnapshotDaHome;
+    } as unknown as SnapshotDaHome;
     const frases = insightsDoSnapshot(snap).map((i) => i.texto);
     expect(frases).toHaveLength(3);
     expect(frases[0]).toMatch(/3 retornos vencidos/);

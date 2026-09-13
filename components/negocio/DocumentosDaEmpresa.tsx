@@ -26,8 +26,17 @@ import {
 function tomDoStatus(s: StatusDocumento): TomDs {
   if (s === "pronto") return "green";
   if (s === "erro") return "red";
-  if (s === "enviando") return "blue";
+  if (s === "enviando" || s === "ocr") return "blue";
   return "amber";
+}
+
+function tipoDoArquivo(nome: string, mime?: unknown): string {
+  const ext = nome.split(".").pop()?.toLowerCase();
+  if (ext === "pdf" || mime === "application/pdf") return "PDF";
+  if (ext === "docx" || String(mime ?? "").includes("wordprocessingml")) return "DOCX";
+  if (ext === "md") return "MD";
+  if (ext === "txt") return "TXT";
+  return "Arquivo";
 }
 
 function formatarBytes(n: unknown): string {
@@ -84,12 +93,19 @@ export function DocumentosDaEmpresa({
           method: "POST",
           body: fd,
         });
-        const json = (await res.json()) as { error?: { message?: string } };
+        const json = (await res.json()) as {
+          error?: { message?: string };
+          data?: { extract_status?: string; message?: string };
+        };
         if (!res.ok) {
           toast.error(json.error?.message ?? "Não consegui enviar o arquivo.");
           continue;
         }
-        toast.success("Documento enviado. Estamos indexando.");
+        if (json.data?.extract_status === "needs_ocr") {
+          toast.warning(json.data.message ?? "Este PDF parece ser digitalizado.");
+        } else {
+          toast.success("Documento enviado. Estamos indexando.");
+        }
         await refetch();
       } catch {
         toast.error("Não consegui falar com o servidor.");
@@ -139,12 +155,12 @@ export function DocumentosDaEmpresa({
         >
           Selecionar arquivos
         </Button>
-        <p className="text-xs text-[var(--color-text-muted)]">PDF, Markdown ou TXT · até 20 MB</p>
+        <p className="text-xs text-[var(--color-text-muted)]">PDF, DOCX, Markdown ou TXT · até 20 MB</p>
         <input
           ref={inputRef}
           data-testid="conhecimento-upload-input"
           type="file"
-          accept=".pdf,.md,.txt,application/pdf,text/markdown,text/plain"
+          accept=".pdf,.docx,.md,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
           className="sr-only"
           multiple
           onChange={(e) => {
@@ -173,11 +189,15 @@ export function DocumentosDaEmpresa({
             </li>
           ) : null}
           {docs.map((d) => {
-            const st = statusDoDocumento(d);
+            const st = statusDoDocumento({
+              ...d,
+              source_metadata: d.source_metadata,
+            });
             const nome =
               (typeof d.source_metadata.filename === "string" && d.source_metadata.filename) ||
               d.name ||
               "Documento";
+            const tipo = tipoDoArquivo(nome, d.source_metadata.mime_type);
             return (
               <li
                 key={d.id}
@@ -189,7 +209,7 @@ export function DocumentosDaEmpresa({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-[var(--color-text)]">{nome}</p>
                   <p className="text-xs text-[var(--color-text-muted)]">
-                    {formatarBytes(d.source_metadata.size_bytes)} · {formatarData(d.created_at)}
+                    {tipo} · {formatarBytes(d.source_metadata.size_bytes)} · {formatarData(d.created_at)}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <StatusBadge tone={tomDoStatus(st)}>{rotuloDoStatus(st)}</StatusBadge>
@@ -198,7 +218,7 @@ export function DocumentosDaEmpresa({
                         {d.chunks_count} trechos disponíveis para a IA
                       </span>
                     ) : null}
-                    {st === "erro" && d.last_index_error ? (
+                    {(st === "erro" || st === "ocr_necessario") && d.last_index_error ? (
                       <span className="text-xs text-[var(--color-error-fg)]">{d.last_index_error}</span>
                     ) : null}
                   </div>

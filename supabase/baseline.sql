@@ -16306,3 +16306,14 @@ create unique index if not exists ai_knowledge_sources_unique_per_agent
 
 comment on index public.ai_knowledge_sources_unique_per_agent is
   'Uma fonte ativa por tipo e agente, exceto policy (N documentos). Migration 0207.';
+
+-- ---- bucket ai-policy aceita DOCX (migration 0208) ----
+update storage.buckets
+set allowed_mime_types = array[
+  'application/pdf',
+  'text/markdown',
+  'text/x-markdown',
+  'text/plain',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+where id = 'ai-policy';

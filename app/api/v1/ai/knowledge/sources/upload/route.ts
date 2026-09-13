@@ -1,23 +1,32 @@
 /**
  * POST /api/v1/ai/knowledge/sources/upload
  *
- * Multipart: PDF, Markdown ou TXT (máx. 20MB). Grava no bucket privado
- * `ai-policy`, valida extração, registra a fonte e emite
- * knowledge_source.updated para o rag-indexer.
- *
- * organization_id vem do JWT — NUNCA do body. Path no Storage é
- * `{orgId}/{uuid}.{ext}` — o nome do arquivo do usuário só entra em metadata.
+ * Multipart: PDF, DOCX, Markdown ou TXT (máx. 20MB).
+ * Storage via DocumentStorage (supabase default ou R2).
+ * organization_id vem do JWT — NUNCA do body.
  */
 
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
+
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { extrairPoliticaDoBuffer, PdfExtractError, type ExtensaoDePolitica } from "@/lib/ai/rag/ingest/policy";
+import {
+  DocumentExtractError,
+  extrairPoliticaDoBuffer,
+  type ExtensaoDePolitica,
+} from "@/lib/ai/rag/ingest/policy";
 import { sanitizarNomeDoArquivo } from "@/lib/ai/rag/nome-do-arquivo";
+import {
+  DocumentExtractError as ErroDoc,
+  mensagemDoErroDocumental,
+} from "@/lib/ai/knowledge/erros-documentais";
+import { chaveDocumental } from "@/lib/ai/knowledge/storage/caminho";
+import { storagePadrao } from "@/lib/ai/knowledge/storage/resolver";
+import { resolverExtensaoDocumental } from "@/lib/ai/rag/extractors/registro";
 import { audit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 
@@ -25,26 +34,15 @@ export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
-const ALLOWED_MIME_TYPES = new Set([
-  "application/pdf",
-  "text/markdown",
-  "text/x-markdown",
-  "text/plain",
-]);
-
-const ALLOWED_EXTENSIONS = new Set(["pdf", "md", "txt"]);
-
-function resolveExt(filename: string, mimeType: string): ExtensaoDePolitica | null {
-  const ext = filename.split(".").pop()?.toLowerCase();
-  if (ext === "pdf" || ext === "md" || ext === "txt") return ext;
-  if (mimeType === "application/pdf") return "pdf";
-  if (mimeType === "text/plain") return "txt";
-  if (mimeType === "text/markdown" || mimeType === "text/x-markdown") return "md";
-  return null;
-}
+const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "md", "txt"]);
 
 const nameSchema = z.string().min(2).max(120);
 const agentIdSchema = z.string().uuid();
+
+function codigoHttpDoExtract(code: string): number {
+  if (code === "unsupported_type") return 415;
+  return 422;
+}
 
 export async function POST(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -87,14 +85,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const mimeType = file.type;
-  const ext = resolveExt(file.name, mimeType);
+  const ext = resolverExtensaoDocumental(file.name, mimeType) as ExtensaoDePolitica | null;
   const extDoNome = file.name.split(".").pop()?.toLowerCase() ?? "";
-  const isMimeAllowed = ALLOWED_MIME_TYPES.has(mimeType) || ALLOWED_EXTENSIONS.has(extDoNome);
 
-  if (!isMimeAllowed || !ext) {
+  if (!ALLOWED_EXTENSIONS.has(extDoNome) || !ext) {
     return fail(
       "unsupported_media_type",
-      "Tipo de arquivo não suportado. Envie PDF, Markdown ou TXT (.pdf, .md, .txt).",
+      mensagemDoErroDocumental("unsupported_type"),
       415,
       { requestId },
     );
@@ -120,104 +117,131 @@ export async function POST(req: NextRequest): Promise<Response> {
   const t0 = Date.now();
   let ingest: Awaited<ReturnType<typeof extrairPoliticaDoBuffer>>;
   try {
-    ingest = await extrairPoliticaDoBuffer(fileBuffer, ext);
+    ingest = await extrairPoliticaDoBuffer(fileBuffer, ext, nomeArquivo);
   } catch (err) {
+    const code =
+      err instanceof ErroDoc || err instanceof DocumentExtractError
+        ? err.code
+        : "extract_failed";
     logger.warn("knowledge.upload.extract", {
       request_id: requestId,
       org_id: activeOrg.orgId,
       tipo: ext,
+      error_code: code,
       erro: err instanceof Error ? err.message.slice(0, 240) : "extract_failed",
     });
-    if (err instanceof PdfExtractError) {
-      return fail(
-        "unprocessable_entity",
-        "Não foi possível encontrar texto neste documento.",
-        422,
-        { requestId },
-      );
-    }
-    return fail("internal_error", "Erro ao processar o arquivo.", 500, { requestId });
+    return fail(
+      code,
+      mensagemDoErroDocumental(code),
+      codigoHttpDoExtract(code),
+      { requestId },
+    );
   }
 
-  const blobId = randomUUID();
-  const blobPath = `${activeOrg.orgId}/${blobId}.${ext}`;
-  const admin = createAdminClient();
+  const needsOcr = ingest.errorCode === "pdf_needs_ocr" && ingest.charCount < 40;
+  const storage = storagePadrao();
+  const sourceId = randomUUID();
+  const storageKey = chaveDocumental(activeOrg.orgId, sourceId, nomeArquivo);
+  const contentType =
+    mimeType ||
+    (ext === "pdf"
+      ? "application/pdf"
+      : ext === "docx"
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : ext === "md"
+          ? "text/markdown"
+          : "text/plain");
 
-  const { error: uploadErr } = await admin.storage
-    .from("ai-policy")
-    .upload(blobPath, fileBuffer, { contentType: mimeType || `application/${ext}`, upsert: false });
-
-  if (uploadErr) {
-    logger.error("knowledge.upload.storage", { request_id: requestId, erro: uploadErr.message });
-    return fail("internal_error", "Erro ao fazer upload do arquivo.", 500, { requestId });
+  try {
+    await storage.put({
+      organizationId: activeOrg.orgId,
+      key: storageKey,
+      body: fileBuffer,
+      contentType,
+    });
+  } catch (err) {
+    logger.error("knowledge.upload.storage", {
+      request_id: requestId,
+      provider: storage.provider,
+      erro: err instanceof Error ? err.message : "storage_failed",
+    });
+    return fail("storage_failed", mensagemDoErroDocumental("storage_failed"), 500, { requestId });
   }
 
+  const extractStatus = needsOcr ? "needs_ocr" : "ready";
   const sourceMetadata = {
     filename: nomeArquivo,
-    blob_path: blobPath,
+    blob_path: storageKey,
+    storage_provider: storage.provider,
+    storage_key: storageKey,
     version: 1,
     uploaded_by: authUser.id,
-    mime_type: mimeType || `application/${ext}`,
+    mime_type: contentType,
     size_bytes: file.size,
     chunk_count: ingest.chunkCount,
     page_count: ingest.pageCount,
     char_count: ingest.charCount,
     extracted_text: ingest.extractedText,
     pages: ingest.pages,
+    extract_status: extractStatus,
+    extract_classification: ingest.classification ?? null,
+    extractor: ingest.extractor,
+    ocr_used: ingest.ocrUsed,
+    warnings: ingest.warnings,
+    error_code: ingest.errorCode ?? null,
   };
 
-  const { data: ks, error: ksErr } = await admin
-    .from("ai_knowledge_sources")
-    .insert({
-      organization_id: activeOrg.orgId,
-      agent_id: agentIdParsed.data,
-      source_type: "policy",
-      name: nameParsed.data,
-      status: "ready",
-      ingested_at: new Date().toISOString(),
-      source_metadata: sourceMetadata,
-    })
-    .select("id")
-    .single();
+  const admin = createAdminClient();
+  const { error: ksErr } = await admin.from("ai_knowledge_sources").insert({
+    id: sourceId,
+    organization_id: activeOrg.orgId,
+    agent_id: agentIdParsed.data,
+    source_type: "policy",
+    name: nameParsed.data,
+    status: "ready",
+    last_index_error: needsOcr ? mensagemDoErroDocumental("pdf_needs_ocr") : null,
+    ingested_at: new Date().toISOString(),
+    source_metadata: sourceMetadata,
+  });
 
-  if (ksErr || !ks) {
-    await admin.storage.from("ai-policy").remove([blobPath]);
-    logger.error("knowledge.upload.insert", { request_id: requestId, erro: ksErr?.message });
+  if (ksErr) {
+    try {
+      await storage.delete({ organizationId: activeOrg.orgId, key: storageKey });
+    } catch {
+      /* rollback best-effort */
+    }
+    logger.error("knowledge.upload.insert", { request_id: requestId, erro: ksErr.message });
     return fail("internal_error", "Erro ao registrar fonte de conhecimento.", 500, { requestId });
   }
 
-  const ksId = (ks as { id: string }).id;
+  if (!needsOcr && ingest.extractedText) {
+    const { error: faqErr } = await admin.from("ai_faq_items").insert({
+      organization_id: activeOrg.orgId,
+      knowledge_source_id: sourceId,
+      question: `O que o documento ${nameParsed.data} registra?`,
+      answer: ingest.extractedText.slice(0, 8000),
+      tags: ["documento"],
+      locale: "pt-BR",
+      position: 0,
+    });
+    if (faqErr) {
+      logger.warn("knowledge.upload.faq_item", { request_id: requestId, erro: faqErr.message });
+    }
 
-  // O Testar e o Copilot já leem `ai_faq_items` quando o vetor ainda não
-  // rodou. Sem esta linha, um PDF indexado só existia no blob — a pergunta
-  // de confiança voltava vazia até o embedder (que o e2e muitas vezes não tem).
-  const { error: faqErr } = await admin.from("ai_faq_items").insert({
-    organization_id: activeOrg.orgId,
-    knowledge_source_id: ksId,
-    question: `O que o documento ${nameParsed.data} registra?`,
-    answer: ingest.extractedText.slice(0, 8000),
-    tags: ["documento"],
-    locale: "pt-BR",
-    position: 0,
-  });
-  if (faqErr) {
-    logger.warn("knowledge.upload.faq_item", { request_id: requestId, erro: faqErr.message });
-  }
-
-  const { error: emitErr } = await admin.rpc("emit_event" as never, {
-    p_event_type: "knowledge_source.updated",
-    p_entity_kind: "ai_knowledge_source",
-    p_entity_id: ksId,
-    p_payload: {
-      knowledge_source_id: ksId,
-      agent_id: agentIdParsed.data,
-      source_type: "policy",
-    },
-    p_organization_id: activeOrg.orgId,
-  } as never);
-
-  if (emitErr) {
-    logger.warn("knowledge.upload.emit", { request_id: requestId, erro: emitErr.message });
+    const { error: emitErr } = await admin.rpc("emit_event" as never, {
+      p_event_type: "knowledge_source.updated",
+      p_entity_kind: "ai_knowledge_source",
+      p_entity_id: sourceId,
+      p_payload: {
+        knowledge_source_id: sourceId,
+        agent_id: agentIdParsed.data,
+        source_type: "policy",
+      },
+      p_organization_id: activeOrg.orgId,
+    } as never);
+    if (emitErr) {
+      logger.warn("knowledge.upload.emit", { request_id: requestId, erro: emitErr.message });
+    }
   }
 
   void audit({
@@ -225,19 +249,42 @@ export async function POST(req: NextRequest): Promise<Response> {
     actorUserId: authUser.id,
     organizationId: activeOrg.orgId,
     resourceType: "ai_knowledge_source",
-    resourceId: ksId,
+    resourceId: sourceId,
     requestId,
-    metadata: { ext, size_bytes: file.size, chunks: ingest.chunkCount },
+    metadata: {
+      ext,
+      size_bytes: file.size,
+      chunks: ingest.chunkCount,
+      storage_provider: storage.provider,
+      extractor: ingest.extractor,
+      classification: ingest.classification,
+      ocr_used: ingest.ocrUsed,
+      error_code: ingest.errorCode ?? null,
+    },
   });
 
   logger.info("knowledge.upload.ok", {
-    source_id: ksId,
+    source_id: sourceId,
     org_id: activeOrg.orgId,
     tipo: ext,
-    status: "ready",
+    storage_provider: storage.provider,
+    extractor: ingest.extractor,
+    classification: ingest.classification,
+    status: extractStatus,
     chunks: ingest.chunkCount,
+    ocr_used: ingest.ocrUsed,
     extract_ms: Date.now() - t0,
   });
 
-  return ok({ id: ksId, name: nameParsed.data, status: "ready" }, { status: 201, requestId });
+  return ok(
+    {
+      id: sourceId,
+      name: nameParsed.data,
+      status: extractStatus,
+      extract_status: extractStatus,
+      error_code: ingest.errorCode ?? null,
+      message: needsOcr ? mensagemDoErroDocumental("pdf_needs_ocr") : undefined,
+    },
+    { status: 201, requestId },
+  );
 }

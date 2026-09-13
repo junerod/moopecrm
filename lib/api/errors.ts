@@ -59,6 +59,14 @@ export const ApiErrorCodes = {
   channel_pairing_wait: "channel_pairing_wait", // WhatsApp pediu espera; QR agora estica a pena
   conversation_required: "conversation_required", // locadora: sem fio no WhatsApp não manda — primeiro toque é no celular
   knowledge_source_type_in_use: "knowledge_source_type_in_use", // já existe fonte ATIVA daquele tipo para o agente (índice ai_knowledge_sources_unique_per_agent)
+  pdf_no_text: "pdf_no_text",
+  pdf_needs_ocr: "pdf_needs_ocr",
+  pdf_encrypted: "pdf_encrypted",
+  pdf_corrupt: "pdf_corrupt",
+  docx_invalid: "docx_invalid",
+  extract_failed: "extract_failed",
+  storage_failed: "storage_failed",
+  index_failed: "index_failed",
 
   // 422 — semântica
   unprocessable_entity: "unprocessable_entity",

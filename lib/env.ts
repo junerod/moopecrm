@@ -181,6 +181,22 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().optional().default(""),
   OPENAI_API_KEY: z.string().optional().default(""),
 
+  /**
+   * Storage documental do Knowledge. Default supabase = instalações atuais.
+   * `r2` exige R2_* abaixo. String livre de propósito: typo não derruba o boot.
+   */
+  KNOWLEDGE_STORAGE_PROVIDER: z.string().optional().default("supabase"),
+  R2_ACCOUNT_ID: z.string().optional().default(""),
+  R2_ACCESS_KEY_ID: z.string().optional().default(""),
+  R2_SECRET_ACCESS_KEY: z.string().optional().default(""),
+  R2_BUCKET_KNOWLEDGE: z.string().optional().default("moope-knowledge"),
+  R2_ENDPOINT: z.string().optional().default(""),
+  /**
+   * OCR só como fallback de PDF sem texto. `none` (default) não gasta nada.
+   * `tesseract` usa tesseract.js local. Typo cai em none.
+   */
+  OCR_PROVIDER: z.string().optional().default("none"),
+
   // Fusão (Fase 4): DONO ÚNICO dos eventos ai_agent.dispatch_requested.
   // 'engine' (default) = o worker agent-engine é o único consumidor (o cron
   // agent-dispatcher vira no-op mecânico); 'native' = o dispatcher EPIC-13

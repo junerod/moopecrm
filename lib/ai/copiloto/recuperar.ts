@@ -14,7 +14,7 @@ import {
 } from "@/lib/ai/knowledge/busca";
 
 export interface RecuperacaoDaEmpresa {
-  trechos: Array<{ content: string; fonte: string | null; pagina?: number }>;
+  trechos: Array<{ content: string; fonte: string | null; pagina?: number; secao?: string }>;
   origem: "vetor" | "cadastro" | "vazio";
 }
 
@@ -154,11 +154,11 @@ export async function buscarDocumentosDaOrg(
     .eq("status", "ready")
     .eq("source_type", "policy");
 
-  const hits: Array<{ content: string; fonte: string | null; pagina?: number }> = [];
+  const hits: Array<{ content: string; fonte: string | null; pagina?: number; secao?: string }> = [];
   for (const fonte of fontes ?? []) {
     const meta = (fonte.source_metadata ?? {}) as Record<string, unknown>;
     const pages = Array.isArray(meta.pages)
-      ? (meta.pages as Array<{ pagina?: number; texto?: string }>)
+      ? (meta.pages as Array<{ pagina?: number; secao?: string; texto?: string }>)
       : [];
     const texto =
       pages.length > 0
@@ -182,6 +182,7 @@ export async function buscarDocumentosDaOrg(
           content: String(p.texto ?? "").trim(),
           fonte: nome,
           pagina: typeof p.pagina === "number" ? p.pagina : undefined,
+          secao: typeof p.secao === "string" ? p.secao : undefined,
         });
         if (hits.length >= 5) return hits;
       }
@@ -200,13 +201,19 @@ export async function buscarDocumentosDaOrg(
   return hits;
 }
 
-function fonteDoTrecho(t: TrechoEncontrado): { fonte: string | null; pagina?: number } {
+function fonteDoTrecho(t: TrechoEncontrado): {
+  fonte: string | null;
+  pagina?: number;
+  secao?: string;
+} {
   const meta = t.metadata ?? {};
   const filename = typeof meta.filename === "string" ? meta.filename : null;
   const pagina = typeof meta.page === "number" ? meta.page : undefined;
+  const secao = typeof meta.section === "string" ? meta.section : undefined;
   return {
     fonte: filename ?? "Conhecimento da empresa",
     ...(pagina !== undefined ? { pagina } : {}),
+    ...(secao ? { secao } : {}),
   };
 }
 
@@ -235,6 +242,7 @@ export async function recuperarConhecimentoDaEmpresa(
               content: t.content,
               fonte: citacao.fonte,
               ...(citacao.pagina !== undefined ? { pagina: citacao.pagina } : {}),
+              ...(citacao.secao ? { secao: citacao.secao } : {}),
             };
           }),
           origem: "vetor",

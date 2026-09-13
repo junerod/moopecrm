@@ -314,6 +314,7 @@ type Pedaco = {
   sourceType: string;
   filename?: string;
   page?: number;
+  section?: string;
   embedding?: number[];
   contentHash?: string;
   tokenCount?: number;
@@ -321,8 +322,11 @@ type Pedaco = {
 
 function extensaoDoBlob(path: string, mime?: string): ExtensaoDePolitica | null {
   const ext = path.split(".").pop()?.toLowerCase();
-  if (ext === "pdf" || ext === "md" || ext === "txt") return ext;
+  if (ext === "pdf" || ext === "docx" || ext === "md" || ext === "txt") return ext;
   if (mime === "application/pdf") return "pdf";
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return "docx";
+  }
   if (mime === "text/plain") return "txt";
   if (mime === "text/markdown" || mime === "text/x-markdown") return "md";
   return null;
@@ -336,11 +340,20 @@ async function pedacosDoDocumento(
 ): Promise<Pedaco[]> {
   const meta = fonte.source_metadata ?? {};
   const filename = typeof meta.filename === "string" ? meta.filename : fonte.name;
-  const blobPath = typeof meta.blob_path === "string" ? meta.blob_path : "";
+  const blobPath =
+    typeof meta.storage_key === "string" && meta.storage_key.length > 0
+      ? meta.storage_key
+      : typeof meta.blob_path === "string"
+        ? meta.blob_path
+        : "";
   const pages = Array.isArray(meta.pages)
-    ? (meta.pages as Array<{ pagina?: number; texto?: string }>)
-        .filter((p) => typeof p.texto === "string" && typeof p.pagina === "number")
-        .map((p) => ({ pagina: p.pagina as number, texto: p.texto as string }))
+    ? (meta.pages as Array<{ pagina?: number; secao?: string; texto?: string }>)
+        .filter((p) => typeof p.texto === "string")
+        .map((p) => ({
+          pagina: typeof p.pagina === "number" ? p.pagina : undefined,
+          secao: typeof p.secao === "string" ? p.secao : undefined,
+          texto: p.texto as string,
+        }))
     : undefined;
   const extracted =
     typeof meta.extracted_text === "string" ? meta.extracted_text : "";
@@ -352,6 +365,7 @@ async function pedacosDoDocumento(
       sourceType: fonte.source_type,
       filename,
       page: p.page,
+      section: p.section,
     }));
   }
 
@@ -365,6 +379,8 @@ async function pedacosDoDocumento(
     knowledgeSourceId: fonte.id,
     blobPath,
     ext,
+    storageProvider: typeof meta.storage_provider === "string" ? meta.storage_provider : undefined,
+    storageKey: blobPath,
   });
   return r.chunks.map((p) => ({
     content: p.content,
@@ -372,6 +388,7 @@ async function pedacosDoDocumento(
     sourceType: fonte.source_type,
     filename,
     page: p.page,
+    section: p.section,
   }));
 }
 
@@ -564,6 +581,7 @@ async function handleKnowledgeSourceUpdated(
           source_type: p.sourceType,
           ...(p.filename ? { filename: p.filename } : {}),
           ...(typeof p.page === "number" ? { page: p.page } : {}),
+          ...(p.section ? { section: p.section } : {}),
         },
       },
       // Ver comentario no caminho de produto: esta e a constraint que existe.
