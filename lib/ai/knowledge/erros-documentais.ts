@@ -25,7 +25,7 @@ const MENSAGENS: Record<CodigoErroDocumental, string> = {
   pdf_encrypted: "Este PDF é protegido por senha e não pode ser processado.",
   pdf_corrupt: "Este PDF está danificado e não pode ser lido.",
   docx_invalid: "Este DOCX está inválido ou vazio.",
-  unsupported_type: "Tipo de arquivo não suportado. Envie PDF, DOCX, Markdown ou TXT.",
+  unsupported_type: "Tipo de arquivo não suportado. Envie PDF, DOCX, Markdown, TXT, PNG, JPG ou WEBP.",
   extract_failed: "Não consegui extrair o conteúdo deste documento.",
   storage_failed: "Não consegui gravar o arquivo. Tente de novo.",
   index_failed: "Não foi possível indexar este documento.",

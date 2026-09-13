@@ -35,6 +35,7 @@ const patchSourceSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   items: z.array(faqItemSchema).optional(),
   source_metadata: z.record(z.string(), z.unknown()).optional(),
+  collection_ids: z.array(z.string().uuid()).max(20).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -84,7 +85,7 @@ export async function PATCH(
   const supabase = await createClient();
   const { data: existing, error: fetchErr } = await supabase
     .from("ai_knowledge_sources")
-    .select("id, source_type, agent_id")
+    .select("id, source_type, agent_id, source_metadata")
     .eq("id", sourceId)
     .eq("organization_id", activeOrg.orgId)
     .maybeSingle();
@@ -97,12 +98,24 @@ export async function PATCH(
     return fail("not_found", "Fonte de conhecimento não encontrada.", 404, { requestId });
   }
 
-  const ksRow = existing as { id: string; source_type: string; agent_id: string };
+  const ksRow = existing as {
+    id: string;
+    source_type: string;
+    agent_id: string;
+    source_metadata: Record<string, unknown> | null;
+  };
 
   // Build update payload (only provided fields).
   const updatePayload: Record<string, unknown> = {};
   if (input.name !== undefined) updatePayload.name = input.name;
   if (input.source_metadata !== undefined) updatePayload.source_metadata = input.source_metadata;
+  if (input.collection_ids !== undefined) {
+    updatePayload.source_metadata = {
+      ...(ksRow.source_metadata ?? {}),
+      ...((updatePayload.source_metadata as Record<string, unknown> | undefined) ?? {}),
+      collection_ids: input.collection_ids,
+    };
+  }
 
   const admin = createAdminClient();
 

@@ -132,7 +132,13 @@ export async function extrairPoliticaDoBuffer(
         ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         : ext === "md"
           ? "text/markdown"
-          : "text/plain";
+          : ext === "png"
+            ? "image/png"
+            : ext === "webp"
+              ? "image/webp"
+              : ext === "jpg" || ext === "jpeg"
+                ? "image/jpeg"
+                : "text/plain";
 
   const doc = await extractDocument({
     buffer,

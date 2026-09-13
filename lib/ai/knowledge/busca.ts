@@ -15,6 +15,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { embedText } from "@/lib/ai/embed";
+import { consolidarOriginalEDerivado } from "@/lib/ai/knowledge/visual/dedup";
 
 export interface TrechoEncontrado {
   chunk_id: string;
@@ -43,6 +44,8 @@ export interface ParametrosDaBusca {
   pergunta: string;
   topK: number;
   limiar: number;
+  /** Se informado, só devolve trechos dessas fontes (coleções do agente). */
+  sourceIdsPermitidos?: string[];
 }
 
 interface LinhaDaRpc {
@@ -71,7 +74,7 @@ export async function buscarConhecimento(
     p_organization_id: p.organizationId,
     p_kb_version_id: p.kbVersionId,
     p_embedding: `[${embedding.join(",")}]`,
-    p_k: p.topK,
+    p_k: p.sourceIdsPermitidos && p.sourceIdsPermitidos.length > 0 ? Math.min(p.topK * 4, 20) : p.topK,
     p_threshold: PISO,
   });
 
@@ -80,18 +83,25 @@ export async function buscarConhecimento(
   }
 
   const linhas = (data ?? []) as LinhaDaRpc[];
+  const permitidos = p.sourceIdsPermitidos ? new Set(p.sourceIdsPermitidos) : null;
+  const filtradas = linhas.filter((l) => {
+    if (l.similarity < p.limiar) return false;
+    if (!permitidos) return true;
+    return l.knowledge_source_id !== null && permitidos.has(l.knowledge_source_id);
+  });
+  const consolidados = consolidarOriginalEDerivado(
+    filtradas.map((l) => ({
+      chunk_id: l.chunk_id,
+      knowledge_source_id: l.knowledge_source_id,
+      content: l.content,
+      similarity: l.similarity,
+      metadata: l.metadata ?? null,
+    })),
+  );
   const melhor = linhas.length > 0 ? Math.max(...linhas.map((l) => l.similarity)) : null;
 
   return {
-    trechos: linhas
-      .filter((l) => l.similarity >= p.limiar)
-      .map((l) => ({
-        chunk_id: l.chunk_id,
-        knowledge_source_id: l.knowledge_source_id,
-        content: l.content,
-        similarity: l.similarity,
-        metadata: l.metadata ?? null,
-      })),
+    trechos: consolidados,
     melhorSimilaridade: melhor,
   };
 }

@@ -43,6 +43,8 @@ export interface PublishedAgentConfig {
   /** knobs de RAG do ai_agents.config (defaults do guardrails-schema: 5 / 0.72). */
   ragTopK: number;
   ragSimilarityThreshold: number;
+  /** Vazio = todas as coleções do acervo da empresa. */
+  knowledgeCollectionIds: string[];
   /**
    * O papel OPERADOR está ligado nesta versão (spec 16 §3.2)?
    *
@@ -135,7 +137,14 @@ const SELECT_AGENT_CONFIG_COLUMNS = `a.id as agent_id,
 /** Mapeamento Row (snake_case do banco) → PublishedAgentConfig, compartilhado
  * pelas duas variantes de loader (por channel_session e por agent id). */
 function mapAgentConfigRow(r: Row): PublishedAgentConfig {
-  const cfg = (r.config ?? {}) as { rag_top_k?: unknown; rag_similarity_threshold?: unknown };
+  const cfg = (r.config ?? {}) as {
+    rag_top_k?: unknown;
+    rag_similarity_threshold?: unknown;
+    knowledge_collection_ids?: unknown;
+  };
+  const knowledgeCollectionIds = Array.isArray(cfg.knowledge_collection_ids)
+    ? cfg.knowledge_collection_ids.filter((id): id is string => typeof id === "string")
+    : [];
   const ragTopK =
     typeof cfg.rag_top_k === 'number' && Number.isInteger(cfg.rag_top_k) && cfg.rag_top_k >= 1 && cfg.rag_top_k <= 20
       ? cfg.rag_top_k
@@ -166,6 +175,7 @@ function mapAgentConfigRow(r: Row): PublishedAgentConfig {
     activeKbVersionId: r.active_kb_version_id,
     ragTopK,
     ragSimilarityThreshold,
+    knowledgeCollectionIds,
     // `?? false` cobre o clone que ainda não aplicou a 0111: coluna ausente vem
     // como null/undefined, e a direção segura é o papel DESLIGADO — nunca gastar
     // modelo por causa de um schema desatualizado.

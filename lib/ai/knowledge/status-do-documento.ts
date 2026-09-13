@@ -1,11 +1,15 @@
 export type StatusDocumento =
   | "enviando"
   | "processando"
+  | "lendo"
+  | "analisando_imagens"
+  | "organizando"
   | "indexando"
   | "pronto"
   | "erro"
   | "ocr_necessario"
-  | "ocr";
+  | "ocr"
+  | "vision_indisponivel";
 
 export function statusDoDocumento(s: {
   status: string | null;
@@ -22,7 +26,10 @@ export function statusDoDocumento(s: {
   if (extract === "needs_ocr" || s.source_metadata?.error_code === "pdf_needs_ocr") {
     return "ocr_necessario";
   }
-  if (extract === "extracting") return "processando";
+  if (extract === "vision_unavailable") return "vision_indisponivel";
+  if (extract === "analyzing_visual") return "analisando_imagens";
+  if (extract === "organizing") return "organizando";
+  if (extract === "extracting") return "lendo";
   if (s.status === "failed" || s.last_index_status === "failed") return "erro";
   if (s.status === "building") return "processando";
   if (s.last_index_status === "success" && (s.chunks_count ?? 0) > 0) return "pronto";
@@ -37,7 +44,13 @@ export function rotuloDoStatus(status: StatusDocumento): string {
     case "enviando":
       return "Enviando";
     case "processando":
-      return "Extraindo texto";
+      return "Lendo documento";
+    case "lendo":
+      return "Lendo documento";
+    case "analisando_imagens":
+      return "Analisando imagens";
+    case "organizando":
+      return "Organizando conhecimento";
     case "indexando":
       return "Indexando";
     case "pronto":
@@ -48,5 +61,7 @@ export function rotuloDoStatus(status: StatusDocumento): string {
       return "OCR necessário";
     case "ocr":
       return "Processando OCR";
+    case "vision_indisponivel":
+      return "Análise visual indisponível";
   }
 }

@@ -17,6 +17,7 @@ import {
   buscarConhecimento,
   resolverAcervoDoAgente,
 } from "@/lib/ai/knowledge/busca";
+import { fontePermitidaNaColecao, idsDeColecaoDoAgente, idsDeColecaoDoMeta } from "@/lib/ai/knowledge/colecoes";
 import type { McpToolDefinition } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -70,12 +71,37 @@ export const crmSearchKnowledge: McpToolDefinition<typeof buscarInputShape> = {
       };
     }
 
+    const { data: ag } = await ctx.supabase
+      .from("ai_agents")
+      .select("config")
+      .eq("id", agentId)
+      .eq("organization_id", ctx.organizationId)
+      .maybeSingle();
+    const colecoes = idsDeColecaoDoAgente((ag?.config ?? {}) as Record<string, unknown>);
+    let sourceIdsPermitidos: string[] | undefined;
+    if (colecoes.length > 0) {
+      const { data: fontes } = await ctx.supabase
+        .from("ai_knowledge_sources")
+        .select("id, source_metadata")
+        .eq("organization_id", ctx.organizationId)
+        .eq("is_active", true);
+      sourceIdsPermitidos = (fontes ?? [])
+        .filter((f) =>
+          fontePermitidaNaColecao(
+            idsDeColecaoDoMeta((f.source_metadata ?? {}) as Record<string, unknown>),
+            colecoes,
+          ),
+        )
+        .map((f) => f.id as string);
+    }
+
     const resultado = await buscarConhecimento(ctx.supabase, {
       organizationId: ctx.organizationId,
       kbVersionId,
       pergunta: input.pergunta,
       topK: input.quantidade,
       limiar: LIMIAR_PADRAO,
+      sourceIdsPermitidos,
     });
 
     return {

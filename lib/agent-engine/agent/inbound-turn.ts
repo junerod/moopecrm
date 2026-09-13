@@ -35,6 +35,8 @@ import type { ChannelAdapter, ChannelSendResult } from '../channel-adapter';
 import { withFields, type Logger } from '../obs/logger';
 import { getLeadContext, type LeadContext, type LeadContextResult } from '../edge/crm/get-lead-context';
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
+import { fontePermitidaNaColecao, idsDeColecaoDoMeta } from '@/lib/ai/knowledge/colecoes';
+import { embrulharComoConteudo } from '@/lib/ai/knowledge/injecao';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
 // applySendOutcome é disposição de FILA (cancel/reschedule + cache de opt-out), não
@@ -1870,21 +1872,49 @@ async function executarTurnoDoAgente(
           organizationId: tenantId,
           kbVersionId: agentConfig.activeKbVersionId,
           query,
-          topK: agentConfig.ragTopK,
+          topK:
+            agentConfig.knowledgeCollectionIds.length > 0
+              ? Math.min(agentConfig.ragTopK * 4, 20)
+              : agentConfig.ragTopK,
           threshold: agentConfig.ragSimilarityThreshold,
           jobId: job.id,
         }, { log: runLog });
-        if (out.ok && out.results.length > 0) {
-          // As citações são montadas AQUI, pelo código, a partir do resultado
-          // cru — é por isso que os ids podem sair do que vai ao modelo sem
-          // perder nada: quem precisa deles é esta linha, não o modelo.
-          pendingCitations = citationsFromHits(out.results);
+        if (!out.ok) {
+          return turnoProjeta(mcpToolIdsDoTurno) ? projetarRetornoDeTool(out) : out;
         }
-        // `chunk_id` e `knowledge_source_id` viajavam CRUS para o modelo em toda
-        // busca com RAG — dois UUIDs por resultado, sem uso nenhum do lado dele
-        // (nenhuma ferramenta os aceita como argumento). UUID cru na resposta ao
-        // cliente foi MEDIDO nesta base; esta era uma fonte silenciosa dele.
-        return turnoProjeta(mcpToolIdsDoTurno) ? projetarRetornoDeTool(out) : out;
+        let results = out.results;
+        if (agentConfig.knowledgeCollectionIds.length > 0) {
+          const { rows } = await pool.query<{ id: string; source_metadata: Record<string, unknown> | null }>(
+            `select id, source_metadata from ai_knowledge_sources
+             where organization_id = $1 and is_active = true`,
+            [tenantId],
+          );
+          const allowed = new Set(
+            rows
+              .filter((r) =>
+                fontePermitidaNaColecao(
+                  idsDeColecaoDoMeta(r.source_metadata),
+                  agentConfig.knowledgeCollectionIds,
+                ),
+              )
+              .map((r) => r.id),
+          );
+          results = results.filter((r) => r.knowledge_source_id && allowed.has(r.knowledge_source_id));
+        }
+        if (results.length > 0) {
+          pendingCitations = citationsFromHits(results);
+        }
+        const paraOModelo = {
+          ...out,
+          results: results.map((r) => ({
+            ...r,
+            content: embrulharComoConteudo(
+              r.content,
+              typeof r.metadata?.filename === "string" ? r.metadata.filename : "documento",
+            ),
+          })),
+        };
+        return turnoProjeta(mcpToolIdsDoTurno) ? projetarRetornoDeTool(paraOModelo) : paraOModelo;
       },
     }),
     send_message: tool({

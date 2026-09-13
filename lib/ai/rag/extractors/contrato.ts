@@ -8,7 +8,7 @@ export type ClassificacaoPdf =
   | "CORRUPT"
   | "UNSUPPORTED";
 
-export type ExtensaoDocumental = "pdf" | "docx" | "md" | "txt";
+export type ExtensaoDocumental = "pdf" | "docx" | "md" | "txt" | "png" | "jpg" | "jpeg" | "webp";
 
 export interface PaginaOuSecao {
   pagina?: number;

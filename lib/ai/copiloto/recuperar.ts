@@ -12,6 +12,8 @@ import {
   resolverAcervoDoAgente,
   type TrechoEncontrado,
 } from "@/lib/ai/knowledge/busca";
+import { idsDeColecaoDoAgente, idsDeColecaoDoMeta, fontePermitidaNaColecao } from "@/lib/ai/knowledge/colecoes";
+import { citacaoDaFonteOriginal } from "@/lib/ai/knowledge/provenance";
 
 export interface RecuperacaoDaEmpresa {
   trechos: Array<{ content: string; fonte: string | null; pagina?: number; secao?: string }>;
@@ -90,6 +92,7 @@ export async function buscarFaqDaOrg(
   db: SupabaseClient,
   organizationId: string,
   pergunta: string,
+  sourceIdsPermitidos?: string[],
 ): Promise<Array<{ content: string; fonte: string | null }>> {
   const termos = (pergunta ?? "")
     .toLowerCase()
@@ -105,7 +108,9 @@ export async function buscarFaqDaOrg(
     .select("id, name")
     .eq("organization_id", organizationId)
     .eq("is_active", true);
-  const ids = (fontes ?? []).map((f) => f.id as string);
+  const ids = (fontes ?? [])
+    .map((f) => f.id as string)
+    .filter((id) => !sourceIdsPermitidos || sourceIdsPermitidos.includes(id));
   if (ids.length === 0) return [];
   const nomePorFonte = new Map((fontes ?? []).map((f) => [f.id as string, f.name as string]));
 
@@ -136,6 +141,7 @@ export async function buscarDocumentosDaOrg(
   db: SupabaseClient,
   organizationId: string,
   pergunta: string,
+  sourceIdsPermitidos?: string[],
 ): Promise<Array<{ content: string; fonte: string | null; pagina?: number }>> {
   const termos = (pergunta ?? "")
     .toLowerCase()
@@ -156,6 +162,7 @@ export async function buscarDocumentosDaOrg(
 
   const hits: Array<{ content: string; fonte: string | null; pagina?: number; secao?: string }> = [];
   for (const fonte of fontes ?? []) {
+    if (sourceIdsPermitidos && !sourceIdsPermitidos.includes(fonte.id as string)) continue;
     const meta = (fonte.source_metadata ?? {}) as Record<string, unknown>;
     const pages = Array.isArray(meta.pages)
       ? (meta.pages as Array<{ pagina?: number; secao?: string; texto?: string }>)
@@ -210,10 +217,11 @@ function fonteDoTrecho(t: TrechoEncontrado): {
   const filename = typeof meta.filename === "string" ? meta.filename : null;
   const pagina = typeof meta.page === "number" ? meta.page : undefined;
   const secao = typeof meta.section === "string" ? meta.section : undefined;
+  const cit = citacaoDaFonteOriginal({ filename, page: pagina, section: secao });
   return {
-    fonte: filename ?? "Conhecimento da empresa",
-    ...(pagina !== undefined ? { pagina } : {}),
-    ...(secao ? { secao } : {}),
+    fonte: cit.rotulo,
+    ...(cit.pagina !== undefined ? { pagina: cit.pagina } : {}),
+    ...(cit.secao ? { secao: cit.secao } : {}),
   };
 }
 
@@ -221,8 +229,41 @@ export async function recuperarConhecimentoDaEmpresa(
   db: SupabaseClient,
   organizationId: string,
   pergunta: string,
+  opts?: { agentId?: string },
 ): Promise<RecuperacaoDaEmpresa> {
-  const agente = await resolverAgenteDoAcervo(db, organizationId);
+  const agente = opts?.agentId
+    ? {
+        id: opts.agentId,
+        kbVersionId: await resolverAcervoDoAgente(db, organizationId, opts.agentId),
+      }
+    : await resolverAgenteDoAcervo(db, organizationId);
+
+  let sourceIdsPermitidos: string[] | undefined;
+  if (opts?.agentId) {
+    const { data: ag } = await db
+      .from("ai_agents")
+      .select("config")
+      .eq("id", opts.agentId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    const colecoes = idsDeColecaoDoAgente((ag?.config ?? {}) as Record<string, unknown>);
+    if (colecoes.length > 0) {
+      const { data: fontes } = await db
+        .from("ai_knowledge_sources")
+        .select("id, source_metadata")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true);
+      sourceIdsPermitidos = (fontes ?? [])
+        .filter((f) =>
+          fontePermitidaNaColecao(
+            idsDeColecaoDoMeta((f.source_metadata ?? {}) as Record<string, unknown>),
+            colecoes,
+          ),
+        )
+        .map((f) => f.id as string);
+    }
+  }
+
   if (agente?.kbVersionId) {
     try {
       const kb =
@@ -233,6 +274,7 @@ export async function recuperarConhecimentoDaEmpresa(
         pergunta,
         topK: 5,
         limiar: 0.35,
+        sourceIdsPermitidos,
       });
       if (r.trechos.length > 0) {
         return {
@@ -253,9 +295,13 @@ export async function recuperarConhecimentoDaEmpresa(
     }
   }
 
-  const faq = await buscarFaqDaOrg(db, organizationId, pergunta);
+  if (sourceIdsPermitidos && sourceIdsPermitidos.length === 0) {
+    return { trechos: [], origem: "vazio" };
+  }
+
+  const faq = await buscarFaqDaOrg(db, organizationId, pergunta, sourceIdsPermitidos);
   if (faq.length > 0) return { trechos: faq, origem: "cadastro" };
-  const docs = await buscarDocumentosDaOrg(db, organizationId, pergunta);
+  const docs = await buscarDocumentosDaOrg(db, organizationId, pergunta, sourceIdsPermitidos);
   if (docs.length > 0) return { trechos: docs, origem: "cadastro" };
   return { trechos: [], origem: "vazio" };
 }

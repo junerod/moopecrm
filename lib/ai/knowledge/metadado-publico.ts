@@ -20,6 +20,27 @@ export function metadadoPublicoDaFonte(
   if (typeof meta.error_code === "string") out.error_code = meta.error_code;
   if (typeof meta.ocr_used === "boolean") out.ocr_used = meta.ocr_used;
   if (typeof meta.extractor === "string") out.extractor = meta.extractor;
+  if (Array.isArray(meta.collection_ids)) {
+    out.collection_ids = meta.collection_ids.filter((id): id is string => typeof id === "string");
+  }
+  if (meta.derived && typeof meta.derived === "object") {
+    const d = meta.derived as Record<string, unknown>;
+    out.derived = {
+      document_type: d.document_type,
+      summary: d.summary,
+      topics: d.topics,
+      procedures: d.procedures,
+      products: d.products,
+      features: d.features,
+      benefits: d.benefits,
+    };
+  }
+  if (Array.isArray(meta.visual_pages)) {
+    out.visual_pages_count = meta.visual_pages.length;
+  }
+  if (meta.processing && typeof meta.processing === "object") {
+    out.processing = meta.processing;
+  }
   if (Array.isArray(meta.warnings)) {
     out.warnings = meta.warnings.filter((w): w is string => typeof w === "string").slice(0, 5);
   }

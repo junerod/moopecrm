@@ -16,6 +16,7 @@ import {
 import { ehDocumentoArquivado } from "@/lib/ai/knowledge/metadado-publico";
 import type { TomDs } from "@/lib/design-system/tones";
 import { DotsThree, FileText, Trash, UploadSimple } from "@/lib/ui/icons";
+import { DetalheDoDocumento } from "@/components/negocio/DetalheDoDocumento";
 import {
   useArquivarSource,
   useKnowledgeSources,
@@ -26,7 +27,7 @@ import {
 function tomDoStatus(s: StatusDocumento): TomDs {
   if (s === "pronto") return "green";
   if (s === "erro") return "red";
-  if (s === "enviando" || s === "ocr") return "blue";
+  if (s === "enviando" || s === "ocr" || s === "analisando_imagens" || s === "organizando") return "blue";
   return "amber";
 }
 
@@ -36,6 +37,9 @@ function tipoDoArquivo(nome: string, mime?: unknown): string {
   if (ext === "docx" || String(mime ?? "").includes("wordprocessingml")) return "DOCX";
   if (ext === "md") return "MD";
   if (ext === "txt") return "TXT";
+  if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp" || String(mime ?? "").startsWith("image/")) {
+    return "Imagem";
+  }
   return "Arquivo";
 }
 
@@ -77,6 +81,7 @@ export function DocumentosDaEmpresa({
   const [arrastando, setArrastando] = useState(false);
   const [enviando, setEnviando] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
+  const [detalhe, setDetalhe] = useState<SourceRow | null>(null);
 
   const docs = (sources ?? []).filter(ehDocumento);
 
@@ -119,7 +124,7 @@ export function DocumentosDaEmpresa({
     <FormSection
       testid="conhecimento-documentos"
       titulo="Adicione documentos da sua empresa"
-      descricao="Catálogos, apresentações, políticas, manuais, tabelas de preços, perguntas frequentes e outros materiais podem alimentar a base de conhecimento."
+      descricao="Manuais, políticas, imagens e materiais comerciais. A MOOPE lê o texto e, quando dá, as telas."
     >
       <label
         data-testid="conhecimento-dropzone"
@@ -141,7 +146,7 @@ export function DocumentosDaEmpresa({
       >
         <AppIcon icon={UploadSimple} tone="blue" size="lg" />
         <p className="text-sm font-medium text-[var(--color-text)]">
-          {enviando ? `Enviando ${enviando}…` : "Arraste arquivos aqui"}
+          {enviando ? `Enviando ${enviando}…` : "Arraste documentos ou imagens aqui"}
         </p>
         <p className="text-xs text-[var(--color-text-muted)]">ou</p>
         <Button
@@ -155,12 +160,12 @@ export function DocumentosDaEmpresa({
         >
           Selecionar arquivos
         </Button>
-        <p className="text-xs text-[var(--color-text-muted)]">PDF, DOCX, Markdown ou TXT · até 20 MB</p>
+        <p className="text-xs text-[var(--color-text-muted)]">PDF, DOCX, MD, TXT, PNG, JPG ou WEBP · até 20 MB</p>
         <input
           ref={inputRef}
           data-testid="conhecimento-upload-input"
           type="file"
-          accept=".pdf,.docx,.md,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
+          accept=".pdf,.docx,.md,.txt,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
           className="sr-only"
           multiple
           onChange={(e) => {
@@ -207,7 +212,14 @@ export function DocumentosDaEmpresa({
               >
                 <AppIcon icon={FileText} tone="amber" size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[var(--color-text)]">{nome}</p>
+                  <p
+                    className="truncate text-sm font-medium text-[var(--color-text)]"
+                    role="button"
+                    data-testid="conhecimento-doc-nome"
+                    onClick={() => setDetalhe(d)}
+                  >
+                    {nome}
+                  </p>
                   <p className="text-xs text-[var(--color-text-muted)]">
                     {tipo} · {formatarBytes(d.source_metadata.size_bytes)} · {formatarData(d.created_at)}
                   </p>
@@ -274,6 +286,20 @@ export function DocumentosDaEmpresa({
           })}
         </ul>
       )}
+      {detalhe ? (
+        <DetalheDoDocumento
+          doc={detalhe}
+          onFechar={() => setDetalhe(null)}
+          onTestar={() => {
+            onTestar?.(
+              (typeof detalhe.source_metadata.filename === "string" && detalhe.source_metadata.filename) ||
+                detalhe.name ||
+                "Documento",
+            );
+            setDetalhe(null);
+          }}
+        />
+      ) : null}
     </FormSection>
   );
 }

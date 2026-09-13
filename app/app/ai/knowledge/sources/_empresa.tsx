@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AdicionarConhecimento } from "@/components/negocio/AdicionarConhecimento";
+import { ColecoesDaEmpresa } from "@/components/negocio/ColecoesDaEmpresa";
 import { DocumentosDaEmpresa } from "@/components/negocio/DocumentosDaEmpresa";
 import { FontesDaEmpresa } from "@/components/negocio/FontesDaEmpresa";
 import { TestarConhecimento } from "@/components/negocio/TestarConhecimento";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 const ABAS = [
   { id: "documentos", label: "Documentos", testid: "aba-conhecimento-documentos" },
   { id: "texto", label: "Texto rápido", testid: "aba-conhecimento-texto" },
+  { id: "colecoes", label: "Coleções", testid: "aba-conhecimento-colecoes" },
   { id: "fontes", label: "Fontes", testid: "aba-conhecimento-fontes" },
   { id: "testar", label: "Testar", testid: "aba-conhecimento-testar" },
 ] as const;
@@ -75,10 +77,15 @@ export function ConhecimentoDaEmpresaClient({
           }}
         />
       ) : null}
+      {aba === "colecoes" ? (
+        <ColecoesDaEmpresa agentId={agentId} initialSources={initialSources} />
+      ) : null}
       {aba === "fontes" ? (
         <FontesDaEmpresa agentId={agentId} initialSources={initialSources} />
       ) : null}
-      {aba === "testar" ? <TestarConhecimento perguntaInicial={perguntaTeste} /> : null}
+      {aba === "testar" ? (
+        <TestarConhecimento agentId={agentId} perguntaInicial={perguntaTeste} />
+      ) : null}
     </div>
   );
 }

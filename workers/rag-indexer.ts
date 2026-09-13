@@ -318,17 +318,26 @@ type Pedaco = {
   embedding?: number[];
   contentHash?: string;
   tokenCount?: number;
+  contentKind?: "original" | "ai_derived";
+  derivedFrom?: string;
+  generatedByAi?: boolean;
 };
 
 function extensaoDoBlob(path: string, mime?: string): ExtensaoDePolitica | null {
   const ext = path.split(".").pop()?.toLowerCase();
   if (ext === "pdf" || ext === "docx" || ext === "md" || ext === "txt") return ext;
+  if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp") {
+    return ext === "jpeg" ? "jpg" : ext;
+  }
   if (mime === "application/pdf") return "pdf";
   if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
     return "docx";
   }
   if (mime === "text/plain") return "txt";
   if (mime === "text/markdown" || mime === "text/x-markdown") return "md";
+  if (mime === "image/png") return "png";
+  if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
+  if (mime === "image/webp") return "webp";
   return null;
 }
 
@@ -359,14 +368,18 @@ async function pedacosDoDocumento(
     typeof meta.extracted_text === "string" ? meta.extracted_text : "";
 
   if (!forcarDownload && (pages?.length || extracted)) {
-    return pedacosDePolitica(extracted, pages).map((p) => ({
+    const originais = pedacosDePolitica(extracted, pages).map((p) => ({
       content: p.content,
       sourceId: fonte.id,
       sourceType: fonte.source_type,
       filename,
       page: p.page,
       section: p.section,
+      contentKind: "original" as const,
+      generatedByAi: false,
     }));
+    const derivados = derivadosDaMeta(fonte.id, fonte.source_type, filename, meta);
+    return [...originais, ...derivados];
   }
 
   if (!blobPath.startsWith(`${organizationId}/`)) return [];
@@ -382,14 +395,47 @@ async function pedacosDoDocumento(
     storageProvider: typeof meta.storage_provider === "string" ? meta.storage_provider : undefined,
     storageKey: blobPath,
   });
-  return r.chunks.map((p) => ({
+  const originais = r.chunks.map((p) => ({
     content: p.content,
     sourceId: fonte.id,
     sourceType: fonte.source_type,
     filename,
     page: p.page,
     section: p.section,
+    contentKind: "original" as const,
+    generatedByAi: false,
   }));
+  const derivados = derivadosDaMeta(fonte.id, fonte.source_type, filename, {
+    ...meta,
+    derived_chunks: Array.isArray(meta.derived_chunks) ? meta.derived_chunks : undefined,
+  });
+  return [...originais, ...derivados];
+}
+
+function derivadosDaMeta(
+  sourceId: string,
+  sourceType: string,
+  filename: string,
+  meta: Record<string, unknown>,
+): Pedaco[] {
+  const raw = Array.isArray(meta.derived_chunks) ? meta.derived_chunks : [];
+  const out: Pedaco[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    if (typeof o.content !== "string" || o.content.trim().length === 0) continue;
+    out.push({
+      content: o.content,
+      sourceId,
+      sourceType,
+      filename,
+      page: typeof o.page === "number" ? o.page : undefined,
+      contentKind: "ai_derived",
+      derivedFrom: typeof o.derived_from === "string" ? o.derived_from : "structured",
+      generatedByAi: true,
+    });
+  }
+  return out;
 }
 
 async function copiarChunksDeVersaoAnterior(
@@ -579,6 +625,9 @@ async function handleKnowledgeSourceUpdated(
         embedding: embedding as unknown as string,
         metadata: {
           source_type: p.sourceType,
+          content_kind: p.contentKind ?? "original",
+          generated_by_ai: p.generatedByAi === true,
+          ...(p.derivedFrom ? { derived_from: p.derivedFrom } : {}),
           ...(p.filename ? { filename: p.filename } : {}),
           ...(typeof p.page === "number" ? { page: p.page } : {}),
           ...(p.section ? { section: p.section } : {}),

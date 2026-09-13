@@ -88,6 +88,8 @@ export const agentConfigSchema = z.object({
   rag_top_k: z.number().int().min(1).max(20).default(5),
   rag_similarity_threshold: z.number().min(0).max(1).default(0.72),
   confidence_threshold: z.number().min(0).max(1).default(0.6),
+  /** Vazio = o assistente vê o acervo inteiro (compatível com quem já existe). */
+  knowledge_collection_ids: z.array(z.string().uuid()).max(20).optional().default([]),
 });
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
 
@@ -98,6 +100,7 @@ export const AGENT_CONFIG_DEFAULTS: AgentConfig = {
   rag_top_k: 5,
   rag_similarity_threshold: 0.72,
   confidence_threshold: 0.6,
+  knowledge_collection_ids: [],
 };
 
 // ---------------------------------------------------------------------------

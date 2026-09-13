@@ -73,9 +73,10 @@ export default async function KnowledgeSourcesPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 bg-[var(--color-bg)] p-6">
       <PageHeader
         icon={<AppIcon icon={BookOpen} tone="amber" size="lg" />}
-        titulo="Conhecimento da Empresa"
-        descricao="Ensine a MOOPE sobre sua empresa para que assistentes e sugestões respondam usando informações reais."
+        titulo="Ensine a MOOPE"
+        descricao="Adicione manuais, documentos, imagens e informações da sua empresa. A MOOPE usa esse conteúdo para ajudar sua equipe e seus assistentes."
       />
+      <h2 className="sr-only">Conhecimento da Empresa</h2>
 
       <ConhecimentoDaEmpresaClient agentId={agent.id} initialSources={initialSources} />
 

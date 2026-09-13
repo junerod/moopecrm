@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   pergunta: z.string().trim().min(3).max(500),
+  agent_id: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest): Promise<Response> {
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       await createClient(),
       authz.org.orgId,
       parsed.data.pergunta,
+      parsed.data.agent_id ? { agentId: parsed.data.agent_id } : undefined,
     );
     return ok(
       {

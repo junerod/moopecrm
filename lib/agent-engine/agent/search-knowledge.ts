@@ -10,6 +10,7 @@ import type pg from 'pg';
 
 import { embedText } from '@/lib/ai/embed';
 import type { Citation } from '@/lib/ai/citations/types';
+import { citacaoDaFonteOriginal } from '@/lib/ai/knowledge/provenance';
 import type { Logger } from '../obs/logger';
 
 export interface KnowledgeHit {
@@ -113,11 +114,20 @@ export async function searchKnowledge(
 
 /** Shape que a UI do inbox já renderiza (CitationsPanel — lib/ai/citations/types). */
 export function citationsFromHits(hits: KnowledgeHit[]): Citation[] {
-  return hits.map((h) => ({
-    chunk_id: h.chunk_id,
-    knowledge_source_id: h.knowledge_source_id,
-    score: h.similarity,
-    snippet: h.content.slice(0, 240),
-    ...(h.metadata !== null ? { metadata: h.metadata } : {}),
-  }));
+  return hits.map((h) => {
+    const meta = h.metadata ?? {};
+    const filename = typeof meta.filename === "string" ? meta.filename : undefined;
+    const page = typeof meta.page === "number" ? meta.page : undefined;
+    const cit = citacaoDaFonteOriginal({ filename, page });
+    return {
+      chunk_id: h.chunk_id,
+      knowledge_source_id: h.knowledge_source_id,
+      score: h.similarity,
+      snippet: h.content.slice(0, 240),
+      metadata: {
+        ...meta,
+        citation: cit.rotulo,
+      },
+    };
+  });
 }

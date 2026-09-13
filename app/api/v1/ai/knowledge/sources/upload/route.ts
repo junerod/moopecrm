@@ -27,6 +27,8 @@ import {
 import { chaveDocumental } from "@/lib/ai/knowledge/storage/caminho";
 import { storagePadrao } from "@/lib/ai/knowledge/storage/resolver";
 import { resolverExtensaoDocumental } from "@/lib/ai/rag/extractors/registro";
+import { ehExtensaoImagem } from "@/lib/ai/rag/extractors/imagem";
+import { enriquecerDocumento } from "@/lib/ai/knowledge/enriquecer";
 import { audit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 
@@ -34,7 +36,7 @@ export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
-const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "md", "txt"]);
+const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "md", "txt", "png", "jpg", "jpeg", "webp"]);
 
 const nameSchema = z.string().min(2).max(120);
 const agentIdSchema = z.string().uuid();
@@ -139,6 +141,40 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const needsOcr = ingest.errorCode === "pdf_needs_ocr" && ingest.charCount < 40;
+  let pages = ingest.pages;
+  let extractedText = ingest.extractedText;
+  let chunkCount = ingest.chunkCount;
+  let extractStatus = needsOcr ? "needs_ocr" : "ready";
+  let visualPages: unknown[] = [];
+  let derivedChunks: unknown[] = [];
+  let derived: Record<string, unknown> = {};
+  let processing: Record<string, unknown> | null = null;
+  let normalizedText: string | undefined;
+
+  if (!needsOcr && (ehExtensaoImagem(ext) || ext === "pdf")) {
+    try {
+      const extra = await enriquecerDocumento({
+        buffer: fileBuffer,
+        ext,
+        filename: nomeArquivo,
+        pages: ingest.pages,
+        extractedText: ingest.extractedText,
+        ocrUsed: ingest.ocrUsed,
+      });
+      pages = extra.pages;
+      extractedText = extra.extractedText;
+      visualPages = extra.visual_pages;
+      derivedChunks = extra.derived_chunks;
+      derived = extra.derived;
+      processing = { ...extra.processing };
+      normalizedText = extra.normalized_text;
+      extractStatus = extra.processing.extract_status;
+      chunkCount = Math.max(ingest.chunkCount, extra.derived_chunks.length);
+    } catch {
+      if (ehExtensaoImagem(ext)) extractStatus = "vision_unavailable";
+    }
+  }
+
   const storage = storagePadrao();
   const sourceId = randomUUID();
   const storageKey = chaveDocumental(activeOrg.orgId, sourceId, nomeArquivo);
@@ -150,7 +186,13 @@ export async function POST(req: NextRequest): Promise<Response> {
         ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         : ext === "md"
           ? "text/markdown"
-          : "text/plain");
+          : ext === "png"
+            ? "image/png"
+            : ext === "webp"
+              ? "image/webp"
+              : ext === "jpg" || ext === "jpeg"
+                ? "image/jpeg"
+                : "text/plain");
 
   try {
     await storage.put({
@@ -168,7 +210,6 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("storage_failed", mensagemDoErroDocumental("storage_failed"), 500, { requestId });
   }
 
-  const extractStatus = needsOcr ? "needs_ocr" : "ready";
   const sourceMetadata = {
     filename: nomeArquivo,
     blob_path: storageKey,
@@ -178,17 +219,23 @@ export async function POST(req: NextRequest): Promise<Response> {
     uploaded_by: authUser.id,
     mime_type: contentType,
     size_bytes: file.size,
-    chunk_count: ingest.chunkCount,
+    chunk_count: chunkCount,
     page_count: ingest.pageCount,
-    char_count: ingest.charCount,
-    extracted_text: ingest.extractedText,
-    pages: ingest.pages,
+    char_count: extractedText.length || ingest.charCount,
+    extracted_text: extractedText,
+    pages,
     extract_status: extractStatus,
     extract_classification: ingest.classification ?? null,
     extractor: ingest.extractor,
     ocr_used: ingest.ocrUsed,
     warnings: ingest.warnings,
     error_code: ingest.errorCode ?? null,
+    visual_pages: visualPages,
+    derived_chunks: derivedChunks,
+    derived,
+    processing,
+    ...(normalizedText ? { normalized_text: normalizedText } : {}),
+    collection_ids: [],
   };
 
   const admin = createAdminClient();
@@ -214,12 +261,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("internal_error", "Erro ao registrar fonte de conhecimento.", 500, { requestId });
   }
 
-  if (!needsOcr && ingest.extractedText) {
+  if (!needsOcr && extractedText && extractStatus !== "vision_unavailable") {
     const { error: faqErr } = await admin.from("ai_faq_items").insert({
       organization_id: activeOrg.orgId,
       knowledge_source_id: sourceId,
       question: `O que o documento ${nameParsed.data} registra?`,
-      answer: ingest.extractedText.slice(0, 8000),
+      answer: extractedText.slice(0, 8000),
       tags: ["documento"],
       locale: "pt-BR",
       position: 0,

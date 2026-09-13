@@ -15,8 +15,10 @@ interface Trecho {
 
 export function TestarConhecimento({
   perguntaInicial,
+  agentId,
 }: {
   perguntaInicial?: string;
+  agentId?: string;
 }) {
   const [pergunta, setPergunta] = useState(perguntaInicial ?? "");
   const [enviando, setEnviando] = useState(false);
@@ -31,7 +33,7 @@ export function TestarConhecimento({
       const res = await fetch("/api/v1/ai/knowledge/consultar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pergunta }),
+        body: JSON.stringify({ pergunta, ...(agentId ? { agent_id: agentId } : {}) }),
       });
       const json = (await res.json()) as {
         data?: { encontrou: boolean; trechos: Trecho[] };
@@ -98,8 +100,6 @@ export function TestarConhecimento({
                 .map((t, i) => (
                   <li key={`${t.fonte}-${i}`}>
                     {t.fonte}
-                    {typeof t.pagina === "number" ? ` · página ${t.pagina}` : ""}
-                    {t.secao ? ` · seção "${t.secao}"` : ""}
                   </li>
                 ))}
             </ul>
