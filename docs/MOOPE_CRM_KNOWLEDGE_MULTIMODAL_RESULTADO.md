@@ -211,7 +211,7 @@ WhatsApp WORKING / VPS / QR: **não tocados**.
 
 ## 38. Commit
 
-Local, se os gates desta sessão permanecerem verdes: `feat(ai): add multimodal knowledge and collections`.
+`b218498a` local — `feat(ai): add multimodal knowledge and collections`. Sem push.
 
 ## 39. Push
 
@@ -302,7 +302,7 @@ BLOCKERS REAIS:
 PRONTO PARA USO INTERNO MOOPE: SIM
 PRONTO PARA PILOTO CONTROLADO: SIM
 
-COMMIT LOCAL: pendente nesta sessão (mensagem abaixo)
+COMMIT LOCAL: `b218498a` — `feat(ai): add multimodal knowledge and collections`
 PUSH: NÃO
 
 PRÓXIMO PASSO:
