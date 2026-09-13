@@ -243,8 +243,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     <>
       <div
         className={cn(
-          "relative border-t border-border bg-background px-3 py-2",
-          mode === "note" && "border-warning/40 bg-warning-bg",
+          "relative border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5",
+          mode === "note" && "border-[var(--color-warning)]/35 bg-[var(--color-warning-bg)]",
         )}
       >
         <TemplateMenu
@@ -392,8 +392,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 : "Enter envia · Shift+Enter quebra linha"
             }
             className={cn(
-              "min-h-9 max-h-40 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm",
-              "placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+              "min-h-9 max-h-40 flex-1 resize-none rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm shadow-[var(--shadow-sm)]",
+              "placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)]",
+              mode === "note" && "bg-[var(--color-surface)]",
             )}
             disabled={mode === "note" ? isDisabled : respostaBarrada}
             aria-label="Mensagem"
@@ -402,7 +403,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <Button
               type="button"
               size="icon"
-              className="h-9 w-9 shrink-0"
+              className="h-9 w-9 shrink-0 bg-[var(--moope-primary)] text-white hover:opacity-90"
               data-testid="inbox-enviar"
               onClick={handleSubmit}
               disabled={(mode === "note" ? isDisabled : respostaBarrada) || !text.trim()}

@@ -266,11 +266,12 @@ export function KanbanBoard({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex h-full gap-3 overflow-x-auto p-4">
-        {data.stages.map((stage) => (
+      <div className="flex h-full gap-3 overflow-x-auto bg-[var(--color-bg)] p-4">
+        {data.stages.map((stage, i) => (
           <StageColumn
             key={stage.id}
             stage={stage}
+            stageIndex={i}
             leads={grouped.get(stage.id) ?? []}
             pipelineId={pipelineId}
             stages={data.stages}

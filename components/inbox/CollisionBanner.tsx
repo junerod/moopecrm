@@ -14,11 +14,11 @@ export function CollisionBanner({
   const claim = useClaimConversation();
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-300 bg-amber-50/70 px-3 py-2 dark:border-amber-800/60 dark:bg-amber-950/30"
+      className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-warning)]/40 bg-[var(--color-warning-bg)] px-3 py-2"
       data-testid="collision-banner"
       role="status"
     >
-      <p className="text-xs text-amber-950 dark:text-amber-100">
+      <p className="text-xs text-[var(--color-warning-fg)]">
         {nome} está atendendo esta conversa.
       </p>
       <Button

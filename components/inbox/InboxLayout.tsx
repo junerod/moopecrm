@@ -38,6 +38,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { parseAbaDaInbox } from "@/lib/inbox/aba-padrao";
 import { precisaBuscarConversaAvulsa } from "@/lib/inbox/deep-link-conversa";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { InboxEmptyState } from "./InboxEmptyState";
 import { cn } from "@/lib/utils";
 
 /**
@@ -319,7 +320,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   // deixava. Margem de 2px não é margem, é sorte.
   return (
     <div
-      className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 md:grid-cols-[260px_1fr] xl:grid-cols-[240px_minmax(0,1fr)_272px] 2xl:grid-cols-[256px_minmax(0,1fr)_288px]"
+      className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 md:grid-cols-[280px_1fr] xl:grid-cols-[280px_minmax(0,1fr)_280px] 2xl:grid-cols-[320px_minmax(0,1fr)_320px]"
       /*
        * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
        * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,
@@ -488,9 +489,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
             Conversa não encontrada ou fora do seu acesso.
           </div>
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            Selecione uma conversa
-          </div>
+          <InboxEmptyState variante="thread" />
         )}
       </div>
 

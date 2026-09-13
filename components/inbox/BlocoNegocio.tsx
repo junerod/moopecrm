@@ -379,7 +379,20 @@ export function BlocoNegocio({
           </div>
         ) : null}
 
-        <div className="space-y-1.5 border-t border-border/70 pt-3" data-testid="inbox-proximo-passo">
+        <div
+          className={cn(
+            "space-y-1.5 rounded-[10px] px-2.5 py-2",
+            estadoDaProximaAcao({
+              texto: proximo_passo_comercial?.proximo_passo,
+              em: proximo_passo_comercial?.proximo_passo_em,
+            }) === "atrasada"
+              ? "bg-[var(--color-error-bg)]"
+              : proximo_passo_comercial?.proximo_passo
+                ? "bg-[var(--moope-primary-bg)]"
+                : "bg-[var(--color-surface-elevated)]",
+          )}
+          data-testid="inbox-proximo-passo"
+        >
           <div className="text-xs text-muted-foreground">Próxima ação</div>
           {!editandoPasso && proximo_passo_comercial?.proximo_passo ? (
             <div className="space-y-1">
@@ -395,7 +408,7 @@ export function BlocoNegocio({
                   <p
                     className={cn(
                       "text-xs",
-                      estado === "atrasada" ? "text-destructive" : "text-muted-foreground",
+                      estado === "atrasada" ? "text-[var(--color-error-fg)]" : "text-muted-foreground",
                     )}
                     data-testid={estado === "atrasada" ? "inbox-acao-atrasada" : "inbox-acao-quando"}
                   >
@@ -440,7 +453,7 @@ export function BlocoNegocio({
                 data-testid="inbox-definir-proximo-passo"
                 onClick={() => setEditandoPasso(true)}
               >
-                Definir
+                Definir próxima ação
               </Button>
             </div>
           ) : (

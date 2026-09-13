@@ -6,9 +6,13 @@ import type { Lead } from "@/lib/types/leads";
 import type { Stage } from "@/lib/kanban/types";
 import { buildCardInput } from "@/lib/kanban/card-state";
 import { KanbanCard } from "./KanbanCard";
+import { ESTILO_DO_TOM } from "@/lib/design-system/tones";
+import { tomDaEtapa } from "@/lib/kanban/tom-da-etapa";
 
 interface StageColumnProps {
   stage: Stage;
+  /** Índice na lista do funil — cor pastel sem persistir no banco. */
+  stageIndex?: number;
   leads: Lead[];
   pipelineId: string;
   stages?: Stage[];
@@ -42,6 +46,7 @@ function formatBRL(cents: number): string {
 
 export function StageColumn({
   stage,
+  stageIndex = 0,
   leads,
   pipelineId,
   stages,
@@ -55,31 +60,33 @@ export function StageColumn({
   onOpen,
 }: StageColumnProps) {
   const totalCents = leads.reduce((sum, l) => sum + (l.value_cents ?? 0), 0);
-  const accentStyle: CSSProperties | undefined = stage.color
+  const tom = tomDaEtapa(stage, stageIndex);
+  const cor = ESTILO_DO_TOM[tom];
+  const accentStyle: CSSProperties = stage.color
     ? { backgroundColor: stage.color }
-    : undefined;
+    : { backgroundColor: cor.fg };
 
   return (
-    <div className="flex w-80 shrink-0 flex-col rounded-lg border border-border bg-surface-muted/40">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+    <div
+      className="flex w-80 shrink-0 flex-col rounded-[12px] ring-1 ring-[var(--color-border)]"
+      style={{ background: cor.bg }}
+    >
+      <div className="flex items-center gap-2 border-b border-[var(--color-border)]/70 px-3 py-2.5">
         <span
-          className={cn(
-            "h-2 w-2 rounded-full",
-            !stage.color && "bg-text-muted/40",
-          )}
+          className="h-2 w-2 rounded-full"
           style={accentStyle}
           aria-hidden
         />
         <h2 className="flex-1 truncate text-sm font-semibold text-text">
           {stage.name}
         </h2>
-        <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium tabular-nums text-text-muted">
+        <span className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[var(--color-text-muted)]">
           {leads.length}
         </span>
       </div>
 
       {totalCents > 0 && (
-        <div className="border-b border-border px-3 py-1.5 text-[11px] tabular-nums text-text-muted">
+        <div className="border-b border-[var(--color-border)]/70 px-3 py-1.5 text-[11px] tabular-nums text-[var(--color-text-muted)]">
           {formatBRL(totalCents)}
         </div>
       )}
@@ -91,7 +98,7 @@ export function StageColumn({
             {...provided.droppableProps}
             className={cn(
               "flex flex-1 flex-col gap-2 p-2 transition-colors",
-              snapshot.isDraggingOver && "bg-accent/5",
+              snapshot.isDraggingOver && "bg-[var(--moope-primary-bg)] ring-1 ring-inset ring-[var(--moope-primary)]/30",
             )}
           >
             {leads.map((lead, idx) => (

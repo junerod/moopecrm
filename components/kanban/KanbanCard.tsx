@@ -11,9 +11,10 @@ import { ReactivationSlot } from "./ReactivationSlot";
 import { ConversaSlot } from "./ConversaSlot";
 import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
+import { StatusBadge } from "@/components/ds/StatusBadge";
 import { estadoDaProximaAcao, rotuloDoAtraso, rotuloDoQuando } from "@/lib/comercial/proxima-acao";
 import { ehTemperaturaDoLead, ROTULO_DA_TEMPERATURA } from "@/lib/crm/papel-e-temperatura";
-import { CLASSE_DOT_TEMPERATURA } from "@/lib/crm/temperatura-visual";
+import { tomDaTemperatura } from "@/lib/kanban/tom-da-etapa";
 
 interface KanbanCardProps {
   /** O que o card mostra — explicitamente NÃO é a linha do banco. */
@@ -104,11 +105,13 @@ export function KanbanCard({
           // Tags saem do card (Lei A): ficam a um hover, sem ocupar altura.
           title={card.tags.length > 0 ? `Tags: ${card.tags.join(", ")}` : undefined}
           className={cn(
-            "group relative overflow-hidden rounded-md border border-border bg-surface",
-            "py-2.5 pl-3 pr-3 shadow-xs transition-colors",
-            "hover:border-border-strong",
-            snapshot.isDragging && "rotate-1 shadow-md ring-1 ring-accent/40",
-            isSelected && "ring-2 ring-accent",
+            "group relative overflow-hidden rounded-[12px] bg-[var(--color-surface)]",
+            "py-2.5 pl-3 pr-3 shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]",
+            "transition-[box-shadow,opacity] duration-150",
+            "hover:shadow-[var(--shadow-md)]",
+            snapshot.isDragging &&
+              "opacity-90 shadow-[var(--shadow-lg)] ring-2 ring-[var(--moope-primary)]",
+            isSelected && "ring-2 ring-[var(--moope-primary)]",
           )}
         >
           {/* key = contador: cada evento remoto monta um overlay NOVO, e é isso
@@ -170,18 +173,15 @@ export function KanbanCard({
               </h3>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              {ehTemperaturaDoLead(card.temperatura) ? (
-                <span
-                  className="inline-flex items-center gap-1 text-[10px] text-text-muted"
+              {ehTemperaturaDoLead(card.temperatura) && tomDaTemperatura(card.temperatura) ? (
+                <StatusBadge
+                  tone={tomDaTemperatura(card.temperatura)!}
+                  className="h-5 px-1.5 text-[10px]"
                   data-testid="kanban-temperatura"
                   title={ROTULO_DA_TEMPERATURA[card.temperatura]}
                 >
-                  <span
-                    className={cn("h-1.5 w-1.5 rounded-full", CLASSE_DOT_TEMPERATURA[card.temperatura])}
-                    aria-hidden
-                  />
                   {ROTULO_DA_TEMPERATURA[card.temperatura].replace("Lead ", "")}
-                </span>
+                </StatusBadge>
               ) : null}
               <KanbanCardActions lead={lead} pipelineId={pipelineId} stages={stages} />
             </div>
@@ -284,8 +284,10 @@ function LinhaProximaAcao({
   return (
     <p
       className={cn(
-        "mt-1 truncate text-[11px]",
-        estado === "atrasada" ? "text-destructive" : "text-text",
+        "mt-1 truncate rounded-md px-1.5 py-0.5 text-[11px]",
+        estado === "atrasada"
+          ? "bg-[var(--color-error-bg)] text-[var(--color-error-fg)]"
+          : "bg-[var(--moope-primary-bg)] text-[var(--color-text)]",
       )}
       data-testid={estado === "atrasada" ? "kanban-acao-atrasada" : "kanban-proxima-acao"}
     >

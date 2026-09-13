@@ -112,7 +112,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
   const tagLabel = filters.tag ?? "Tag: todas";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
+    <div className="flex flex-wrap items-center gap-1.5 rounded-[12px] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]">
       <Input
         type="search"
         placeholder="Buscar por nome, empresa ou origem…"
@@ -287,11 +287,18 @@ function Chip({
     <label
       data-testid={testid}
       className={cn(
-        "flex cursor-pointer select-none items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm",
-        ativo && "border-accent bg-accent/10",
+        "flex cursor-pointer select-none items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium",
+        ativo
+          ? "border-transparent bg-[var(--moope-primary-bg)] text-[var(--moope-primary)]"
+          : "border-[var(--color-border)] text-[var(--color-text-muted)]",
       )}
     >
-      <input type="checkbox" checked={ativo} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        checked={ativo}
+        onChange={(e) => onChange(e.target.checked)}
+        className="sr-only"
+      />
       {children}
     </label>
   );

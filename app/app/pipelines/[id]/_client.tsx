@@ -60,7 +60,7 @@ export function PipelinePageClient({
 
   return (
     <div
-      className="flex h-full flex-col gap-4"
+      className="flex h-full flex-col gap-3 bg-[var(--color-bg)]"
       // OBSERVÁVEL de propósito, e é a razão de existir desta linha: "a
       // assinatura morreu" e "nada aconteceu" produzem o MESMO silêncio na
       // tela, e sem este valor nem o produto nem o teste conseguem separar as
@@ -106,12 +106,12 @@ export function PipelinePageClient({
               </select>
             </label>
           ) : (
-            <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">
+            <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight text-[var(--color-text)]">
               {data?.pipeline.name ?? initialName}
             </h1>
           )}
           {funis.length > 1 ? (
-            <h1 className="truncate text-2xl font-semibold tracking-tight">
+            <h1 className="truncate text-xl font-semibold tracking-tight text-[var(--color-text)]">
               {data?.pipeline.name ?? initialName}
             </h1>
           ) : null}

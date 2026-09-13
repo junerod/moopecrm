@@ -20,6 +20,7 @@ import { CadastrarNomeDoContato } from "./CadastrarNomeDoContato";
 import { AssistenteIa } from "./AssistenteIa";
 import { BlocoNegocio } from "./BlocoNegocio";
 import { ChipsDePapel } from "./ChipsDePapel";
+import { InboxEmptyState } from "./InboxEmptyState";
 import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
@@ -338,14 +339,14 @@ export function CRMSidePanel({ conversation, onUsarResposta }: Props) {
 
   if (!conversation) {
     return (
-      <aside className="flex h-full items-center justify-center border-l border-border p-4 text-center text-xs text-muted-foreground">
-        Selecione uma conversa para ver detalhes do contato.
+      <aside className="flex h-full items-center justify-center border-l border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+        <InboxEmptyState variante="ficha" />
       </aside>
     );
   }
 
   return (
-    <aside className="flex h-full min-w-0 flex-col gap-0 overflow-x-hidden overflow-y-auto border-l border-border bg-muted/15 px-4 py-4">
+    <aside className="flex h-full min-w-0 flex-col gap-0 overflow-x-hidden overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4">
       <section className="space-y-2 pb-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="text-lg font-semibold leading-tight">{displayName}</div>

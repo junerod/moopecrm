@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { AppIcon } from "@/components/ds/AppIcon";
 import { Kanban } from "@/lib/ui/icons";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
@@ -49,17 +50,22 @@ export default async function KanbanPickerPage() {
   const inboundPipelineId = lerInboundPipelineId(orgRow?.settings);
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
-      <header className="flex items-center gap-3">
-        <Kanban size={28} className="text-muted-foreground" weight="duotone" />
-        {/* Era "Pipelines" — nome de quem construiu o sistema, não de quem
-            vende. O comentário anterior aqui listava o preço de trocá-lo
-            (`rbac-roles.spec.ts` e `invite-lifecycle.spec.ts`) e dizia que
-            uniformizar era decisão do dono do produto. Ela foi tomada, e o preço
-            era maior do que o comentário contava: são QUATRO assertions em TRÊS
-            specs, e `pipelines-gestao.spec.ts` — a spec da própria feature que
-            gerou o comentário — é uma delas. Todas atualizadas junto. */}
-        <h1 className="text-2xl font-semibold tracking-tight">Funis</h1>
+    <div className="flex h-full flex-col gap-4 bg-[var(--color-bg)] p-6">
+      <header className="flex items-start gap-3">
+        <AppIcon icon={Kanban} tone="amber" size="lg" />
+        <div>
+          {/* Era "Pipelines" — nome de quem construiu o sistema, não de quem
+              vende. O comentário anterior aqui listava o preço de trocá-lo
+              (`rbac-roles.spec.ts` e `invite-lifecycle.spec.ts`) e dizia que
+              uniformizar era decisão do dono do produto. Ela foi tomada, e o preço
+              era maior do que o comentário contava: são QUATRO assertions em TRÊS
+              specs, e `pipelines-gestao.spec.ts` — a spec da própria feature que
+              gerou o comentário — é uma delas. Todas atualizadas junto. */}
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">Funis</h1>
+          <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
+            Organize seus processos comerciais.
+          </p>
+        </div>
       </header>
 
       <FunisClient

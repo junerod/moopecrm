@@ -95,7 +95,7 @@ export function ConversationHeader({ conversation }: Props) {
     // No mobile a barra visível é nome + ⋯; Assumir só entra se for o gesto.
     <div
       data-testid="conversation-header"
-      className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-3 py-2 md:px-4 md:py-2.5"
+      className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 md:px-4 md:py-2.5"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

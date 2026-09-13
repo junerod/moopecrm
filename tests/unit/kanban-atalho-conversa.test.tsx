@@ -123,8 +123,11 @@ describe("o elo que some sem barulho", () => {
     // Chamar e não USAR o resultado é o defeito de verdade: a função roda, o
     // custo se paga, e a resposta sai sem a conversa. A primeira versão deste
     // caso só olhava a chamada e o sabote passou.
-    expect(fonte, "o resultado de withConversas não chegou à resposta").toMatch(
-      /leads:\s*leadsComConversa\.leads/,
+    expect(fonte, "withConversas alimenta o próximo anexo, não é descartada").toMatch(
+      /withProximasAcoesComerciais\([\s\S]*leadsComConversa\.leads/,
+    );
+    expect(fonte, "o quadro responde com a cadeia que inclui a conversa").toMatch(
+      /leads:\s*leadsComPasso\.leads/,
     );
   });
 

@@ -150,27 +150,32 @@ rollout**, não nesta rodada global — para não pintar 63 telas de uma vez.
 
 ---
 
-## Forms / tables / Kanban / Inbox
+## Forms / tables / Inbox / Kanban (Lote A1)
 
-**Não migrados agora.** Direção:
-
-- **Input:** borda `--color-border`, radius 8, focus `--moope-primary`.
+- **Input:** borda `--color-border`, radius 8–10, focus `--moope-primary`.
 - **Tabela:** header leve, hover de linha, borda horizontal, badge de status.
-- **Kanban:** fundo `#F5F8FC`, colunas suaves, card branco, accent da etapa,
-  badge de temperatura, avatar, próxima ação, valor.
-- **Inbox (Lote A, aplicado):**
-  - Abas Fila / Minhas / Todas / Fechadas / IA em chips coloridos (âmbar, azul,
-    teal, índigo, violeta) — não um grid embolado.
-  - Lista com zebra (`--inbox-row-alt`) e chips de papel/tag com tom semântico.
-  - Thread com `--inbox-thread-bg` (azul bem claro). Balão do cliente branco;
-    do atendente `--inbox-bubble-out` (azul MOOPE); da IA `--inbox-bubble-ai`.
-  - Tags do contato reutilizam o que a org já gravou (`GET /api/v1/contact-tags`).
-    Tags da conversa juntam canônico + em uso (`GET /api/v1/conversation-tags`).
-    Cor da tag = hash estável do nome (`tomDaTag`), sem coluna de cor.
-  - Nome do WhatsApp “não salvo” vira callout para gravar no cadastro. Não
-    escreve na agenda do celular (WAHA só puxa).
 
-Detalhe no relatório de resultado, lote A.
+### Inbox
+
+- 3 painéis: lista ~280–320px · thread flex · ficha ~280–320px.
+- Abas Fila / Minhas / Todas / Fechadas / IA em chips (âmbar, azul, teal,
+  índigo, violeta). Selected = fill; unselected = outline.
+- Lista com zebra (`--inbox-row-alt`). Nome forte, preview, hora, sinal.
+- Thread: `--inbox-thread-bg`. Balão cliente `--inbox-bubble-in`; atendente
+  `--inbox-bubble-out`; IA `--inbox-bubble-ai`; nota `--color-warning-bg`.
+- Composer elevado; send `--moope-primary`; nota interna muda o fundo para âmbar.
+- Empty: `InboxEmptyState` (ícone + título + uma linha). Sem ilustração gigante.
+- Ficha CRM: Contato → Negócio → Próxima ação (soft: atrasada danger, hoje
+  blue) → detalhes. Progressive disclosure.
+
+### Kanban
+
+- Lista de funis: cards horizontais (`AppCard` + `AppIcon`), CTA Abrir funil.
+- Board: fundo `--color-bg`. Coluna com tom pastel por índice (`tomDaEtapa`).
+  Ganho = green; perdido = red. Não persiste cor no banco.
+- Card: surface + shadow-sm, temperatura `StatusBadge`, próxima ação soft
+  (atrasada danger / hoje blue). Drag: shadow-lg + ring primary.
+- Toolbar: chips compactos. Contadores de etapa só com dado real.
 
 ---
 

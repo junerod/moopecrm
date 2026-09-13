@@ -2,13 +2,14 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { AppCard } from "@/components/ds/AppCard";
+import { AppIcon } from "@/components/ds/AppIcon";
+import { StatusBadge } from "@/components/ds/StatusBadge";
 import { EmptyPipeline } from "@/components/empty";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/types";
-import { Archive, CaretDown, CaretUp, Check, PencilSimple, Plus } from "@/lib/ui/icons";
+import { Archive, CaretDown, CaretUp, Check, Kanban, PencilSimple, Plus } from "@/lib/ui/icons";
 import {
   useArquivarFunil,
   useCriarFunil,
@@ -163,7 +164,7 @@ export function FunisClient({
   }
 
   const formularioDeCriacao = novo !== null && (
-    <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center" data-testid="form-novo-funil">
+    <AppCard className="flex flex-col gap-3 sm:flex-row sm:items-center" testid="form-novo-funil">
       <Input
         autoFocus
         value={novo}
@@ -185,7 +186,7 @@ export function FunisClient({
           Cancelar
         </Button>
       </div>
-    </Card>
+    </AppCard>
   );
 
   if (funis.length === 0) {
@@ -230,29 +231,31 @@ export function FunisClient({
       {formularioDeCriacao}
 
       {podeGerenciar && funis.length > 1 && (
-        <Card className="space-y-2 p-4" data-testid="funil-de-novos-leads">
-          <label htmlFor="funil-de-novos-leads" className="text-sm font-medium">
-            Novos leads entram em
-          </label>
-          <select
-            id="funil-de-novos-leads"
-            className="flex h-9 w-full max-w-md rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-            value={efetivoDeNovos ?? ""}
-            disabled={ocupado}
-            onChange={(e) => gravarFunilDeNovosLeads(e.target.value)}
-            data-testid="funil-de-novos-leads-select"
-          >
-            {funis.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground">
+        <AppCard className="space-y-1.5 py-3" testid="funil-de-novos-leads">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label htmlFor="funil-de-novos-leads" className="shrink-0 text-sm font-medium">
+              Novos leads entram em
+            </label>
+            <select
+              id="funil-de-novos-leads"
+              className="flex h-9 w-full max-w-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-sm"
+              value={efetivoDeNovos ?? ""}
+              disabled={ocupado}
+              onChange={(e) => gravarFunilDeNovosLeads(e.target.value)}
+              data-testid="funil-de-novos-leads-select"
+            >
+              {funis.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-[var(--color-text-muted)]">
             Quando uma nova conversa gerar uma oportunidade automaticamente, ela será criada neste
             funil.
           </p>
-        </Card>
+        </AppCard>
       )}
 
       {erro?.id === null && (
@@ -261,14 +264,15 @@ export function FunisClient({
         </p>
       )}
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col gap-3">
         {funis.map((funil, i) => {
           const renomeandoAqui = renomeando?.id === funil.id ? renomeando : null;
           const arquivandoAqui = arquivando?.id === funil.id ? arquivando : null;
           const erroDaLinha = erro?.id === funil.id ? erro.texto : null;
 
           return (
-            <li key={funil.id} className="flex flex-col gap-3 p-4" data-testid={`funil-${funil.id}`}>
+            <li key={funil.id} data-testid={`funil-${funil.id}`}>
+              <AppCard hover className="flex flex-col gap-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 {podeGerenciar && (
                   <div className="flex shrink-0 flex-wrap gap-1">
@@ -325,38 +329,44 @@ export function FunisClient({
                   ) : (
                     <Link
                       href={`/app/pipelines/${funil.id}`}
-                      className="group flex flex-col"
+                      className="group flex items-start gap-3"
                       data-testid={`abrir-${funil.id}`}
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="text-sm font-medium group-hover:underline">{funil.name}</span>
-                        {funil.is_default && (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] text-foreground"
-                            title="Usado como fallback técnico quando não há outro destino."
-                          >
-                            Padrão
-                          </Badge>
-                        )}
-                        {funis.length > 1 && efetivoDeNovos === funil.id && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] text-foreground"
-                            title="Onde oportunidades automáticas entram."
-                          >
-                            Novos contatos
-                          </Badge>
-                        )}
+                      <AppIcon icon={Kanban} tone={funil.is_default ? "amber" : "blue"} size="md" />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[15px] font-semibold text-[var(--color-text)] group-hover:underline">
+                            {funil.name}
+                          </span>
+                          <span className="rounded-full bg-[var(--moope-primary-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--moope-primary)]">
+                            Abrir funil
+                          </span>
+                          {funil.is_default && (
+                            <StatusBadge
+                              tone="amber"
+                              className="text-[10px]"
+                              title="Usado como fallback técnico quando não há outro destino."
+                            >
+                              Padrão
+                            </StatusBadge>
+                          )}
+                          {funis.length > 1 && efetivoDeNovos === funil.id && (
+                            <StatusBadge
+                              tone="cyan"
+                              className="text-[10px]"
+                              title="Onde oportunidades automáticas entram."
+                            >
+                              Novos contatos
+                            </StatusBadge>
+                          )}
+                        </span>
+                        {funil.description ? (
+                          <span className="text-xs text-[var(--color-text-muted)]">{funil.description}</span>
+                        ) : null}
                       </span>
-                      {funil.description && (
-                        <span className="text-xs text-muted-foreground">{funil.description}</span>
-                      )}
                     </Link>
                   )}
                 </div>
-
-                <span className="shrink-0 text-xs text-muted-foreground">/{funil.slug}</span>
 
                 {podeGerenciar && !renomeandoAqui && (
                   <div className="flex shrink-0 flex-wrap gap-1">
@@ -403,7 +413,7 @@ export function FunisClient({
               )}
 
               {arquivandoAqui && (
-                <Card className="space-y-3 p-4" data-testid={`arquivar-painel-${funil.id}`}>
+                <AppCard className="space-y-3" testid={`arquivar-painel-${funil.id}`}>
                   {arquivandoAqui.erro ? (
                     // A recusa da rota, INTEIRA: é ela que diz qual formulário ou
                     // automação está no caminho, e o que fazer antes de tentar de novo.
@@ -443,8 +453,9 @@ export function FunisClient({
                       Cancelar
                     </Button>
                   </div>
-                </Card>
+                </AppCard>
               )}
+              </AppCard>
             </li>
           );
         })}
