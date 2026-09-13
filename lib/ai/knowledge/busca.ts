@@ -21,6 +21,7 @@ export interface TrechoEncontrado {
   knowledge_source_id: string | null;
   content: string;
   similarity: number;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface ResultadoDaBusca {
@@ -49,6 +50,7 @@ interface LinhaDaRpc {
   knowledge_source_id: string | null;
   content: string;
   similarity: number;
+  metadata?: Record<string, unknown> | null;
 }
 
 export async function buscarConhecimento(
@@ -88,6 +90,7 @@ export async function buscarConhecimento(
         knowledge_source_id: l.knowledge_source_id,
         content: l.content,
         similarity: l.similarity,
+        metadata: l.metadata ?? null,
       })),
     melhorSimilaridade: melhor,
   };

@@ -15,6 +15,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseFaqMarkdown } from "@/lib/ai/rag/ingest/faq";
+import { metadadoPublicoDaFonte } from "@/lib/ai/knowledge/metadado-publico";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,16 @@ export async function GET(_req: NextRequest): Promise<Response> {
   // `ok()` já embrulha em `{ data }`. Com `{ data: data ?? [] }` o corpo saía
   // `{ data: { data: [...] } }` e o hook fazia `.filter` sobre o envelope —
   // TypeError, lista de fontes só aparecia pelo SSR e nunca atualizava.
-  return ok(data ?? [], { requestId });
+  const publicas = (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      ...r,
+      source_metadata: metadadoPublicoDaFonte(
+        (r.source_metadata as Record<string, unknown> | null) ?? null,
+      ),
+    };
+  });
+  return ok(publicas, { requestId });
 }
 
 // ---------------------------------------------------------------------------

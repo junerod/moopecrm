@@ -18,6 +18,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export async function POST(
 
   const authz = await requireRole("manager", { requestId, resource: "ai_knowledge" });
   if (!authz.ok) return authz.response;
-  const { org: activeOrg } = authz;
+  const { user: authUser, org: activeOrg } = authz;
 
   // Body é opcional; se vier, valida.
   if (req.headers.get("content-length") && req.headers.get("content-length") !== "0") {
@@ -108,6 +109,16 @@ export async function POST(
   if (emitErr) {
     console.warn("[ai-knowledge-reindex] emit_event failed (non-blocking):", emitErr.message);
   }
+
+  void audit({
+    action: "knowledge.source_reindexed",
+    actorUserId: authUser.id,
+    organizationId: activeOrg.orgId,
+    resourceType: "ai_knowledge_source",
+    resourceId: id,
+    requestId,
+    metadata: { source_type: ksRow.source_type },
+  });
 
   return ok({ id, queued: true as const, agent_id: ksRow.agent_id }, { requestId });
 }

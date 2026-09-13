@@ -13,6 +13,8 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { audit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -189,36 +191,89 @@ export async function DELETE(
 
   const ctx = await resolveContext(requestId);
   if (ctx.error) return ctx.error;
-  const { activeOrg } = ctx as Exclude<typeof ctx, { error: Response }>;
+  const { activeOrg, authUser } = ctx as Exclude<typeof ctx, { error: Response }>;
 
   // Verify ownership with user-scoped client.
   const supabase = await createClient();
   const { data: existing, error: fetchErr } = await supabase
     .from("ai_knowledge_sources")
-    .select("id")
+    .select("id, agent_id, source_type, source_metadata")
     .eq("id", sourceId)
     .eq("organization_id", activeOrg.orgId)
     .maybeSingle();
 
   if (fetchErr) {
-    console.error("[ai-knowledge-sources] DELETE fetch failed:", fetchErr.message);
+    logger.error("knowledge.delete.fetch", { request_id: requestId, erro: fetchErr.message });
     return fail("internal_error", "Erro ao verificar fonte.", 500, { requestId });
   }
   if (!existing) {
     return fail("not_found", "Fonte de conhecimento não encontrada.", 404, { requestId });
   }
 
+  const ks = existing as {
+    id: string;
+    agent_id: string;
+    source_type: string;
+    source_metadata: Record<string, unknown> | null;
+  };
+
   const admin = createAdminClient();
   const { error: archiveErr } = await admin
     .from("ai_knowledge_sources")
-    .update({ status: "archived" })
+    .update({ status: "archived", is_active: false })
     .eq("id", sourceId)
     .eq("organization_id", activeOrg.orgId);
 
   if (archiveErr) {
-    console.error("[ai-knowledge-sources] DELETE archive failed:", archiveErr.message);
+    logger.error("knowledge.delete.archive", { request_id: requestId, erro: archiveErr.message });
     return fail("internal_error", "Erro ao arquivar fonte.", 500, { requestId });
   }
+
+  // Tira os chunks desta fonte da versão ativa AGORA. Sem isto, o retrieve
+  // continua achando o documento até o worker reconstruir a base.
+  const { error: chunksErr } = await admin
+    .from("ai_chunks")
+    .delete()
+    .eq("organization_id", activeOrg.orgId)
+    .eq("knowledge_source_id", sourceId);
+  if (chunksErr) {
+    logger.warn("knowledge.delete.chunks", { request_id: requestId, erro: chunksErr.message });
+  }
+
+  const blobPath =
+    typeof ks.source_metadata?.blob_path === "string" ? ks.source_metadata.blob_path : "";
+  if (blobPath.startsWith(`${activeOrg.orgId}/`)) {
+    const { error: rmErr } = await admin.storage.from("ai-policy").remove([blobPath]);
+    if (rmErr) {
+      logger.warn("knowledge.delete.blob", { request_id: requestId, erro: rmErr.message });
+    }
+  }
+
+  const { error: emitErr } = await admin.rpc("emit_event" as never, {
+    p_event_type: "knowledge_source.updated",
+    p_entity_kind: "ai_knowledge_source",
+    p_entity_id: sourceId,
+    p_payload: {
+      knowledge_source_id: sourceId,
+      agent_id: ks.agent_id,
+      source_type: ks.source_type,
+      triggered_by: "source_archived",
+    },
+    p_organization_id: activeOrg.orgId,
+  } as never);
+  if (emitErr) {
+    logger.warn("knowledge.delete.emit", { request_id: requestId, erro: emitErr.message });
+  }
+
+  void audit({
+    action: "knowledge.source_archived",
+    actorUserId: authUser.id,
+    organizationId: activeOrg.orgId,
+    resourceType: "ai_knowledge_source",
+    resourceId: sourceId,
+    requestId,
+    metadata: { source_type: ks.source_type },
+  });
 
   return ok({ id: sourceId, status: "archived" }, { requestId });
 }

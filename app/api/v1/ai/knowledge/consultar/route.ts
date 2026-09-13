@@ -48,6 +48,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         trechos: rec.trechos.map((t) => ({
           texto: t.content,
           fonte: t.fonte,
+          ...(t.pagina !== undefined ? { pagina: t.pagina } : {}),
         })),
       },
       { requestId },

@@ -14,7 +14,7 @@ import {
 } from "@/lib/ai/knowledge/busca";
 
 export interface RecuperacaoDaEmpresa {
-  trechos: Array<{ content: string; fonte: string | null }>;
+  trechos: Array<{ content: string; fonte: string | null; pagina?: number }>;
   origem: "vetor" | "cadastro" | "vazio";
 }
 
@@ -116,7 +116,7 @@ export async function buscarFaqDaOrg(
     .in("knowledge_source_id", ids)
     .limit(40);
 
-  const hits: Array<{ content: string; fonte: string | null }> = [];
+  const hits: Array<{ content: string; fonte: string | null; pagina?: number }> = [];
   for (const item of itens ?? []) {
     const blob = `${item.question ?? ""} ${item.answer ?? ""}`
       .toLowerCase()
@@ -130,6 +130,84 @@ export async function buscarFaqDaOrg(
     if (hits.length >= 5) break;
   }
   return hits;
+}
+
+export async function buscarDocumentosDaOrg(
+  db: SupabaseClient,
+  organizationId: string,
+  pergunta: string,
+): Promise<Array<{ content: string; fonte: string | null; pagina?: number }>> {
+  const termos = (pergunta ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .split(/[^a-z0-9]+/i)
+    .filter((t) => t.length >= 4 && !TERMOS_GENERICOS.has(t))
+    .slice(0, 6);
+  if (termos.length === 0) return [];
+
+  const { data: fontes } = await db
+    .from("ai_knowledge_sources")
+    .select("id, name, source_type, source_metadata")
+    .eq("organization_id", organizationId)
+    .eq("is_active", true)
+    .eq("status", "ready")
+    .eq("source_type", "policy");
+
+  const hits: Array<{ content: string; fonte: string | null; pagina?: number }> = [];
+  for (const fonte of fontes ?? []) {
+    const meta = (fonte.source_metadata ?? {}) as Record<string, unknown>;
+    const pages = Array.isArray(meta.pages)
+      ? (meta.pages as Array<{ pagina?: number; texto?: string }>)
+      : [];
+    const texto =
+      pages.length > 0
+        ? null
+        : typeof meta.extracted_text === "string"
+          ? meta.extracted_text
+          : "";
+    const nome =
+      (typeof meta.filename === "string" && meta.filename) ||
+      (fonte.name as string) ||
+      "Documento";
+
+    if (pages.length > 0) {
+      for (const p of pages) {
+        const blob = String(p.texto ?? "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/\p{M}/gu, "");
+        if (!termos.some((t) => blob.includes(t))) continue;
+        hits.push({
+          content: String(p.texto ?? "").trim(),
+          fonte: nome,
+          pagina: typeof p.pagina === "number" ? p.pagina : undefined,
+        });
+        if (hits.length >= 5) return hits;
+      }
+      continue;
+    }
+
+    if (!texto) continue;
+    const blob = texto
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "");
+    if (!termos.some((t) => blob.includes(t))) continue;
+    hits.push({ content: texto.trim().slice(0, 2000), fonte: nome });
+    if (hits.length >= 5) break;
+  }
+  return hits;
+}
+
+function fonteDoTrecho(t: TrechoEncontrado): { fonte: string | null; pagina?: number } {
+  const meta = t.metadata ?? {};
+  const filename = typeof meta.filename === "string" ? meta.filename : null;
+  const pagina = typeof meta.page === "number" ? meta.page : undefined;
+  return {
+    fonte: filename ?? "Conhecimento da empresa",
+    ...(pagina !== undefined ? { pagina } : {}),
+  };
 }
 
 export async function recuperarConhecimentoDaEmpresa(
@@ -151,10 +229,14 @@ export async function recuperarConhecimentoDaEmpresa(
       });
       if (r.trechos.length > 0) {
         return {
-          trechos: r.trechos.map((t: TrechoEncontrado) => ({
-            content: t.content,
-            fonte: "Conhecimento da empresa",
-          })),
+          trechos: r.trechos.map((t: TrechoEncontrado) => {
+            const citacao = fonteDoTrecho(t);
+            return {
+              content: t.content,
+              fonte: citacao.fonte,
+              ...(citacao.pagina !== undefined ? { pagina: citacao.pagina } : {}),
+            };
+          }),
           origem: "vetor",
         };
       }
@@ -165,5 +247,7 @@ export async function recuperarConhecimentoDaEmpresa(
 
   const faq = await buscarFaqDaOrg(db, organizationId, pergunta);
   if (faq.length > 0) return { trechos: faq, origem: "cadastro" };
+  const docs = await buscarDocumentosDaOrg(db, organizationId, pergunta);
+  if (docs.length > 0) return { trechos: docs, origem: "cadastro" };
   return { trechos: [], origem: "vazio" };
 }

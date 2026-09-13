@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Knowledge 2.0 — documento fecha o RAG existente",
+    "subtitle": "Upload, extração, indexer, retrieve_top_k_chunks, Testar, Copilot e MCP",
+    "output": "conhecimento-2.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o operador vê" },
+    { "id": "app", "label": "App / API" },
+    { "id": "engine", "label": "Engine já existente" }
+  ],
+  "mainPath": ["tela", "upload", "extrair", "indexer", "chunks", "retrieve", "testar"],
+  "nodes": [
+    { "id": "tela", "lane": "humano", "col": 0, "type": "frontend", "label": "Conhecimento da Empresa", "sublabel": "/app/ai/knowledge/sources" },
+    { "id": "testar", "lane": "humano", "col": 4, "type": "frontend", "label": "Testar", "sublabel": "pergunta + fontes" },
+    { "id": "upload", "lane": "app", "col": 1, "type": "api", "label": "POST sources/upload", "sublabel": "bucket ai-policy" },
+    { "id": "extrair", "lane": "app", "col": 2, "type": "lib", "label": "ingestPolicyFile", "sublabel": "pdfjs + chunker" },
+    { "id": "evento", "lane": "app", "col": 2, "type": "api", "label": "event_log", "sublabel": "knowledge_source.updated" },
+    { "id": "organizar", "lane": "app", "col": 0, "type": "api", "label": "POST knowledge/organizar", "sublabel": "preview, não grava" },
+    { "id": "indexer", "lane": "engine", "col": 3, "type": "lib", "label": "rag-indexer", "sublabel": "embed + versão" },
+    { "id": "chunks", "lane": "engine", "col": 3, "type": "db", "label": "ai_chunks", "sublabel": "pgvector 1536" },
+    { "id": "retrieve", "lane": "engine", "col": 4, "type": "lib", "label": "retrieve_top_k_chunks", "sublabel": "buscarConhecimento" },
+    { "id": "copilot", "lane": "engine", "col": 5, "type": "lib", "label": "Copilot", "sublabel": "recuperarConhecimentoDaEmpresa" },
+    { "id": "mcp", "lane": "engine", "col": 5, "type": "lib", "label": "MCP knowledge", "sublabel": "crm_search_knowledge" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "tela", "to": "upload", "label": "PDF/MD/TXT" },
+    { "id": "e2", "from": "upload", "to": "extrair", "label": "valida texto" },
+    { "id": "e3", "from": "extrair", "to": "evento", "label": "fonte ready" },
+    { "id": "e4", "from": "evento", "to": "indexer", "label": "drain/worker" },
+    { "id": "e5", "from": "indexer", "to": "chunks", "label": "embedding" },
+    { "id": "e6", "from": "chunks", "to": "retrieve", "label": "versão ativa" },
+    { "id": "e7", "from": "retrieve", "to": "testar", "label": "consultar" },
+    { "id": "e8", "from": "retrieve", "to": "copilot", "label": "mesmo acervo" },
+    { "id": "e9", "from": "retrieve", "to": "mcp", "label": "mesmo acervo" },
+    { "id": "e10", "from": "tela", "to": "organizar", "label": "texto rápido" },
+    { "id": "e11", "from": "copilot", "to": "testar", "label": "citação da fonte" },
+    { "id": "e12", "from": "tela", "to": "testar", "label": "aba Testar" }
+  ]
+}

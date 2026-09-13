@@ -92,4 +92,33 @@ describe("GET /api/v1/ai/knowledge/sources", () => {
     expect(() => body.data.filter((s) => s.agent_id === AGENT_ID)).not.toThrow();
     expect(body.data.filter((s) => s.agent_id === AGENT_ID)).toHaveLength(1);
   });
+
+  it("não devolve blob_path nem texto extraído no metadata", async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeSupabaseStub([
+        {
+          ...SOURCE,
+          source_type: "policy",
+          source_metadata: {
+            filename: "Manual.pdf",
+            blob_path: `${ORG_ID}/abc.pdf`,
+            extracted_text: "SEGREDO",
+            size_bytes: 10,
+          },
+        },
+      ]) as never,
+    );
+
+    const { GET } = await import("./route");
+    const res = await GET(
+      new NextRequest("http://localhost/api/v1/ai/knowledge/sources"),
+    );
+    const body = (await res.json()) as {
+      data: Array<{ source_metadata: Record<string, unknown> }>;
+    };
+    expect(body.data[0]?.source_metadata).toEqual({
+      filename: "Manual.pdf",
+      size_bytes: 10,
+    });
+  });
 });

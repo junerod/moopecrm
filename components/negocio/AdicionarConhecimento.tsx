@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { FormSection } from "@/components/ds/FormSection";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +36,8 @@ export function AdicionarConhecimento({
   const [titulo, setTitulo] = useState("Sobre a empresa");
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [organizando, setOrganizando] = useState(false);
+  const [organizado, setOrganizado] = useState<string | null>(null);
 
   async function salvar(tipo: "faq" | "policy") {
     if (texto.trim().length === 0) {
@@ -65,6 +67,7 @@ export function AdicionarConhecimento({
       }
       toast.success("Conhecimento salvo.");
       setTexto("");
+      setOrganizado(null);
       onCriada();
     } catch {
       toast.error("Não consegui falar com o servidor.");
@@ -73,15 +76,40 @@ export function AdicionarConhecimento({
     }
   }
 
+  async function organizar() {
+    if (texto.trim().length < 8) {
+      toast.error("Cole um pouco mais de texto para organizar.");
+      return;
+    }
+    setOrganizando(true);
+    try {
+      const res = await fetch("/api/v1/ai/knowledge/organizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto, assunto: titulo }),
+      });
+      const json = (await res.json()) as {
+        data?: { organizado: string };
+        error?: { message?: string };
+      };
+      if (!res.ok) {
+        toast.error(json.error?.message ?? "Não consegui organizar agora.");
+        return;
+      }
+      setOrganizado(json.data?.organizado ?? null);
+    } catch {
+      toast.error("Não consegui falar com o servidor.");
+    } finally {
+      setOrganizando(false);
+    }
+  }
+
   return (
-    <Card className="space-y-3 p-4" data-testid="adicionar-conhecimento">
-      <div>
-        <h2 className="text-sm font-semibold">Adicionar conhecimento</h2>
-        <p className="text-xs text-muted-foreground">
-          Texto livre. O sistema guarda no acervo da empresa — o mesmo que o
-          assistente consulta.
-        </p>
-      </div>
+    <FormSection
+      testid="adicionar-conhecimento"
+      titulo="Texto rápido"
+      descricao="Cole o que a empresa precisa que o sistema saiba. Nada é salvo até você confirmar."
+    >
       <div className="flex flex-wrap gap-2">
         {SUGESTOES.map((s) => (
           <button
@@ -104,7 +132,7 @@ export function AdicionarConhecimento({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="conhecimento-texto">O que o sistema precisa saber</Label>
+        <Label htmlFor="conhecimento-texto">Conteúdo</Label>
         <Textarea
           id="conhecimento-texto"
           data-testid="conhecimento-texto"
@@ -114,14 +142,53 @@ export function AdicionarConhecimento({
           onChange={(e) => setTexto(e.target.value)}
         />
       </div>
-      <Button
-        type="button"
-        size="sm"
-        disabled={enviando}
-        onClick={() => void salvar("faq")}
-      >
-        {enviando ? "Salvando…" : "Salvar conhecimento"}
-      </Button>
-    </Card>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={organizando || texto.trim().length < 8}
+          onClick={() => void organizar()}
+          data-testid="conhecimento-organizar"
+        >
+          {organizando ? "Organizando…" : "Organizar com IA"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={enviando}
+          onClick={() => void salvar("faq")}
+        >
+          {enviando ? "Salvando…" : "Salvar conhecimento"}
+        </Button>
+      </div>
+      {organizado ? (
+        <div className="grid gap-3 md:grid-cols-2" data-testid="conhecimento-organizar-preview">
+          <div className="space-y-1 rounded-[12px] bg-[var(--color-bg)] p-3 ring-1 ring-[var(--color-border)]">
+            <p className="text-xs font-medium text-[var(--color-text-muted)]">Original</p>
+            <p className="whitespace-pre-wrap text-sm">{texto}</p>
+          </div>
+          <div className="space-y-1 rounded-[12px] bg-[var(--color-bg)] p-3 ring-1 ring-[var(--color-border)]">
+            <p className="text-xs font-medium text-[var(--color-text-muted)]">Versão organizada</p>
+            <p className="whitespace-pre-wrap text-sm">{organizado}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 md:col-span-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setTexto(organizado);
+                setOrganizado(null);
+              }}
+            >
+              Usar versão organizada
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setOrganizado(null)}>
+              Manter original
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </FormSection>
   );
 }

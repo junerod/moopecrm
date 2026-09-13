@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 
+import { FormSection } from "@/components/ds/FormSection";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 
 interface Trecho {
   texto: string;
   fonte: string | null;
+  pagina?: number;
 }
 
-export function TestarConhecimento() {
-  const [pergunta, setPergunta] = useState("");
+export function TestarConhecimento({
+  perguntaInicial,
+}: {
+  perguntaInicial?: string;
+}) {
+  const [pergunta, setPergunta] = useState(perguntaInicial ?? "");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [encontrou, setEncontrou] = useState<boolean | null>(null);
@@ -45,17 +50,15 @@ export function TestarConhecimento() {
   }
 
   return (
-    <Card className="space-y-3 p-4" data-testid="testar-conhecimento">
-      <div>
-        <h2 className="text-sm font-semibold">Testar conhecimento</h2>
-        <p className="text-xs text-muted-foreground">
-          Pergunte algo sobre sua empresa. A resposta usa o mesmo acervo do atendimento.
-        </p>
-      </div>
+    <FormSection
+      testid="testar-conhecimento"
+      titulo="Testar"
+      descricao="Pergunte algo sobre sua empresa. A resposta usa o mesmo acervo do atendimento — se não estiver aqui, o sistema não inventa."
+    >
       <Textarea
         data-testid="testar-conhecimento-pergunta"
         rows={3}
-        placeholder="Pergunte algo sobre sua empresa..."
+        placeholder="Faça uma pergunta sobre sua empresa"
         value={pergunta}
         onChange={(e) => setPergunta(e.target.value)}
       />
@@ -78,17 +81,29 @@ export function TestarConhecimento() {
         </p>
       ) : null}
       {trechos.length > 0 ? (
-        <ul data-testid="testar-conhecimento-resposta" className="space-y-2 text-sm">
-          {trechos.map((t, i) => (
-            <li key={i} className="rounded-md border border-border p-3">
-              <p className="whitespace-pre-wrap">{t.texto}</p>
-              {t.fonte ? (
-                <p className="mt-2 text-xs text-muted-foreground">Fonte: {t.fonte}</p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-3">
+          <ul data-testid="testar-conhecimento-resposta" className="space-y-2 text-sm">
+            {trechos.map((t, i) => (
+              <li key={i} className="rounded-[12px] bg-[var(--color-bg)] p-3 ring-1 ring-[var(--color-border)]">
+                <p className="whitespace-pre-wrap">{t.texto}</p>
+              </li>
+            ))}
+          </ul>
+          <div data-testid="testar-conhecimento-fontes">
+            <p className="text-xs font-medium text-[var(--color-text-muted)]">Fontes utilizadas</p>
+            <ul className="mt-1 space-y-1 text-xs text-[var(--color-text-muted)]">
+              {trechos
+                .filter((t) => t.fonte)
+                .map((t, i) => (
+                  <li key={`${t.fonte}-${i}`}>
+                    {t.fonte}
+                    {typeof t.pagina === "number" ? ` · página ${t.pagina}` : ""}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </div>
       ) : null}
-    </Card>
+    </FormSection>
   );
 }

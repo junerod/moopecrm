@@ -16296,3 +16296,13 @@ comment on table public.campaigns is
   'Campanha comercial do tenant. Não é disparo operacional MOOPE nem alerta interno.';
 comment on table public.campaign_recipients is
   'Destinatário da campanha. unique (campaign_id, contact_id) = no máximo um envio lógico. message_id aponta para messages quando houver mensagem real. phone/error saem em fn_lgpd_cascade_redact_contact (0206).';
+
+-- ---- vários documentos de política por agente (migration 0207) ----
+drop index if exists public.ai_knowledge_sources_unique_per_agent;
+
+create unique index if not exists ai_knowledge_sources_unique_per_agent
+  on public.ai_knowledge_sources using btree (agent_id, source_type)
+  where is_active and source_type <> 'policy';
+
+comment on index public.ai_knowledge_sources_unique_per_agent is
+  'Uma fonte ativa por tipo e agente, exceto policy (N documentos). Migration 0207.';

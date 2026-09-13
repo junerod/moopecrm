@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { SourceRow } from "@/hooks/ai/useKnowledgeSources";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { metadadoPublicoDaFonte } from "@/lib/ai/knowledge/metadado-publico";
 import { garantirAgenteDoAcervo } from "@/lib/negocio/garantir-acervo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -63,14 +64,17 @@ export default async function KnowledgeSourcesPage() {
     .eq("agent_id", agent.id)
     .order("created_at", { ascending: true });
 
-  const initialSources = (sourcesRaw ?? []) as unknown as SourceRow[];
+  const initialSources = ((sourcesRaw ?? []) as unknown as SourceRow[]).map((s) => ({
+    ...s,
+    source_metadata: metadadoPublicoDaFonte(s.source_metadata),
+  }));
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 bg-[var(--color-bg)] p-6">
       <PageHeader
         icon={<AppIcon icon={BookOpen} tone="amber" size="lg" />}
         titulo="Conhecimento da Empresa"
-        descricao="Ensine o sistema sobre sua empresa. O assistente e as sugestões de resposta consultam isto — não inventam o que não estiver aqui."
+        descricao="Ensine a MOOPE sobre sua empresa para que assistentes e sugestões respondam usando informações reais."
       />
 
       <ConhecimentoDaEmpresaClient agentId={agent.id} initialSources={initialSources} />

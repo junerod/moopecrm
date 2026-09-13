@@ -42,6 +42,15 @@ describe("extractPdfText", () => {
     );
   });
 
+  it("extractPdfDocument devolve página 1 e 2 sem inventar número", async () => {
+    const { extractPdfDocument } = await import("@/lib/ai/rag/extractors/pdf");
+    const doc = await extractPdfDocument(fixture("sample-multipagina.pdf"));
+    expect(doc.pageCount).toBe(2);
+    expect(doc.paginas.map((p) => p.pagina)).toEqual([1, 2]);
+    expect(doc.paginas[0]?.texto).toContain("Pagina um");
+    expect(doc.paginas[1]?.texto).toContain("Pagina dois");
+  });
+
   it("preserva quebra de linha dentro da página e separa páginas por linha em branco", async () => {
     // O chunker do RAG corta por estrutura; se a extração achatar tudo numa linha só,
     // o texto continua "certo" e a recuperação piora em silêncio.

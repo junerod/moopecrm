@@ -131,12 +131,14 @@ test.describe("3C — leigo configura o CRM", () => {
 
     await page.goto("/app/ai/knowledge/sources");
     await expect(page.getByRole("heading", { name: "Conhecimento da Empresa" })).toBeVisible();
+    await page.getByTestId("aba-conhecimento-texto").click();
     await page.getByTestId("conhecimento-texto").fill(
       "Martelete Bosch 5kg. Locação mínima: 1 diária.",
     );
     await page.getByRole("button", { name: "Salvar conhecimento" }).click();
     await expect(page.getByText(/conhecimento salvo/i)).toBeVisible({ timeout: 15_000 });
 
+    await page.getByTestId("aba-conhecimento-testar").click();
     await page.getByTestId("testar-conhecimento-pergunta").fill("Vocês alugam martelete?");
     await page.getByRole("button", { name: "Perguntar" }).click();
     const achou = page.getByTestId("testar-conhecimento-resposta");

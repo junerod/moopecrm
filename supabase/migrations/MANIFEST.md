@@ -233,6 +233,7 @@ aplica.
 | `20260912180000` | `0204_proxima_acao_alertas` | **Alerta interno da próxima ação.** Sem tabela `tasks`: a obrigação continua em `demandas.proximo_passo`. Acrescenta telefone E.164 PARTICULAR do atendente em `user_organizations` (opt-in desligado, antecedência 10/30/60) e o ledger `demanda_alert_deliveries` com unique `(org, demanda, kind, scheduled_for)` para o reminder ser idempotente. Reagendar muda `scheduled_for`. Não é conversa CRM nem `operational_moope`. |
 | `20260912200000` | `0205_campanhas_comerciais` | **Campanha comercial mínima.** Tabelas `campaigns` + `campaign_recipients` (status curtos, unique campanha+contato). Não reutiliza `operational_moope` nem alerta interno. `message_id` aponta para `messages` quando houver mensagem real; nesta rodada o envio é mock. RLS com `fn_user_org_ids` + `fn_role_at_least(agent)`. |
 | `20260912210000` | `0206_lgpd_alcanca_destinatario_campanha` | **Forward-fix LGPD.** `fn_lgpd_cascade_redact_contact` zera `campaign_recipients.phone` e `error` do contato anonimizado. Status e timestamps da campanha ficam. |
+| `20260913120000` | `0207_varios_documentos_de_politica` | **N PDFs ativos por agente.** O unique `(agent_id, source_type) WHERE is_active` impedia o segundo documento. FAQ/conversas/catálogo continuam singleton; `policy` sai do predicado. |
 
 ## Reproducibility
 

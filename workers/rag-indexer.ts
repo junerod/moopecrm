@@ -14,6 +14,7 @@ import { isEmbeddingProviderConfigured } from "@/lib/ai/gateway";
 import { embedText } from "@/lib/ai/embed";
 import { acquireDebounce } from "@/lib/ai/rag/debounce";
 import { chunkText, computeContentHash } from "@/lib/ai/rag/chunker";
+import { ingestPolicyFile, pedacosDePolitica, type ExtensaoDePolitica } from "@/lib/ai/rag/ingest/policy";
 import { estimateTokens } from "@/lib/ai/runtime/history";
 import { formatProductForRag, type NuvemshopProduct } from "@/lib/ai/rag/format-product";
 import {
@@ -23,6 +24,7 @@ import {
   activateVersion,
 } from "@/lib/ai/rag/version";
 import type { EventRow, HandlerResult } from "@/lib/event-log/dispatcher";
+import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NuvemshopApiClient } from "@/lib/nuvemshop/api-client";
 
@@ -292,21 +294,146 @@ async function handleProductSynced(
  * meio, a versão anterior continua valendo e o agente segue respondendo com a
  * base antiga em vez de ficar sem base nenhuma.
  */
+const TIPOS_QUE_COPIAM = new Set([
+  "conversation",
+  "conversations",
+  "catalog",
+  "nuvemshop_catalog",
+]);
+
+type FontePronta = {
+  id: string;
+  source_type: string;
+  name: string;
+  source_metadata: Record<string, unknown> | null;
+};
+
+type Pedaco = {
+  content: string;
+  sourceId: string;
+  sourceType: string;
+  filename?: string;
+  page?: number;
+  embedding?: number[];
+  contentHash?: string;
+  tokenCount?: number;
+};
+
+function extensaoDoBlob(path: string, mime?: string): ExtensaoDePolitica | null {
+  const ext = path.split(".").pop()?.toLowerCase();
+  if (ext === "pdf" || ext === "md" || ext === "txt") return ext;
+  if (mime === "application/pdf") return "pdf";
+  if (mime === "text/plain") return "txt";
+  if (mime === "text/markdown" || mime === "text/x-markdown") return "md";
+  return null;
+}
+
+async function pedacosDoDocumento(
+  organizationId: string,
+  agentId: string,
+  fonte: FontePronta,
+  forcarDownload: boolean,
+): Promise<Pedaco[]> {
+  const meta = fonte.source_metadata ?? {};
+  const filename = typeof meta.filename === "string" ? meta.filename : fonte.name;
+  const blobPath = typeof meta.blob_path === "string" ? meta.blob_path : "";
+  const pages = Array.isArray(meta.pages)
+    ? (meta.pages as Array<{ pagina?: number; texto?: string }>)
+        .filter((p) => typeof p.texto === "string" && typeof p.pagina === "number")
+        .map((p) => ({ pagina: p.pagina as number, texto: p.texto as string }))
+    : undefined;
+  const extracted =
+    typeof meta.extracted_text === "string" ? meta.extracted_text : "";
+
+  if (!forcarDownload && (pages?.length || extracted)) {
+    return pedacosDePolitica(extracted, pages).map((p) => ({
+      content: p.content,
+      sourceId: fonte.id,
+      sourceType: fonte.source_type,
+      filename,
+      page: p.page,
+    }));
+  }
+
+  if (!blobPath.startsWith(`${organizationId}/`)) return [];
+  const ext = extensaoDoBlob(blobPath, typeof meta.mime_type === "string" ? meta.mime_type : undefined);
+  if (!ext) return [];
+
+  const r = await ingestPolicyFile({
+    organizationId,
+    agentId,
+    knowledgeSourceId: fonte.id,
+    blobPath,
+    ext,
+  });
+  return r.chunks.map((p) => ({
+    content: p.content,
+    sourceId: fonte.id,
+    sourceType: fonte.source_type,
+    filename,
+    page: p.page,
+  }));
+}
+
+async function copiarChunksDeVersaoAnterior(
+  organizationId: string,
+  kbVersionId: string,
+  sourceIds: string[],
+): Promise<Pedaco[]> {
+  if (sourceIds.length === 0) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("ai_chunks")
+    .select(
+      "knowledge_source_id, content, content_hash, token_count, embedding, metadata",
+    )
+    .eq("organization_id", organizationId)
+    .eq("kb_version_id", kbVersionId)
+    .in("knowledge_source_id", sourceIds);
+  if (error) {
+    logger.warn("rag.copy_forward_failed", {
+      org_id: organizationId,
+      erro: error.message,
+    });
+    return [];
+  }
+  return ((data ?? []) as Array<{
+    knowledge_source_id: string;
+    content: string;
+    content_hash: string;
+    token_count: number | null;
+    embedding: unknown;
+    metadata: Record<string, unknown> | null;
+  }>).map((c) => ({
+    content: c.content,
+    sourceId: c.knowledge_source_id,
+    sourceType: String(c.metadata?.source_type ?? "conversations"),
+    filename: typeof c.metadata?.filename === "string" ? c.metadata.filename : undefined,
+    page: typeof c.metadata?.page === "number" ? c.metadata.page : undefined,
+    embedding: Array.isArray(c.embedding) ? (c.embedding as number[]) : undefined,
+    contentHash: c.content_hash,
+    tokenCount: c.token_count ?? undefined,
+  }));
+}
+
 async function handleKnowledgeSourceUpdated(
   row: EventRow,
   agentId: string,
+  kbVersionAnterior: string | null,
 ): Promise<ProcessResult> {
   const admin = createAdminClient();
+  const forcarDownload = row.payload["triggered_by"] === "manual_reindex";
 
   const { data: sourceRows, error: srcErr } = await admin
     .from("ai_knowledge_sources")
-    .select("id, source_type, name")
+    .select("id, source_type, name, source_metadata")
     .eq("organization_id", row.organization_id)
     .eq("agent_id", agentId)
-    .eq("status", "ready");
+    .eq("status", "ready")
+    .eq("is_active", true);
   if (srcErr) return { type: "error", detail: `sources_query_failed: ${srcErr.message}` };
 
-  const sources = (sourceRows ?? []) as { id: string; source_type: string; name: string }[];
+  const sources = (sourceRows ?? []) as FontePronta[];
   if (sources.length === 0) return skip("no_sources");
 
   const { data: itemRows, error: itemErr } = await admin
@@ -322,42 +449,102 @@ async function handleKnowledgeSourceUpdated(
     question: string;
     answer: string;
   }[];
-  if (items.length === 0) return skip("no_content_to_index");
 
   // Um chunk por par pergunta/resposta: a unidade de recuperação é a resposta
   // inteira. `chunkText` só entra quando a resposta é longa demais para um
   // chunk — assim uma FAQ curta nunca é picada no meio.
   const porFonte = new Map(sources.map((s) => [s.id, s]));
-  const pedacos: { content: string; sourceId: string; sourceType: string }[] = [];
+  const pedacos: Pedaco[] = [];
   for (const it of items) {
     const fonte = porFonte.get(it.knowledge_source_id);
     if (!fonte) continue;
     const texto = `Pergunta: ${it.question}\nResposta: ${it.answer}`;
     for (const c of chunkText(texto)) {
-      pedacos.push({ content: c, sourceId: fonte.id, sourceType: fonte.source_type });
+      pedacos.push({
+        content: c,
+        sourceId: fonte.id,
+        sourceType: fonte.source_type,
+        filename: fonte.name,
+      });
     }
   }
-  if (pedacos.length === 0) return skip("no_chunks_generated");
+
+  for (const fonte of sources.filter((s) => s.source_type === "policy")) {
+    try {
+      const t0 = Date.now();
+      const docs = await pedacosDoDocumento(
+        row.organization_id,
+        agentId,
+        fonte,
+        forcarDownload,
+      );
+      pedacos.push(...docs);
+      logger.info("rag.policy_chunks", {
+        source_id: fonte.id,
+        org_id: row.organization_id,
+        tipo: "policy",
+        chunks: docs.length,
+        extract_ms: Date.now() - t0,
+      });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      logger.warn("rag.policy_extract_failed", {
+        source_id: fonte.id,
+        org_id: row.organization_id,
+        erro: detail.slice(0, 240),
+      });
+      await admin
+        .from("ai_knowledge_sources")
+        .update({
+          last_index_status: "failed",
+          last_index_error: "Não foi possível indexar este documento.",
+          last_indexed_at: new Date().toISOString(),
+        })
+        .eq("id", fonte.id)
+        .eq("organization_id", row.organization_id);
+    }
+  }
+
+  const idsParaCopiar = sources.filter((s) => TIPOS_QUE_COPIAM.has(s.source_type)).map((s) => s.id);
+  const copiados =
+    kbVersionAnterior && idsParaCopiar.length > 0
+      ? await copiarChunksDeVersaoAnterior(
+          row.organization_id,
+          kbVersionAnterior,
+          idsParaCopiar,
+        )
+      : [];
+  pedacos.push(...copiados);
+
+  if (pedacos.length === 0) return skip("no_content_to_index");
 
   const { versionId, versionNumber } = await createKnowledgeVersion({
     agentId,
     organizationId: row.organization_id,
     sourceType: "knowledge_source",
   });
-  console.warn(
-    `[rag-indexer] reconstruindo base: versão ${versionNumber} (${versionId}), ` +
-      `${sources.length} fonte(s), ${pedacos.length} chunk(s)`,
-  );
+  logger.info("rag.rebuild_start", {
+    org_id: row.organization_id,
+    source_id: String(row.payload["knowledge_source_id"] ?? ""),
+    version: versionNumber,
+    fontes: sources.length,
+    chunks: pedacos.length,
+  });
 
   let gravados = 0;
   const gravadosPorFonte = new Map<string, number>();
+  const tEmbed = Date.now();
   for (let i = 0; i < pedacos.length; i++) {
     const p = pedacos[i]!;
-    const contentHash = computeContentHash(p.content);
+    const contentHash = p.contentHash ?? computeContentHash(p.content);
     let embedding: number[];
     try {
-      const r = await embedText(p.content, { organizationId: row.organization_id });
-      embedding = r.embedding;
+      if (p.embedding && p.embedding.length > 0) {
+        embedding = p.embedding;
+      } else {
+        const r = await embedText(p.content, { organizationId: row.organization_id });
+        embedding = r.embedding;
+      }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       await markVersionFailed(versionId, row.organization_id, `embed_failed@${i}: ${detail}`);
@@ -371,9 +558,13 @@ async function handleKnowledgeSourceUpdated(
         position: i,
         content: p.content,
         content_hash: contentHash,
-        token_count: estimateTokens(p.content),
+        token_count: p.tokenCount ?? estimateTokens(p.content),
         embedding: embedding as unknown as string,
-        metadata: { source_type: p.sourceType },
+        metadata: {
+          source_type: p.sourceType,
+          ...(p.filename ? { filename: p.filename } : {}),
+          ...(typeof p.page === "number" ? { page: p.page } : {}),
+        },
       },
       // Ver comentario no caminho de produto: esta e a constraint que existe.
       { onConflict: "knowledge_source_id,kb_version_id,position", ignoreDuplicates: true },
@@ -397,6 +588,12 @@ async function handleKnowledgeSourceUpdated(
 
   await markVersionReady(versionId, row.organization_id, gravados);
   await activateVersion({ agentId, versionId, organizationId: row.organization_id });
+  logger.info("rag.rebuild_ok", {
+    org_id: row.organization_id,
+    version: versionNumber,
+    chunks: gravados,
+    embed_ms: Date.now() - tEmbed,
+  });
 
   // Estado por fonte: a tela mostra "Chunks indexados" e a última indexação.
   const agora = new Date().toISOString();
@@ -441,23 +638,32 @@ export async function processRagIndexer(row: EventRow): Promise<HandlerResult> {
 
   // Resolve the active agent for this org.
   let agentId: string;
+  let kbAtiva: string | null = null;
   try {
     const agent = await resolveAgent(row.organization_id);
     if (!agent) {
       return { consumer_key: consumerKey, status: "skipped", detail: "agent_inactive_or_missing" };
     }
     agentId = agent.id;
+    kbAtiva = agent.active_kb_version_id;
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[rag-indexer] resolveAgent failed:", detail);
     return { consumer_key: consumerKey, status: "error", detail };
   }
 
-  // Debounce key scoped to (org, agent, event_type) to coalesce bursts.
-  const debounceKey = `rag:debounce:${row.organization_id}:${agentId}:${row.event_type}`;
-  const acquired = await acquireDebounce(debounceKey, DEBOUNCE_TTL_SEC);
-  if (!acquired) {
-    return { consumer_key: consumerKey, status: "skipped", detail: "debounced" };
+  // Debounce coalesces bursts (vários FAQ salvos juntos). Arquivar ou
+  // reprocessar à mão NÃO pode ser pulado — senão o chunk do PDF excluído
+  // continua recuperável até o TTL acabar.
+  const forcado =
+    row.payload["triggered_by"] === "manual_reindex" ||
+    row.payload["triggered_by"] === "source_archived";
+  if (!forcado) {
+    const debounceKey = `rag:debounce:${row.organization_id}:${agentId}:${row.event_type}`;
+    const acquired = await acquireDebounce(debounceKey, DEBOUNCE_TTL_SEC);
+    if (!acquired) {
+      return { consumer_key: consumerKey, status: "skipped", detail: "debounced" };
+    }
   }
 
   let versionId: string | undefined;
@@ -471,7 +677,7 @@ export async function processRagIndexer(row: EventRow): Promise<HandlerResult> {
         break;
 
       case "knowledge_source.updated":
-        result = await handleKnowledgeSourceUpdated(row, agentId);
+        result = await handleKnowledgeSourceUpdated(row, agentId, kbAtiva);
         break;
 
       default:

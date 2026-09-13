@@ -11,7 +11,7 @@ export interface SourceRow {
   source_type: string;
   name?: string | null;
   status: "ready" | "archived" | "failed" | string | null;
-  last_index_status: "failed" | "partial" | null;
+  last_index_status: "success" | "failed" | "partial" | null;
   last_index_error: string | null;
   last_indexed_at: string | null;
   chunks_count: number;
@@ -49,6 +49,28 @@ export function useKnowledgeSources(
     },
     initialData: opts?.initialData,
     enabled: !!agentId,
+  });
+}
+
+export function useArquivarSource(agentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationKey: ["ai", "knowledge", "sources", agentId, "archive"],
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/v1/ai/knowledge/sources/${id}`, { method: "DELETE" });
+      const json = (await res.json()) as { error?: { message?: string } };
+      if (!res.ok) throw new Error(json.error?.message ?? "Não consegui excluir.");
+      return json;
+    },
+    onSuccess: () => {
+      toast.success("Documento removido da base.");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Não consegui excluir.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: sourcesQueryKey(agentId) });
+    },
   });
 }
 

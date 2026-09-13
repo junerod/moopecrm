@@ -27,11 +27,22 @@ export class PdfExtractError extends Error {
   }
 }
 
+export interface PaginaExtraida {
+  pagina: number;
+  texto: string;
+}
+
+export interface PdfExtraido {
+  texto: string;
+  paginas: PaginaExtraida[];
+  pageCount: number;
+}
+
 /**
- * Extrai texto puro de um buffer de PDF usando pdfjs-dist.
- * Lança `PdfExtractError` se o arquivo for ilegível ou não tiver texto algum.
+ * Extrai texto por página. `pageCount` é o número de páginas do arquivo,
+ * mesmo quando alguma página não tem texto.
  */
-export async function extractPdfText(buffer: Buffer): Promise<string> {
+export async function extractPdfDocument(buffer: Buffer): Promise<PdfExtraido> {
   try {
     const pdfjsLib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as typeof PdfjsDist;
 
@@ -49,7 +60,7 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
     const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
     const pdfDocument = await loadingTask.promise;
 
-    const pageTexts: string[] = [];
+    const paginas: PaginaExtraida[] = [];
     for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
       const page = await pdfDocument.getPage(pageNum);
       const content = await page.getTextContent();
@@ -64,14 +75,14 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
         .map((item) => ("str" in item ? item.str + (item.hasEOL ? "\n" : "") : ""))
         .join("")
         .trim();
-      if (pageText.length > 0) pageTexts.push(pageText);
+      if (pageText.length > 0) paginas.push({ pagina: pageNum, texto: pageText });
     }
 
-    const combined = pageTexts.join("\n\n").trim();
+    const combined = paginas.map((p) => p.texto).join("\n\n").trim();
     if (combined.length === 0) {
       throw new PdfExtractError("pdfjs-dist extracted no text (possibly image-only PDF)");
     }
-    return combined;
+    return { texto: combined, paginas, pageCount: pdfDocument.numPages };
   } catch (err) {
     if (err instanceof PdfExtractError) throw err;
 
@@ -95,4 +106,12 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
 
     throw new PdfExtractError("pdfjs-dist failed to extract text from the PDF", err);
   }
+}
+
+/**
+ * Extrai texto puro de um buffer de PDF usando pdfjs-dist.
+ * Lança `PdfExtractError` se o arquivo for ilegível ou não tiver texto algum.
+ */
+export async function extractPdfText(buffer: Buffer): Promise<string> {
+  return (await extractPdfDocument(buffer)).texto;
 }

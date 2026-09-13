@@ -228,6 +228,7 @@ jobs:
         agenda-kit-visual.spec.ts
         agenda-conectar-google.spec.ts
         productization-3c.spec.ts
+        knowledge-2.spec.ts
       # Cada item aqui tem o motivo MEDIDO, não presumido — e o gate cobra que a
       # lista exista e some com as outras duas.
       #
