@@ -68,6 +68,13 @@ describe("lerAmbiente", () => {
       }).email,
     ).toBe(true);
     expect(lerAmbiente({ MAILSERVER_URL: "http://127.0.0.1:3999" }).email).toBe(false);
+    expect(
+      lerAmbiente({
+        MAILSERVER_URL: "http://127.0.0.1:3999",
+        MAILSERVER_API_KEY: "k",
+        MAILSERVER_FROM: "info@exemplo.com",
+      }).email,
+    ).toBe(true);
   });
 });
 

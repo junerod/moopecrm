@@ -9,6 +9,10 @@
 
 import { z } from "zod";
 
+import { aplicarAliasesDeEnv } from "@/lib/env-aliases";
+
+aplicarAliasesDeEnv(process.env);
+
 const isProd = process.env.NODE_ENV === "production";
 
 /**

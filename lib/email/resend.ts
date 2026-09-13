@@ -114,7 +114,9 @@ async function enviarPeloMailserver(
   args: SendArgs,
 ): Promise<SendResult> {
   const destinatarios = (Array.isArray(args.to) ? args.to : [args.to]).map((e) => e.trim());
-  const body = corpoEmTexto(args.html, args.text);
+  // O mailserver escolhe text/html quando o body tem tag. Convite e LGPD
+  // nascem em HTML; texto puro só se não houver markup.
+  const body = args.html.trim().length > 0 ? args.html : corpoEmTexto(args.html, args.text);
   try {
     for (const to of destinatarios) {
       const res = await fetch(`${ms.url}/enviar-email`, {

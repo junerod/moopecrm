@@ -20,6 +20,7 @@
  */
 import { IDS_DE_PROVEDOR } from "@/lib/ai/pontos/provedores";
 import { lerTransporteDeWhatsapp, type TransporteDeWhatsapp } from "@/lib/channels/transporte";
+import { aliasesDeEnv } from "@/lib/env-aliases";
 
 /**
  * A fonte é um mapa simples, e não `NodeJS.ProcessEnv`: o tipo global é
@@ -66,20 +67,21 @@ function preenchida(source: FonteDeAmbiente, nome: string | undefined): boolean 
 }
 
 export function lerAmbiente(source: FonteDeAmbiente = process.env): AmbienteDaInstalacao {
+  const env = aliasesDeEnv(source);
   const chavesDeProvedor: Record<string, boolean> = {};
   for (const id of IDS_DE_PROVEDOR) {
-    chavesDeProvedor[id] = preenchida(source, VARIAVEL_DA_CHAVE[id]);
+    chavesDeProvedor[id] = preenchida(env, VARIAVEL_DA_CHAVE[id]);
   }
 
   return {
     chavesDeProvedor,
-    gateway: preenchida(source, "AI_GATEWAY_API_KEY"),
+    gateway: preenchida(env, "AI_GATEWAY_API_KEY"),
     email:
-      preenchida(source, "RESEND_API_KEY") ||
-      (preenchida(source, "MAILSERVER_URL") &&
-        preenchida(source, "MAILSERVER_API_KEY") &&
-        preenchida(source, "MAILSERVER_FROM_EMAIL")),
-    transporteDeWhatsapp: lerTransporteDeWhatsapp(source),
+      preenchida(env, "RESEND_API_KEY") ||
+      (preenchida(env, "MAILSERVER_URL") &&
+        preenchida(env, "MAILSERVER_API_KEY") &&
+        preenchida(env, "MAILSERVER_FROM_EMAIL")),
+    transporteDeWhatsapp: lerTransporteDeWhatsapp(env),
   };
 }
 

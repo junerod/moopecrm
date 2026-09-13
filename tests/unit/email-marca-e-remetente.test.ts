@@ -129,12 +129,19 @@ describe("remetente", () => {
     mailUrl: process.env.MAILSERVER_URL,
     mailKey: process.env.MAILSERVER_API_KEY,
     mailFrom: process.env.MAILSERVER_FROM_EMAIL,
+    mailFromAlias: process.env.MAILSERVER_FROM,
+    mailFromAlt: process.env.MAIL_FROM,
   };
 
   beforeEach(() => {
     process.env.MAILSERVER_URL = "";
     process.env.MAILSERVER_API_KEY = "";
     process.env.MAILSERVER_FROM_EMAIL = "";
+    process.env.MAILSERVER_FROM = "";
+    process.env.MAIL_FROM = "";
+    process.env.MAIL_FROM_NOREPLY = "";
+    process.env.MOOPE_MAIL_URL = "";
+    process.env.MOOPE_API_KEY = "";
     vi.resetModules();
   });
 
@@ -145,6 +152,8 @@ describe("remetente", () => {
       ["MAILSERVER_URL", ORIGINAIS.mailUrl],
       ["MAILSERVER_API_KEY", ORIGINAIS.mailKey],
       ["MAILSERVER_FROM_EMAIL", ORIGINAIS.mailFrom],
+      ["MAILSERVER_FROM", ORIGINAIS.mailFromAlias],
+      ["MAIL_FROM", ORIGINAIS.mailFromAlt],
     ] as const) {
       if (valor === undefined) delete process.env[chave];
       else process.env[chave] = valor;
@@ -207,10 +216,33 @@ describe("remetente", () => {
     expect(req[1].headers["x-api-key"]).toBe("chave-de-teste");
     expect(JSON.parse(req[1].body)).toEqual({
       subject: "Sua conta",
-      body: "Olá",
+      body: "<p>Olá</p>",
       from: "info@info.exemplo.com.br",
       to: "cliente@exemplo.com",
     });
+    vi.unstubAllGlobals();
+  });
+
+  it("MAILSERVER_FROM (nome do Finance) basta como remetente", async () => {
+    process.env.RESEND_API_KEY = "";
+    process.env.RESEND_FROM_EMAIL = "";
+    process.env.MAILSERVER_URL = "http://mailserver.test";
+    process.env.MAILSERVER_API_KEY = "chave-de-teste";
+    process.env.MAILSERVER_FROM_EMAIL = "";
+    process.env.MAILSERVER_FROM = "info@info.exemplo.com.br";
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ status: "ok" }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { sendEmail, isEmailConfigured } = await import("@/lib/email/resend");
+
+    expect(isEmailConfigured()).toBe(true);
+    const r = await sendEmail({
+      to: "cliente@exemplo.com",
+      subject: "Sua conta",
+      html: "<p>Olá</p>",
+    });
+    expect(r.ok).toBe(true);
+    const req = fetchMock.mock.calls[0] as unknown as [string, { body: string }];
+    expect(JSON.parse(req[1].body).from).toBe("info@info.exemplo.com.br");
     vi.unstubAllGlobals();
   });
 
