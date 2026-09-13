@@ -257,12 +257,12 @@ const MARCA_CONGELADA: Record<string, EntradaDeMarca> = {
     categoria: "INFRA",
     motivo:
       "chave de localStorage do tema, lida no script anti-flash. Renomear faz o par com lib/theme.tsx divergir — e o par com lib/theme.tsx tem de mudar junto",
-    marcas: ["deskcomm-theme"],
+    marcas: ["deskcomm-theme", "deskcomm-theme-light-default"],
   },
   "lib/theme.tsx": {
     categoria: "INFRA",
     motivo: "a mesma chave de localStorage do script do layout; as duas são um par só",
-    marcas: ["deskcomm-theme"],
+    marcas: ["deskcomm-theme", "deskcomm-theme-light-default"],
   },
   "lib/supabase/browser.ts": {
     categoria: "INFRA",

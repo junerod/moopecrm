@@ -5,7 +5,9 @@ import * as React from "react";
 export type Theme = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
-const STORAGE_KEY = "deskcomm-theme";
+export const THEME_STORAGE_KEY = "deskcomm-theme";
+/** Uma vez: o produto nascia escuro e gravava isso. O padrão passou a ser claro. */
+export const THEME_LIGHT_DEFAULT_FLAG = "deskcomm-theme-light-default";
 
 type ThemeContextValue = {
   /** User preference: light, dark, or system. */
@@ -18,10 +20,23 @@ type ThemeContextValue = {
 
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 
+function aplicarPadraoClaroUmaVez(): Theme {
+  try {
+    if (!window.localStorage.getItem(THEME_LIGHT_DEFAULT_FLAG)) {
+      window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+      window.localStorage.setItem(THEME_LIGHT_DEFAULT_FLAG, "1");
+      return "light";
+    }
+  } catch {
+    return "light";
+  }
+  return readStoredTheme();
+}
+
 function readStoredTheme(): Theme {
   if (typeof window === "undefined") return "light";
   try {
-    const v = window.localStorage.getItem(STORAGE_KEY);
+    const v = window.localStorage.getItem(THEME_STORAGE_KEY);
     if (v === "light" || v === "dark" || v === "system") return v;
   } catch {
     // localStorage indisponível (modo privado, sandbox) — segue com default.
@@ -30,7 +45,7 @@ function readStoredTheme(): Theme {
 }
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -44,14 +59,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // initializer trocava o ícone do ThemeToggle (Moon vs MonitorPlay) e o
   // React #418 em toda tela autenticada. O script no layout já pintou
   // `data-theme` no <html>; o React só alinha o estado DEPOIS de hidratar.
-  // `hydrated` impede o applyTheme(dark) do 1º efeito de sobrescrever o
-  // valor que o script já resolveu (light/system) — senão o F5 pisca escuro.
-  const [theme, setThemeState] = React.useState<Theme>("dark");
-  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>("dark");
+  // `hydrated` impede o 1º efeito de sobrescrever o `data-theme` que o
+  // script anti-flash já pintou — senão o F5 pisca o tema errado.
+  const [theme, setThemeState] = React.useState<Theme>("light");
+  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>("light");
   const [hydrated, setHydrated] = React.useState(false);
 
   React.useEffect(() => {
-    setThemeState(readStoredTheme());
+    setThemeState(aplicarPadraoClaroUmaVez());
     setSystemTheme(getSystemTheme());
     setHydrated(true);
   }, []);
@@ -78,7 +93,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = React.useCallback((next: Theme) => {
     setThemeState(next);
     try {
-      window.localStorage.setItem(STORAGE_KEY, next);
+      window.localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
       // Persistência opcional — falha silenciosamente.
     }
@@ -90,7 +105,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         current === "system" ? getSystemTheme() : current === "light" ? "light" : "dark";
       const next: Theme = currentResolved === "dark" ? "light" : "dark";
       try {
-        window.localStorage.setItem(STORAGE_KEY, next);
+        window.localStorage.setItem(THEME_STORAGE_KEY, next);
       } catch {
         // ignore
       }

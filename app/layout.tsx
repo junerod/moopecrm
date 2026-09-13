@@ -121,7 +121,7 @@ export const viewport: Viewport = {
 // e aplica o tema resolvido ANTES do primeiro paint. Não grava dark à força —
 // isso apagava a escolha a cada F5. Sem valor gravado, o default é light
 // (identidade visual canônica). ThemeProvider só alinha o estado depois de hidratar.
-const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('deskcomm-theme');if(t!=='light'&&t!=='dark'&&t!=='system')t='light';var r=t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{var k='deskcomm-theme';var f='deskcomm-theme-light-default';var t=localStorage.getItem(k);if(!localStorage.getItem(f)){t='light';localStorage.setItem(k,'light');localStorage.setItem(f,'1');}if(t!=='light'&&t!=='dark'&&t!=='system')t='light';var r=t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 /**
  * Motivos já registrados neste processo. `EstiloDaMarca` roda em TODA
@@ -278,7 +278,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      data-theme="dark"
+      data-theme="light"
       suppressHydrationWarning
       className={`${atkinson.variable} ${plexMono.variable}`}
     >
