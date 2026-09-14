@@ -19,9 +19,12 @@ banco e escondido na navegação.
 1. **Meu Negócio** (`/app/settings/business`) — bloco “Modelo do seu negócio”
    - sem pack: card Locadora + **Ativar Pack Locadora** + **Ver o que será instalado**
    - com pack: **Locadora de veículos / Pack ativo**, versão, status, assistentes
-2. **Modelos prontos** (`/app/modelos-prontos`) — mora em Configurações › Sua empresa,
-   ao lado de Meu Negócio. Sem pack: **Ativar modelo**. Com pack: **ATIVO** +
-   Ver configuração. Reaplicar continua “Reaplicar sem duplicar”.
+2. **Modelos prontos** (`/app/modelos-prontos`) — no rodapé do menu, ao lado de
+   Meu Negócio, e em Configurações › Sua empresa. Sem pack: lista os **6
+   assistentes com nome e o que cada um faz**, funil, coleções e automações
+   (nascem desligadas), depois **Ativar modelo**. Com pack ativo: **ATIVO** +
+   **Desativar pack**. Desativado: **DESATIVADO** + **Ativar pack**. Reaplicar
+   continua “Reaplicar sem duplicar”. Desativar não apaga artefato.
 3. **Assistentes** — atalho “Modelos prontos” no topo da landing.
 
 Não é preciso recriar empresa nem refazer onboarding.
@@ -68,9 +71,11 @@ existente; não cria motor novo.
 
 ## Modelos prontos
 
-Loja de configuração, não tela técnica. Mostra o que instala (6 assistentes,
-1 funil, 4 coleções, automações, respostas, campanhas). Status ATIVO vs
-Ativar modelo. Test-drive sem WhatsApp permanece.
+Loja de configuração, não tela técnica. Mostra **nome e papel** dos 6
+assistentes, as 8 etapas do funil, as 4 coleções, as automações (prontas e
+desligadas) e as campanhas. Ativar instala o conjunto; não liga automação.
+Dá para desativar e reativar o pack sem apagar funil, conhecimento nem o
+Assistente da empresa. Test-drive sem WhatsApp permanece.
 
 ## Editor simplificado
 

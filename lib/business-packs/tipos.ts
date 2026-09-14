@@ -100,11 +100,15 @@ export interface PackArtifacts {
   followup_keys: Record<string, string>;
 }
 
+export type BusinessPackStatus = "active" | "inactive";
+
 export interface BusinessPackGravado {
   id: BusinessPackId;
   version: string;
   installed_at: string;
   artifacts: PackArtifacts;
+  /** Ausente em instalações antigas = ativo. */
+  status?: BusinessPackStatus;
 }
 
 export interface OpcoesDoPack {

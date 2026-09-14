@@ -8,6 +8,7 @@ import {
   ORDEM_DE_MATCH_IDENTIDADE,
 } from "@/lib/business-packs/identidade";
 import { classificarIntencao, intentEhOperacional } from "@/lib/business-packs/intents";
+import { definirEstadoDoPack } from "@/lib/business-packs/estado";
 import { fundirArtifacts, lerPackGravado, montarBlocoPack } from "@/lib/business-packs/perfil";
 import { CHAVE_PACK } from "@/lib/business-packs/tipos";
 import { simularTestDrive } from "@/lib/business-packs/test-drive";
@@ -17,6 +18,7 @@ function thenable(data: unknown) {
   const self = {
     eq: () => self,
     is: () => self,
+    in: () => self,
     maybeSingle: async () => ({ data, error: null }),
     single: async () => ({ data, error: null }),
     select: () => self,
@@ -155,6 +157,26 @@ describe("versionamento e customização", () => {
     const lido = lerPackGravado({ [CHAVE_PACK]: bloco });
     expect(lido?.id).toBe("locadora_veiculos");
     expect(lido?.artifacts.agent_keys.recepcao).toBe("a1");
+    expect(lido?.status).toBe("active");
+  });
+
+  it("status ausente no JSONB antigo continua ativo", () => {
+    const lido = lerPackGravado({
+      [CHAVE_PACK]: {
+        id: "locadora_veiculos",
+        version: "1.0",
+        installed_at: "2026-01-01T00:00:00.000Z",
+        artifacts: {
+          agent_keys: {},
+          collection_slugs: {},
+          template_keys: {},
+          automation_keys: {},
+          campaign_keys: {},
+          followup_keys: {},
+        },
+      },
+    });
+    expect(lido?.status).toBe("active");
   });
 
   it("fundir artifacts nunca apaga id já gravado", () => {
@@ -325,5 +347,23 @@ describe("instalador", () => {
   it("tenant B começa sem o pack de A", () => {
     const settingsB = {};
     expect(lerPackGravado(settingsB)).toBeNull();
+  });
+
+  it("desativar desliga os assistentes do pack e reativar não apaga ids", async () => {
+    const db = adminDePack();
+    await aplicarBusinessPack(db as never, "org-a", "locadora_veiculos");
+    const gravado = lerPackGravado(db.settings);
+    expect(gravado?.status).toBe("active");
+    const idsAntes = { ...gravado?.artifacts.agent_keys };
+
+    const desligado = await definirEstadoDoPack(db as never, "org-a", false);
+    expect(desligado.status).toBe("inactive");
+    expect(lerPackGravado(db.settings)?.artifacts.agent_keys).toEqual(idsAntes);
+    expect(db.updates.some((u) => u.tabela === "ai_agents" && u.row.is_active === false)).toBe(true);
+
+    const religado = await definirEstadoDoPack(db as never, "org-a", true);
+    expect(religado.status).toBe("active");
+    expect(lerPackGravado(db.settings)?.artifacts.agent_keys).toEqual(idsAntes);
+    expect(db.updates.some((u) => u.tabela === "ai_agents" && u.row.is_active === true)).toBe(true);
   });
 });

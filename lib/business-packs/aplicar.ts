@@ -10,6 +10,7 @@ import { AGENT_CONFIG_DEFAULTS } from "@/lib/ai/guardrails-schema";
 import { AI_MODE_PADRAO_ORG_NOVA, type AiMode } from "@/lib/schemas/settings";
 import { lerAiMode } from "@/lib/ai/execucao/modos";
 import { resolverPack } from "@/lib/business-packs/catalogo";
+import { definirEstadoDoPack } from "@/lib/business-packs/estado";
 import {
   artifactsVazios,
   fundirArtifacts,
@@ -76,6 +77,9 @@ export async function aplicarBusinessPack(
   );
 
   await gravarPack(admin, orgId, await lerSettings(admin, orgId), pack);
+  if (gravado?.status === "inactive") {
+    await definirEstadoDoPack(admin, orgId, true);
+  }
 
   const criou = {
     agentes: agentes.criou,

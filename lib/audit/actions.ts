@@ -430,6 +430,8 @@ export const AUDIT_ACTIONS = [
   "pack.automation.enabled",
   "pack.knowledge.collection.linked",
   "pack.integration.capability.used",
+  "pack.disabled",
+  "pack.enabled",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

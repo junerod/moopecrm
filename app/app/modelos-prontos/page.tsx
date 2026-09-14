@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ds/PageHeader";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { detalhesDoPack, packEstaAtivo } from "@/lib/business-packs/apresentacao";
 import { catalogoAmigavel } from "@/lib/business-packs/capacidades";
 import { catalogoDePacks, resolverPack } from "@/lib/business-packs/catalogo";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
@@ -33,24 +34,9 @@ export default async function ModelosProntosPage() {
     .maybeSingle();
 
   const instalado = lerPackGravado(org?.settings);
-  const definition = instalado ? resolverPack(instalado.id) : null;
-
-  const { data: agentes } = await supabase
-    .from("ai_agents")
-    .select("id, name, is_active, is_default, config")
-    .eq("organization_id", activeOrg.orgId)
-    .is("archived_at", null)
-    .order("created_at");
-
-  const { data: regras } = await supabase
-    .from("automation_rules")
-    .select("id, name, is_active")
-    .eq("organization_id", activeOrg.orgId);
-
-  const { data: templates } = await supabase
-    .from("message_templates")
-    .select("id, title")
-    .eq("organization_id", activeOrg.orgId);
+  const definition =
+    (instalado ? resolverPack(instalado.id) : null) ?? resolverPack("locadora_veiculos");
+  const detalhes = definition ? detalhesDoPack(definition) : null;
 
   const { data: funil } = await supabase
     .from("crm_pipelines")
@@ -59,16 +45,6 @@ export default async function ModelosProntosPage() {
     .eq("is_default", true)
     .eq("is_archived", false)
     .maybeSingle();
-
-  let etapas = 0;
-  if (funil) {
-    const { count } = await supabase
-      .from("crm_stages")
-      .select("id", { count: "exact", head: true })
-      .eq("pipeline_id", funil.id)
-      .eq("is_archived", false);
-    etapas = count ?? 0;
-  }
 
   const admin = createAdminClient();
   let gestao: "configurado" | "nao_disponivel" | "conectar" = "conectar";
@@ -87,7 +63,7 @@ export default async function ModelosProntosPage() {
       <PageHeader
         icon={<AppIcon icon={Car} />}
         titulo="Modelos prontos"
-        descricao="Escolha, revise e ative. Sem precisar entender o motor por baixo."
+        descricao="Veja os 6 assistentes, o funil e o que liga ou não. Depois ative ou desative o conjunto."
       />
       <ModelosProntosClient
         podeInstalar={
@@ -95,33 +71,17 @@ export default async function ModelosProntosPage() {
         }
         catalogo={catalogoDePacks()}
         instalado={instalado}
-        definitionLabel={definition?.label ?? null}
-        agentes={(agentes ?? []).map((a) => ({
-          id: a.id,
-          name: a.name,
-          is_active: Boolean(a.is_active),
-          is_default: Boolean(a.is_default),
-        }))}
-        automacoes={(regras ?? []).map((r) => ({
-          id: r.id,
-          name: r.name,
-          is_active: Boolean(r.is_active),
-        }))}
-        templates={(templates ?? []).map((t) => ({ id: t.id, title: t.title }))}
-        funilNome={funil?.name ?? null}
-        etapas={etapas}
+        packAtivo={packEstaAtivo(instalado)}
+        funilNome={funil?.name ?? definition?.pipeline.nome ?? null}
+        etapas={detalhes?.etapas ?? []}
         gestao={gestao}
         aiMode={aiMode}
-        orgName={typeof org?.display_name === "string" ? org.display_name : "sua empresa"}
         capacidades={definition ? catalogoAmigavel(definition.capabilities, gestao === "configurado") : []}
-        specialties={definition?.specialties.map((s) => ({ key: s.key, name: s.name })) ?? []}
-        automationsDef={
-          definition?.automations.map((a) => ({
-            key: a.key,
-            name: a.name,
-            requires_gestao: Boolean(a.requires_gestao),
-          })) ?? []
-        }
+        assistentes={detalhes?.assistentes ?? []}
+        colecoes={detalhes?.colecoes ?? []}
+        automationsDef={detalhes?.automacoes ?? []}
+        respostas={detalhes?.respostas ?? []}
+        campanhas={detalhes?.campanhas ?? []}
       />
     </div>
   );

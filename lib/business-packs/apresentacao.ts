@@ -79,5 +79,26 @@ export function resumoDoPack(definition: BusinessPackDefinition) {
 }
 
 export function packEstaAtivo(gravado: BusinessPackGravado | null): boolean {
-  return gravado !== null && gravado.id.length > 0;
+  return gravado !== null && gravado.id.length > 0 && gravado.status !== "inactive";
+}
+
+export function detalhesDoPack(definition: BusinessPackDefinition) {
+  return {
+    assistentes: definition.specialties.map((s) => ({
+      key: s.key,
+      name: s.name,
+      oQueFaz: TEXTO_DO_PACK[s.key]?.oQueFaz ?? s.description,
+      papel: TEXTO_DO_PACK[s.key]?.papel ?? s.description,
+      principal: Boolean(s.is_default),
+    })),
+    etapas: definition.pipeline.etapas.map((e) => e.nome),
+    colecoes: definition.collections.map((c) => ({ slug: c.slug, name: c.name })),
+    automacoes: definition.automations.map((a) => ({
+      key: a.key,
+      name: a.name,
+      precisaGestao: Boolean(a.requires_gestao),
+    })),
+    respostas: definition.quick_replies.map((q) => q.title),
+    campanhas: definition.campaigns.map((c) => c.title),
+  };
 }

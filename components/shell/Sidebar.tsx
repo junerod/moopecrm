@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import { AppIcon } from "@/components/ds/AppIcon";
 import { tomDaNav } from "@/lib/design-system/tones";
-import { CaretDoubleLeft, CaretDoubleRight, Gear, Question, Robot, ShieldCheck, Storefront } from "@/lib/ui/icons";
+import { Car, CaretDoubleLeft, CaretDoubleRight, Gear, Question, Robot, ShieldCheck, Storefront } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -67,9 +67,13 @@ export function SidebarContent({
   const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE);
   const rodape = NAV_GROUPS.find((g) => g.id === GRUPO_NO_RODAPE)?.hub;
   const meuNegocio = NAV_DESTINATIONS.find((d) => d.href === "/app/settings/business");
+  const modelosProntos = NAV_DESTINATIONS.find((d) => d.href === "/app/modelos-prontos");
   const ajuda = NAV_DESTINATIONS.find((d) => d.href === "/app/manual");
   const mostraMeuNegocio = Boolean(
     meuNegocio && canSee(meuNegocio, user.is_platform_admin, activeOrg?.role ?? null),
+  );
+  const mostraModelosProntos = Boolean(
+    modelosProntos && canSee(modelosProntos, user.is_platform_admin, activeOrg?.role ?? null),
   );
   const mostraAjuda = Boolean(
     ajuda && canSee(ajuda, user.is_platform_admin, activeOrg?.role ?? null),
@@ -231,6 +235,27 @@ export function SidebarContent({
               <AppIcon icon={Storefront} tone={tomDaNav(meuNegocio.href)} surface="nav" />
             )}
             {!collapsed && <span className="truncate">{t(meuNegocio.label)}</span>}
+          </Link>
+        ) : null}
+        {mostraModelosProntos && modelosProntos ? (
+          <Link
+            href={modelosProntos.href}
+            title={collapsed ? t(modelosProntos.label) : undefined}
+            aria-current={pathname.startsWith(modelosProntos.href) ? "page" : undefined}
+            onClick={onNavigate}
+            data-testid="nav-modelos-prontos"
+            className={cn(
+              "mb-1",
+              classeDoItemDaTrilha(pathname.startsWith(modelosProntos.href)),
+              collapsed && "justify-center px-2",
+            )}
+          >
+            {pathname.startsWith(modelosProntos.href) ? (
+              <Car size={18} aria-hidden />
+            ) : (
+              <AppIcon icon={Car} tone={tomDaNav(modelosProntos.href)} surface="nav" />
+            )}
+            {!collapsed && <span className="truncate">{t(modelosProntos.label)}</span>}
           </Link>
         ) : null}
         {rodape && (

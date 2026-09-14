@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { especialidadeDoAgente } from "@/lib/business-packs/apresentacao";
+import { especialidadeDoAgente, packEstaAtivo } from "@/lib/business-packs/apresentacao";
 import { resolverPack } from "@/lib/business-packs/catalogo";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
 import { createClient } from "@/lib/supabase/server";
@@ -82,7 +82,7 @@ export default async function AgentsListPage() {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto bg-[var(--color-bg)] p-6">
       <LandingAssistentes
-        packAtivo={Boolean(pack)}
+        packAtivo={packEstaAtivo(pack)}
         packLabel={definition?.label ?? null}
         cards={cards}
         canWrite={canWrite}

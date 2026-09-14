@@ -144,7 +144,7 @@ describe("hubSections", () => {
     expect(hrefs).toContain("/app/ai/knowledge/sources");
   });
 
-  it("Modelos prontos mora em Meu Negócio, não enterrado só na URL", () => {
+  it("Modelos prontos mora junto de Meu Negócio, não enterrado só na URL", () => {
     expect(dest("/app/modelos-prontos").group).toBe("organizacao");
     expect(dest("/app/modelos-prontos").section).toBe("Sua empresa");
     const hrefs = hubSections("organizacao", true, null).flatMap((s) => s.items.map((i) => i.href));

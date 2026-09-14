@@ -9,11 +9,13 @@ export function ModeloDoNegocio({
   definition,
   assistentesConfigurados,
   podeInstalar,
+  packAtivo,
 }: {
   pack: BusinessPackGravado | null;
   definition: BusinessPackDefinition | null;
   assistentesConfigurados: number;
   podeInstalar: boolean;
+  packAtivo: boolean;
 }) {
   const resumo = definition ? resumoDoPack(definition) : null;
 
@@ -27,33 +29,39 @@ export function ModeloDoNegocio({
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Modelo do seu negócio
           </p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight" data-testid="pack-locadora-ativo">
+          <h2
+            className="mt-1 text-lg font-semibold tracking-tight"
+            data-testid={packAtivo ? "pack-locadora-ativo" : "pack-locadora-inativo"}
+          >
             Locadora de veículos
           </h2>
-          <p className="text-sm text-muted-foreground">Pack ativo</p>
+          <p className="text-sm text-muted-foreground">
+            {packAtivo ? "Pack ativo" : "Pack instalado e desativado"}
+          </p>
         </div>
         <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
           <Item rotulo="Versão" valor={pack.version} />
-          <Item rotulo="Status" valor="Ativo" />
+          <Item rotulo="Status" valor={packAtivo ? "Ativo" : "Desativado"} />
           <Item rotulo="Assistentes" valor={`${assistentesConfigurados} configurados`} />
         </dl>
         <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
           <li>{resumo.assistentes} assistentes</li>
           <li>Funil comercial</li>
           <li>Knowledge organizado</li>
-          <li>Automações</li>
+          <li>Automações (nascem desligadas)</li>
           <li>Respostas rápidas</li>
           <li>Campanhas</li>
         </ul>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
-            <Link href="/app/ai/agents">Ver meus assistentes</Link>
+            <Link href={packAtivo ? "/app/ai/agents" : "/app/modelos-prontos"}>
+              {packAtivo ? "Ver meus assistentes" : "Ativar de novo"}
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/app/ai/agents">Personalizar</Link>
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/app/modelos-prontos">Ver modelos prontos</Link>
+            <Link href="/app/modelos-prontos">
+              {packAtivo ? "Ver detalhes e desativar" : "Ver detalhes"}
+            </Link>
           </Button>
         </div>
       </section>

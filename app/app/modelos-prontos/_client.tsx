@@ -27,42 +27,46 @@ type ResultadoTeste = {
   gestao_necessaria: boolean;
 };
 
-const CARDS_MODELOS = [
-  { id: "recepcao", titulo: "Atendimento da locadora", especialidade: "recepcao" },
-  { id: "financeiro", titulo: "Financeiro e boletos", especialidade: "financeiro" },
-  { id: "disponibilidade", titulo: "Disponibilidade e locação", especialidade: "disponibilidade" },
-  { id: "atendimento", titulo: "Atendimento durante a locação", especialidade: "atendimento" },
-  { id: "comercial", titulo: "Comercial e orçamento", especialidade: "comercial" },
-  { id: "relacionamento", titulo: "Relacionamento e reativação", especialidade: "relacionamento" },
-  { id: "proposta", titulo: "Follow-up de proposta", automacao: "proposta-sem-resposta" },
-  { id: "silencio", titulo: "Cliente sem resposta", automacao: "lead-24h" },
-  { id: "satisfacao", titulo: "Pesquisa de satisfação", campanha: "Como foi sua experiência?" },
-];
+type AssistenteDoModelo = {
+  key: string;
+  name: string;
+  oQueFaz: string;
+  papel: string;
+  principal: boolean;
+};
+
+type AutomacaoDoModelo = {
+  key: string;
+  name: string;
+  precisaGestao: boolean;
+};
 
 export function ModelosProntosClient(props: {
   podeInstalar: boolean;
   catalogo: Array<{ id: string; label: string; description: string; category: string }>;
   instalado: BusinessPackGravado | null;
-  definitionLabel: string | null;
-  agentes: Array<{ id: string; name: string; is_active: boolean; is_default: boolean }>;
-  automacoes: Array<{ id: string; name: string; is_active: boolean }>;
-  templates: Array<{ id: string; title: string }>;
+  packAtivo: boolean;
   funilNome: string | null;
-  etapas: number;
+  etapas: string[];
   gestao: "configurado" | "nao_disponivel" | "conectar";
   aiMode: string;
-  orgName: string;
   capacidades: Capacidade[];
-  specialties: Array<{ key: string; name: string }>;
-  automationsDef: Array<{ key: string; name: string; requires_gestao: boolean }>;
+  assistentes: AssistenteDoModelo[];
+  colecoes: Array<{ slug: string; name: string }>;
+  automationsDef: AutomacaoDoModelo[];
+  respostas: string[];
+  campanhas: string[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [confirmaDesligar, setConfirmaDesligar] = useState(false);
   const [mensagem, setMensagem] = useState(CENARIOS_TEST_DRIVE[0]?.mensagem ?? "");
   const [teste, setTeste] = useState<ResultadoTeste | null>(null);
   const [testando, setTestando] = useState(false);
 
-  function instalar(packId: string) {
+  const packId = props.instalado?.id ?? props.catalogo[0]?.id ?? "locadora_veiculos";
+
+  function instalar() {
     start(async () => {
       const res = await fetch("/api/v1/business-packs", {
         method: "POST",
@@ -74,6 +78,23 @@ export function ModelosProntosClient(props: {
         return;
       }
       toast.success("Operação preparada.");
+      router.refresh();
+    });
+  }
+
+  function mudarEstado(action: "activate" | "deactivate") {
+    start(async () => {
+      const res = await fetch("/api/v1/business-packs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        toast.error(action === "deactivate" ? "Não consegui desativar o pack." : "Não consegui ativar o pack.");
+        return;
+      }
+      setConfirmaDesligar(false);
+      toast.success(action === "deactivate" ? "Pack desativado. Os assistentes do modelo estão desligados." : "Pack ativado.");
       router.refresh();
     });
   }
@@ -105,114 +126,224 @@ export function ModelosProntosClient(props: {
         ? "Não disponível"
         : "Conectar";
 
+  const status = !props.instalado ? "ausente" : props.packAtivo ? "ativo" : "inativo";
+
   return (
     <div className="space-y-8">
-      {props.instalado ? (
-        <section className="space-y-3" data-testid="pack-pronto">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Modelo ativo
+      <section className="space-y-4" id="o-que-instala" data-testid="detalhe-do-modelo">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Modelo do seu negócio
+            </p>
+            <h2 className="text-lg font-semibold tracking-tight">Locadora de veículos</h2>
+            {status === "ativo" ? (
+              <div data-testid="pack-pronto">
+                <p
+                  className="text-sm font-medium text-emerald-700 dark:text-emerald-400"
+                  data-testid="pack-loja-ativo"
+                >
+                  ATIVO
+                </p>
+              </div>
+            ) : status === "inativo" ? (
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400" data-testid="pack-loja-inativo">
+                DESATIVADO
               </p>
-              <h2 className="text-lg font-semibold tracking-tight">Locadora de veículos</h2>
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400" data-testid="pack-loja-ativo">
-                ATIVO
-              </p>
-            </div>
-            <Button asChild variant="outline">
-              <Link href="/app/ai/agents">Ver configuração</Link>
-            </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">Ainda não está ativo nesta empresa.</p>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">Seu CRM para locadora está pronto.</p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          São 6 assistentes prontos, um funil comercial, 4 coleções de conhecimento, respostas e
+          campanhas. Ativar instala o conjunto. Os assistentes ligam. As automações nascem
+          desligadas — você liga cada uma depois, se quiser.
+        </p>
+
+        <div className="space-y-2" data-testid="modelos-prontos-cards">
+          <h3 className="text-sm font-semibold">Os 6 assistentes</h3>
+          <ul
+            className="grid gap-3 sm:grid-cols-2"
+            data-testid="lista-assistentes-do-modelo"
+          >
+            {props.assistentes.map((a) => (
+              <li
+                key={a.key}
+                data-testid={`modelo-assistente-${a.key}`}
+                className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{a.name}</p>
+                  {a.principal ? (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                      Principal
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{a.oQueFaz}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{a.papel}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Funil</p>
+            <p className="mt-1 font-medium">{props.funilNome ?? "COMERCIAL — LOCADORA"}</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
+              {props.etapas.map((nome) => (
+                <li key={nome}>{nome}</li>
+              ))}
+            </ol>
+          </div>
+          <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Conhecimento
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              {props.colecoes.map((c) => (
+                <li key={c.slug}>{c.name}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Automações
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground" data-testid="aviso-automacoes-desligadas">
+            Prontas e desligadas. Nenhuma dispara sozinha ao ativar o modelo.
+          </p>
+          <ul className="mt-2 space-y-1 text-sm">
+            {props.automationsDef.map((a) => (
+              <li key={a.key} className="flex flex-wrap items-center gap-2">
+                <span>{a.name}</span>
+                <span className="text-xs text-muted-foreground">desligada</span>
+                {a.precisaGestao ? (
+                  <span className="text-xs text-muted-foreground">precisa da gestão</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Respostas prontas
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{props.respostas.length} modelos</p>
+          </div>
+          <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Campanhas
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              {props.campanhas.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {status === "ativo" ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <ResumoCard titulo="Atendimento" valor={`${props.specialties.length} especialidades configuradas`} />
-            <ResumoCard titulo="Funil" valor={`${props.etapas} etapas prontas`} />
-            <ResumoCard
-              titulo="Automações"
-              valor={`${props.automationsDef.length} modelos disponíveis`}
-            />
-            <ResumoCard titulo="Conhecimento" valor="Adicione seus manuais e materiais" href="/app/ai/knowledge/sources" />
             <ResumoCard titulo="WhatsApp" valor="Conectar número" href="/app/connections" />
             <ResumoCard titulo="Sistema de gestão" valor={rotuloGestao} href="/app/integrations/moope" />
+            <ResumoCard
+              titulo="Conhecimento"
+              valor="Adicione seus manuais e materiais"
+              href="/app/ai/knowledge/sources"
+            />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href="/app/ai/agents">Ver meus assistentes</Link>
-            </Button>
-            {props.podeInstalar ? (
-              <Button variant="outline" disabled={pending} onClick={() => instalar(props.instalado!.id)}>
-                {pending ? "Reaplicando..." : "Reaplicar sem duplicar"}
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          {status === "ausente" ? (
+            props.podeInstalar ? (
+              <Button data-testid="usar-modelo-locadora" disabled={pending} onClick={instalar}>
+                {pending ? "Preparando..." : "Ativar modelo"}
               </Button>
-            ) : null}
-          </div>
-          {props.aiMode === "autonomous" ? null : (
-            <p className="text-xs text-muted-foreground">
-              A IA está em modo seguro. Ela não envia sozinha.
-            </p>
-          )}
-        </section>
-      ) : (
-        <section className="space-y-3" id="o-que-instala">
-          <h2 className="text-lg font-semibold tracking-tight">Locadora de veículos</h2>
-          {props.catalogo.map((p) => (
-            <div
-              key={p.id}
-              className="flex flex-col gap-3 rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-            >
-              <div>
-                <p className="font-medium">{p.label}</p>
-                <p className="text-sm text-muted-foreground">{p.description}</p>
-                <ul className="mt-3 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-                  <li>6 assistentes</li>
-                  <li>1 funil</li>
-                  <li>4 coleções</li>
-                  <li>automações</li>
-                  <li>respostas</li>
-                  <li>campanhas</li>
-                </ul>
-              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Peça a quem administra para instalar.</p>
+            )
+          ) : null}
+
+          {status === "inativo" && props.podeInstalar ? (
+            <Button data-testid="reativar-pack-locadora" disabled={pending} onClick={() => mudarEstado("activate")}>
+              {pending ? "Ativando..." : "Ativar pack"}
+            </Button>
+          ) : null}
+
+          {status === "ativo" ? (
+            <>
+              <Button asChild>
+                <Link href="/app/ai/agents">Ver meus assistentes</Link>
+              </Button>
               {props.podeInstalar ? (
-                <Button data-testid="usar-modelo-locadora" disabled={pending} onClick={() => instalar(p.id)}>
-                  {pending ? "Preparando..." : "Ativar modelo"}
+                <Button variant="outline" disabled={pending} onClick={instalar}>
+                  {pending ? "Reaplicando..." : "Reaplicar sem duplicar"}
                 </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">Peça a quem administra para instalar.</p>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
+              ) : null}
+            </>
+          ) : null}
+
+          {status === "ativo" && props.podeInstalar ? (
+            confirmaDesligar ? (
+              <div className="w-full rounded-[16px] border border-[var(--color-border)] p-4">
+                <p className="text-sm">
+                  Desliga os 6 assistentes do modelo. Funil, conhecimento, respostas e o Assistente
+                  da empresa ficam. Nada é apagado.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    variant="destructive"
+                    data-testid="confirmar-desativar-pack"
+                    disabled={pending}
+                    onClick={() => mudarEstado("deactivate")}
+                  >
+                    {pending ? "Desligando..." : "Desligar assistentes"}
+                  </Button>
+                  <Button variant="ghost" disabled={pending} onClick={() => setConfirmaDesligar(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                data-testid="desativar-pack-locadora"
+                disabled={pending}
+                onClick={() => setConfirmaDesligar(true)}
+              >
+                Desativar pack
+              </Button>
+            )
+          ) : null}
+        </div>
+
+        {props.aiMode === "autonomous" ? null : status === "ativo" ? (
+          <p className="text-xs text-muted-foreground">
+            A IA está em modo seguro. Ela não envia sozinha.
+          </p>
+        ) : null}
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-tight">Ensine seus assistentes</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <LinkCard titulo="Manuais e procedimentos" desc="Suporte" href="/app/ai/knowledge/sources" />
-          <LinkCard titulo="Preços, apresentação e diferenciais" desc="Comercial" href="/app/ai/knowledge/sources" />
-          <LinkCard titulo="Contratos e políticas" desc="Políticas" href="/app/ai/knowledge/sources" />
-          <LinkCard titulo="Informações gerais" desc="Geral" href="/app/ai/knowledge/sources" />
-        </div>
-      </section>
-
-      <section className="space-y-3" data-testid="modelos-prontos-cards">
-        <h2 className="text-lg font-semibold tracking-tight">Categoria: Locadoras</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {CARDS_MODELOS.map((c) => {
-            const ativo = cardAtivo(c, props);
-            return (
-              <div
-                key={c.id}
-                className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-              >
-                <p className="font-medium">{c.titulo}</p>
-                <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {ativo ? "Ativo" : "Ativar"}
-                </p>
-                <Button asChild variant="ghost" size="sm" className="mt-2 px-0">
-                  <Link href={c.automacao ? "/app/ai/followups" : "/app/ai/agents"}>Personalizar</Link>
-                </Button>
-              </div>
-            );
-          })}
+          {props.colecoes.map((c) => (
+            <LinkCard
+              key={c.slug}
+              titulo={c.name}
+              desc="Adicione documentos desta coleção"
+              href="/app/ai/knowledge/sources"
+            />
+          ))}
         </div>
       </section>
 
@@ -255,7 +386,7 @@ export function ModelosProntosClient(props: {
         </div>
         <textarea
           data-testid="test-drive-mensagem"
-          className="min-h-24 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm"
+          className="min-h-24 w-full rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm"
           value={mensagem}
           onChange={(e) => setMensagem(e.target.value)}
         />
@@ -293,8 +424,7 @@ export function ModelosProntosClient(props: {
 }
 
 function ResumoCard({ titulo, valor, href }: { titulo: string; valor: string; href?: string }) {
-  const classe =
-    "rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4";
+  const classe = "rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4";
   const inner = (
     <>
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
@@ -321,14 +451,4 @@ function LinkCard({ titulo, desc, href }: { titulo: string; desc: string; href: 
       <p className="text-sm text-muted-foreground">{desc}</p>
     </Link>
   );
-}
-
-function cardAtivo(
-  card: (typeof CARDS_MODELOS)[number],
-  props: { agentes: Array<{ name: string }>; automacoes: Array<{ name: string }>; templates: Array<{ title: string }>; specialties: Array<{ key: string }> },
-): boolean {
-  if (card.especialidade) return props.specialties.some((s) => s.key === card.especialidade);
-  if (card.automacao) return props.automacoes.some((a) => a.name.toLowerCase().includes("proposta") || a.name.toLowerCase().includes("24"));
-  if (card.campanha) return props.templates.some((t) => t.title === card.campanha);
-  return false;
 }

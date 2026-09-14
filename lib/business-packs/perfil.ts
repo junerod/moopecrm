@@ -34,6 +34,7 @@ export function lerPackGravado(settings: unknown): BusinessPackGravado | null {
     version: raw.version,
     installed_at: typeof raw.installed_at === "string" ? raw.installed_at : new Date(0).toISOString(),
     artifacts,
+    status: raw.status === "inactive" ? "inactive" : "active",
   };
 }
 
@@ -57,6 +58,7 @@ export function montarBlocoPack(
     version,
     installed_at: installedAt ?? new Date().toISOString(),
     artifacts,
+    status: "active",
   };
 }
 

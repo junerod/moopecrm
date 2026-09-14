@@ -124,6 +124,14 @@ test("tenant existente ativa Locadora pelo Meu Negócio e vê os 6 assistentes",
 
   await page.getByTestId("ativar-pack-locadora").click();
   await expect(page.getByTestId("usar-modelo-locadora")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("lista-assistentes-do-modelo")).toBeVisible();
+  await expect(page.getByTestId("modelo-assistente-recepcao")).toContainText("Atendimento da Locadora");
+  await expect(page.getByTestId("modelo-assistente-comercial")).toContainText("Consultor Comercial");
+  await expect(page.getByTestId("modelo-assistente-financeiro")).toContainText("Assistente Financeiro");
+  await expect(page.getByTestId("modelo-assistente-disponibilidade")).toContainText("Assistente de Disponibilidade");
+  await expect(page.getByTestId("modelo-assistente-atendimento")).toContainText("Atendimento ao Cliente");
+  await expect(page.getByTestId("modelo-assistente-relacionamento")).toContainText("Relacionamento");
+  await expect(page.getByTestId("aviso-automacoes-desligadas")).toBeVisible();
   await page.getByTestId("usar-modelo-locadora").click();
   await expect(page.getByTestId("pack-pronto")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("pack-loja-ativo")).toBeVisible();
@@ -209,4 +217,43 @@ test("tenant existente ativa Locadora pelo Meu Negócio e vê os 6 assistentes",
   await expect(page.getByTestId("card-assistente-financeiro")).toBeVisible();
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.getByTestId("pack-locadora-banner")).toBeVisible();
+});
+
+test("desativa o pack sem apagar assistentes e reativa", async ({ page }) => {
+  await login(page, conta.email);
+  await page.goto("/app/modelos-prontos");
+  await expect(page.getByTestId("pack-loja-ativo")).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId("desativar-pack-locadora").click();
+  await page.getByTestId("confirmar-desativar-pack").click();
+  await expect(page.getByTestId("pack-loja-inativo")).toBeVisible({ timeout: 20_000 });
+
+  const { data: agentes } = await svc
+    .from("ai_agents")
+    .select("name, is_active")
+    .eq("organization_id", conta.orgId)
+    .is("archived_at", null);
+  const nomesPack = [
+    "Atendimento da Locadora",
+    "Consultor Comercial",
+    "Assistente Financeiro",
+    "Assistente de Disponibilidade",
+    "Atendimento ao Cliente",
+    "Relacionamento",
+  ];
+  for (const nome of nomesPack) {
+    const linha = (agentes ?? []).find((a) => a.name === nome);
+    expect(linha, nome).toBeTruthy();
+    expect(linha?.is_active, nome).toBe(false);
+  }
+  expect((agentes ?? []).some((a) => a.name === "Assistente da empresa")).toBe(true);
+
+  await page.getByTestId("reativar-pack-locadora").click();
+  await expect(page.getByTestId("pack-loja-ativo")).toBeVisible({ timeout: 20_000 });
+  const { data: deVolta } = await svc
+    .from("ai_agents")
+    .select("name, is_active")
+    .eq("organization_id", conta.orgId)
+    .eq("name", "Consultor Comercial")
+    .maybeSingle();
+  expect(deVolta?.is_active).toBe(true);
 });
