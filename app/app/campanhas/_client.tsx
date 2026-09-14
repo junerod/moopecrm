@@ -37,7 +37,7 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--color-text-muted)]">
           {podeEnviar
-            ? "Crie, revise e dispare. O envio real só ocorre quando o canal oficial ou o e-mail estão configurados."
+            ? "Dirija o público, veja a mensagem como o contato vê e acompanhe respostas. Envio real só com canal oficial ou e-mail configurado."
             : "Você pode consultar campanhas. Envio é de manager/admin."}
         </p>
         {podeEnviar ? (

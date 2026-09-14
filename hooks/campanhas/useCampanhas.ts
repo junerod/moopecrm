@@ -32,6 +32,7 @@ export interface CampanhaDetalhe extends CampanhaLista {
 export interface DestinatarioDaCampanha {
   id: string;
   contact_id: string;
+  nome?: string | null;
   phone: string | null;
   channel?: string | null;
   destination?: string | null;
@@ -56,7 +57,7 @@ export interface OpcoesDeCampanha {
   tags: string[];
   papeis: string[];
   origens: string[];
-  responsaveis: Array<{ id: string; role: string }>;
+  responsaveis: Array<{ id: string; role: string; nome?: string }>;
   funis: Array<{
     id: string;
     name: string;
@@ -118,6 +119,26 @@ export function useModelosCampanha() {
   });
 }
 
+export function useAtualizarCampanha() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      name?: string;
+      body_text?: string;
+      segment?: SegmentoDaCampanha;
+      channel_session_id?: string | null;
+      template_id?: string | null;
+      scheduled_at?: string | null;
+      settings?: SettingsDaCampanha;
+    }) => apiClient.patch<{ data: CampanhaLista }>(`/api/v1/campanhas/${id}`, body).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["campanhas"] }),
+  });
+}
+
 export function useCriarCampanha() {
   const qc = useQueryClient();
   return useMutation({
@@ -157,9 +178,10 @@ export function useEstimativaSegmento(
   segment: SegmentoDaCampanha,
   enabled: boolean,
   channels?: SelecaoDeCanais,
+  q?: string,
 ) {
   return useQuery({
-    queryKey: ["campanhas", "segmento", segment, channels],
+    queryKey: ["campanhas", "segmento", segment, channels, q],
     enabled,
     queryFn: () =>
       apiClient
@@ -176,11 +198,25 @@ export function useEstimativaSegmento(
               sem_email: number;
               sem_canal: number;
             };
+            alcance: { whatsapp: number; email: number; ambos: number; nenhum: number };
             atinge_base_inteira: boolean;
             rotulo: string;
-            preview: Array<{ id: string; nome: string; telefone: string | null; email: string | null }>;
+            preview: Array<{
+              id: string;
+              nome: string;
+              telefone: string | null;
+              email: string | null;
+              papel?: string | null;
+              tem_whatsapp?: boolean;
+              tem_email?: boolean;
+            }>;
           };
-        }>("/api/v1/campanhas/segmento", { ...segment, channels })
+        }>("/api/v1/campanhas/segmento", {
+          ...segment,
+          channels,
+          preview_limit: 40,
+          q: q?.trim() || undefined,
+        })
         .then((r) => r.data),
     staleTime: 5_000,
   });
@@ -210,6 +246,7 @@ export async function uploadMidiaCampanha(file: File, campaignId?: string) {
       size_bytes: number;
       filename: string;
       kind: "image" | "video" | "document";
+      preview_url?: string | null;
     };
     error?: { message: string };
   };

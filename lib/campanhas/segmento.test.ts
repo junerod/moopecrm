@@ -65,6 +65,21 @@ describe("segmento da campanha", () => {
     expect(est.selecionados).toBe(3);
     expect(est.elegiveis).toBe(1);
     expect(est.excluidos).toBe(2);
+    expect(est.alcance.whatsapp).toBeGreaterThan(0);
+  });
+
+  it("alcance separa quem tem WhatsApp, e-mail, os dois ou nenhum", () => {
+    const lista = [
+      base({ id: "wa", email: null }),
+      base({ id: "em", phone_number: null, email: "a@ex.com" }),
+      base({ id: "dois", email: "b@ex.com" }),
+      base({ id: "nenhum", phone_number: null, email: null }),
+    ];
+    const a = estimarSegmento(lista, {}, "ambos").alcance;
+    expect(a.whatsapp).toBe(2);
+    expect(a.email).toBe(2);
+    expect(a.ambos).toBe(1);
+    expect(a.nenhum).toBe(1);
   });
 });
 

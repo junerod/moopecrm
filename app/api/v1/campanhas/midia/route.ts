@@ -46,6 +46,10 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("internal_error", "Erro ao subir o arquivo.", 500, { requestId });
   }
 
+  const { data: assinada } = await admin.storage
+    .from("whatsapp-media")
+    .createSignedUrl(storagePath, 60 * 60);
+
   return ok(
     {
       storage_path: storagePath,
@@ -53,6 +57,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       size_bytes: buffer.length,
       filename: file.name,
       kind: veredito.kind,
+      preview_url: assinada?.signedUrl ?? null,
     },
     { requestId },
   );

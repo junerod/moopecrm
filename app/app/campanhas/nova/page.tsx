@@ -20,7 +20,7 @@ export default async function NovaCampanhaPage() {
       <PageHeader
         icon={<AppIcon icon={Megaphone} tone="violet" size="lg" />}
         titulo="Criar campanha"
-        descricao="Objetivo, público, conteúdo, canal e revisão — sem surpresa no envio."
+        descricao="Escolha o público certo, veja a mensagem como o contato vê, e só então dispare."
       />
       <NovaCampanhaClient />
     </div>

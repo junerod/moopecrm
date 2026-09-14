@@ -82,6 +82,7 @@ export interface AnexoDaCampanha {
   size_bytes: number;
   filename: string;
   kind: "image" | "video" | "document";
+  preview_url?: string | null;
 }
 
 export interface SettingsDaCampanha {

@@ -16,6 +16,13 @@ export interface ExclusoesDoSegmento {
   sem_canal: number;
 }
 
+export interface AlcanceDoSegmento {
+  whatsapp: number;
+  email: number;
+  ambos: number;
+  nenhum: number;
+}
+
 export interface EstimativaDoSegmento {
   selecionados: number;
   elegiveis: number;
@@ -24,6 +31,20 @@ export interface EstimativaDoSegmento {
   exclusoes: ExclusoesDoSegmento;
   atinge_base_inteira: boolean;
   destinos: number;
+  alcance: AlcanceDoSegmento;
+}
+
+export function alcanceDosContatos(contatos: ContatoParaSegmento[]): AlcanceDoSegmento {
+  const alcance: AlcanceDoSegmento = { whatsapp: 0, email: 0, ambos: 0, nenhum: 0 };
+  for (const c of contatos) {
+    const wa = destinatarioPodeReceberNoCanal(c, "whatsapp").ok;
+    const em = destinatarioPodeReceberNoCanal(c, "email").ok;
+    if (wa) alcance.whatsapp += 1;
+    if (em) alcance.email += 1;
+    if (wa && em) alcance.ambos += 1;
+    if (!wa && !em) alcance.nenhum += 1;
+  }
+  return alcance;
 }
 
 function temTag(contato: ContatoParaSegmento, tags: string[]): boolean {
@@ -103,6 +124,7 @@ export function estimarSegmento(
     exclusoes,
     atinge_base_inteira,
     destinos,
+    alcance: alcanceDosContatos(casados),
   };
 }
 

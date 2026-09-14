@@ -81,6 +81,14 @@ export async function GET(): Promise<Response> {
       responsaveis: ((membros ?? []) as Array<{ user_id: string; role: string }>).map((m) => ({
         id: m.user_id,
         role: m.role,
+        nome:
+          m.role === "admin"
+            ? "Admin"
+            : m.role === "manager"
+              ? "Gerente"
+              : m.role === "agent"
+                ? "Atendente"
+                : "Equipe",
       })),
       funis: funis ?? [],
       sessoes: sessoesOk.map((s) => ({

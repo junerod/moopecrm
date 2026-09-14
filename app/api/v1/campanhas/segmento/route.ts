@@ -20,6 +20,7 @@ const bodySchema = segmentoSchema.and(
     channels: z.enum(SELECAO_DE_CANAIS).optional(),
     preview_offset: z.number().int().min(0).max(5000).optional(),
     preview_limit: z.number().int().min(1).max(50).optional(),
+    q: z.string().max(80).optional(),
   }),
 );
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const supabase = await createClient();
   try {
-    const { channels, preview_offset, preview_limit, ...segmento } = parsed.data;
+    const { channels, preview_offset, preview_limit, q, ...segmento } = parsed.data;
     const contatos = await carregarContatosDoSegmento(supabase, authz.org.orgId, segmento);
     const { count: totalBase } = await supabase
       .from("contacts")
@@ -52,15 +53,22 @@ export async function POST(req: NextRequest): Promise<Response> {
     const est = estimarSegmento(contatos, segmento, channels ?? "whatsapp", totalBase ?? undefined);
     const offset = preview_offset ?? 0;
     const limit = preview_limit ?? 20;
-    const preview = contatos
-      .filter((c) => est.ids.includes(c.id))
-      .slice(offset, offset + limit)
-      .map((c) => ({
-        id: c.id,
-        nome: c.display_name || c.name || "Sem nome",
-        telefone: c.phone_number ?? null,
-        email: c.email ?? null,
-      }));
+    const busca = (q ?? "").trim().toLowerCase();
+    const doPreview = contatos.filter((c) => {
+      if (!est.ids.includes(c.id)) return false;
+      if (!busca) return true;
+      const nome = `${c.display_name ?? ""} ${c.name ?? ""} ${c.phone_number ?? ""} ${c.email ?? ""}`.toLowerCase();
+      return nome.includes(busca);
+    });
+    const preview = doPreview.slice(offset, offset + limit).map((c) => ({
+      id: c.id,
+      nome: c.display_name || c.name || "Sem nome",
+      telefone: c.phone_number ?? null,
+      email: c.email ?? null,
+      papel: c.papel ?? null,
+      tem_whatsapp: Boolean(c.phone_number),
+      tem_email: Boolean(c.email),
+    }));
     return ok(
       {
         selecionados: est.selecionados,
@@ -68,11 +76,12 @@ export async function POST(req: NextRequest): Promise<Response> {
         excluidos: est.excluidos,
         destinos: est.destinos,
         exclusoes: est.exclusoes,
+        alcance: est.alcance,
         atinge_base_inteira: est.atinge_base_inteira,
         rotulo: rotuloDaEstimativa(est),
         preview,
         preview_offset: offset,
-        preview_has_more: offset + limit < est.selecionados,
+        preview_has_more: offset + limit < doPreview.length,
       },
       { requestId },
     );
