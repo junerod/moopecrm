@@ -7,6 +7,8 @@ import { toast } from "sonner";
 
 import { PainelDeAjuda } from "@/components/ajuda/PainelDeAjuda";
 import { Button } from "@/components/ui/button";
+import { testidAtivarModelo } from "@/lib/business-packs/apresentacao";
+import { testidDesativarPack, testidReativarPack } from "@/lib/business-packs/testids";
 import { cenariosDoPack } from "@/lib/business-packs/test-drive";
 import type { BusinessPackGravado } from "@/lib/business-packs/tipos";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,27 @@ type AutomacaoDoModelo = {
   precisaGestao: boolean;
 };
 
+type ItemDaLoja = {
+  id: string;
+  label: string;
+  description: string;
+  funilNome: string;
+  assistentes: AssistenteDoModelo[];
+  etapas: string[];
+  colecoes: Array<{ slug: string; name: string }>;
+  automacoes: AutomacaoDoModelo[];
+  respostas: string[];
+  campanhas: string[];
+  resumo: {
+    assistentes: number;
+    etapas: number;
+    colecoes: number;
+    automacoes: number;
+    respostas: number;
+    campanhas: number;
+  };
+};
+
 export function ModelosProntosClient(props: {
   packLabel: string;
   packDescricao: string;
@@ -50,10 +73,11 @@ export function ModelosProntosClient(props: {
   packAjudaPassos: string[];
   packAlvoId: string;
   podeInstalar: boolean;
-  catalogo: Array<{ id: string; label: string; description: string; category: string }>;
+  loja: ItemDaLoja[];
   instalado: BusinessPackGravado | null;
   packAtivo: boolean;
   funilNome: string | null;
+  funilAtualDaEmpresa: string | null;
   etapas: string[];
   gestao: "configurado" | "nao_disponivel" | "conectar";
   aiMode: string;
@@ -67,26 +91,48 @@ export function ModelosProntosClient(props: {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirmaDesligar, setConfirmaDesligar] = useState(false);
-  const packId = props.instalado?.id ?? props.packAlvoId;
+  const [confirmaTroca, setConfirmaTroca] = useState<string | null>(null);
+  const [selecionado, setSelecionado] = useState(props.packAlvoId);
+  const daLoja = props.loja.find((p) => p.id === selecionado) ?? props.loja[0] ?? null;
+  const packId = daLoja?.id ?? props.packAlvoId;
+  const assistentes = daLoja?.assistentes ?? props.assistentes;
+  const etapas = daLoja?.etapas ?? props.etapas;
+  const colecoes = daLoja?.colecoes ?? props.colecoes;
+  const automationsDef = daLoja?.automacoes ?? props.automationsDef;
+  const respostas = daLoja?.respostas ?? props.respostas;
+  const campanhas = daLoja?.campanhas ?? props.campanhas;
+  const packLabel = daLoja?.label ?? props.packLabel;
+  const packDescricao = daLoja?.description ?? props.packDescricao;
+  const funilNome = daLoja?.funilNome ?? props.funilNome;
   const cenarios = cenariosDoPack(packId);
   const [mensagem, setMensagem] = useState(cenarios[0]?.mensagem ?? "");
   const [teste, setTeste] = useState<ResultadoTeste | null>(null);
   const [testando, setTestando] = useState(false);
 
-  function instalar() {
+  function instalar(alvo: string) {
     start(async () => {
       const res = await fetch("/api/v1/business-packs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pack_id: packId }),
+        body: JSON.stringify({ pack_id: alvo }),
       });
       if (!res.ok) {
         toast.error("Não consegui preparar a operação.");
         return;
       }
-      toast.success("Operação preparada.");
+      setConfirmaTroca(null);
+      toast.success("Operação preparada. Agora ajuste o que for da sua empresa.");
       router.refresh();
     });
+  }
+
+  function pedirAtivar(alvo: string) {
+    if (props.instalado && props.instalado.id !== alvo) {
+      setSelecionado(alvo);
+      setConfirmaTroca(alvo);
+      return;
+    }
+    instalar(alvo);
   }
 
   function mudarEstado(action: "activate" | "deactivate") {
@@ -133,59 +179,182 @@ export function ModelosProntosClient(props: {
         ? "Não disponível"
         : "Conectar";
 
-  const status = !props.instalado ? "ausente" : props.packAtivo ? "ativo" : "inativo";
+  const esteEhOInstalado = props.instalado?.id === packId;
+  const status = !esteEhOInstalado ? "ausente" : props.packAtivo ? "ativo" : "inativo";
+  const packAtivoNaEmpresa = Boolean(props.instalado && props.packAtivo);
+
+  function escolher(id: string) {
+    setSelecionado(id);
+    setConfirmaTroca(null);
+    const primeiros = cenariosDoPack(id);
+    setMensagem(primeiros[0]?.mensagem ?? "");
+    setTeste(null);
+  }
 
   return (
     <div className="space-y-8">
+      <section className="space-y-3" data-testid="catalogo-de-modelos">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Escolha o modelo do seu negócio
+          </p>
+          <h2 className="text-lg font-semibold tracking-tight">Qual é a sua operação?</h2>
+          <p className="text-sm text-muted-foreground">
+            Um clique instala assistentes, funil, respostas, campanhas e automações (desligadas).
+            Depois você ajusta com o material da sua empresa.
+          </p>
+        </div>
+        <ul className="grid gap-3 lg:grid-cols-2">
+          {props.loja.map((item) => {
+            const ehInstalado = props.instalado?.id === item.id;
+            const ativo = ehInstalado && props.packAtivo;
+            const inativo = ehInstalado && !props.packAtivo;
+            const selecionadoAqui = item.id === packId;
+            return (
+              <li
+                key={item.id}
+                data-testid={`catalogo-pack-${item.id}`}
+                className={cn(
+                  "rounded-[16px] border bg-[var(--color-surface)] p-4",
+                  selecionadoAqui
+                    ? "border-[var(--color-accent)]"
+                    : "border-[var(--color-border)]",
+                )}
+              >
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => escolher(item.id)}
+                >
+                  <p className="font-medium">{item.label}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {item.resumo.assistentes} assistentes · funil {item.funilNome} ·{" "}
+                    {item.resumo.automacoes} automações
+                  </p>
+                </button>
+                {ativo ? (
+                  <div className="mt-3" data-testid={packAtivoNaEmpresa && item.id === props.instalado?.id ? "pack-pronto" : undefined}>
+                    <p
+                      className="text-sm font-medium text-emerald-700 dark:text-emerald-400"
+                      data-testid={item.id === props.instalado?.id ? "pack-loja-ativo" : undefined}
+                    >
+                      ATIVO nesta empresa
+                    </p>
+                  </div>
+                ) : inativo ? (
+                  <p className="mt-3 text-sm font-medium text-amber-700 dark:text-amber-400" data-testid="pack-loja-inativo">
+                    DESATIVADO
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">Ainda não está nesta empresa.</p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ativo ? (
+                    <Button asChild size="sm">
+                      <Link href="/app/ai/agents">Ver meus assistentes</Link>
+                    </Button>
+                  ) : props.podeInstalar ? (
+                    inativo ? (
+                      <Button
+                        size="sm"
+                        data-testid={testidReativarPack(item.id)}
+                        disabled={pending}
+                        onClick={() => {
+                          escolher(item.id);
+                          mudarEstado("activate");
+                        }}
+                      >
+                        {pending ? "Ativando..." : "Ativar de novo"}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        data-testid={testidAtivarModelo(item.id)}
+                        disabled={pending}
+                        onClick={() => pedirAtivar(item.id)}
+                      >
+                        {pending ? "Preparando..." : "Ativar modelo"}
+                      </Button>
+                    )
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Peça a quem administra para ativar.</p>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => escolher(item.id)}>
+                    Ver o que instala
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        {confirmaTroca ? (
+          <div className="rounded-[16px] border border-[var(--color-border)] p-4">
+            <p className="text-sm">
+              Isso instala o modelo{" "}
+              <strong>{props.loja.find((p) => p.id === confirmaTroca)?.label}</strong> nesta
+              empresa. O conjunto anterior não é apagado. Confirme para continuar.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button disabled={pending} onClick={() => instalar(confirmaTroca)}>
+                {pending ? "Preparando..." : "Confirmar e ativar"}
+              </Button>
+              <Button variant="ghost" disabled={pending} onClick={() => setConfirmaTroca(null)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
       <section className="space-y-4" id="o-que-instala" data-testid="detalhe-do-modelo">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-start justify-between gap-3 rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Modelo do seu negócio
+              O que este modelo instala
             </p>
-            <h2 className="text-lg font-semibold tracking-tight">{props.packLabel}</h2>
+            <h2 className="text-lg font-semibold tracking-tight">{packLabel}</h2>
             {status === "ativo" ? (
-              <div data-testid="pack-pronto">
-                <p
-                  className="text-sm font-medium text-emerald-700 dark:text-emerald-400"
-                  data-testid="pack-loja-ativo"
-                >
-                  ATIVO
-                </p>
-              </div>
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">ATIVO</p>
             ) : status === "inativo" ? (
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400" data-testid="pack-loja-inativo">
-                DESATIVADO
-              </p>
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">DESATIVADO</p>
             ) : (
               <p className="text-sm text-muted-foreground">Ainda não está ativo nesta empresa.</p>
             )}
           </div>
+          {status === "ausente" && props.podeInstalar ? (
+            <Button disabled={pending} onClick={() => pedirAtivar(packId)}>
+              {pending ? "Preparando..." : "Ativar modelo"}
+            </Button>
+          ) : null}
         </div>
 
         <p className="text-sm text-muted-foreground">
-          São {props.assistentes.length} assistentes prontos, um funil comercial,{" "}
-          {props.colecoes.length} coleções de conhecimento, respostas e campanhas. Ativar instala
-          o conjunto. Os assistentes ligam. As automações nascem desligadas — você liga cada uma
-          depois, se quiser.
+          São {assistentes.length} assistentes prontos, um funil comercial, {colecoes.length}{" "}
+          coleções de conhecimento, respostas e campanhas. Ativar instala o conjunto. Os
+          assistentes ligam. As automações nascem desligadas — você liga cada uma depois, se
+          quiser.
         </p>
-        <p className="text-sm text-muted-foreground">{props.packDescricao}</p>
+        <p className="text-sm text-muted-foreground">{packDescricao}</p>
 
         <PainelDeAjuda
-          testid={packId === "escritorio_advocacia" ? "advocacia-ajuda" : "locadora-ajuda"}
-          titulo={props.packAjudaTitulo}
+          testid={packId === "escritorio_advocacia" ? "advocacia-ajuda" : packId === "locadora_veiculos" ? "locadora-ajuda" : `ajuda-${packId}`}
+          titulo={`Como usar o modelo ${packLabel}`.trim()}
           texto={props.packAjudaTexto}
           passos={props.packAjudaPassos}
           href="/app/manual"
         />
 
         <div className="space-y-2" data-testid="modelos-prontos-cards">
-          <h3 className="text-sm font-semibold">Os {props.assistentes.length} assistentes</h3>
+          <h3 className="text-sm font-semibold">Os {assistentes.length} assistentes</h3>
+          <p className="text-sm text-muted-foreground">
+            Quem atende no WhatsApp. Cada um é uma pessoa da equipe — não é etapa do quadro.
+          </p>
           <ul
             className="grid gap-3 sm:grid-cols-2"
             data-testid="lista-assistentes-do-modelo"
           >
-            {props.assistentes.map((a) => (
+            {assistentes.map((a) => (
               <li
                 key={a.key}
                 data-testid={`modelo-assistente-${a.key}`}
@@ -200,32 +369,39 @@ export function ModelosProntosClient(props: {
                   ) : null}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{a.oQueFaz}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{a.papel}</p>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Funil</p>
-            <p className="mt-1 font-medium">{props.funilNome ?? "Funil comercial"}</p>
-            <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
-              {props.etapas.map((nome) => (
-                <li key={nome}>{nome}</li>
-              ))}
-            </ol>
-          </div>
-          <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Conhecimento
+        <div
+          className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          data-testid="quadro-do-modelo"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Quadro (Kanban)
+          </p>
+          <p className="mt-1 font-medium">{funilNome ?? "Funil comercial"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Colunas do quadro comercial. Paciente ou lead anda da esquerda para a direita — isso
+            não repete os assistentes.
+          </p>
+          <ol className="mt-3 flex flex-wrap gap-2">
+            {etapas.map((nome, i) => (
+              <li
+                key={nome}
+                className="rounded-full border border-[var(--color-border)] px-2.5 py-1 text-xs text-muted-foreground"
+              >
+                {i + 1}. {nome}
+              </li>
+            ))}
+          </ol>
+          {props.funilAtualDaEmpresa && props.funilAtualDaEmpresa !== funilNome ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Sua empresa hoje usa “{props.funilAtualDaEmpresa}”. Ao ativar, o quadro do modelo
+              passa a ser o padrão.
             </p>
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {props.colecoes.map((c) => (
-                <li key={c.slug}>{c.name}</li>
-              ))}
-            </ul>
-          </div>
+          ) : null}
         </div>
 
         <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -236,7 +412,7 @@ export function ModelosProntosClient(props: {
             Prontas e desligadas. Nenhuma dispara sozinha ao ativar o modelo.
           </p>
           <ul className="mt-2 space-y-1 text-sm">
-            {props.automationsDef.map((a) => (
+            {automationsDef.map((a) => (
               <li key={a.key} className="flex flex-wrap items-center gap-2">
                 <span>{a.name}</span>
                 <span className="text-xs text-muted-foreground">desligada</span>
@@ -253,14 +429,14 @@ export function ModelosProntosClient(props: {
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Respostas prontas
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">{props.respostas.length} modelos</p>
+            <p className="mt-1 text-sm text-muted-foreground">{respostas.length} modelos</p>
           </div>
           <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Campanhas
             </p>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {props.campanhas.map((c) => (
+              {campanhas.map((c) => (
                 <li key={c}>{c}</li>
               ))}
             </ul>
@@ -280,37 +456,13 @@ export function ModelosProntosClient(props: {
         ) : null}
 
         <div className="flex flex-wrap gap-2">
-          {status === "ausente" ? (
-            props.podeInstalar ? (
-              <Button
-                data-testid={packId === "escritorio_advocacia" ? "usar-modelo-escritorio_advocacia" : "usar-modelo-locadora"}
-                disabled={pending}
-                onClick={instalar}
-              >
-                {pending ? "Preparando..." : "Ativar modelo"}
-              </Button>
-            ) : (
-              <p className="text-sm text-muted-foreground">Peça a quem administra para instalar.</p>
-            )
-          ) : null}
-
-          {status === "inativo" && props.podeInstalar ? (
-            <Button
-              data-testid={packId === "escritorio_advocacia" ? "reativar-pack-escritorio_advocacia" : "reativar-pack-locadora"}
-              disabled={pending}
-              onClick={() => mudarEstado("activate")}
-            >
-              {pending ? "Ativando..." : "Ativar pack"}
-            </Button>
-          ) : null}
-
           {status === "ativo" ? (
             <>
               <Button asChild>
                 <Link href="/app/ai/agents">Ver meus assistentes</Link>
               </Button>
               {props.podeInstalar ? (
-                <Button variant="outline" disabled={pending} onClick={instalar}>
+                <Button variant="outline" disabled={pending} onClick={() => instalar(packId)}>
                   {pending ? "Reaplicando..." : "Reaplicar sem duplicar"}
                 </Button>
               ) : null}
@@ -321,7 +473,7 @@ export function ModelosProntosClient(props: {
             confirmaDesligar ? (
               <div className="w-full rounded-[16px] border border-[var(--color-border)] p-4">
                 <p className="text-sm">
-                  Desliga os {props.assistentes.length} assistentes do modelo. Funil, conhecimento,
+                  Desliga os {assistentes.length} assistentes do modelo. Funil, conhecimento,
                   respostas e o Assistente da empresa ficam. Nada é apagado.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -341,7 +493,7 @@ export function ModelosProntosClient(props: {
             ) : (
               <Button
                 variant="outline"
-                data-testid={packId === "escritorio_advocacia" ? "desativar-pack-escritorio_advocacia" : "desativar-pack-locadora"}
+                data-testid={testidDesativarPack(packId)}
                 disabled={pending}
                 onClick={() => setConfirmaDesligar(true)}
               >
@@ -359,13 +511,17 @@ export function ModelosProntosClient(props: {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Ensine seus assistentes</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Pastas de material</h2>
+        <p className="text-sm text-muted-foreground">
+          Onde você solta PDF, tabela e regras da empresa. São pastas — não são os assistentes
+          de cima.
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          {props.colecoes.map((c) => (
+          {colecoes.map((c) => (
             <LinkCard
               key={c.slug}
               titulo={c.name}
-              desc="Adicione documentos desta coleção"
+              desc="Adicione documentos desta pasta"
               href="/app/ai/knowledge/sources"
             />
           ))}

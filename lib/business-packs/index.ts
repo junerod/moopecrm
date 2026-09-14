@@ -12,3 +12,5 @@ export {
 } from "@/lib/business-packs/apresentacao";
 export { CHAVE_PACK } from "@/lib/business-packs/tipos";
 export type { BusinessPackId, BusinessPackGravado, BusinessPackDefinition } from "@/lib/business-packs/tipos";
+export { carregarChecklistDoPack, montarChecklistDoPack } from "@/lib/business-packs/checklist";
+export type { ChecklistDoPack } from "@/lib/business-packs/checklist";

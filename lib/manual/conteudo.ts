@@ -285,6 +285,9 @@ export const CAPITULOS: readonly Capitulo[] = [
           ["Marcar um horário", "Agenda. Os tipos ficam em Configurações › Tipos de agendamento"],
           ["Convidar gente", "Configurações › Equipe"],
           ["Quem pega cliente novo", "Configurações › Distribuição de atendimento"],
+          ["Avisar vários clientes de uma vez", "Campanhas"],
+          ["Preparar a locadora de veículos", "Configurações › Meu Negócio, ou Modelos prontos"],
+          ["Ler este guia de novo", "Como usar, no rodapé do menu"],
         ],
       },
       {
@@ -298,8 +301,144 @@ export const CAPITULOS: readonly Capitulo[] = [
     ],
   },
   {
-    id: "moope",
+    id: "campanhas",
     numero: 8,
+    titulo: "Como mandar uma campanha",
+    resumo: "Aviso para várias pessoas no WhatsApp, sem inventar conversa nova.",
+    palavras: [
+      "campanha",
+      "disparo",
+      "promoção",
+      "oferta",
+      "lista",
+      "público",
+      "whatsapp",
+      "fila",
+    ],
+    blocos: [
+      {
+        tipo: "p",
+        texto:
+          "Campanha é um recado comercial para várias pessoas de uma vez. Não é a conversa do dia a dia. Quem nunca falou com vocês neste WhatsApp não recebe — o sistema pede para abrir a conversa na caixa primeiro. Quem já falou neste número recebe, mesmo que o celular tenha sido reconectado.",
+      },
+      {
+        tipo: "aviso",
+        texto:
+          "Precisa ser gerente ou administrador para enviar. Atendente só consulta o resultado.",
+      },
+      {
+        tipo: "passos",
+        itens: [
+          "No menu, abra Campanhas. Se ainda não tem nenhuma, use Criar campanha.",
+          "Objetivo — escolha o motivo (promoção, reativar quem parou, aviso, pesquisa…). Isto sugere o texto; você ainda edita.",
+          "Público — quem entra na lista. Use etiqueta, tipo de pessoa (lead ou cliente), temperatura, origem, responsável ou o funil. Dá para marcar gente na mão. A tela mostra quantos serão.",
+          "Conteúdo — escreva a mensagem. {{nome}} vira o nome da pessoa. Dá para anexar foto ou PDF e usar um modelo já salvo.",
+          "Canal — WhatsApp, e-mail, ou os dois. No WhatsApp do celular, escolha o número que envia. Só quem já tem conversa nesse número entra de verdade.",
+          "Quando — agora ou num horário. Confira o preview com um nome de exemplo.",
+          "Revisar e enviar. A fila sobe sozinha, com pausa entre uma pessoa e outra para não sobrecarregar o WhatsApp.",
+        ],
+      },
+      {
+        tipo: "tabela",
+        cabecalho: ["Na fila aparece", "O que significa"],
+        linhas: [
+          ["Enviado", "Saiu no WhatsApp (ou no e-mail)."],
+          ["Respondeu", "A pessoa respondeu depois do envio."],
+          ["Ignorado", "Não foi. Motivo ao lado: sem conversa neste número, bloqueado, pediu para parar…"],
+          ["Falhou", "Tentou e o envio não saiu. O motivo aparece na linha."],
+          ["Não saiu no WhatsApp — envio de prova", "Foi um teste. Nada chegou no celular."],
+        ],
+      },
+      {
+        tipo: "p",
+        texto:
+          "Depois de enviar, clique na campanha. Você vê quantos saíram, quem respondeu e o texto da resposta. Quem ficou de fora sem conversa: Caixa de entrada → Nova conversa com aquela pessoa, no número certo. Depois dispare de novo só para eles, se quiser.",
+      },
+      {
+        tipo: "aviso",
+        texto:
+          "Não use campanha para falar com desconhecido neste número do celular. Abra a conversa primeiro. Campanha não cria ficha fria.",
+      },
+    ],
+  },
+  {
+    id: "locadora",
+    numero: 9,
+    titulo: "Como preparar a locadora de veículos",
+    resumo: "O modelo pronto: assistentes, quadro, textos e o que ainda precisa ligar.",
+    palavras: [
+      "locadora",
+      "pack",
+      "modelo",
+      "veículos",
+      "frota",
+      "aluguel",
+      "carro",
+      "modelos prontos",
+      "checklist",
+      "prepare sua empresa",
+    ],
+    blocos: [
+      {
+        tipo: "p",
+        texto:
+          "O modelo da locadora de veículos é um conjunto pronto: seis assistentes, um quadro comercial de oito etapas, pastas de conhecimento, respostas rápidas e rascunhos de campanha. Ele não liga automação sozinha e não inventa preço, diária nem boleto.",
+      },
+      {
+        tipo: "passos",
+        itens: [
+          "Administrador: Configurações › Meu Negócio, ou Modelos prontos no rodapé do menu.",
+          "Leia o que será instalado — os seis assistentes e o quadro.",
+          "Ativar. O sistema cria o que falta e não apaga o que vocês já tinham.",
+          "No card Prepare sua empresa, conclua os quatro passos até 4 de 4 — Pronto para trabalhar.",
+          "Conecte o WhatsApp, se ainda não conectou (capítulo Como conectar o WhatsApp).",
+          "Coloque nas pastas de conhecimento as regras reais: diária, caução, documentos, o que pode e o que não pode.",
+          "Abra cada assistente, confira o texto e Publicar. Sem publicar, ele não atende.",
+          "Automações nascem desligadas. Ligue uma por uma, só quando o texto estiver certo.",
+          "Se a gestão da frota (contratos, boleto, disponibilidade) estiver ligada em Integração MOOPE, o assistente consulta o dado oficial. Sem isso, ele pergunta ou chama uma pessoa — não chuta.",
+        ],
+      },
+      {
+        tipo: "tabela",
+        cabecalho: ["Assistente", "Para quê"],
+        linhas: [
+          ["Atendimento da Locadora", "Recebe, entende se é cliente ou interessado e encaminha."],
+          ["Consultor Comercial", "Qualifica quem quer alugar e avança o quadro."],
+          ["Assistente de Disponibilidade", "Pergunta período e categoria. Só afirma vaga depois de consultar de verdade."],
+          ["Assistente Financeiro", "Boleto, vencimento e atraso — só com dado da gestão."],
+          ["Atendimento ao Cliente", "Quem já está com o carro: devolução, pane, multa."],
+          ["Relacionamento", "Quem parou no meio ou já alugou e voltou. Não dispara campanha sozinho."],
+        ],
+      },
+      {
+        tipo: "tabela",
+        cabecalho: ["Quadro comercial", "O que a coluna significa"],
+        linhas: [
+          ["Novo lead", "Acabou de chegar."],
+          ["Em atendimento", "Alguém já falou com a pessoa."],
+          ["Qualificado", "Dá para seguir: período, cidade, tipo de carro."],
+          ["Cotação / Proposta", "Orçamento na mesa."],
+          ["Negociação", "Ajustando valor, datas ou condições."],
+          ["Reserva / Documentação", "Fechando papelada."],
+          ["Fechado — Locação", "Alugou."],
+          ["Perdido", "Não fechou."],
+        ],
+      },
+      {
+        tipo: "aviso",
+        texto:
+          "Ativar o modelo não manda mensagem para cliente. Não apaga o assistente que a empresa já tinha. Desativar desliga o modelo; o quadro e o conhecimento ficam.",
+      },
+      {
+        tipo: "p",
+        texto:
+          "Empresa que já existia não precisa recomeçar o primeiro acesso. O caminho é o mesmo: Meu Negócio → Modelos prontos → Ativar.",
+      },
+    ],
+  },
+  {
+    id: "moope",
+    numero: 10,
     titulo: "Como ligar a frota ou o escritório",
     resumo: "A chave que o outro sistema usa para abrir o CRM.",
     palavras: ["moope", "chave", "frota", "facejus", "integração"],
@@ -312,7 +451,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "plataforma",
-    numero: 9,
+    numero: 11,
     titulo: "Se você cuida de várias empresas",
     resumo: "Como abrir uma empresa nova para um cliente — não é o Inbox dele.",
     palavras: ["admin", "tenant", "plataforma", "organização", "várias empresas"],
@@ -339,7 +478,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "nao-funciona",
-    numero: 10,
+    numero: 12,
     titulo: "Se algo não funciona",
     resumo: "O que olhar, nesta ordem, antes de achar que quebrou.",
     palavras: ["erro", "bug", "parado", "silêncio", "não responde", "falhou"],
@@ -354,6 +493,8 @@ export const CAPITULOS: readonly Capitulo[] = [
           "O follow-up está Publicado e ligado ao agente? A fila mostra inscrição? Esperou alguns minutos?",
           "Você Assumiu a conversa? O automático está calado até devolver.",
           "Quem é Somente leitura não manda mensagem. Gerente não cria atendente automático novo. Só Administrador conecta o WhatsApp.",
+          "Campanha: a pessoa já tem conversa neste WhatsApp? Se o motivo for “abra o fio na caixa”, abra Nova conversa e só então dispare de novo.",
+          "Modelo da locadora: está Ativo em Meu Negócio? Os assistentes estão Publicados? A pasta de conhecimento tem as regras reais?",
         ],
       },
     ],

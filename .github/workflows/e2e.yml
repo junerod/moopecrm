@@ -236,6 +236,7 @@ jobs:
         pack-locadora-existing-tenant.spec.ts
         pack-advocacia.spec.ts
         pack-advocacia-existing-tenant.spec.ts
+        pack-post-activation-checklist.spec.ts
         campaigns-premium.spec.ts
       # Cada item aqui tem o motivo MEDIDO, não presumido — e o gate cobra que a
       # lista exista e some com as outras duas.

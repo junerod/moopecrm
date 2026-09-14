@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { resumoDoPack } from "@/lib/business-packs/apresentacao";
+import { testidAtivarPackCard, testidPackAtivo, testidPackInativo } from "@/lib/business-packs/testids";
 import type { BusinessPackDefinition, BusinessPackGravado, BusinessPackId } from "@/lib/business-packs/tipos";
 
 const ATALHOS_DO_PACK = [
@@ -28,10 +29,8 @@ export function ModeloDoNegocio({
   packAtivo: boolean;
 }) {
   const resumo = definition ? resumoDoPack(definition) : null;
-  const testidAtivo =
-    pack?.id === "escritorio_advocacia" ? "pack-escritorio_advocacia-ativo" : "pack-locadora-ativo";
-  const testidInativo =
-    pack?.id === "escritorio_advocacia" ? "pack-escritorio_advocacia-inativo" : "pack-locadora-inativo";
+  const testidAtivo = pack ? testidPackAtivo(pack.id) : "pack-locadora-ativo";
+  const testidInativo = pack ? testidPackInativo(pack.id) : "pack-locadora-inativo";
 
   if (pack && definition && resumo) {
     return (
@@ -116,7 +115,7 @@ export function ModeloDoNegocio({
                 <Button asChild>
                   <Link
                     href={`/app/modelos-prontos?pack=${item.id}`}
-                    data-testid={`ativar-pack-${item.id === "locadora_veiculos" ? "locadora" : item.id}`}
+                    data-testid={testidAtivarPackCard(item.id)}
                   >
                     Ativar modelo
                   </Link>

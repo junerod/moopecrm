@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 
 import { AtalhosDaOperacao } from "@/components/negocio/AtalhosDaOperacao";
 import { CardDeSetupNegocio } from "@/components/negocio/CardDeSetup";
+import { ChecklistPosAtivacao } from "@/components/negocio/ChecklistPosAtivacao";
 import { ModeloDoNegocio } from "@/components/negocio/ModeloDoNegocio";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { packEstaAtivo } from "@/lib/business-packs/apresentacao";
 import { catalogoDePacks, resolverPack } from "@/lib/business-packs/catalogo";
+import { carregarChecklistDoPack } from "@/lib/business-packs/checklist";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
 import { lerEmpresaDoSettings } from "@/lib/negocio/ficha";
 import { carregarEstadoDoSetup } from "@/lib/negocio/estado";
@@ -35,6 +37,7 @@ export default async function MeuNegocioPage() {
   const pendentes = estado.cards.filter((c) => c.estado !== "ok");
   const pack = lerPackGravado(org?.settings);
   const definition = pack ? resolverPack(pack.id) : null;
+  const checklist = await carregarChecklistDoPack(supabase, activeOrg.orgId);
   const { count: assistentesConfigurados } = await supabase
     .from("ai_agents")
     .select("id", { count: "exact", head: true })
@@ -51,6 +54,8 @@ export default async function MeuNegocioPage() {
         podeInstalar={podeEditar}
         packAtivo={packEstaAtivo(pack)}
       />
+
+      {checklist ? <ChecklistPosAtivacao checklist={checklist} /> : null}
 
       <FichaDaEmpresaForm
         displayName={(org?.display_name as string | null) ?? estado.empresa}

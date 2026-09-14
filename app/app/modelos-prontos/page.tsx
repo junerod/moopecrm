@@ -3,14 +3,16 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ds/PageHeader";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { detalhesDoPack, packEstaAtivo } from "@/lib/business-packs/apresentacao";
+import { ChecklistPosAtivacao } from "@/components/negocio/ChecklistPosAtivacao";
+import { detalhesDoPack, montarLojaDePacks, packEstaAtivo } from "@/lib/business-packs/apresentacao";
+import { carregarChecklistDoPack } from "@/lib/business-packs/checklist";
 import { catalogoAmigavel } from "@/lib/business-packs/capacidades";
-import { catalogoDePacks, resolverPack } from "@/lib/business-packs/catalogo";
+import { resolverPack } from "@/lib/business-packs/catalogo";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
 import { carregarConexaoLocadora, urlDaApiDaLocadora } from "@/lib/moope/cliente-locadora";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { Car } from "@/lib/ui/icons";
+import { Storefront } from "@/lib/ui/icons";
 import { AppIcon } from "@/components/ds/AppIcon";
 
 import { ModelosProntosClient } from "./_client";
@@ -41,8 +43,8 @@ export default async function ModelosProntosPage({
   const instalado = lerPackGravado(org?.settings);
   const pedido = typeof query.pack === "string" ? resolverPack(query.pack) : null;
   const definition =
-    (instalado ? resolverPack(instalado.id) : null) ??
     pedido ??
+    (instalado ? resolverPack(instalado.id) : null) ??
     resolverPack("locadora_veiculos");
   const detalhes = definition ? detalhesDoPack(definition) : null;
 
@@ -67,48 +69,38 @@ export default async function ModelosProntosPage({
   const aiMode = typeof settings.ai_mode === "string" ? settings.ai_mode : "off";
   const precisaGestao = Boolean(definition?.capabilities.some((c) => c.tool_id?.startsWith("moope_")));
   if (!precisaGestao) gestao = "nao_disponivel";
+  const checklist = await carregarChecklistDoPack(supabase, activeOrg.orgId);
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <PageHeader
-        icon={<AppIcon icon={Car} />}
+        icon={<AppIcon icon={Storefront} />}
         titulo="Modelos prontos"
-        descricao="Veja os assistentes, o funil e o que liga ou não. Depois ative ou desative o conjunto."
+        descricao="Escolha o modelo do seu negócio e ative. Assistentes, funil, respostas e automações entram prontos — você só ajusta depois."
       />
+      {checklist ? <ChecklistPosAtivacao checklist={checklist} /> : null}
       <ModelosProntosClient
         packLabel={definition?.label ?? "Modelo pronto"}
         packDescricao={definition?.description ?? ""}
         packAjudaTitulo={`Como usar o modelo ${definition?.label ?? ""}`.trim()}
-        packAjudaTexto={
-          definition?.id === "escritorio_advocacia"
-            ? "Ativar prepara a operação. Não manda mensagem sozinha. Preencha as pastas com o material do escritório — nunca legislação genérica da internet. Automações nascem desligadas."
-            : "Ativar prepara a operação. Não manda mensagem sozinha. Preencha as pastas de conhecimento com as regras reais, publique cada assistente e ligue a automação só quando o texto estiver certo."
-        }
+        packAjudaTexto="Ative o modelo, conclua os quatro passos do card Prepare sua empresa e comece a atender. Não manda mensagem sozinha. Automações nascem desligadas."
         packAlvoId={definition?.id ?? "locadora_veiculos"}
-        packAjudaPassos={
-          definition?.id === "escritorio_advocacia"
-            ? [
-                "Ative o modelo nesta tela (administrador).",
-                "Conecte o WhatsApp em Canais › Conexões.",
-                "Coloque nas pastas o material do próprio escritório.",
-                "Abra cada assistente e publique. Sem publicar, ele não atende.",
-                "Automações nascem desligadas — ligue uma por uma.",
-              ]
-            : [
-                "Ative o modelo nesta tela (administrador).",
-                "Conecte o WhatsApp em Canais › Conexões.",
-                "Coloque nas pastas as regras: diária, caução, documentos.",
-                "Abra cada assistente e publique. Sem publicar, ele não atende.",
-                "Automações nascem desligadas — ligue uma por uma.",
-              ]
-        }
+        packAjudaPassos={[
+          "Ative o modelo nesta tela (administrador).",
+          "Conclua os quatro passos: WhatsApp, conhecimento, publicar assistentes e uma automação.",
+          "Conecte o WhatsApp.",
+          "Coloque nas pastas o material da própria empresa.",
+          "Publique os assistentes. Sem publicar, eles não atendem.",
+          "Ligue uma automação só quando o texto estiver certo.",
+        ]}
         podeInstalar={
           user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin
         }
-        catalogo={catalogoDePacks()}
+        loja={montarLojaDePacks()}
         instalado={instalado}
         packAtivo={packEstaAtivo(instalado)}
-        funilNome={funil?.name ?? definition?.pipeline.nome ?? null}
+        funilNome={definition?.pipeline.nome ?? null}
+        funilAtualDaEmpresa={funil?.name ?? null}
         etapas={detalhes?.etapas ?? []}
         gestao={gestao}
         aiMode={aiMode}
