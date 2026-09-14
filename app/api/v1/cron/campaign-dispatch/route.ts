@@ -1,8 +1,8 @@
 /**
  * GET/POST /api/v1/cron/campaign-dispatch
  *
- * Worker de campanha comercial. Mock nesta rodada: sem WAHA, sem QR.
- * Audita só quando houve efeito.
+ * Worker de campanha comercial. Dispatcher por canal; mock só quando o
+ * diagnóstico pede. Audita só quando houve efeito.
  */
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
@@ -38,7 +38,8 @@ async function handle(req: NextRequest): Promise<Response> {
           pulados: resultado.pulados,
           falharam: resultado.falharam,
           processadas: resultado.processadas,
-          via: "mock",
+          via: "dispatcher",
+          materializados: resultado.materializados,
         },
       });
     }
