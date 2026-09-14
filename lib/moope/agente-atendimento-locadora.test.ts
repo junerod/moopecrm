@@ -15,9 +15,13 @@ vi.mock("@/lib/ai/agents/escolher-modelo", () => ({
 vi.mock("@/lib/ai/runtime/agent", () => ({
   chaveDePlataforma: () => true,
 }));
-vi.mock("@/lib/moope/cliente-locadora", () => ({
-  carregarConexaoLocadora: vi.fn(),
-}));
+vi.mock("@/lib/moope/cliente-locadora", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/moope/cliente-locadora")>();
+  return {
+    ...actual,
+    carregarConexaoLocadora: vi.fn(),
+  };
+});
 vi.mock("@/lib/ai/agents/capacidades-padrao", () => ({
   catalogoComHandler: () => [
     { name: "crm_search_contacts", risco: "seguro", pacotes: ["atender"] },

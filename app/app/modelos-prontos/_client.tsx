@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { PainelDeAjuda } from "@/components/ajuda/PainelDeAjuda";
 import { Button } from "@/components/ui/button";
-import { CENARIOS_TEST_DRIVE } from "@/lib/business-packs/test-drive";
+import { cenariosDoPack } from "@/lib/business-packs/test-drive";
 import type { BusinessPackGravado } from "@/lib/business-packs/tipos";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,12 @@ type AutomacaoDoModelo = {
 };
 
 export function ModelosProntosClient(props: {
+  packLabel: string;
+  packDescricao: string;
+  packAjudaTitulo: string;
+  packAjudaTexto: string;
+  packAjudaPassos: string[];
+  packAlvoId: string;
   podeInstalar: boolean;
   catalogo: Array<{ id: string; label: string; description: string; category: string }>;
   instalado: BusinessPackGravado | null;
@@ -60,11 +67,11 @@ export function ModelosProntosClient(props: {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirmaDesligar, setConfirmaDesligar] = useState(false);
-  const [mensagem, setMensagem] = useState(CENARIOS_TEST_DRIVE[0]?.mensagem ?? "");
+  const packId = props.instalado?.id ?? props.packAlvoId;
+  const cenarios = cenariosDoPack(packId);
+  const [mensagem, setMensagem] = useState(cenarios[0]?.mensagem ?? "");
   const [teste, setTeste] = useState<ResultadoTeste | null>(null);
   const [testando, setTestando] = useState(false);
-
-  const packId = props.instalado?.id ?? props.catalogo[0]?.id ?? "locadora_veiculos";
 
   function instalar() {
     start(async () => {
@@ -136,7 +143,7 @@ export function ModelosProntosClient(props: {
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Modelo do seu negócio
             </p>
-            <h2 className="text-lg font-semibold tracking-tight">Locadora de veículos</h2>
+            <h2 className="text-lg font-semibold tracking-tight">{props.packLabel}</h2>
             {status === "ativo" ? (
               <div data-testid="pack-pronto">
                 <p
@@ -157,13 +164,23 @@ export function ModelosProntosClient(props: {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          São 6 assistentes prontos, um funil comercial, 4 coleções de conhecimento, respostas e
-          campanhas. Ativar instala o conjunto. Os assistentes ligam. As automações nascem
-          desligadas — você liga cada uma depois, se quiser.
+          São {props.assistentes.length} assistentes prontos, um funil comercial,{" "}
+          {props.colecoes.length} coleções de conhecimento, respostas e campanhas. Ativar instala
+          o conjunto. Os assistentes ligam. As automações nascem desligadas — você liga cada uma
+          depois, se quiser.
         </p>
+        <p className="text-sm text-muted-foreground">{props.packDescricao}</p>
+
+        <PainelDeAjuda
+          testid={packId === "escritorio_advocacia" ? "advocacia-ajuda" : "locadora-ajuda"}
+          titulo={props.packAjudaTitulo}
+          texto={props.packAjudaTexto}
+          passos={props.packAjudaPassos}
+          href="/app/manual"
+        />
 
         <div className="space-y-2" data-testid="modelos-prontos-cards">
-          <h3 className="text-sm font-semibold">Os 6 assistentes</h3>
+          <h3 className="text-sm font-semibold">Os {props.assistentes.length} assistentes</h3>
           <ul
             className="grid gap-3 sm:grid-cols-2"
             data-testid="lista-assistentes-do-modelo"
@@ -192,7 +209,7 @@ export function ModelosProntosClient(props: {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Funil</p>
-            <p className="mt-1 font-medium">{props.funilNome ?? "COMERCIAL — LOCADORA"}</p>
+            <p className="mt-1 font-medium">{props.funilNome ?? "Funil comercial"}</p>
             <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
               {props.etapas.map((nome) => (
                 <li key={nome}>{nome}</li>
@@ -265,7 +282,11 @@ export function ModelosProntosClient(props: {
         <div className="flex flex-wrap gap-2">
           {status === "ausente" ? (
             props.podeInstalar ? (
-              <Button data-testid="usar-modelo-locadora" disabled={pending} onClick={instalar}>
+              <Button
+                data-testid={packId === "escritorio_advocacia" ? "usar-modelo-escritorio_advocacia" : "usar-modelo-locadora"}
+                disabled={pending}
+                onClick={instalar}
+              >
                 {pending ? "Preparando..." : "Ativar modelo"}
               </Button>
             ) : (
@@ -274,7 +295,11 @@ export function ModelosProntosClient(props: {
           ) : null}
 
           {status === "inativo" && props.podeInstalar ? (
-            <Button data-testid="reativar-pack-locadora" disabled={pending} onClick={() => mudarEstado("activate")}>
+            <Button
+              data-testid={packId === "escritorio_advocacia" ? "reativar-pack-escritorio_advocacia" : "reativar-pack-locadora"}
+              disabled={pending}
+              onClick={() => mudarEstado("activate")}
+            >
               {pending ? "Ativando..." : "Ativar pack"}
             </Button>
           ) : null}
@@ -296,8 +321,8 @@ export function ModelosProntosClient(props: {
             confirmaDesligar ? (
               <div className="w-full rounded-[16px] border border-[var(--color-border)] p-4">
                 <p className="text-sm">
-                  Desliga os 6 assistentes do modelo. Funil, conhecimento, respostas e o Assistente
-                  da empresa ficam. Nada é apagado.
+                  Desliga os {props.assistentes.length} assistentes do modelo. Funil, conhecimento,
+                  respostas e o Assistente da empresa ficam. Nada é apagado.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
@@ -316,7 +341,7 @@ export function ModelosProntosClient(props: {
             ) : (
               <Button
                 variant="outline"
-                data-testid="desativar-pack-locadora"
+                data-testid={packId === "escritorio_advocacia" ? "desativar-pack-escritorio_advocacia" : "desativar-pack-locadora"}
                 disabled={pending}
                 onClick={() => setConfirmaDesligar(true)}
               >
@@ -378,7 +403,7 @@ export function ModelosProntosClient(props: {
           Sem WhatsApp real. Nada é enviado e nenhuma consulta externa roda.
         </p>
         <div className="flex flex-wrap gap-2">
-          {CENARIOS_TEST_DRIVE.map((c) => (
+          {cenarios.map((c) => (
             <Button key={c.id} type="button" variant="outline" size="sm" onClick={() => setMensagem(c.mensagem)}>
               {c.rotulo}
             </Button>

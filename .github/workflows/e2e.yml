@@ -234,6 +234,8 @@ jobs:
         knowledge-vision-real.spec.ts
         pack-locadora.spec.ts
         pack-locadora-existing-tenant.spec.ts
+        pack-advocacia.spec.ts
+        pack-advocacia-existing-tenant.spec.ts
         campaigns-premium.spec.ts
       # Cada item aqui tem o motivo MEDIDO, não presumido — e o gate cobra que a
       # lista exista e some com as outras duas.
@@ -350,9 +352,13 @@ jobs:
       #      com consentimento pré-aprovado. Sem ela o job pararia num
       #      `accounts.google.com` esperando login humano — e é por isto que ela
       #      fica FORA do CI em vez de ficar sem existir.
+      # product-self-test.spec.ts orquestra certificação local via
+      # `pnpm product:self-test`. Duplica cobertura já listada e não deve
+      # alongar o job obrigatório. Motivo: comando próprio, sem canal externo.
       FORA_DO_CI: >-
         vps-fresh-onboarding.spec.ts
         inbox-tempo-real.spec.ts
+        product-self-test.spec.ts
     steps:
       - uses: actions/checkout@v7
 

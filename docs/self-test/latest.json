@@ -1,0 +1,72 @@
+{
+  "gerado_em": "2026-09-14T22:13:27.287Z",
+  "duracao_ms": 29,
+  "organizacoes": [],
+  "disparo_externo": false,
+  "self_test_external_channels": false,
+  "visao": "SKIPPED",
+  "gestao": "CONTRACT_E2E",
+  "modulos": [
+    {
+      "modulo": "onboarding",
+      "status": "PASS",
+      "detalhe": "Catálogo tem Locadora e Advocacia."
+    },
+    {
+      "modulo": "pack",
+      "status": "PASS",
+      "detalhe": "Dois packs no mesmo motor, tenants separados no padrão."
+    },
+    {
+      "modulo": "assistentes",
+      "status": "PASS",
+      "detalhe": "6 especialidades; andamento processual escala para humano."
+    },
+    {
+      "modulo": "knowledge",
+      "status": "SKIPPED",
+      "detalhe": "Token sintético preparado: SELFTEST-KNOWLEDGE-6A1B9440. Upload real exige tenant vivo."
+    },
+    {
+      "modulo": "vision",
+      "status": "SKIPPED",
+      "detalhe": "Sem credencial multimodal nesta passagem de contrato."
+    },
+    {
+      "modulo": "crm",
+      "status": "PASS",
+      "detalhe": "Funis dos packs têm 8 etapas com ganho e perda."
+    },
+    {
+      "modulo": "agenda",
+      "status": "PASS",
+      "detalhe": "Packs usam a Agenda existente — sem segundo sistema de tarefas."
+    },
+    {
+      "modulo": "campanhas",
+      "status": "PASS",
+      "detalhe": "Self-test padrão em MOCK. SELF_TEST_EXTERNAL_CHANNELS default false."
+    },
+    {
+      "modulo": "automacoes",
+      "status": "PASS",
+      "detalhe": "Automações dos packs nascem desligadas no instalador."
+    },
+    {
+      "modulo": "tenant_isolation",
+      "status": "PASS",
+      "detalhe": "Padrão: um pack por tenant; nunca e2e-test-org."
+    },
+    {
+      "modulo": "whatsapp_externo",
+      "status": "SKIPPED",
+      "detalhe": "Disparo externo bloqueado no self-test padrão."
+    },
+    {
+      "modulo": "gestao_bridge",
+      "status": "PASS",
+      "detalhe": "CONTRACT E2E VALIDADO no mock oficial. GESTÃO PRODUÇÃO REAL: não."
+    }
+  ],
+  "total": "PARTIAL"
+}

@@ -3,10 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import { locadoraDaFicha } from "@/lib/mcp/tools/contacts";
 import { moopeGetRetrato, moopeLookupLocatario } from "@/lib/mcp/tools/locadora";
 
-vi.mock("@/lib/moope/cliente-locadora", () => ({
-  lookupLocatario: vi.fn(),
-  getRetratoLocatario: vi.fn(),
-}));
+vi.mock("@/lib/moope/cliente-locadora", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/moope/cliente-locadora")>();
+  return {
+    ...actual,
+    lookupLocatario: vi.fn(),
+    getRetratoLocatario: vi.fn(),
+  };
+});
 
 import { getRetratoLocatario, lookupLocatario } from "@/lib/moope/cliente-locadora";
 

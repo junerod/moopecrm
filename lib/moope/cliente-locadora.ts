@@ -233,18 +233,20 @@ function dinheiro(v: unknown): number | null {
 export async function lookupLocatario(
   admin: SupabaseClient,
   orgId: string,
-  chave: { phone?: unknown; cpf?: unknown; placa?: unknown },
+  chave: { phone?: unknown; cpf?: unknown; placa?: unknown; external_id?: unknown },
   deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
 ): Promise<ResultadoLookup> {
   const prep = await prepararChamada(admin, orgId);
   if (!prep.ok) return prep;
 
+  const externalId = texto(chave.external_id);
   const phone = telefoneE164(chave.phone);
   const cpf = cpfOuCnpjDigitos(chave.cpf);
   const placa = placaNormalizada(chave.placa);
-  if (!phone && !cpf && !placa) return { ok: false, codigo: "entrada_invalida" };
+  if (!externalId && !phone && !cpf && !placa) return { ok: false, codigo: "entrada_invalida" };
 
   const url = new URL("/api/crm/locatario", `${prep.base}/`);
+  if (externalId) url.searchParams.set("external_id", externalId);
   if (phone) url.searchParams.set("phone", phone);
   if (cpf) url.searchParams.set("cpf", cpf);
   if (placa) url.searchParams.set("placa", placa);
@@ -430,4 +432,261 @@ export async function getRetratoInvestidor(
     portal_url: texto(data.portal_url),
     pode: listaTexto(data.pode),
   };
+}
+
+export interface LocacaoResumo {
+  locacao_id: string;
+  status: string | null;
+  inicio: string | null;
+  termino: string | null;
+  veiculo: string | null;
+  valor: number | null;
+  renovacao: string | null;
+}
+
+export interface ParcelaResumo {
+  parcela_id: string;
+  vencimento: string | null;
+  valor: number | null;
+  status: string | null;
+  atraso_dias: number | null;
+}
+
+export interface SegundaViaOficial {
+  boleto_url: string | null;
+  pix_url: string | null;
+  portal_url: string | null;
+}
+
+export interface DisponibilidadePeriodo {
+  situacao: "disponivel" | "indisponivel" | "consulta_indisponivel";
+  categoria: string | null;
+  unidade: string | null;
+  inicio: string | null;
+  fim: string | null;
+  preco: number | null;
+}
+
+export interface UnidadeResumo {
+  unidade_id: string;
+  nome: string;
+  cidade: string | null;
+}
+
+export interface ItemOperacional {
+  data: string | null;
+  descricao: string;
+  valor: number | null;
+  status: string | null;
+}
+
+export type ResultadoLocacoes = ({ ok: true; itens: LocacaoResumo[] }) | FalhaLocadora;
+export type ResultadoFinanceiro = ({ ok: true; parcelas: ParcelaResumo[] } & SegundaViaOficial) | FalhaLocadora;
+export type ResultadoSegundaVia = ({ ok: true } & SegundaViaOficial) | FalhaLocadora;
+export type ResultadoDisponibilidade = ({ ok: true } & DisponibilidadePeriodo) | FalhaLocadora;
+export type ResultadoUnidades = ({ ok: true; itens: UnidadeResumo[] }) | FalhaLocadora;
+export type ResultadoListaOperacional = ({ ok: true; itens: ItemOperacional[] }) | FalhaLocadora;
+
+async function getJsonAutenticado(
+  admin: SupabaseClient,
+  orgId: string,
+  path: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+  query: Record<string, string | undefined> = {},
+): Promise<{ ok: true; data: Record<string, unknown>; json: unknown } | FalhaLocadora> {
+  const prep = await prepararChamada(admin, orgId);
+  if (!prep.ok) return prep;
+  const url = new URL(path, `${prep.base}/`);
+  for (const [k, v] of Object.entries(query)) {
+    if (v) url.searchParams.set(k, v);
+  }
+  const res = await getLocadora(url, prep.secret, deps);
+  if (res.status !== 200) {
+    return falhaHttp(res.status, res.json, "detalhe" in res ? res.detalhe : undefined);
+  }
+  return { ok: true, data: corpoData(res.json), json: res.json };
+}
+
+function itensDoCorpo(json: unknown): Record<string, unknown>[] {
+  const body = (json ?? {}) as Record<string, unknown>;
+  const raw = Array.isArray(body.data) ? body.data : Array.isArray(body.itens) ? body.itens : Array.isArray(body) ? body : [];
+  return raw.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
+}
+
+export async function consultarLocacao(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoLocacoes> {
+  const id = locatarioId.trim();
+  if (!id) return { ok: false, codigo: "entrada_invalida" };
+  const r = await getJsonAutenticado(admin, orgId, `/api/crm/locatario/${encodeURIComponent(id)}/locacoes`, deps);
+  if (!r.ok) return r;
+  const itens: LocacaoResumo[] = itensDoCorpo(r.json).map((row) => ({
+    locacao_id: texto(row.locacao_id) ?? texto(row.id) ?? "",
+    status: texto(row.status),
+    inicio: texto(row.inicio) ?? texto(row.data_inicio),
+    termino: texto(row.termino) ?? texto(row.data_termino),
+    veiculo: texto(row.veiculo) ?? texto(row.veiculo_modelo),
+    valor: dinheiro(row.valor) ?? dinheiro(row.valor_total),
+    renovacao: texto(row.renovacao) ?? texto(row.prorrogacao),
+  })).filter((x) => x.locacao_id);
+  return { ok: true, itens };
+}
+
+export async function consultarFinanceiro(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoFinanceiro> {
+  const id = locatarioId.trim();
+  if (!id) return { ok: false, codigo: "entrada_invalida" };
+  const r = await getJsonAutenticado(admin, orgId, `/api/crm/locatario/${encodeURIComponent(id)}/financeiro`, deps);
+  if (!r.ok) return r;
+  const parcelas: ParcelaResumo[] = itensDoCorpo(r.json).map((row) => ({
+    parcela_id: texto(row.parcela_id) ?? texto(row.id) ?? "",
+    vencimento: texto(row.vencimento),
+    valor: dinheiro(row.valor),
+    status: texto(row.status),
+    atraso_dias: inteiro(row.atraso_dias) ?? inteiro(row.days_late),
+  })).filter((x) => x.parcela_id);
+  return {
+    ok: true,
+    parcelas,
+    boleto_url: texto(r.data.boleto_url),
+    pix_url: texto(r.data.pix_url),
+    portal_url: texto(r.data.portal_url),
+  };
+}
+
+export async function obterSegundaVia(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoSegundaVia> {
+  const id = locatarioId.trim();
+  if (!id) return { ok: false, codigo: "entrada_invalida" };
+  const r = await getJsonAutenticado(admin, orgId, `/api/crm/locatario/${encodeURIComponent(id)}/segunda-via`, deps);
+  if (!r.ok) return r;
+  return {
+    ok: true,
+    boleto_url: texto(r.data.boleto_url),
+    pix_url: texto(r.data.pix_url),
+    portal_url: texto(r.data.portal_url),
+  };
+}
+
+export async function consultarDisponibilidade(
+  admin: SupabaseClient,
+  orgId: string,
+  filtro: { categoria?: unknown; unidade?: unknown; inicio?: unknown; fim?: unknown },
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoDisponibilidade> {
+  const inicio = texto(filtro.inicio);
+  const fim = texto(filtro.fim);
+  if (!inicio || !fim) return { ok: false, codigo: "entrada_invalida" };
+  const r = await getJsonAutenticado(admin, orgId, "/api/crm/disponibilidade", deps, {
+    categoria: texto(filtro.categoria) ?? undefined,
+    unidade: texto(filtro.unidade) ?? undefined,
+    inicio,
+    fim,
+  });
+  if (!r.ok) return r;
+  const raw = texto(r.data.situacao)?.toLowerCase();
+  const situacao =
+    raw === "disponivel" || raw === "indisponivel" || raw === "consulta_indisponivel"
+      ? raw
+      : "consulta_indisponivel";
+  return {
+    ok: true,
+    situacao,
+    categoria: texto(r.data.categoria),
+    unidade: texto(r.data.unidade),
+    inicio: texto(r.data.inicio) ?? inicio,
+    fim: texto(r.data.fim) ?? fim,
+    preco: dinheiro(r.data.preco),
+  };
+}
+
+export async function consultarManutencao(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoListaOperacional> {
+  return consultarListaOperacional(admin, orgId, locatarioId, "manutencao", deps);
+}
+
+export async function consultarMultas(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoListaOperacional> {
+  return consultarListaOperacional(admin, orgId, locatarioId, "multas", deps);
+}
+
+export async function consultarSinistros(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoListaOperacional> {
+  return consultarListaOperacional(admin, orgId, locatarioId, "sinistros", deps);
+}
+
+export async function consultarVistoria(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoListaOperacional> {
+  return consultarListaOperacional(admin, orgId, locatarioId, "vistoria", deps);
+}
+
+export async function consultarDocumentos(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoListaOperacional> {
+  return consultarListaOperacional(admin, orgId, locatarioId, "documentos", deps);
+}
+
+async function consultarListaOperacional(
+  admin: SupabaseClient,
+  orgId: string,
+  locatarioId: string,
+  recurso: "manutencao" | "multas" | "sinistros" | "vistoria" | "documentos",
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number },
+): Promise<ResultadoListaOperacional> {
+  const id = locatarioId.trim();
+  if (!id) return { ok: false, codigo: "entrada_invalida" };
+  const r = await getJsonAutenticado(admin, orgId, `/api/crm/locatario/${encodeURIComponent(id)}/${recurso}`, deps);
+  if (!r.ok) return r;
+  const itens: ItemOperacional[] = itensDoCorpo(r.json).map((row) => ({
+    data: texto(row.data) ?? texto(row.data_evento),
+    descricao: texto(row.descricao) ?? texto(row.titulo) ?? recurso,
+    valor: dinheiro(row.valor),
+    status: texto(row.status),
+  }));
+  return { ok: true, itens };
+}
+
+export async function listarUnidades(
+  admin: SupabaseClient,
+  orgId: string,
+  deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<ResultadoUnidades> {
+  const r = await getJsonAutenticado(admin, orgId, "/api/crm/unidades", deps);
+  if (!r.ok) return r;
+  const itens: UnidadeResumo[] = itensDoCorpo(r.json).map((row) => ({
+    unidade_id: texto(row.unidade_id) ?? texto(row.id) ?? "",
+    nome: texto(row.nome) ?? "",
+    cidade: texto(row.cidade),
+  })).filter((x) => x.unidade_id && x.nome);
+  return { ok: true, itens };
 }

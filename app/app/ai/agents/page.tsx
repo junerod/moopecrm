@@ -84,6 +84,7 @@ export default async function AgentsListPage() {
       <LandingAssistentes
         packAtivo={packEstaAtivo(pack)}
         packLabel={definition?.label ?? null}
+        packId={definition?.id ?? null}
         cards={cards}
         canWrite={canWrite}
       />

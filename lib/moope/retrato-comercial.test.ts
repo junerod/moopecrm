@@ -60,9 +60,10 @@ describe("retrato comercial MOOPE", () => {
     expect(cache?.placa).toBeNull();
   });
 
-  it("disponibilidade e P3 continuam NAO_EXISTE", () => {
-    expect(AUDITORIA_MOOPE_GESTAO.disponibilidade).toBe("NAO_EXISTE");
-    expect(AUDITORIA_MOOPE_GESTAO.checklist).toBe("NAO_EXISTE");
+  it("cliente existe e o contrato read-only avançou para PARCIAL", () => {
     expect(AUDITORIA_MOOPE_GESTAO.cliente).toBe("EXISTE");
+    expect(AUDITORIA_MOOPE_GESTAO.disponibilidade).toBe("PARCIAL");
+    expect(AUDITORIA_MOOPE_GESTAO.checklist).toBe("PARCIAL");
+    expect(AUDITORIA_MOOPE_GESTAO.rastreamento).toBe("NAO_EXISTE");
   });
 });

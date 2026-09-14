@@ -255,8 +255,8 @@ describe("tool catalog amigável", () => {
     expect(sem.find((c) => c.key === "multas")?.disponivel).toBe(false);
     const com = catalogoAmigavel(pack.capabilities, true);
     expect(com.find((c) => c.key === "clientes")?.disponivel).toBe(true);
-    expect(com.find((c) => c.key === "financeiro")?.tool_id).toBe("moope_get_retrato");
-    expect(com.find((c) => c.key === "sinistros")?.disponivel).toBe(false);
+    expect(com.find((c) => c.key === "financeiro")?.tool_id).toBe("moope_consultar_financeiro");
+    expect(com.find((c) => c.key === "sinistros")?.disponivel).toBe(true);
   });
 });
 

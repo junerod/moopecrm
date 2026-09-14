@@ -12,6 +12,7 @@ import {
   Users,
   ShieldCheck,
   Palette,
+  Pulse,
   ArrowRight,
 } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   // completude que o vigia varre só aquela raiz. O admin de plataforma tem
   // navegação própria, e é esta lista.
   { href: "/admin/marca", label: "Marca", icon: Palette },
+  { href: "/admin/diagnostico", label: "Diagnóstico", icon: Pulse },
 ];
 
 interface AdminSidebarProps {

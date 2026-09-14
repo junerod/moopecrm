@@ -6,7 +6,7 @@ import { ModeloDoNegocio } from "@/components/negocio/ModeloDoNegocio";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { packEstaAtivo } from "@/lib/business-packs/apresentacao";
-import { resolverPack } from "@/lib/business-packs/catalogo";
+import { catalogoDePacks, resolverPack } from "@/lib/business-packs/catalogo";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
 import { lerEmpresaDoSettings } from "@/lib/negocio/ficha";
 import { carregarEstadoDoSetup } from "@/lib/negocio/estado";
@@ -46,6 +46,7 @@ export default async function MeuNegocioPage() {
       <ModeloDoNegocio
         pack={pack}
         definition={definition}
+        catalogo={catalogoDePacks()}
         assistentesConfigurados={assistentesConfigurados ?? 0}
         podeInstalar={podeEditar}
         packAtivo={packEstaAtivo(pack)}

@@ -9,14 +9,13 @@ import { Cartao } from "@/app/onboarding/_components/Cartao";
 import { Button } from "@/components/ui/button";
 import { Check } from "@/lib/ui/icons";
 
-const ITENS = [
+const ITENS_BASE = [
   "Funil comercial",
   "Atendimento",
   "Agentes prontos",
   "Automações",
   "Conhecimento",
   "Campanhas",
-  "Integração MOOPE Gestão",
 ];
 
 export function PackReviewForm({ label }: { label: string }) {
@@ -28,14 +27,14 @@ export function PackReviewForm({ label }: { label: string }) {
     <Cartao>
       {pronto ? (
         <div className="space-y-3" data-testid="pack-instalado">
-          <h3 className="text-lg font-semibold text-white">Seu CRM para locadora está pronto</h3>
+          <h3 className="text-lg font-semibold text-white">Seu CRM para {label.toLowerCase()} está pronto</h3>
           <p className="text-sm text-zinc-400">
             Você já pode conectar o WhatsApp, ensinar os assistentes e começar a atender.
           </p>
         </div>
       ) : (
         <ul className="space-y-2">
-          {ITENS.map((item) => (
+          {[...ITENS_BASE, ...(label.toLowerCase().includes("locadora") ? ["Integração MOOPE Gestão"] : [])].map((item) => (
             <li key={item} className="flex items-center gap-2 text-sm text-zinc-200">
               <Check size={16} className="text-accent" aria-hidden />
               {item}
@@ -63,7 +62,7 @@ export function PackReviewForm({ label }: { label: string }) {
         avancar={
           <Button
             type="button"
-            data-testid="preparar-locadora"
+            data-testid={label.toLowerCase().includes("locadora") ? "preparar-locadora" : "preparar-pack"}
             disabled={pending || pulando}
             onClick={() => {
               start(async () => {

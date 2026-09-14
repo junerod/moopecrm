@@ -74,6 +74,7 @@ const INTENTS_OPERACIONAIS = new Set([
   "pagamento",
   "disponibilidade",
   "preco",
+  "honorario",
 ]);
 
 const INTENTS_SENSIVEIS = new Set([
@@ -81,6 +82,10 @@ const INTENTS_SENSIVEIS = new Set([
   "manutencao",
   "sinistro",
   "multa",
+  "andamento",
+  "decisao",
+  "prazo",
+  "jurisprudencia",
 ]);
 
 export function intentEhOperacional(intent: string): boolean {

@@ -5,7 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { PERGUNTA_DE_TESTE, TEXTO_DO_PACK } from "@/lib/business-packs/apresentacao";
+import { perguntaDeTeste } from "@/lib/business-packs/apresentacao";
+import { resolverPack } from "@/lib/business-packs/catalogo";
 import { cn } from "@/lib/utils";
 
 export type CardAssistente = {
@@ -29,11 +30,13 @@ type ResultadoTeste = {
 export function LandingAssistentes({
   packAtivo,
   packLabel,
+  packId,
   cards,
   canWrite,
 }: {
   packAtivo: boolean;
   packLabel: string | null;
+  packId?: string | null;
   cards: CardAssistente[];
   canWrite: boolean;
 }) {
@@ -42,9 +45,10 @@ export function LandingAssistentes({
   const [testando, setTestando] = useState(false);
 
   async function testar(card: CardAssistente) {
-    const mensagem =
-      (card.specialtyKey && PERGUNTA_DE_TESTE[card.specialtyKey]) ||
-      "Oi, preciso de ajuda.";
+    const definition = packId ? resolverPack(packId) : null;
+    const mensagem = card.specialtyKey
+      ? perguntaDeTeste(definition, card.specialtyKey)
+      : "Oi, preciso de ajuda.";
     setAberto(card.id);
     setTestando(true);
     setTeste(null);
@@ -80,7 +84,7 @@ export function LandingAssistentes({
           ) : null}
           {packAtivo ? (
             <p className="text-sm text-muted-foreground">
-              Seu Pack Locadora possui {cards.filter((c) => c.specialtyKey).length} assistentes
+              Seu pack {packLabel} possui {cards.filter((c) => c.specialtyKey).length} assistentes
               prontos.
             </p>
           ) : null}
@@ -103,8 +107,7 @@ export function LandingAssistentes({
 
       <ul className="grid gap-3 md:grid-cols-2" data-testid="meus-assistentes">
         {cards.map((card) => {
-          const papel =
-            (card.specialtyKey && TEXTO_DO_PACK[card.specialtyKey]?.papel) || card.description;
+          const papel = card.description;
           return (
             <li
               key={card.id}

@@ -27,16 +27,16 @@ export type SituacaoDoItem = "EXISTE" | "PARCIAL" | "NAO_EXISTE";
 export const AUDITORIA_MOOPE_GESTAO: Record<ItemMoopeAuditado, SituacaoDoItem> = {
   cliente: "EXISTE",
   veiculo: "PARCIAL",
-  disponibilidade: "NAO_EXISTE",
+  disponibilidade: "PARCIAL",
   locacao: "PARCIAL",
   contrato: "PARCIAL",
-  parcelas: "NAO_EXISTE",
+  parcelas: "PARCIAL",
   boleto_pix: "PARCIAL",
-  checklist: "NAO_EXISTE",
-  vistoria: "NAO_EXISTE",
-  manutencao: "NAO_EXISTE",
-  multa: "NAO_EXISTE",
-  sinistro: "NAO_EXISTE",
+  checklist: "PARCIAL",
+  vistoria: "PARCIAL",
+  manutencao: "PARCIAL",
+  multa: "PARCIAL",
+  sinistro: "PARCIAL",
   rastreamento: "NAO_EXISTE",
 };
 

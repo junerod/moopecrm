@@ -115,6 +115,38 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
               clientes.
             </span>
           </label>
+          <label
+            data-testid="pack-advocacia-card"
+            className={cn(
+              "flex cursor-pointer flex-col gap-2 rounded-xl border p-4 transition-colors",
+              packId === "escritorio_advocacia"
+                ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                : "border-white/10 hover:border-accent/40 hover:bg-white/5",
+            )}
+          >
+            <input
+              type="radio"
+              name="ready_model_id"
+              value="advocacia"
+              checked={packId === "escritorio_advocacia"}
+              onChange={() => {
+                setRamo("advocacia");
+                setSubtype(null);
+                setPackId("escritorio_advocacia");
+              }}
+              className="sr-only"
+            />
+            <ScalesSimple
+              size={22}
+              weight={packId === "escritorio_advocacia" ? "fill" : "regular"}
+              className={packId === "escritorio_advocacia" ? "text-accent" : "text-zinc-400"}
+              aria-hidden
+            />
+            <span className="text-sm font-medium text-zinc-100">Escritório de advocacia</span>
+            <span className="text-xs leading-snug text-zinc-500">
+              Organize novos atendimentos, clientes, documentos, retornos e relacionamento.
+            </span>
+          </label>
           <div className="grid gap-2 sm:grid-cols-2">
             {RAMOS_DO_NEGOCIO.map((r) => {
               const Icone = ICONE_DO_RAMO[r.id];
@@ -136,7 +168,7 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
                     checked={marcada}
                     onChange={() => {
                       setRamo(r.id);
-                      setPackId("");
+                      setPackId(r.id === "advocacia" ? "escritorio_advocacia" : "");
                       if (r.id !== "locacao") setSubtype(null);
                     }}
                     className="sr-only"
@@ -248,7 +280,9 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
                 ? "Salvando..."
                 : packId === "locadora_veiculos"
                   ? "Usar modelo para locadora"
-                  : "Continuar"}
+                  : packId === "escritorio_advocacia"
+                    ? "Usar modelo para escritório"
+                    : "Continuar"}
             </Button>
           }
         />

@@ -7,13 +7,24 @@
 import { z } from "zod";
 
 import {
+  consultarDisponibilidade,
+  consultarDocumentos,
+  consultarFinanceiro,
+  consultarLocacao,
+  consultarManutencao,
+  consultarMultas,
+  consultarSinistros,
+  consultarVistoria,
   getAtendimento,
   getRetratoInvestidor,
   getRetratoLocatario,
   listarOferta,
+  listarUnidades,
   lookupInvestidor,
   lookupLocatario,
+  obterSegundaVia,
 } from "@/lib/moope/cliente-locadora";
+import { resolverCriterioDeIdentidade } from "@/lib/business-packs/identidade";
 import { gravarRetratoNoContato } from "@/lib/moope/gravar-retrato";
 import type { McpToolDefinition } from "../types";
 
@@ -243,6 +254,232 @@ export const moopeGetRetratoInvestidor: McpToolDefinition<typeof retratoInvShape
   },
 };
 
+function mascararTelefone(telefone: string | null): string | null {
+  if (!telefone) return null;
+  const d = telefone.replace(/\D/g, "");
+  if (d.length < 8) return telefone;
+  return `${telefone.slice(0, 4)}****${telefone.slice(-2)}`;
+}
+
+const clienteShape = {
+  external_id: z.string().optional().describe("Id persistido do locatário na gestão."),
+  phone: z.string().optional().describe("Telefone em E.164."),
+  identificador: z.string().optional().describe("Identificador explícito informado pelo cliente."),
+  cpf: z.string().optional().describe("CPF ou CNPJ só quando necessário."),
+  nome: z.string().optional().describe("Nome sozinho nunca identifica."),
+};
+
+export const moopeConsultarCliente: McpToolDefinition<typeof clienteShape> = {
+  name: "moope_consultar_cliente",
+  description:
+    "Perfil resumido do locatário. Identidade: vínculo persistido, telefone, identificador explícito ou CPF. Nome sozinho não identifica. Ambíguo: falha fechada.",
+  inputSchema: clienteShape,
+  category: "read",
+  requiresRole: "agent",
+  requiresScope: "mcp:read",
+  handler: async (input, ctx) => {
+    const id = resolverCriterioDeIdentidade({
+      external_id: input.external_id,
+      telefone: input.phone,
+      identificador: input.identificador,
+      cpf_cnpj: input.cpf,
+      nome: input.nome,
+    });
+    if (!id.ok) {
+      return {
+        encontrado: false,
+        aviso:
+          id.motivo === "nome_sozinho"
+            ? "Nome sozinho não identifica. Peça telefone, contrato ou documento."
+            : "Falta um identificador seguro. Peça telefone ou documento.",
+      };
+    }
+    const r = await lookupLocatario(ctx.supabase, ctx.organizationId, {
+      external_id: input.external_id ?? input.identificador,
+      phone: input.phone,
+      cpf: input.cpf,
+    });
+    if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined);
+    const retrato = await getRetratoLocatario(ctx.supabase, ctx.organizationId, r.locatario_id);
+    if (!retrato.ok) {
+      return {
+        encontrado: true,
+        locatario_id: r.locatario_id,
+        nome: r.nome,
+        contrato_status: r.contrato_status,
+        aviso: "Identifiquei o cliente, mas não consegui o detalhe agora.",
+      };
+    }
+    return {
+      encontrado: true,
+      locatario_id: retrato.locatario_id,
+      nome: retrato.nome,
+      status: retrato.contrato_status,
+      telefone_mascarado: mascararTelefone(retrato.telefone),
+      contrato_ativo: retrato.contrato_titulo,
+      veiculo_atual: retrato.veiculo_modelo,
+      situacao: retrato.faixa,
+    };
+  },
+};
+
+const idShape = {
+  locatario_id: z.string().min(1).max(80).describe("Id do locatário (do lookup)."),
+};
+
+export const moopeConsultarLocacao: McpToolDefinition<typeof idShape> = {
+  name: "moope_consultar_locacao",
+  description: "Contratos/locações ativas: início, término, veículo e status. Só leitura.",
+  inputSchema: idShape,
+  category: "read",
+  requiresRole: "agent",
+  requiresScope: "mcp:read",
+  handler: async (input, ctx) => {
+    const r = await consultarLocacao(ctx.supabase, ctx.organizationId, input.locatario_id);
+    if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined);
+    return { encontrado: r.itens.length > 0, itens: r.itens };
+  },
+};
+
+export const moopeConsultarFinanceiro: McpToolDefinition<typeof idShape> = {
+  name: "moope_consultar_financeiro",
+  description: "Parcelas, vencimentos, atraso e links oficiais já existentes. Não emite cobrança.",
+  inputSchema: idShape,
+  category: "read",
+  requiresRole: "agent",
+  requiresScope: "mcp:read",
+  handler: async (input, ctx) => {
+    const r = await consultarFinanceiro(ctx.supabase, ctx.organizationId, input.locatario_id);
+    if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined);
+    return {
+      encontrado: r.parcelas.length > 0 || Boolean(r.boleto_url || r.pix_url || r.portal_url),
+      parcelas: r.parcelas,
+      boleto_url: r.boleto_url,
+      pix_url: r.pix_url,
+      portal_url: r.portal_url,
+      aviso: "Links só os que a gestão já gerou. Não invente cobrança.",
+    };
+  },
+};
+
+export const moopeObterSegundaVia: McpToolDefinition<typeof idShape> = {
+  name: "moope_obter_segunda_via",
+  description: "Devolve boleto/PIX/portal já existentes. Não emite cobrança nova.",
+  inputSchema: idShape,
+  category: "read",
+  requiresRole: "agent",
+  requiresScope: "mcp:read",
+  handler: async (input, ctx) => {
+    const r = await obterSegundaVia(ctx.supabase, ctx.organizationId, input.locatario_id);
+    if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined);
+    const link = r.boleto_url ?? r.pix_url ?? r.portal_url;
+    return {
+      encontrado: Boolean(link),
+      boleto_url: r.boleto_url,
+      pix_url: r.pix_url,
+      portal_url: r.portal_url,
+      aviso: link ? "Pode enviar este link oficial." : "Não há segunda via pronta. Não invente. Humano.",
+    };
+  },
+};
+
+const dispShape = {
+  inicio: z.string().min(8).describe("Data início YYYY-MM-DD."),
+  fim: z.string().min(8).describe("Data fim YYYY-MM-DD."),
+  categoria: z.string().optional(),
+  unidade: z.string().optional(),
+};
+
+export const moopeConsultarDisponibilidade: McpToolDefinition<typeof dispShape> = {
+  name: "moope_consultar_disponibilidade",
+  description:
+    "Disponibilidade REAL por período. Nunca use status genérico da frota. Sem período, não afirma.",
+  inputSchema: dispShape,
+  category: "read",
+  requiresRole: "agent",
+  requiresScope: "mcp:read",
+  handler: async (input, ctx) => {
+    const r = await consultarDisponibilidade(ctx.supabase, ctx.organizationId, input);
+    if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined, "lead");
+    return {
+      encontrado: r.situacao !== "consulta_indisponivel",
+      situacao: r.situacao,
+      categoria: r.categoria,
+      unidade: r.unidade,
+      inicio: r.inicio,
+      fim: r.fim,
+      preco: r.preco,
+      aviso:
+        r.situacao === "consulta_indisponivel"
+          ? "Não consegui consultar essa informação agora."
+          : r.situacao === "disponivel"
+            ? "Disponível no período informado pela gestão."
+            : "Indisponível no período informado pela gestão.",
+    };
+  },
+};
+
+function listaTool(
+  name: string,
+  description: string,
+  consultar: typeof consultarManutencao,
+): McpToolDefinition<typeof idShape> {
+  return {
+    name,
+    description,
+    inputSchema: idShape,
+    category: "read",
+    requiresRole: "agent",
+    requiresScope: "mcp:read",
+    handler: async (input, ctx) => {
+      const r = await consultar(ctx.supabase, ctx.organizationId, input.locatario_id);
+      if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined);
+      return { encontrado: r.itens.length > 0, itens: r.itens };
+    },
+  };
+}
+
+export const moopeConsultarManutencao = listaTool(
+  "moope_consultar_manutencao",
+  "Manutenção autorizada para o locatário. Sem detalhe técnico desnecessário.",
+  consultarManutencao,
+);
+export const moopeConsultarMultas = listaTool(
+  "moope_consultar_multas",
+  "Multas do cliente/contrato autorizado: data, resumo, valor e status.",
+  consultarMultas,
+);
+export const moopeConsultarSinistros = listaTool(
+  "moope_consultar_sinistros",
+  "Sinistros autorizados. Só leitura.",
+  consultarSinistros,
+);
+export const moopeConsultarVistoria = listaTool(
+  "moope_consultar_vistoria",
+  "Vistoria/checklist autorizado. Referência, não arquivo privado de outra pessoa.",
+  consultarVistoria,
+);
+export const moopeConsultarDocumentos = listaTool(
+  "moope_consultar_documentos",
+  "Documentos autorizados do locatário identificado. Não envie arquivo de outra pessoa.",
+  consultarDocumentos,
+);
+
+const emptyUnidades = {};
+export const moopeListarUnidades: McpToolDefinition<typeof emptyUnidades> = {
+  name: "moope_listar_unidades",
+  description: "Unidades/filiais que a gestão realmente tem. Não invente filial.",
+  inputSchema: {},
+  category: "read",
+  requiresRole: "agent",
+  requiresScope: "mcp:read",
+  handler: async (_input, ctx) => {
+    const r = await listarUnidades(ctx.supabase, ctx.organizationId);
+    if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined, "lead");
+    return { encontrado: r.itens.length > 0, itens: r.itens };
+  },
+};
+
 export const TOOLS_IDS_OPERADOR_LOCADORA = [
   "moope_lookup_locatario",
   "moope_get_retrato",
@@ -250,4 +487,15 @@ export const TOOLS_IDS_OPERADOR_LOCADORA = [
   "moope_listar_oferta",
   "moope_lookup_investidor",
   "moope_get_retrato_investidor",
+  "moope_consultar_cliente",
+  "moope_consultar_locacao",
+  "moope_consultar_financeiro",
+  "moope_obter_segunda_via",
+  "moope_consultar_disponibilidade",
+  "moope_consultar_manutencao",
+  "moope_consultar_multas",
+  "moope_consultar_sinistros",
+  "moope_consultar_vistoria",
+  "moope_consultar_documentos",
+  "moope_listar_unidades",
 ] as const;

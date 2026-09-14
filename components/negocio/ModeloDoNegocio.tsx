@@ -2,22 +2,36 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { resumoDoPack } from "@/lib/business-packs/apresentacao";
-import type { BusinessPackDefinition, BusinessPackGravado } from "@/lib/business-packs/tipos";
+import type { BusinessPackDefinition, BusinessPackGravado, BusinessPackId } from "@/lib/business-packs/tipos";
+
+const ATALHOS_DO_PACK = [
+  { href: "/app/ai/agents", label: "Ver assistentes" },
+  { href: "/app/kanban", label: "Abrir funil" },
+  { href: "/app/ai/knowledge/sources", label: "Adicionar conhecimento" },
+  { href: "/app/ai/followups", label: "Ver automações" },
+  { href: "/app/campanhas/nova", label: "Criar campanha" },
+];
 
 export function ModeloDoNegocio({
   pack,
   definition,
+  catalogo,
   assistentesConfigurados,
   podeInstalar,
   packAtivo,
 }: {
   pack: BusinessPackGravado | null;
   definition: BusinessPackDefinition | null;
+  catalogo: Array<{ id: BusinessPackId; label: string; description: string }>;
   assistentesConfigurados: number;
   podeInstalar: boolean;
   packAtivo: boolean;
 }) {
   const resumo = definition ? resumoDoPack(definition) : null;
+  const testidAtivo =
+    pack?.id === "escritorio_advocacia" ? "pack-escritorio_advocacia-ativo" : "pack-locadora-ativo";
+  const testidInativo =
+    pack?.id === "escritorio_advocacia" ? "pack-escritorio_advocacia-inativo" : "pack-locadora-inativo";
 
   if (pack && definition && resumo) {
     return (
@@ -31,12 +45,12 @@ export function ModeloDoNegocio({
           </p>
           <h2
             className="mt-1 text-lg font-semibold tracking-tight"
-            data-testid={packAtivo ? "pack-locadora-ativo" : "pack-locadora-inativo"}
+            data-testid={packAtivo ? testidAtivo : testidInativo}
           >
-            Locadora de veículos
+            {definition.label}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {packAtivo ? "Pack ativo" : "Pack instalado e desativado"}
+            {packAtivo ? `Pack ativo: ${definition.label}` : "Pack instalado e desativado"}
           </p>
         </div>
         <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
@@ -52,6 +66,15 @@ export function ModeloDoNegocio({
           <li>Respostas rápidas</li>
           <li>Campanhas</li>
         </ul>
+        {packAtivo ? (
+          <nav aria-label="Atalhos do modelo" className="flex flex-wrap gap-2">
+            {ATALHOS_DO_PACK.map((a) => (
+              <Button key={a.href} asChild variant="outline" size="sm">
+                <Link href={a.href}>{a.label}</Link>
+              </Button>
+            ))}
+          </nav>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button asChild>
             <Link href={packAtivo ? "/app/ai/agents" : "/app/modelos-prontos"}>
@@ -83,28 +106,32 @@ export function ModeloDoNegocio({
           CRM.
         </p>
       </div>
-      <div className="rounded-[12px] border border-[var(--color-border)] p-4">
-        <p className="font-medium">Locadora de veículos</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Atendimento, vendas, disponibilidade, cobranças e relacionamento, já organizados para
-          uma locadora.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {podeInstalar ? (
-            <Button asChild>
-              <Link href="/app/modelos-prontos" data-testid="ativar-pack-locadora">
-                Ativar Pack Locadora
-              </Link>
-            </Button>
-          ) : (
-            <p className="text-sm text-muted-foreground">Peça a quem administra para ativar.</p>
-          )}
-          <Button asChild variant="outline">
-            <Link href="/app/modelos-prontos#o-que-instala" data-testid="ver-o-que-sera-instalado">
-              Ver o que será instalado
-            </Link>
-          </Button>
-        </div>
+      <div className="grid gap-3">
+        {catalogo.map((item) => (
+          <div key={item.id} className="rounded-[12px] border border-[var(--color-border)] p-4">
+            <p className="font-medium">{item.label}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {podeInstalar ? (
+                <Button asChild>
+                  <Link
+                    href={`/app/modelos-prontos?pack=${item.id}`}
+                    data-testid={`ativar-pack-${item.id === "locadora_veiculos" ? "locadora" : item.id}`}
+                  >
+                    Ativar modelo
+                  </Link>
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">Peça a quem administra para ativar.</p>
+              )}
+              <Button asChild variant="outline">
+                <Link href="/app/modelos-prontos#o-que-instala" data-testid="ver-o-que-sera-instalado">
+                  Ver o que será instalado
+                </Link>
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

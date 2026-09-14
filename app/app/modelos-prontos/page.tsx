@@ -18,7 +18,12 @@ import { ModelosProntosClient } from "./_client";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Modelos prontos" };
 
-export default async function ModelosProntosPage() {
+export default async function ModelosProntosPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ pack?: string }>;
+}) {
+  const query = searchParams ? await searchParams : {};
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) redirect("/app");
@@ -34,8 +39,11 @@ export default async function ModelosProntosPage() {
     .maybeSingle();
 
   const instalado = lerPackGravado(org?.settings);
+  const pedido = typeof query.pack === "string" ? resolverPack(query.pack) : null;
   const definition =
-    (instalado ? resolverPack(instalado.id) : null) ?? resolverPack("locadora_veiculos");
+    (instalado ? resolverPack(instalado.id) : null) ??
+    pedido ??
+    resolverPack("locadora_veiculos");
   const detalhes = definition ? detalhesDoPack(definition) : null;
 
   const { data: funil } = await supabase
@@ -57,15 +65,43 @@ export default async function ModelosProntosPage() {
 
   const settings = (org?.settings ?? {}) as Record<string, unknown>;
   const aiMode = typeof settings.ai_mode === "string" ? settings.ai_mode : "off";
+  const precisaGestao = Boolean(definition?.capabilities.some((c) => c.tool_id?.startsWith("moope_")));
+  if (!precisaGestao) gestao = "nao_disponivel";
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <PageHeader
         icon={<AppIcon icon={Car} />}
         titulo="Modelos prontos"
-        descricao="Veja os 6 assistentes, o funil e o que liga ou não. Depois ative ou desative o conjunto."
+        descricao="Veja os assistentes, o funil e o que liga ou não. Depois ative ou desative o conjunto."
       />
       <ModelosProntosClient
+        packLabel={definition?.label ?? "Modelo pronto"}
+        packDescricao={definition?.description ?? ""}
+        packAjudaTitulo={`Como usar o modelo ${definition?.label ?? ""}`.trim()}
+        packAjudaTexto={
+          definition?.id === "escritorio_advocacia"
+            ? "Ativar prepara a operação. Não manda mensagem sozinha. Preencha as pastas com o material do escritório — nunca legislação genérica da internet. Automações nascem desligadas."
+            : "Ativar prepara a operação. Não manda mensagem sozinha. Preencha as pastas de conhecimento com as regras reais, publique cada assistente e ligue a automação só quando o texto estiver certo."
+        }
+        packAlvoId={definition?.id ?? "locadora_veiculos"}
+        packAjudaPassos={
+          definition?.id === "escritorio_advocacia"
+            ? [
+                "Ative o modelo nesta tela (administrador).",
+                "Conecte o WhatsApp em Canais › Conexões.",
+                "Coloque nas pastas o material do próprio escritório.",
+                "Abra cada assistente e publique. Sem publicar, ele não atende.",
+                "Automações nascem desligadas — ligue uma por uma.",
+              ]
+            : [
+                "Ative o modelo nesta tela (administrador).",
+                "Conecte o WhatsApp em Canais › Conexões.",
+                "Coloque nas pastas as regras: diária, caução, documentos.",
+                "Abra cada assistente e publique. Sem publicar, ele não atende.",
+                "Automações nascem desligadas — ligue uma por uma.",
+              ]
+        }
         podeInstalar={
           user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin
         }

@@ -2,7 +2,7 @@
  * Texto de produto do Pack — sem ids internos, sem MCP, sem RAG.
  * O instalador não passa daqui; só a tela lê.
  */
-import type { BusinessPackDefinition, BusinessPackGravado } from "@/lib/business-packs/tipos";
+import type { BusinessPackDefinition, BusinessPackGravado, BusinessPackId } from "@/lib/business-packs/tipos";
 
 export const TEXTO_DO_PACK: Record<
   string,
@@ -32,6 +32,41 @@ export const TEXTO_DO_PACK: Record<
     oQueFaz: "Follow-up e reativação",
     papel: "Follow-up e reativação",
   },
+  documentos: {
+    oQueFaz: "Pede documentos e confirma pendências",
+    papel: "Checklist documental",
+  },
+};
+
+const TEXTO_ADVOCACIA: Record<string, { oQueFaz: string; papel: string }> = {
+  recepcao: {
+    oQueFaz: "Recebe, identifica cliente ou novo contato e encaminha",
+    papel: "Recepção e triagem",
+  },
+  comercial: {
+    oQueFaz: "Qualifica novos clientes e agenda consulta",
+    papel: "Qualificação, origem e follow-up comercial",
+  },
+  atendimento: {
+    oQueFaz: "Orienta o lado administrativo do atendimento",
+    papel: "Agendamento, documentos e encaminhamento",
+  },
+  documentos: {
+    oQueFaz: "Pede documentos faltantes e confirma recebimento",
+    papel: "Checklist documental",
+  },
+  financeiro: {
+    oQueFaz: "Informa honorários e parcelas só com fonte confiável",
+    papel: "Honorários, vencimentos e links oficiais",
+  },
+  relacionamento: {
+    oQueFaz: "Follow-up, satisfação e reativação",
+    papel: "Retorno e relacionamento",
+  },
+};
+
+const TEXTO_POR_PACK: Partial<Record<BusinessPackId, Record<string, { oQueFaz: string; papel: string }>>> = {
+  escritorio_advocacia: TEXTO_ADVOCACIA,
 };
 
 export const PERGUNTA_DE_TESTE: Record<string, string> = {
@@ -41,7 +76,35 @@ export const PERGUNTA_DE_TESTE: Record<string, string> = {
   disponibilidade: "Tem SUV disponível?",
   atendimento: "Quero prorrogar minha locação.",
   relacionamento: "Faz tempo que não alugo. Ainda trabalham com vocês?",
+  documentos: "Quais documentos preciso levar?",
 };
+
+const PERGUNTA_ADVOCACIA: Record<string, string> = {
+  recepcao: "Quero falar com um advogado sobre meu caso.",
+  comercial: "Quero marcar uma consulta.",
+  atendimento: "Como está meu processo?",
+  documentos: "Quais documentos preciso levar?",
+  financeiro: "Quanto custa?",
+  relacionamento: "Estou passando para saber se conseguiu avaliar as informações.",
+};
+
+export function textoDaEspecialidade(
+  definition: BusinessPackDefinition | null,
+  key: string,
+): { oQueFaz: string; papel: string } | undefined {
+  if (definition) {
+    const doPack = TEXTO_POR_PACK[definition.id]?.[key];
+    if (doPack) return doPack;
+  }
+  return TEXTO_DO_PACK[key];
+}
+
+export function perguntaDeTeste(definition: BusinessPackDefinition | null, key: string): string {
+  if (definition?.id === "escritorio_advocacia" && PERGUNTA_ADVOCACIA[key]) {
+    return PERGUNTA_ADVOCACIA[key];
+  }
+  return PERGUNTA_DE_TESTE[key] ?? "Oi, preciso de ajuda.";
+}
 
 export function chaveDaEspecialidade(config: unknown): string | null {
   if (!config || typeof config !== "object") return null;
@@ -62,7 +125,7 @@ export function especialidadeDoAgente(
   return {
     key: spec.key,
     name: spec.name,
-    description: TEXTO_DO_PACK[spec.key]?.oQueFaz ?? spec.description,
+    description: textoDaEspecialidade(definition, spec.key)?.oQueFaz ?? spec.description,
     isPrincipal: Boolean(spec.is_default),
   };
 }
@@ -87,8 +150,8 @@ export function detalhesDoPack(definition: BusinessPackDefinition) {
     assistentes: definition.specialties.map((s) => ({
       key: s.key,
       name: s.name,
-      oQueFaz: TEXTO_DO_PACK[s.key]?.oQueFaz ?? s.description,
-      papel: TEXTO_DO_PACK[s.key]?.papel ?? s.description,
+      oQueFaz: textoDaEspecialidade(definition, s.key)?.oQueFaz ?? s.description,
+      papel: textoDaEspecialidade(definition, s.key)?.papel ?? s.description,
       principal: Boolean(s.is_default),
     })),
     etapas: definition.pipeline.etapas.map((e) => e.nome),

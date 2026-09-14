@@ -309,11 +309,29 @@ O CRM chama a locadora. Não é o JWT do operador. Não é `mop_` na query.
 A credencial é o **segredo de saída** da conexão (o mesmo HMAC da leva 1).
 
 ```
+GET {URL_DA_API}/api/crm/locatario?external_id=…
 GET {URL_DA_API}/api/crm/locatario?phone=+5511…
 GET {URL_DA_API}/api/crm/locatario?cpf=11ou14digitos
 GET {URL_DA_API}/api/crm/locatario/:id/retrato
+GET {URL_DA_API}/api/crm/locatario/:id/locacoes
+GET {URL_DA_API}/api/crm/locatario/:id/financeiro
+GET {URL_DA_API}/api/crm/locatario/:id/segunda-via
+GET {URL_DA_API}/api/crm/disponibilidade?inicio=&fim=&categoria=&unidade=
+GET {URL_DA_API}/api/crm/locatario/:id/manutencao
+GET {URL_DA_API}/api/crm/locatario/:id/multas
+GET {URL_DA_API}/api/crm/locatario/:id/sinistros
+GET {URL_DA_API}/api/crm/locatario/:id/vistoria
+GET {URL_DA_API}/api/crm/locatario/:id/documentos
+GET {URL_DA_API}/api/crm/unidades
 X-Moope-Signature: sha256=<hmac de "GET\n" + path + query>
 ```
+
+Bridge v1 é **somente GET**. Sem baixa, sem alterar contrato, sem bloquear veículo.
+Identidade: vínculo persistido → telefone → identificador explícito → CPF/CNPJ.
+Nome sozinho não identifica. 409 = ambíguo; falha fechada.
+Disponibilidade exige período. Status genérico da frota não vira “disponível”.
+Segunda via devolve link já existente — não emite cobrança.
+Mock oficial do contrato: `lib/moope/mock-gestao.ts`. Contrato E2E ≠ Gestão real.
 
 `URL_DA_API` é o campo **URL da API da locadora** na Integração MOOPE; se vazio, a origem do webhook.
 

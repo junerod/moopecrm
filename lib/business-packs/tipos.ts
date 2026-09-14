@@ -8,7 +8,7 @@ import type { AiMode } from "@/lib/schemas/settings";
 import type { PropostaDeFunil } from "@/lib/onboarding/proposta-de-funil";
 import type { ReadyModelId, ReadyModelSubtype, ReadyModelField, ReadyModelVocabulary } from "@/lib/ready-models/tipos";
 
-export const BUSINESS_PACK_IDS = ["locadora_veiculos"] as const;
+export const BUSINESS_PACK_IDS = ["locadora_veiculos", "escritorio_advocacia"] as const;
 export type BusinessPackId = (typeof BUSINESS_PACK_IDS)[number];
 
 export const CHAVE_PACK = "business_pack";
