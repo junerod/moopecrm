@@ -29,7 +29,7 @@ ser fonte sem ninguém decidir isso.
 | `retencao-de-historico.architecture.json` | poda do histórico (issue #261) — 16 peças, 18 arestas, 6 faixas; o que sai (`done`/`failed`/`dead` velho), o que tem dono e **não** sai (`pending`/`running`, e `dead` com aviso ainda aberto), e por que o expurgo do audit é uma `security definer` sem seletor de linha em vez de uma porta |
 | `legado-do-aparelho.architecture.json` | legado do aparelho — lista de Contatos + recorte recente no inbox (conectar + cron); arquivo antigo sob pedido no dossiê |
 | `moope-conector.architecture.json` | conector MOOPE — /provision nasce o tenant, chave + launch 90s + eventos + GET lookup/retrato |
-| `manual-do-operador.architecture.json` | tela `/app/manual` — índice, busca e as três portas (hub, ⌘K, Inbox vazio) |
+| `manual-do-operador.architecture.json` | tela `/app/manual` — índice ilustrado, busca e as portas (hub, ⌘K, Inbox vazio, Modelos prontos) |
 | `productization-3c.architecture.json` | Etapa 3C — Início / Meu Negócio / Conhecimento / Assistentes / Automações sobre engines já existentes |
 | `campanhas-premium.architecture.json` | Campanhas premium — wizard /nova, start assíncrono, worker único, dispatcher por canal |
 

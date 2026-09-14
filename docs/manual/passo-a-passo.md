@@ -136,15 +136,15 @@ Aba **Teste** no mesmo agente: ensaia sem mandar WhatsApp. Use isto antes do pri
 
 ---
 
-## 6. Criar um fluxo de automação (Follow-up)
+## 6. Criar um fluxo de automação
 
-A automação do produto **não** é um Zapier genérico. O nome na tela é **Follow-ups**: reengajamento depois de silêncio, mudança de etapa ou pedido de ajuda do agente.
+A automação do produto **não** é um Zapier genérico. O nome na tela é **Fluxos**: reengajamento depois de silêncio, mudança de etapa ou pedido de ajuda do agente.
 
 Precisa ser **gerente** ou **administrador**.
 
 ### Montar
 
-1. **Agente de IA › Follow-ups**, aba **Fluxos**.
+1. **Agente de IA › Fluxos**.
 2. **Novo fluxo** → nome → **Criar fluxo**.
 3. Abre o quadro do fluxo. Peças da paleta (só o que o motor executa):
 
@@ -206,12 +206,55 @@ Não coloque 1 minuto em produção “para testar”: o mínimo de silêncio na
 | Marcar um horário | Agenda; os **tipos** (duração, quem atende) em Configurações › Tipos de agendamento |
 | Convidar gente | Configurações › Equipe |
 | Quem pega cliente novo | Configurações › Distribuição de atendimento |
+| Avisar vários clientes de uma vez | Campanhas |
+| Preparar a locadora de veículos | Modelos prontos → Ver modelo → Ativar → Meu modelo |
+| Preparar escritório, SaaS ou clínica | Modelos prontos — o card do ramo |
+| Terminar a configuração do modelo | Meu modelo |
+| Ler este guia de novo | Como usar, no menu, ou o botão nas telas de modelo |
 
 **Assumir** uma conversa cala o automático naquela conversa. Devolver à IA: o menu da conversa (passar de volta / reativar), quando a situação já está estável.
 
 ---
 
-## 8. Integração MOOPE (frota / Facejus)
+## 8. Campanhas
+
+Campanha é um recado comercial para várias pessoas. No WhatsApp do celular, **só recebe quem já tem conversa neste número**. Quem nunca falou: Caixa de entrada → Nova conversa.
+
+1. Menu **Campanhas** → **Criar campanha**.
+2. **Objetivo** — o motivo (promoção, reativar, aviso…).
+3. **Público** — etiqueta, lead/cliente, funil, ou gente marcada na mão.
+4. **Conteúdo** — o texto. `{{nome}}` vira o nome da pessoa. Foto ou PDF, se quiser.
+5. **Canal** — WhatsApp, e-mail ou os dois. Escolha o número que envia.
+6. **Quando** — agora ou agendado. Confira o preview.
+7. **Revisar e enviar.** A fila sobe com pausa entre uma pessoa e outra.
+
+Na campanha aberta: **Enviado** saiu; **Respondeu** respondeu depois; **Ignorado** ficou de fora (o motivo está na linha). Envio de prova não chega no celular.
+
+O mesmo texto vive na tela **Como usar**, capítulo Campanhas.
+
+---
+
+## 9. Modelo da locadora de veículos
+
+Administrador: **Modelos prontos** → **Ver modelo** → **Ativar modelo**. A configuração continua em **Meu modelo**.
+
+1. Leia o resumo do que será instalado.
+2. **Ativar modelo** — cria o que falta; não apaga o que já existia. Abre Meu modelo.
+3. Conecte o WhatsApp.
+4. Preencha as pastas de conhecimento com as regras reais (diária, caução, documentos).
+5. Publique cada assistente. Sem publicar, ele não atende.
+6. Automações nascem **desligadas**. Ligue uma por uma.
+7. Frota/boleto só com Integração MOOPE. Sem isso, o assistente pergunta ou chama uma pessoa — não inventa valor.
+
+Seis assistentes: Atendimento da Locadora, Consultor Comercial, Disponibilidade, Financeiro, Atendimento ao Cliente, Relacionamento. Quadro de oito etapas, de Novo lead até Fechado — Locação ou Perdido.
+
+Ativar **não** manda mensagem. Empresa antiga não precisa refazer o primeiro acesso.
+
+O mesmo texto vive na tela **Como usar**, capítulo da locadora.
+
+---
+
+## 10. Integração MOOPE (frota / Facejus)
 
 **Canais › Integração MOOPE**, administrador.
 
@@ -219,7 +262,7 @@ Gera a chave que o outro sistema usa para abrir o CRM e mandar cadastro. A chave
 
 ---
 
-## 9. Super-admin da plataforma
+## 11. Super-admin da plataforma
 
 Isto **não** é o Inbox da locadora.
 
@@ -233,7 +276,7 @@ Não misture a mesa de vendas de vocês (perfil “Venda do sistema”) com o te
 
 ---
 
-## 10. Quando “não funciona”
+## 12. Quando “não funciona”
 
 Antes de achar que quebrou, confira nesta ordem:
 
@@ -244,6 +287,8 @@ Antes de achar que quebrou, confira nesta ordem:
 5. O follow-up está **Publicado** e **ligado ao agente**? A fila mostra inscrição? Esperou alguns minutos?
 6. Você **Assumiu** a conversa? O automático está calado até devolver.
 7. Papel da conta: visualizador não manda; gerente não cria agente novo; só admin conecta WhatsApp.
+8. Campanha: a pessoa já tem conversa neste WhatsApp? Se o motivo for “abra o fio na caixa”, abra Nova conversa e dispare de novo.
+9. Modelo pronto: está Ativo em Meu modelo? Os assistentes estão Publicados? A pasta de conhecimento tem as regras reais?
 
 Se o Inbox mostra erro de atualização em loop no navegador, recarregue a página uma vez. Se voltar, é defeito de software — não “configure de novo” o WhatsApp.
 

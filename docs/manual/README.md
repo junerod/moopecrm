@@ -1,8 +1,9 @@
 # Manual do operador — MOOPE CRM
 
 **A cara para quem usa o sistema é a tela** `/app/manual` — manual de
-usuário, “Como usar”. Porta: Configurações › Como usar, busca ⌘K, ou o
-botão do Inbox vazio. O texto que a tela mostra vive em `lib/manual/conteudo.ts`.
+usuário, “Como usar”. Porta: Configurações › Como usar, busca ⌘K, o
+botão do Inbox vazio, e o atalho nas telas de Modelos prontos e Meu
+modelo. O texto que a tela mostra vive em `lib/manual/conteudo.ts`.
 
 Este diretório é o rascunho para quem clona o repo. Se os dois divergirem, **a
 tela vence**.
@@ -53,7 +54,7 @@ Dentro de `/app`, o menu tem seis grupos, nesta ordem de uso:
 |---|---|---|
 | **Atendimento** | Inbox, Radar, Agenda, Respostas rápidas | o dia |
 | **CRM** | Funis, Contatos, Etapas do funil | o quadro de clientes |
-| **Agente de IA** | Agentes, Follow-ups, Roteadores, e o resto no hub | montar e acompanhar o funcionário automático |
+| **Agente de IA** | Agentes, Fluxos, Roteadores, e o resto no hub | montar e acompanhar o funcionário automático |
 | **Canais** | Conexões (WhatsApp), Integração MOOPE, Webhooks | por onde a mensagem entra e sai |
 | **Análise** | Desempenho, Evolução da IA, Audit Log | olhar o que aconteceu |
 | **Organização** | Configurações (rodapé do menu) | conta, empresa, equipe, perfil do negócio |
@@ -72,7 +73,7 @@ O menu esconde o que o papel não alcança. Em linhas gerais:
 |---|---|
 | Visualizador | ver Inbox, Funis, Contatos, Desempenho |
 | Atendente | o de cima + atender, assumir conversa, ver Casos da IA |
-| Gerente | o de cima + Follow-ups, Roteadores, Credenciais, Conhecimento, Etapas do funil, Distribuição |
+| Gerente | o de cima + Fluxos, Roteadores, Credenciais, Conhecimento, Etapas do funil, Distribuição |
 | Administrador | o de cima + **criar agente**, Conexões WhatsApp, Perfil do negócio, Equipe, LGPD, API Tokens |
 
 Quem é super-admin da plataforma vê as duas portas (`/admin` e `/app`).
@@ -102,14 +103,14 @@ Não use “Kanban” nem “pipeline” com o operador: a URL ainda é `/app/ka
 
 ### Agente de IA
 
-O sidebar mostra Agentes, Follow-ups e Roteadores. O resto vive em **Ver tudo em IA**.
+O sidebar mostra Agentes, Fluxos e Roteadores. O resto vive em **Ver tudo em IA**.
 
 **Montar**
 
 | Tela | O que faz |
 |---|---|
 | Agentes | quem atende: instruções, modelo, número, publicação |
-| Follow-ups | fluxos automáticos (silêncio, etapa, pedido de ajuda) |
+| Fluxos | automações (silêncio, etapa, pedido de ajuda) |
 | Roteadores | qual agente pega qual conversa, e quando o humano assume |
 | Credenciais | chave do provedor (Anthropic, OpenAI, OpenRouter, …) |
 | Provedores | qual inteligência atende cada parte do sistema |

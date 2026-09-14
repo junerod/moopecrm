@@ -16,7 +16,9 @@ export type Bloco =
   | { tipo: "aviso"; texto: string }
   | { tipo: "passos"; itens: string[] }
   | { tipo: "lista"; itens: string[] }
-  | { tipo: "tabela"; cabecalho: [string, string]; linhas: Array<[string, string]> };
+  | { tipo: "tabela"; cabecalho: [string, string]; linhas: Array<[string, string]> }
+  | { tipo: "cards"; itens: Array<{ titulo: string; texto: string }> }
+  | { tipo: "atalho"; titulo: string; href: string; cta: string };
 
 export interface Capitulo {
   id: string;
@@ -67,8 +69,89 @@ export const CAPITULOS: readonly Capitulo[] = [
     ],
   },
   {
-    id: "whatsapp",
+    id: "modelos-prontos",
     numero: 2,
+    titulo: "Como escolher o modelo da empresa",
+    resumo: "Loja, configuração e operação são três telas diferentes.",
+    palavras: [
+      "pack",
+      "modelo",
+      "modelos prontos",
+      "meu modelo",
+      "loja",
+      "ativar",
+      "saas",
+      "clínica",
+      "odontológica",
+      "comercial",
+      "advocacia",
+      "locadora",
+    ],
+    blocos: [
+      {
+        tipo: "p",
+        texto: "Modelo pronto não é o dia a dia. Ele só prepara a operação: assistentes, funil, pastas, respostas e rascunhos de campanha. Quem administra ativa. Quem atende trabalha nas outras telas.",
+      },
+      {
+        tipo: "cards",
+        itens: [
+          {
+            titulo: "Modelos prontos",
+            texto: "A loja. Escolha o tipo da empresa. Se já existe um ativo, o banner de cima leva à configuração.",
+          },
+          {
+            titulo: "Meu modelo",
+            texto: "A configuração. Checklist de quatro passos e atalhos para as telas de operação.",
+          },
+          {
+            titulo: "Operação",
+            texto: "Assistentes, Funil, Conhecimento, Automações, Campanhas e Caixa de entrada — o trabalho do dia.",
+          },
+        ],
+      },
+      {
+        tipo: "passos",
+        itens: [
+          "Abra Modelos prontos no menu.",
+          "Clique em Ver modelo no card que combina com a empresa.",
+          "Leia o resumo. Ativar modelo cria o que falta e não apaga o que vocês já tinham.",
+          "O sistema abre Meu modelo. Conclua os quatro passos: WhatsApp, material nas pastas, publicar assistentes e ligar a primeira automação.",
+          "O dia a dia não volta para a loja: Inbox, Funil e Assistentes.",
+        ],
+      },
+      {
+        tipo: "tabela",
+        cabecalho: ["Modelo", "Para qual empresa"],
+        linhas: [
+          ["Locadora de veículos", "Aluguel, frota e cobrança no WhatsApp."],
+          ["Escritório de advocacia", "Recepção, consulta, documentos e retorno — sem inventar processo."],
+          ["Vendas de SaaS", "Captação, demo, proposta e sucesso do cliente."],
+          ["Comercial geral", "Atenda, qualifique, envie proposta e acompanhe a venda."],
+          ["Clínica médica", "Agenda, documentos, convênio e retorno do paciente."],
+          ["Clínica odontológica", "Avaliação, orçamento, agenda e relacionamento."],
+        ],
+      },
+      {
+        tipo: "aviso",
+        texto: "Ativar não manda mensagem para cliente. Automações nascem desligadas. Trocar de modelo instala o novo conjunto; o anterior não é apagado. Desativar fica no rodapé de Meu modelo.",
+      },
+      {
+        tipo: "atalho",
+        titulo: "Abrir a loja de modelos",
+        href: "/app/modelos-prontos",
+        cta: "Modelos prontos",
+      },
+      {
+        tipo: "atalho",
+        titulo: "Terminar a configuração do modelo ativo",
+        href: "/app/meu-modelo",
+        cta: "Meu modelo",
+      },
+    ],
+  },
+  {
+    id: "whatsapp",
+    numero: 3,
     titulo: "Como conectar o WhatsApp",
     resumo: "O código no celular, reconectar e o que volta sozinho para o Inbox.",
     palavras: ["qr", "conexão", "aparelho", "reconectar", "número", "whatsapp"],
@@ -101,7 +184,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "mensagens",
-    numero: 3,
+    numero: 4,
     titulo: "Como mandar e receber mensagem",
     resumo: "Inbox, assumir a conversa, respostas prontas e anexo.",
     palavras: ["inbox", "enviar", "composer", "assumir", "anexo", "áudio", "template"],
@@ -129,7 +212,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "contatos-e-funis",
-    numero: 4,
+    numero: 5,
     titulo: "Como usar contatos e o quadro",
     resumo: "A lista de pessoas, as colunas do funil e o tipo do negócio.",
     palavras: ["funil", "quadro", "card", "etapas", "locadora", "advocacia", "perfil"],
@@ -168,7 +251,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "agente",
-    numero: 5,
+    numero: 6,
     titulo: "Como criar o atendente automático",
     resumo: "O que ele fala, em qual número, em qual quadro, e o botão Publicar.",
     palavras: ["agente", "ia", "inteligência", "rascunho", "publicar", "credencial", "conhecimento"],
@@ -212,8 +295,41 @@ export const CAPITULOS: readonly Capitulo[] = [
     ],
   },
   {
+    id: "conhecimento",
+    numero: 7,
+    titulo: "Como ensinar com material da empresa",
+    resumo: "As pastas do modelo e o que o assistente pode consultar.",
+    palavras: ["conhecimento", "knowledge", "pdf", "pasta", "material", "ensinar", "rag"],
+    blocos: [
+      {
+        tipo: "p",
+        texto: "O modelo cria pastas vazias. Sem material da empresa, o assistente pergunta ou chama uma pessoa — não inventa preço, regra, prazo nem diagnóstico.",
+      },
+      {
+        tipo: "passos",
+        itens: [
+          "Meu modelo → card Conhecimento, ou Ver tudo em IA › Conhecimento.",
+          "Escolha a pasta do assunto (comercial, documentos, relacionamento…).",
+          "Envie PDF, texto ou imagem com a regra real: tabela, política, horário, o que pode e o que não pode.",
+          "Espere o estado ficar pronto. Material em processamento ainda não entra na resposta.",
+          "Teste no assistente publicado, na aba Teste — sem mandar WhatsApp.",
+        ],
+      },
+      {
+        tipo: "aviso",
+        texto: "Precisa existir um agente padrão. Histórico importado do celular não vira conhecimento sozinho. Coloque a regra na pasta.",
+      },
+      {
+        tipo: "atalho",
+        titulo: "Abrir as pastas de material",
+        href: "/app/ai/knowledge/sources",
+        cta: "Conhecimento",
+      },
+    ],
+  },
+  {
     id: "follow-up",
-    numero: 6,
+    numero: 8,
     titulo: "Como criar um fluxo que fala sozinho",
     resumo: "Quando começa, o que envia, publicar e ligar ao atendente automático.",
     palavras: ["automação", "fluxo", "follow-up", "followup", "silêncio", "fila"],
@@ -266,43 +382,8 @@ export const CAPITULOS: readonly Capitulo[] = [
     ],
   },
   {
-    id: "rotina",
-    numero: 7,
-    titulo: "O que fazer no dia a dia",
-    resumo: "Onde olhar cada coisa, sem caçar no menu.",
-    palavras: ["radar", "agenda", "equipe", "orçamento", "desempenho", "atalho"],
-    blocos: [
-      {
-        tipo: "tabela",
-        cabecalho: ["Quero…", "Onde"],
-        linhas: [
-          ["Ver quem falou agora", "Caixa de entrada"],
-          ["Ver quem esfriou", "Radar"],
-          ["Responder mais rápido", "Respostas rápidas, depois / na Caixa de entrada"],
-          ["Mover o cliente no quadro", "Funis → arrastar o card"],
-          ["Ver se a inteligência travou", "Ver tudo em IA › Execuções; Alertas"],
-          ["Ver gasto do mês", "Ver tudo em IA › Uso e orçamento"],
-          ["Marcar um horário", "Agenda. Os tipos ficam em Configurações › Tipos de agendamento"],
-          ["Convidar gente", "Configurações › Equipe"],
-          ["Quem pega cliente novo", "Configurações › Distribuição de atendimento"],
-          ["Avisar vários clientes de uma vez", "Campanhas"],
-          ["Preparar a locadora de veículos", "Configurações › Meu Negócio, ou Modelos prontos"],
-          ["Ler este guia de novo", "Como usar, no rodapé do menu"],
-        ],
-      },
-      {
-        tipo: "p",
-        texto: "Assumir uma conversa cala o automático nela. Devolver: o menu da conversa, quando a situação já está estável.",
-      },
-      {
-        tipo: "p",
-        texto: "A busca do sistema (⌘K no Mac, Ctrl+K no Windows) acha qualquer tela pelo nome — inclusive esta.",
-      },
-    ],
-  },
-  {
     id: "campanhas",
-    numero: 8,
+    numero: 9,
     titulo: "Como mandar uma campanha",
     resumo: "Aviso para várias pessoas no WhatsApp, sem inventar conversa nova.",
     palavras: [
@@ -363,7 +444,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "locadora",
-    numero: 9,
+    numero: 10,
     titulo: "Como preparar a locadora de veículos",
     resumo: "O modelo pronto: assistentes, quadro, textos e o que ainda precisa ligar.",
     palavras: [
@@ -387,10 +468,10 @@ export const CAPITULOS: readonly Capitulo[] = [
       {
         tipo: "passos",
         itens: [
-          "Administrador: Configurações › Meu Negócio, ou Modelos prontos no rodapé do menu.",
-          "Leia o que será instalado — os seis assistentes e o quadro.",
-          "Ativar. O sistema cria o que falta e não apaga o que vocês já tinham.",
-          "No card Prepare sua empresa, conclua os quatro passos até 4 de 4 — Pronto para trabalhar.",
+          "Administrador: Modelos prontos no menu.",
+          "Ver modelo em Locadora de veículos. Leia o resumo — os seis assistentes e o quadro.",
+          "Ativar modelo. O sistema cria o que falta e não apaga o que vocês já tinham.",
+          "Em Meu modelo, conclua os quatro passos até 4 de 4 — Pronto para trabalhar.",
           "Conecte o WhatsApp, se ainda não conectou (capítulo Como conectar o WhatsApp).",
           "Coloque nas pastas de conhecimento as regras reais: diária, caução, documentos, o que pode e o que não pode.",
           "Abra cada assistente, confira o texto e Publicar. Sem publicar, ele não atende.",
@@ -432,13 +513,146 @@ export const CAPITULOS: readonly Capitulo[] = [
       {
         tipo: "p",
         texto:
-          "Empresa que já existia não precisa recomeçar o primeiro acesso. O caminho é o mesmo: Meu Negócio → Modelos prontos → Ativar.",
+          "Empresa que já existia não precisa recomeçar o primeiro acesso. O caminho é o mesmo: Modelos prontos → Ver modelo → Ativar → Meu modelo.",
+      },
+      {
+        tipo: "atalho",
+        titulo: "Ver o modelo da locadora",
+        href: "/app/modelos-prontos/locadora_veiculos",
+        cta: "Abrir o modelo",
+      },
+    ],
+  },
+  {
+    id: "advocacia",
+    numero: 11,
+    titulo: "Como preparar o escritório de advocacia",
+    resumo: "Recepção, consulta, documentos e retorno — sem inventar processo.",
+    palavras: [
+      "advocacia",
+      "escritório",
+      "honorário",
+      "consulta",
+      "processo",
+      "advogado",
+    ],
+    blocos: [
+      {
+        tipo: "p",
+        texto:
+          "O modelo do escritório instala seis assistentes, o quadro COMERCIAL — ESCRITÓRIO, pastas de conhecimento, respostas rápidas e rascunhos de campanha. Ele não inventa andamento, prazo, honorário nem resultado. Sem material cadastrado, pergunta ou encaminha para uma pessoa.",
+      },
+      {
+        tipo: "passos",
+        itens: [
+          "Modelos prontos → Ver modelo em Escritório de advocacia → Ativar modelo.",
+          "Em Meu modelo, conclua WhatsApp, material nas pastas, publicar assistentes e a primeira automação.",
+          "Coloque nas pastas as áreas de atuação, a checklist documental e a tabela de honorários — só o que o escritório assume.",
+          "Automações nascem desligadas. Ligue uma por uma depois de revisar o texto.",
+        ],
+      },
+      {
+        tipo: "tabela",
+        cabecalho: ["Assistente", "Para quê"],
+        linhas: [
+          ["Atendimento do Escritório", "Recebe, identifica cliente ou novo contato e encaminha."],
+          ["Novos Clientes", "Qualifica, agenda consulta e faz follow-up da proposta."],
+          ["Atendimento ao Cliente", "Lado administrativo: documentos, horário, encaminhamento."],
+          ["Documentos e Pendências", "Pede o que falta. Não inventa lista."],
+          ["Financeiro do Escritório", "Honorário e parcela só com fonte cadastrada."],
+          ["Relacionamento", "Retorno e satisfação. Não dispara campanha sozinho."],
+        ],
+      },
+      {
+        tipo: "aviso",
+        texto:
+          "Pergunta jurídica, prazo ou decisão: encaminhe para um advogado. O assistente não substitui análise profissional.",
+      },
+      {
+        tipo: "atalho",
+        titulo: "Ver o modelo do escritório",
+        href: "/app/modelos-prontos/escritorio_advocacia",
+        cta: "Abrir o modelo",
+      },
+    ],
+  },
+  {
+    id: "outros-modelos",
+    numero: 12,
+    titulo: "SaaS, comercial e clínicas",
+    resumo: "Os outros quatro modelos da loja, no mesmo jeito de ativar.",
+    palavras: [
+      "saas",
+      "clínica",
+      "odontológica",
+      "comercial",
+      "demo",
+      "paciente",
+      "orçamento",
+    ],
+    blocos: [
+      {
+        tipo: "p",
+        texto:
+          "Os quatro usam o mesmo caminho da locadora e do escritório: Ver modelo → Ativar → Meu modelo. Cada um nasce com seis assistentes, um funil, pastas vazias, respostas e rascunhos de campanha. Automações desligadas. Sem material, o assistente não inventa preço, diagnóstico nem prazo.",
+      },
+      {
+        tipo: "tabela",
+        cabecalho: ["Modelo", "Quadro e o que não inventa"],
+        linhas: [
+          ["Vendas de SaaS", "VENDAS — SaaS (contato, demo, proposta, cliente ativo). Não inventa feature, SLA nem desconto."],
+          ["Comercial geral", "VENDAS — COMERCIAL (lead, proposta, fechado). Não inventa estoque, prazo de entrega nem valor."],
+          ["Clínica médica", "AGENDA — CLÍNICA (contato, horário, consulta, retorno). Não diagnostica, não passa receita, não lê exame."],
+          ["Clínica odontológica", "AGENDA — ODONTO (avaliação, orçamento, tratamento, alta). Não interpreta raio-x nem inventa plano de tratamento."],
+        ],
+      },
+      {
+        tipo: "aviso",
+        texto:
+          "Na clínica, pergunta clínica vai para uma pessoa. Valor e convênio só com tabela cadastrada nas pastas.",
+      },
+    ],
+  },
+  {
+    id: "rotina",
+    numero: 13,
+    titulo: "O que fazer no dia a dia",
+    resumo: "Onde olhar cada coisa, sem caçar no menu.",
+    palavras: ["radar", "agenda", "equipe", "orçamento", "desempenho", "atalho"],
+    blocos: [
+      {
+        tipo: "tabela",
+        cabecalho: ["Quero…", "Onde"],
+        linhas: [
+          ["Ver quem falou agora", "Caixa de entrada"],
+          ["Ver quem esfriou", "Radar"],
+          ["Responder mais rápido", "Respostas rápidas, depois / na Caixa de entrada"],
+          ["Mover o cliente no quadro", "Funis → arrastar o card"],
+          ["Ver se a inteligência travou", "Ver tudo em IA › Execuções; Alertas"],
+          ["Ver gasto do mês", "Ver tudo em IA › Uso e orçamento"],
+          ["Marcar um horário", "Agenda. Os tipos ficam em Configurações › Tipos de agendamento"],
+          ["Convidar gente", "Configurações › Equipe"],
+          ["Quem pega cliente novo", "Configurações › Distribuição de atendimento"],
+          ["Avisar vários clientes de uma vez", "Campanhas"],
+          ["Preparar a locadora de veículos", "Modelos prontos → Ver modelo → Ativar → Meu modelo"],
+          ["Preparar escritório, SaaS ou clínica", "Modelos prontos — o card do ramo"],
+          ["Terminar a configuração do modelo", "Meu modelo"],
+          ["Ler este guia de novo", "Como usar, no menu, ou o botão nas telas de modelo"],
+        ],
+      },
+      {
+        tipo: "p",
+        texto: "Assumir uma conversa cala o automático nela. Devolver: o menu da conversa, quando a situação já está estável.",
+      },
+      {
+        tipo: "p",
+        texto: "A busca do sistema (⌘K no Mac, Ctrl+K no Windows) acha qualquer tela pelo nome — inclusive esta.",
       },
     ],
   },
   {
     id: "moope",
-    numero: 10,
+    numero: 14,
     titulo: "Como ligar a frota ou o escritório",
     resumo: "A chave que o outro sistema usa para abrir o CRM.",
     palavras: ["moope", "chave", "frota", "facejus", "integração"],
@@ -451,7 +665,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "plataforma",
-    numero: 11,
+    numero: 15,
     titulo: "Se você cuida de várias empresas",
     resumo: "Como abrir uma empresa nova para um cliente — não é o Inbox dele.",
     palavras: ["admin", "tenant", "plataforma", "organização", "várias empresas"],
@@ -478,7 +692,7 @@ export const CAPITULOS: readonly Capitulo[] = [
   },
   {
     id: "nao-funciona",
-    numero: 12,
+    numero: 16,
     titulo: "Se algo não funciona",
     resumo: "O que olhar, nesta ordem, antes de achar que quebrou.",
     palavras: ["erro", "bug", "parado", "silêncio", "não responde", "falhou"],
@@ -494,7 +708,7 @@ export const CAPITULOS: readonly Capitulo[] = [
           "Você Assumiu a conversa? O automático está calado até devolver.",
           "Quem é Somente leitura não manda mensagem. Gerente não cria atendente automático novo. Só Administrador conecta o WhatsApp.",
           "Campanha: a pessoa já tem conversa neste WhatsApp? Se o motivo for “abra o fio na caixa”, abra Nova conversa e só então dispare de novo.",
-          "Modelo da locadora: está Ativo em Meu Negócio? Os assistentes estão Publicados? A pasta de conhecimento tem as regras reais?",
+          "Modelo pronto: está Ativo em Meu modelo? Os assistentes estão Publicados? A pasta de conhecimento tem as regras reais?",
         ],
       },
     ],

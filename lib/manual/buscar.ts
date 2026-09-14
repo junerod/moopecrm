@@ -15,6 +15,10 @@ export function textoDoBloco(b: Bloco): string {
       return b.itens.join(" ");
     case "tabela":
       return [b.cabecalho.join(" "), ...b.linhas.map((l) => l.join(" "))].join(" ");
+    case "cards":
+      return b.itens.map((item) => `${item.titulo} ${item.texto}`).join(" ");
+    case "atalho":
+      return `${b.titulo} ${b.cta} ${b.href}`;
   }
 }
 

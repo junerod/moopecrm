@@ -17,7 +17,8 @@
     { "id": "inbox", "lane": "humano", "col": 0, "type": "frontend", "label": "Inbox vazio", "sublabel": "Como usar o sistema" },
     { "id": "hub", "lane": "humano", "col": 1, "type": "frontend", "label": "Configurações › Ajuda", "sublabel": "card Manual" },
     { "id": "cmdk", "lane": "humano", "col": 2, "type": "frontend", "label": "⌘K", "sublabel": "manual, agente, WhatsApp" },
-    { "id": "tela", "lane": "humano", "col": 3, "type": "frontend", "label": "/app/manual", "sublabel": "índice + busca + capítulos" },
+    { "id": "loja", "lane": "humano", "col": 1, "type": "frontend", "label": "Modelos prontos / Meu modelo", "sublabel": "atalho Como usar" },
+    { "id": "tela", "lane": "humano", "col": 3, "type": "frontend", "label": "/app/manual", "sublabel": "índice ilustrado + busca + capítulos" },
     { "id": "registry", "lane": "app", "col": 1, "type": "config", "label": "NAV_DESTINATIONS", "sublabel": "porta do hub e do ⌘K" },
     { "id": "busca", "lane": "app", "col": 3, "type": "lib", "label": "buscarCapitulos", "sublabel": "acento e vocabulário extra" },
     { "id": "conteudo", "lane": "fonte", "col": 3, "type": "lib", "label": "lib/manual/conteudo.ts", "sublabel": "vence na tela se divergir do md" }
@@ -31,7 +32,9 @@
     { "id": "e6", "from": "tela", "to": "busca", "label": "o que a pessoa digitou" },
     { "id": "e7", "from": "conteudo", "to": "busca", "label": "título + palavras + blocos" },
     { "id": "e8", "from": "busca", "to": "tela", "label": "capítulos que restam" },
-    { "id": "e9", "from": "conteudo", "to": "tela", "label": "os dez capítulos" },
-    { "id": "e10", "from": "tela", "to": "inbox", "label": "capítulo WhatsApp — o empty deixa de ser o fim" }
+    { "id": "e9", "from": "conteudo", "to": "tela", "label": "os capítulos tipados" },
+    { "id": "e10", "from": "tela", "to": "inbox", "label": "capítulo WhatsApp — o empty deixa de ser o fim" },
+    { "id": "e11", "from": "loja", "to": "tela", "label": "atalho #modelos-prontos" },
+    { "id": "e12", "from": "tela", "to": "loja", "label": "capítulo abre Modelos prontos" }
   ]
 }

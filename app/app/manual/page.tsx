@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  *  2. Alimenta: o operador perdido; Inbox vazio aponta para cá.
  *  3. Registro: leitura pura — sem mutação, sem audit.
  *  4. Tela: esta.
- *  5. Porta: Configurações › Ajuda › Manual + ⌘K + Inbox vazio.
+ *  5. Porta: Configurações › Ajuda › Manual + ⌘K + Inbox vazio + atalho em Modelos prontos e Meu modelo.
  *  6. Anti-morte: não se aplica (leitura). A busca é o próximo passo de quem
  *     não acha o capítulo.
  *  7. Configuração: o texto é código; quem muda, muda o conteúdo e a tela muda.

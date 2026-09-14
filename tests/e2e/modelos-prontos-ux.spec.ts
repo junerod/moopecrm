@@ -88,6 +88,7 @@ test("sem pack: loja mostra só o catálogo e o detalhe resume", async ({ page }
   await login(page, conta.email);
   await page.goto("/app/modelos-prontos");
   await expect(page.getByRole("heading", { name: "Modelos prontos" })).toBeVisible();
+  await expect(page.getByTestId("loja-abrir-manual")).toBeVisible();
   await expect(page.getByTestId("catalogo-de-modelos")).toBeVisible();
   await expect(page.getByTestId("catalogo-pack-locadora_veiculos")).toBeVisible();
   await expect(page.getByTestId("catalogo-pack-escritorio_advocacia")).toBeVisible();
@@ -125,6 +126,7 @@ test("pack ativo: loja é banner + catálogo; hub tem checklist e cards", async 
   await expect(page.getByTestId("hub-card-conhecimento")).toBeVisible();
   await expect(page.getByTestId("hub-card-automacoes")).toBeVisible();
   await expect(page.getByTestId("hub-card-campanhas")).toBeVisible();
+  await expect(page.getByTestId("hub-abrir-manual")).toBeVisible();
   await expect(page.getByRole("link", { name: "Configurar" }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Abrir quadro" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Adicionar material" })).toBeVisible();

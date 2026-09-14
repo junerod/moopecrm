@@ -618,7 +618,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/manual",
     label: "Como usar",
     description:
-      "Manual de usuário: como entrar, conectar o WhatsApp, mandar mensagem, criar o atendente automático e um fluxo.",
+      "Manual ilustrado: escolher o modelo, conectar o WhatsApp, atender, ensinar o assistente e mandar campanha.",
     icon: Question,
     group: "organizacao",
     section: "Como usar",

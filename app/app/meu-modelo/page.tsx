@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { PageHeader } from "@/components/ds/PageHeader";
 import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
+import { AtalhoDoManual } from "@/components/negocio/AtalhoDoManual";
+import { Button } from "@/components/ui/button";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { packEstaAtivo, resumoDoPack } from "@/lib/business-packs/apresentacao";
@@ -68,6 +71,16 @@ export default async function MeuModeloPage() {
         icon={<AppIcon icon={Storefront} />}
         titulo="Meu modelo"
         descricao="Termine a configuração. O dia a dia fica nas telas de operação."
+        acoes={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/app/manual#modelos-prontos">Como usar</Link>
+          </Button>
+        }
+      />
+      <AtalhoDoManual
+        testid="hub-abrir-manual"
+        titulo="Como terminar a configuração"
+        texto="WhatsApp, material, publicar assistentes e a primeira automação — passo a passo."
       />
       <MeuModeloClient
         packId={pack.id}

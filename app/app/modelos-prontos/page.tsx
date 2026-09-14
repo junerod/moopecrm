@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { PageHeader } from "@/components/ds/PageHeader";
 import { AppIcon } from "@/components/ds/AppIcon";
+import { PageHeader } from "@/components/ds/PageHeader";
+import { AtalhoDoManual } from "@/components/negocio/AtalhoDoManual";
+import { Button } from "@/components/ui/button";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { montarLojaDePacks, packEstaAtivo } from "@/lib/business-packs/apresentacao";
@@ -44,7 +47,13 @@ export default async function ModelosProntosPage({
         icon={<AppIcon icon={Storefront} />}
         titulo="Modelos prontos"
         descricao="Escolha o tipo de operação da sua empresa."
+        acoes={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/app/manual#modelos-prontos">Como usar</Link>
+          </Button>
+        }
       />
+      <AtalhoDoManual />
       <ModelosProntosClient
         loja={montarLojaDePacks()}
         instalado={instalado}
