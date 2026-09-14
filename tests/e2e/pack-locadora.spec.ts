@@ -123,7 +123,11 @@ test("escolhe Locadora, instala o Pack e termina o wizard", async ({ page }) => 
 
   await page.goto("/app/modelos-prontos");
   await expect(page.getByTestId("pack-pronto")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId("modelos-prontos-cards")).toBeVisible();
+  await expect(page.getByTestId("catalogo-de-modelos")).toBeVisible();
+  await expect(page.getByTestId("testar-assistentes")).toHaveCount(0);
+  await expect(page.getByTestId("lista-assistentes-do-modelo")).toHaveCount(0);
+
+  await page.goto("/app/ai/agents");
   await expect(page.getByTestId("testar-assistentes")).toBeVisible();
 
   await page.getByRole("button", { name: /^Boleto$/ }).click();
@@ -150,6 +154,7 @@ test("escolhe Locadora, instala o Pack e termina o wizard", async ({ page }) => 
     .update({ name: "Consultor da casa" })
     .eq("organization_id", orgA.orgId)
     .eq("name", "Consultor Comercial");
+  await page.goto("/app/meu-modelo");
   await page.getByRole("button", { name: /reaplicar sem duplicar/i }).click();
   await expect(page.getByText(/operação preparada/i)).toBeVisible({ timeout: 20_000 });
   const { count: agentesDepois } = await svc
@@ -166,12 +171,13 @@ test("escolhe Locadora, instala o Pack e termina o wizard", async ({ page }) => 
     .maybeSingle();
   expect(custom?.id).toBeTruthy();
 
+  await page.goto("/app/modelos-prontos");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId("pack-pronto")).toBeVisible();
   await page.emulateMedia({ colorScheme: "light" });
-  await expect(page.getByTestId("modelos-prontos-cards")).toBeVisible();
+  await expect(page.getByTestId("catalogo-de-modelos")).toBeVisible();
   await page.emulateMedia({ colorScheme: "dark" });
-  await expect(page.getByTestId("dados-assistentes")).toBeVisible();
+  await expect(page.getByTestId("catalogo-de-modelos")).toBeVisible();
 });
 
 test("funil, inbound, agentes, coleções, automações e respostas rápidas", async () => {

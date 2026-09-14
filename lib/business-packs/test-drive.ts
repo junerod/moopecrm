@@ -34,8 +34,47 @@ const CENARIOS_ADVOCACIA: CenarioDeTeste[] = [
   { id: "consulta", rotulo: "Consulta", mensagem: "Quero marcar uma consulta." },
 ];
 
+const CENARIOS_SAAS: CenarioDeTeste[] = [
+  { id: "demo", rotulo: "Demo", mensagem: "Quero uma demo do sistema." },
+  { id: "preco", rotulo: "Preço", mensagem: "Quanto custa o plano?" },
+  { id: "sla", rotulo: "Implantação", mensagem: "Qual o prazo de implantação?" },
+  { id: "proposta", rotulo: "Proposta", mensagem: "Podem enviar a proposta?" },
+];
+
+const CENARIOS_COMERCIAL: CenarioDeTeste[] = [
+  { id: "orcamento", rotulo: "Orçamento", mensagem: "Quero um orçamento." },
+  { id: "preco", rotulo: "Preço", mensagem: "Quanto custa?" },
+  { id: "estoque", rotulo: "Estoque", mensagem: "Vocês têm esse item em estoque?" },
+  { id: "prazo", rotulo: "Entrega", mensagem: "Qual o prazo de entrega?" },
+];
+
+const CENARIOS_CLINICA: CenarioDeTeste[] = [
+  { id: "consulta", rotulo: "Agendar", mensagem: "Quero marcar uma consulta." },
+  { id: "preco", rotulo: "Valor", mensagem: "Quanto custa a consulta?" },
+  { id: "documentos", rotulo: "Documentos", mensagem: "O que preciso levar?" },
+  { id: "diagnostico", rotulo: "Diagnóstico", mensagem: "Qual o diagnóstico?" },
+  { id: "exame", rotulo: "Exame", mensagem: "O que o exame deu?" },
+];
+
+const CENARIOS_ODONTO: CenarioDeTeste[] = [
+  { id: "avaliacao", rotulo: "Avaliação", mensagem: "Quero marcar uma avaliação." },
+  { id: "preco", rotulo: "Valor", mensagem: "Quanto custa um implante?" },
+  { id: "tratamento", rotulo: "Tratamento", mensagem: "Qual o tratamento?" },
+  { id: "exame", rotulo: "Raio-X", mensagem: "O que o raio-x mostrou?" },
+];
+
+const CENARIOS_POR_PACK: Record<string, CenarioDeTeste[]> = {
+  locadora_veiculos: CENARIOS_TEST_DRIVE,
+  escritorio_advocacia: CENARIOS_ADVOCACIA,
+  vendas_saas: CENARIOS_SAAS,
+  comercial_geral: CENARIOS_COMERCIAL,
+  clinica_medica: CENARIOS_CLINICA,
+  clinica_odontologica: CENARIOS_ODONTO,
+};
+
 export function cenariosDoPack(packId: string | null | undefined): CenarioDeTeste[] {
-  return packId === "escritorio_advocacia" ? CENARIOS_ADVOCACIA : CENARIOS_TEST_DRIVE;
+  if (packId && CENARIOS_POR_PACK[packId]) return CENARIOS_POR_PACK[packId];
+  return CENARIOS_COMERCIAL;
 }
 
 export interface ResultadoTestDrive {
@@ -68,7 +107,8 @@ export function simularTestDrive(args: {
   const precisaHumano =
     sensivel ||
     classe.incerto ||
-    (classe.intent === "honorario" && hits.length === 0);
+    (classe.intent === "honorario" && hits.length === 0) ||
+    (classe.intent === "preco" && hits.length === 0);
   const gestaoNecessaria = operacional && !args.gestaoConfigurada;
 
   let resposta: string;
@@ -76,17 +116,25 @@ export function simularTestDrive(args: {
     resposta =
       hits[0]?.texto ??
       "Não consulto andamento, prazo nem decisão judicial sem um registro confiável do escritório. Vou encaminhar para um advogado.";
-  } else if (classe.intent === "honorario") {
+  } else if (classe.intent === "honorario" || classe.intent === "preco") {
     resposta =
       hits[0]?.texto ??
-      "Não invento honorário. Sem uma tabela ou condição cadastrada pelo escritório, uma pessoa do financeiro te explica as condições administrativas.";
+      "Não invento valor. Sem tabela ou condição cadastrada pela empresa, uma pessoa do time explica as condições administrativas.";
+  } else if (classe.intent === "diagnostico" || classe.intent === "prescricao" || classe.intent === "resultado_exame" || classe.intent === "tratamento") {
+    resposta =
+      hits[0]?.texto ??
+      "Não invento diagnóstico, exame, prescrição nem plano de tratamento. Vou encaminhar para o profissional.";
+  } else if (classe.intent === "sla" || classe.intent === "prazo_entrega" || classe.intent === "estoque") {
+    resposta =
+      hits[0]?.texto ??
+      "Sem um registro confiável da empresa, não afirmo prazo, estoque nem SLA. Uma pessoa do time confirma.";
   } else if (classe.intent === "documentos") {
     resposta =
       hits[0]?.texto ??
       "Sem um checklist cadastrado pelo escritório, não invento a lista de documentos. Posso pedir o mínimo (nome e assunto) e encaminhar.";
   } else if (classe.intent === "falar_advogado") {
     resposta = `Posso te encaminhar. Para triagem em ${args.orgName}, me conte resumidamente o que aconteceu e se você já é cliente.`;
-  } else if (classe.intent === "agendar_consulta") {
+  } else if (classe.intent === "agendar_consulta" || classe.intent === "demo") {
     resposta = `Podemos agendar um horário com a equipe de ${args.orgName}. Qual período fica melhor para você?`;
   } else if (gestaoNecessaria && (classe.intent === "boleto" || classe.intent === "pix" || classe.intent === "segunda_via" || classe.intent === "vencimento" || classe.intent === "pagamento")) {
     resposta = "Não consegui consultar essa informação agora. Conecte seu sistema de gestão para consultar dados ao vivo, ou uma pessoa do financeiro te ajuda.";

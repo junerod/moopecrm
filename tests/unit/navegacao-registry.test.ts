@@ -149,6 +149,7 @@ describe("hubSections", () => {
     expect(dest("/app/modelos-prontos").section).toBe("Sua empresa");
     const hrefs = hubSections("organizacao", true, null).flatMap((s) => s.items.map((i) => i.href));
     expect(hrefs).toContain("/app/modelos-prontos");
+    expect(hrefs).toContain("/app/meu-modelo");
     expect(hrefs).toContain("/app/settings/business");
   });
 

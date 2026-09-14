@@ -202,6 +202,7 @@ test("Locadora: 0/4 → fixtures → 4/4 Pronto para trabalhar", async ({ page }
 
   await page.goto("/app/modelos-prontos");
   await expect(page.getByTestId("checklist-pronto")).toBeVisible();
+  await page.goto("/app/meu-modelo");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId("checklist-pos-ativacao")).toBeVisible();
 });

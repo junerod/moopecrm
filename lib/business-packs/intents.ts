@@ -75,6 +75,7 @@ const INTENTS_OPERACIONAIS = new Set([
   "disponibilidade",
   "preco",
   "honorario",
+  "estoque",
 ]);
 
 const INTENTS_SENSIVEIS = new Set([
@@ -86,6 +87,11 @@ const INTENTS_SENSIVEIS = new Set([
   "decisao",
   "prazo",
   "jurisprudencia",
+  "diagnostico",
+  "prescricao",
+  "resultado_exame",
+  "tratamento",
+  "sla",
 ]);
 
 export function intentEhOperacional(intent: string): boolean {

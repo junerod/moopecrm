@@ -134,6 +134,7 @@ test("tenant existente ativa Locadora pelo Meu Negócio e vê os 6 assistentes",
   await expect(page.getByTestId("aviso-automacoes-desligadas")).toBeVisible();
   await page.getByTestId("usar-modelo-locadora").click();
   await expect(page.getByTestId("pack-pronto")).toBeVisible({ timeout: 30_000 });
+  await page.goto("/app/modelos-prontos");
   await expect(page.getByTestId("pack-loja-ativo")).toBeVisible();
 
   await page.goto("/app/settings/business");
@@ -190,7 +191,7 @@ test("tenant existente ativa Locadora pelo Meu Negócio e vê os 6 assistentes",
   await page.goto("/app/ai/knowledge/sources");
   await expect(page.getByTestId("conhecimento-da-empresa")).toBeVisible();
 
-  await page.goto("/app/modelos-prontos");
+  await page.goto("/app/meu-modelo");
   await page.getByRole("button", { name: /reaplicar sem duplicar/i }).click();
   await expect(page.getByText(/operação preparada/i)).toBeVisible({ timeout: 20_000 });
   const { count: agentesDepois } = await svc
@@ -221,8 +222,8 @@ test("tenant existente ativa Locadora pelo Meu Negócio e vê os 6 assistentes",
 
 test("desativa o pack sem apagar assistentes e reativa", async ({ page }) => {
   await login(page, conta.email);
-  await page.goto("/app/modelos-prontos");
-  await expect(page.getByTestId("pack-loja-ativo")).toBeVisible({ timeout: 20_000 });
+  await page.goto("/app/meu-modelo");
+  await expect(page.getByTestId("pack-pronto")).toBeVisible({ timeout: 20_000 });
   await page.getByTestId("desativar-pack-locadora").click();
   await page.getByTestId("confirmar-desativar-pack").click();
   await expect(page.getByTestId("pack-loja-inativo")).toBeVisible({ timeout: 20_000 });

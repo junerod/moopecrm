@@ -544,11 +544,22 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/modelos-prontos",
     label: "Modelos prontos",
-    description: "Ative um modelo de negócio pronto: assistentes, funil e conhecimento.",
+    description: "Escolha o tipo de operação da sua empresa.",
     icon: Car,
     group: "organizacao",
     section: "Sua empresa",
     minRole: "manager",
+  },
+  {
+    href: "/app/meu-modelo",
+    label: "Meu modelo",
+    description: "Termine a configuração do modelo ativo: WhatsApp, conhecimento e assistentes.",
+    icon: Storefront,
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+    // SEM sidebar: Meu Negócio + Modelos prontos já estão no hub; o banner
+    // da loja e o ⌘K são a porta. Mais um item no menu estoura a dobra.
   },
   {
     href: "/app/settings/perfil",

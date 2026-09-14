@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { TestDriveDoPack } from "@/components/negocio/TestDriveDoPack";
 import { Button } from "@/components/ui/button";
 import { perguntaDeTeste } from "@/lib/business-packs/apresentacao";
 import { resolverPack } from "@/lib/business-packs/catalogo";
@@ -185,6 +186,7 @@ export function LandingAssistentes({
           );
         })}
       </ul>
+      {packAtivo ? <TestDriveDoPack packId={packId ?? null} instalado={packAtivo} /> : null}
     </div>
   );
 }

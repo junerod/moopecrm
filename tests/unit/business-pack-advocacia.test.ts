@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { aplicarBusinessPack } from "@/lib/business-packs/aplicar";
+import { montarLojaDePacks, testidAtivarModelo } from "@/lib/business-packs/apresentacao";
 import { catalogoDePacks, packParaRamo, resolverPack } from "@/lib/business-packs/catalogo";
 import { classificarIntencao, intentEhSensivel } from "@/lib/business-packs/intents";
 import { fundirArtifacts } from "@/lib/business-packs/perfil";
@@ -15,6 +16,22 @@ describe("catálogo do pack advocacia", () => {
     expect(pack.ready_model_id).toBe("advocacia");
     expect(packParaRamo("advocacia")).toBe("escritorio_advocacia");
     expect(catalogoDePacks().some((p) => p.id === "escritorio_advocacia")).toBe(true);
+  });
+
+  it("loja de modelos prontos lista os dois packs com botão de ativar", () => {
+    const loja = montarLojaDePacks();
+    expect(loja.map((p) => p.id)).toEqual([
+      "locadora_veiculos",
+      "escritorio_advocacia",
+      "vendas_saas",
+      "comercial_geral",
+      "clinica_medica",
+      "clinica_odontologica",
+    ]);
+    expect(loja[0]?.funilNome).toBe("COMERCIAL — LOCADORA");
+    expect(loja[1]?.funilNome).toBe("COMERCIAL — ESCRITÓRIO");
+    expect(testidAtivarModelo("locadora_veiculos")).toBe("usar-modelo-locadora");
+    expect(testidAtivarModelo("escritorio_advocacia")).toBe("usar-modelo-escritorio_advocacia");
   });
 
   it("funil comercial do escritório tem 8 etapas", () => {

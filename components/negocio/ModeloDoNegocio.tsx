@@ -76,13 +76,13 @@ export function ModeloDoNegocio({
         ) : null}
         <div className="flex flex-wrap gap-2">
           <Button asChild>
-            <Link href={packAtivo ? "/app/ai/agents" : "/app/modelos-prontos"}>
-              {packAtivo ? "Ver meus assistentes" : "Ativar de novo"}
+            <Link href={packAtivo ? "/app/meu-modelo" : "/app/modelos-prontos"}>
+              {packAtivo ? "Abrir meu modelo" : "Ativar de novo"}
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/app/modelos-prontos">
-              {packAtivo ? "Ver detalhes e desativar" : "Ver detalhes"}
+            <Link href={packAtivo ? "/app/meu-modelo" : "/app/modelos-prontos"}>
+              {packAtivo ? "Continuar configuração" : "Ver modelos"}
             </Link>
           </Button>
         </div>
@@ -114,7 +114,7 @@ export function ModeloDoNegocio({
               {podeInstalar ? (
                 <Button asChild>
                   <Link
-                    href={`/app/modelos-prontos?pack=${item.id}`}
+                    href={`/app/modelos-prontos/${item.id}`}
                     data-testid={testidAtivarPackCard(item.id)}
                   >
                     Ativar modelo
@@ -124,7 +124,7 @@ export function ModeloDoNegocio({
                 <p className="text-sm text-muted-foreground">Peça a quem administra para ativar.</p>
               )}
               <Button asChild variant="outline">
-                <Link href="/app/modelos-prontos#o-que-instala" data-testid="ver-o-que-sera-instalado">
+                <Link href={`/app/modelos-prontos/${item.id}`} data-testid="ver-o-que-sera-instalado">
                   Ver o que será instalado
                 </Link>
               </Button>

@@ -113,6 +113,8 @@ test("escolhe Advocacia, instala o Pack e testa sem inventar andamento", async (
 
   await page.goto("/app/modelos-prontos");
   await expect(page.getByTestId("pack-pronto")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("testar-assistentes")).toHaveCount(0);
+  await page.goto("/app/ai/agents");
   await page.getByRole("button", { name: /^Andamento$/ }).click();
   await page.getByTestId("test-drive-enviar").click();
   await expect(page.getByTestId("test-drive-resposta")).toContainText(/advogado|não consulto andamento/i);
