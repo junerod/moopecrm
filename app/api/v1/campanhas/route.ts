@@ -4,36 +4,16 @@
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
-import { z } from "zod";
 
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { createCampanhaSchema } from "@/lib/campanhas/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const segmentoSchema = z
-  .object({
-    tags: z.array(z.string().min(1).max(40)).max(20).optional(),
-    papel: z.string().max(40).nullable().optional(),
-    origem: z.string().max(40).nullable().optional(),
-    owner_user_id: z.string().uuid().nullable().optional(),
-    pipeline_id: z.string().uuid().nullable().optional(),
-    stage_id: z.string().uuid().nullable().optional(),
-    temperatura: z.enum(["frio", "morno", "quente"]).nullable().optional(),
-    contact_ids: z.array(z.string().uuid()).max(2000).optional(),
-  })
-  .default({});
-
-const createSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  channel_session_id: z.string().uuid().nullable().optional(),
-  template_id: z.string().uuid().nullable().optional(),
-  body_text: z.string().max(2000).default(""),
-  segment: segmentoSchema,
-  scheduled_at: z.string().datetime({ offset: true }).nullable().optional(),
-});
+const createSchema = createCampanhaSchema;
 
 export async function GET(): Promise<Response> {
   const requestId = randomUUID();
@@ -44,7 +24,7 @@ export async function GET(): Promise<Response> {
   const { data, error } = await supabase
     .from("campaigns")
     .select(
-      "id, name, status, channel_session_id, template_id, body_text, segment, scheduled_at, started_at, finished_at, created_at",
+      "id, name, status, channel_session_id, template_id, body_text, segment, settings, scheduled_at, started_at, finished_at, created_at",
     )
     .eq("organization_id", authz.org.orgId)
     .order("created_at", { ascending: false })
@@ -97,6 +77,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       template_id: parsed.data.template_id ?? null,
       body_text: parsed.data.body_text,
       segment: parsed.data.segment,
+      settings: parsed.data.settings ?? {},
       created_by_user_id: authz.user.id,
       scheduled_at: parsed.data.scheduled_at ?? null,
     })

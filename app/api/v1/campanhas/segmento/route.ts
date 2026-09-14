@@ -1,5 +1,5 @@
 /**
- * POST /api/v1/campanhas/segmento — estimativa ("N contatos selecionados").
+ * POST /api/v1/campanhas/segmento — estimativa + preview paginado.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -8,21 +8,20 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { carregarContatosDoSegmento } from "@/lib/campanhas/carregar-contatos";
-import { estimarSegmento } from "@/lib/campanhas/segmento";
+import { estimarSegmento, rotuloDaEstimativa } from "@/lib/campanhas/segmento";
+import { segmentoSchema } from "@/lib/campanhas/schema";
+import { SELECAO_DE_CANAIS } from "@/lib/campanhas/tipos";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
-  tags: z.array(z.string().min(1).max(40)).max(20).optional(),
-  papel: z.string().max(40).nullable().optional(),
-  origem: z.string().max(40).nullable().optional(),
-  owner_user_id: z.string().uuid().nullable().optional(),
-  pipeline_id: z.string().uuid().nullable().optional(),
-  stage_id: z.string().uuid().nullable().optional(),
-  temperatura: z.enum(["frio", "morno", "quente"]).nullable().optional(),
-  contact_ids: z.array(z.string().uuid()).max(2000).optional(),
-});
+const bodySchema = segmentoSchema.and(
+  z.object({
+    channels: z.enum(SELECAO_DE_CANAIS).optional(),
+    preview_offset: z.number().int().min(0).max(5000).optional(),
+    preview_limit: z.number().int().min(1).max(50).optional(),
+  }),
+);
 
 export async function POST(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -42,14 +41,38 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const supabase = await createClient();
   try {
-    const contatos = await carregarContatosDoSegmento(supabase, authz.org.orgId, parsed.data);
-    const est = estimarSegmento(contatos, parsed.data);
+    const { channels, preview_offset, preview_limit, ...segmento } = parsed.data;
+    const contatos = await carregarContatosDoSegmento(supabase, authz.org.orgId, segmento);
+    const { count: totalBase } = await supabase
+      .from("contacts")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", authz.org.orgId)
+      .is("is_merged_into", null)
+      .eq("is_anonymized", false);
+    const est = estimarSegmento(contatos, segmento, channels ?? "whatsapp", totalBase ?? undefined);
+    const offset = preview_offset ?? 0;
+    const limit = preview_limit ?? 20;
+    const preview = contatos
+      .filter((c) => est.ids.includes(c.id))
+      .slice(offset, offset + limit)
+      .map((c) => ({
+        id: c.id,
+        nome: c.display_name || c.name || "Sem nome",
+        telefone: c.phone_number ?? null,
+        email: c.email ?? null,
+      }));
     return ok(
       {
         selecionados: est.selecionados,
         elegiveis: est.elegiveis,
         excluidos: est.excluidos,
-        rotulo: `${est.elegiveis} contatos selecionados`,
+        destinos: est.destinos,
+        exclusoes: est.exclusoes,
+        atinge_base_inteira: est.atinge_base_inteira,
+        rotulo: rotuloDaEstimativa(est),
+        preview,
+        preview_offset: offset,
+        preview_has_more: offset + limit < est.selecionados,
       },
       { requestId },
     );

@@ -191,8 +191,11 @@ test.describe("Mercado Forte — Bloco 3", () => {
 
     await page.getByTestId("campanha-nova").click();
     await expect(page.getByTestId("campanha-wizard")).toBeVisible();
+    await page.getByTestId("campanha-objetivo-promocao").click();
+    await page.getByTestId("campanha-proximo").click();
+    await expect(page.getByTestId("campanha-passo-segmento")).toBeVisible();
     await page.locator("#camp-tag").fill(TAG);
-    await expect(page.getByTestId("campanha-estimativa")).toContainText(/contatos selecionados/i, {
+    await expect(page.getByTestId("campanha-estimativa")).toContainText(/contatos (selecionados|encontrados)/i, {
       timeout: 15_000,
     });
     await shot(page, "02-campanha-nova-segmento.png");
@@ -202,19 +205,16 @@ test.describe("Mercado Forte — Bloco 3", () => {
     await page.locator("#camp-body").fill("Olá {{nome}}, sua proposta está pronta.");
     await shot(page, "03-campanha-template.png");
     await page.getByTestId("campanha-salvar-rascunho").click();
-    await expect(page.getByTestId("campanhas-lista")).toContainText(`Proposta ${SUFIXO}`, {
-      timeout: 15_000,
-    });
+    await page.getByTestId("campanha-proximo").click();
+    await expect(page.getByTestId("campanha-passo-canal")).toBeVisible();
+    await page.getByTestId("campanha-proximo").click();
+    await expect(page.getByTestId("campanha-passo-quando")).toBeVisible();
     await page.getByTestId("campanha-proximo").click();
     await expect(page.getByTestId("campanha-preview")).toContainText("Olá Maria");
     await expect(page.getByTestId("campanha-preview")).toHaveAttribute("data-ok", "1");
     await shot(page, "04-campanha-preview.png");
-    await page.getByTestId("campanha-proximo").click();
     await page.getByTestId("campanha-enviar").click();
-    const linha = page.locator("[data-testid=campanhas-lista] li").filter({ hasText: `Proposta ${SUFIXO}` });
-    await expect(linha).toHaveAttribute("data-status", /running|completed|scheduled/, {
-      timeout: 20_000,
-    });
+    await expect(page.getByTestId("campanha-resultado")).toBeVisible({ timeout: 20_000 });
 
     const listaCamp = await page.request.get("/api/v1/campanhas");
     const camps = (await listaCamp.json()) as { data: Array<{ id: string; name: string; status: string }> };

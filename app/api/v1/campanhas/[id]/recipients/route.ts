@@ -28,7 +28,7 @@ export async function GET(
   const { data, error } = await supabase
     .from("campaign_recipients")
     .select(
-      "id, contact_id, phone, status, sent_at, delivered_at, read_at, replied_at, failed_at, error, lead_id, message_id",
+      "id, contact_id, phone, channel, destination, status, sent_at, delivered_at, read_at, replied_at, failed_at, error, lead_id, message_id",
     )
     .eq("campaign_id", id)
     .eq("organization_id", authz.org.orgId)

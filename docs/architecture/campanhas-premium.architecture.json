@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Campanhas premium — composer, fila e dispatcher",
+    "subtitle": "Mesmo módulo /app/campanhas; worker único; message_templates existentes",
+    "output": "campanhas-premium.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o operador vê" },
+    { "id": "app", "label": "App / API" },
+    { "id": "engine", "label": "Engine já existente" }
+  ],
+  "mainPath": ["lista", "wizard", "start", "worker", "detalhe"],
+  "nodes": [
+    { "id": "lista", "lane": "humano", "col": 0, "type": "frontend", "label": "/app/campanhas", "sublabel": "cards + lista" },
+    { "id": "wizard", "lane": "humano", "col": 1, "type": "frontend", "label": "/app/campanhas/nova", "sublabel": "6 passos" },
+    { "id": "detalhe", "lane": "humano", "col": 4, "type": "frontend", "label": "/app/campanhas/:id", "sublabel": "fila e métricas" },
+    { "id": "start", "lane": "app", "col": 2, "type": "api", "label": "POST /start", "sublabel": "marca preparing" },
+    { "id": "midia", "lane": "app", "col": 1, "type": "api", "label": "POST /midia", "sublabel": "path no Storage" },
+    { "id": "modelos", "lane": "app", "col": 1, "type": "api", "label": "GET /modelos", "sublabel": "message_templates" },
+    { "id": "worker", "lane": "engine", "col": 3, "type": "lib", "label": "processarTickDasCampanhas", "sublabel": "lote + dispatcher" },
+    { "id": "dispatch", "lane": "engine", "col": 3, "type": "lib", "label": "dispatchRecipient", "sublabel": "WhatsApp / e-mail" },
+    { "id": "inbox", "lane": "engine", "col": 4, "type": "lib", "label": "conversations/messages", "sublabel": "só envio real" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "lista", "to": "wizard", "label": "Criar campanha" },
+    { "id": "e2", "from": "wizard", "to": "modelos", "label": "usar modelo" },
+    { "id": "e3", "from": "wizard", "to": "midia", "label": "anexar" },
+    { "id": "e4", "from": "wizard", "to": "start", "label": "enviar / agendar" },
+    { "id": "e5", "from": "start", "to": "worker", "label": "preparing" },
+    { "id": "e6", "from": "worker", "to": "dispatch", "label": "pending" },
+    { "id": "e7", "from": "dispatch", "to": "inbox", "label": "só via real" },
+    { "id": "e8", "from": "worker", "to": "detalhe", "label": "progresso" },
+    { "id": "e9", "from": "lista", "to": "detalhe", "label": "abrir resultado" },
+    { "id": "e10", "from": "dispatch", "to": "detalhe", "label": "métricas honestas" }
+  ]
+}

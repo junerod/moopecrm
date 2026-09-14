@@ -31,6 +31,7 @@ ser fonte sem ninguém decidir isso.
 | `moope-conector.architecture.json` | conector MOOPE — /provision nasce o tenant, chave + launch 90s + eventos + GET lookup/retrato |
 | `manual-do-operador.architecture.json` | tela `/app/manual` — índice, busca e as três portas (hub, ⌘K, Inbox vazio) |
 | `productization-3c.architecture.json` | Etapa 3C — Início / Meu Negócio / Conhecimento / Assistentes / Automações sobre engines já existentes |
+| `campanhas-premium.architecture.json` | Campanhas premium — wizard /nova, start assíncrono, worker único, dispatcher por canal |
 
 > **Esta tabela já apodreceu uma vez:** ela listava 8 mapas quando o disco tinha 9 — faltava
 > `indice-de-atrito`. Nenhum teste lê este README (o gate lê os `.json`), então mapa novo que

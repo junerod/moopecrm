@@ -213,6 +213,7 @@ export const AUDIT_ACTIONS = [
   "me.alert_prefs_updated",
   "campaign.created",
   "campaign.started",
+  "campaign.updated",
   "campaign.cancelled",
   "campaign.dispatch_tick",
   "routing.worker_run",

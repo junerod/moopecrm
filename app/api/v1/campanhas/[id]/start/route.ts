@@ -6,13 +6,22 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { authorizeAiAction } from "@/lib/ai/acoes/autorizar";
 import { carregarContatosDoSegmento } from "@/lib/campanhas/carregar-contatos";
-import { campanhaComercialRealPermitida } from "@/lib/campanhas/capabilities";
+import { campanhaComercialRealPermitida, campanhaExigeTemplateOficial } from "@/lib/campanhas/capabilities";
+import { diagnosticoDeDispatch } from "@/lib/campanhas/diagnostico";
 import { previewDaCampanha } from "@/lib/campanhas/preview";
 import { estimarSegmento } from "@/lib/campanhas/segmento";
+import { lerSettings } from "@/lib/campanhas/settings";
 import { podeTransitarCampanha } from "@/lib/campanhas/transicoes";
-import { materializarDestinatarios } from "@/lib/campanhas/worker";
-import type { SegmentoDaCampanha, StatusDaCampanha } from "@/lib/campanhas/tipos";
+import {
+  LIMITE_CONFIRMACAO_LOTE,
+  segmentoVazio,
+  type SegmentoDaCampanha,
+  type StatusDaCampanha,
+} from "@/lib/campanhas/tipos";
+import { processarTickDasCampanhas } from "@/lib/campanhas/worker";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { ChannelProvider } from "@/lib/channels/types";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +49,8 @@ export async function POST(
   if (!camp) return fail("not_found", "Campanha não encontrada.", 404, { requestId });
 
   const status = (camp as { status: StatusDaCampanha }).status;
-  if (!podeTransitarCampanha(status, "running") && status !== "running") {
+  const settings = lerSettings((camp as { settings?: unknown }).settings);
+  if (!podeTransitarCampanha(status, "running") && status !== "running" && !settings.preparing) {
     return fail("state_conflict", "Esta campanha não pode ser disparada.", 409, { requestId });
   }
 
@@ -54,6 +64,7 @@ export async function POST(
   }
 
   const sessionId = (camp as { channel_session_id: string | null }).channel_session_id;
+  let provider: ChannelProvider | null = null;
   if (sessionId) {
     const { data: sess } = await supabase
       .from("channel_sessions")
@@ -61,40 +72,77 @@ export async function POST(
       .eq("id", sessionId)
       .eq("organization_id", authz.org.orgId)
       .maybeSingle();
-    const provider = (sess as { provider?: string } | null)?.provider;
-    if (provider === "waha") {
-      // QR não dispara campanha REAL; o worker desta rodada é mock.
-    } else if (provider && !campanhaComercialRealPermitida(provider as never)) {
-      return fail("validation_failed", "Este canal não dispara campanha comercial.", 422, {
-        requestId,
-      });
-    }
+    provider = ((sess as { provider?: string } | null)?.provider ?? null) as ChannelProvider | null;
+  }
+
+  const selecaoPreliminar = settings.channels ?? "whatsapp";
+  const querWhatsapp = selecaoPreliminar !== "email";
+  const diag = diagnosticoDeDispatch({
+    provider,
+    templateId: (camp as { template_id: string | null }).template_id,
+  });
+  if (querWhatsapp && provider && !campanhaComercialRealPermitida(provider)) {
+    return fail(
+      "validation_failed",
+      "WhatsApp por QR não dispara campanha comercial.",
+      422,
+      { requestId },
+    );
+  }
+  if (
+    querWhatsapp &&
+    provider &&
+    campanhaExigeTemplateOficial(provider) &&
+    !(camp as { template_id: string | null }).template_id &&
+    diag.whatsapp === "real"
+  ) {
+    return fail(
+      "validation_failed",
+      "Este canal exige modelo oficial aprovado para campanha WhatsApp.",
+      422,
+      { requestId },
+    );
   }
 
   const segmento = ((camp as { segment: SegmentoDaCampanha }).segment ?? {}) as SegmentoDaCampanha;
+  const selecao = settings.channels ?? "whatsapp";
   const contatos = await carregarContatosDoSegmento(supabase, authz.org.orgId, segmento);
-  const est = estimarSegmento(contatos, segmento);
-  const { inseridos, pulados } = await materializarDestinatarios(supabase, {
-    organizationId: authz.org.orgId,
-    campaignId: id,
-    contactIds: est.ids,
-    contatos,
-  });
+  const { count: totalBase } = await supabase
+    .from("contacts")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", authz.org.orgId)
+    .is("is_merged_into", null)
+    .eq("is_anonymized", false);
+  const est = estimarSegmento(contatos, segmento, selecao, totalBase ?? undefined);
+
+  if (segmentoVazio(segmento) && est.atinge_base_inteira && !settings.confirm_all_base) {
+    return fail(
+      "validation_failed",
+      "Esta campanha atingirá toda a sua base. Confirme no passo Revisar.",
+      422,
+      { requestId },
+    );
+  }
+  if (est.elegiveis > LIMITE_CONFIRMACAO_LOTE && !settings.confirm_large) {
+    return fail(
+      "validation_failed",
+      `Confirme o envio para ${est.elegiveis} contatos.`,
+      422,
+      { requestId },
+    );
+  }
 
   const agora = new Date().toISOString();
-  const scheduled = (camp as { scheduled_at: string | null }).scheduled_at;
-  const vaiAgora = !scheduled || new Date(scheduled).getTime() <= Date.now();
-  const novoStatus: StatusDaCampanha = vaiAgora ? "running" : "scheduled";
-
   await supabase
     .from("campaigns")
     .update({
-      status: novoStatus,
-      started_at: vaiAgora ? agora : null,
+      settings: { ...settings, preparing: true, materializing: true },
       updated_at: agora,
     })
     .eq("id", id)
     .eq("organization_id", authz.org.orgId);
+
+  void processarTickDasCampanhas(createAdminClient()).catch(() => undefined);
 
   void audit({
     action: "campaign.started",
@@ -103,8 +151,21 @@ export async function POST(
     actorUserId: authz.user.id,
     resourceType: "campaigns",
     resourceId: id,
-    metadata: { inseridos, pulados, status: novoStatus, via: "mock" },
+    metadata: {
+      preparing: true,
+      elegiveis: est.elegiveis,
+      dispatch: diag,
+    },
   });
 
-  return ok({ status: novoStatus, inseridos, pulados, via: "mock" }, { requestId });
+  return ok(
+    {
+      status: "draft",
+      preparing: true,
+      elegiveis: est.elegiveis,
+      destinos: est.destinos,
+      dispatch: diag,
+    },
+    { requestId },
+  );
 }

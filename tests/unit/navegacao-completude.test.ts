@@ -46,6 +46,8 @@ const NAV_ALLOWLIST: Record<string, string> = {
     "porta é o rodapé de versão (VersionFooter), que aparece justamente quando há versão nova — melhor que um card fixo. Além disso é só do dono do servidor (is_platform_admin), papel que o registro não modela",
   "/app/integrations/nuvemshop":
     "A página só redireciona para Integração MOOPE. Sem porta própria: a loja não aparece em tela nenhuma.",
+  "/app/campanhas/nova":
+    "Sub-fluxo de criação, alcançado pelo CTA + Criar campanha na lista /app/campanhas",
 };
 
 /** Deriva as rotas estáticas a partir dos arquivos de página que existem. */

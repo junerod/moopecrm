@@ -1,21 +1,13 @@
 /**
  * Quem PODE disparar campanha comercial de verdade.
  *
- * WAHA (QR) tem banRisk e freeform — não habilitar envio comercial real.
- * Meta / Zernio / Twilio exigem template oficial fora da janela.
- * Nesta rodada o worker é MOCK; a UI ainda reflete esta matriz.
+ * Canal com risco de banimento (QR) não habilita envio comercial.
+ * Canal oficial exige template aprovado fora da janela.
  */
-import {
-  CHANNEL_PROVIDER_META,
-  CHANNEL_PROVIDER_TWILIO,
-  CHANNEL_PROVIDER_WAHA,
-  CHANNEL_PROVIDER_ZERNIO,
-  capabilitiesOf,
-} from "@/lib/channels/capabilities";
+import { capabilitiesOf } from "@/lib/channels/capabilities";
 import type { ChannelProvider } from "@/lib/channels/types";
 
 export function campanhaComercialRealPermitida(provider: ChannelProvider): boolean {
-  if (provider === CHANNEL_PROVIDER_WAHA) return false;
   const caps = capabilitiesOf(provider);
   return caps.requiresTemplates && !caps.banRisk;
 }
@@ -25,14 +17,12 @@ export function campanhaExigeTemplateOficial(provider: ChannelProvider): boolean
 }
 
 export function rotuloDaCapability(provider: ChannelProvider): string {
-  if (provider === CHANNEL_PROVIDER_WAHA) {
+  const caps = capabilitiesOf(provider);
+  if (caps.banRisk) {
     return "WhatsApp por QR não dispara campanha comercial real.";
   }
-  if (provider === CHANNEL_PROVIDER_META || provider === CHANNEL_PROVIDER_ZERNIO) {
-    return "Canal oficial: use template aprovado. Envio desta rodada é simulado.";
+  if (caps.requiresTemplates) {
+    return "Canal oficial: use template aprovado.";
   }
-  if (provider === CHANNEL_PROVIDER_TWILIO) {
-    return "Twilio: template do provedor. Envio desta rodada é simulado.";
-  }
-  return "Provider sem campanha comercial habilitada.";
+  return "Este canal não dispara campanha comercial.";
 }

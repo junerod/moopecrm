@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
+import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { agregarMetricas } from "@/lib/campanhas/metricas";
+import { patchCampanhaSchema } from "@/lib/campanhas/schema";
+import { lerSettings } from "@/lib/campanhas/settings";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -29,15 +32,89 @@ export async function GET(
 
   const { data: recs } = await supabase
     .from("campaign_recipients")
-    .select("status, lead_id")
+    .select("status, lead_id, error, channel")
     .eq("campaign_id", id)
     .eq("organization_id", authz.org.orgId);
 
   return ok(
     {
       ...data,
-      metricas: agregarMetricas((recs ?? []) as Array<{ status: string; lead_id: string | null }>),
+      settings: lerSettings((data as { settings?: unknown }).settings),
+      metricas: agregarMetricas(
+        (recs ?? []) as Array<{
+          status: string;
+          lead_id: string | null;
+          error: string | null;
+          channel: string | null;
+        }>,
+      ),
     },
     { requestId },
   );
+}
+
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const requestId = randomUUID();
+  const authz = await requireRole("manager", { requestId, resource: "campaigns" });
+  if (!authz.ok) return authz.response;
+  const { id } = await ctx.params;
+  let corpo: unknown;
+  try {
+    corpo = await req.json();
+  } catch {
+    return fail("validation_failed", "Corpo inválido.", 422, { requestId });
+  }
+  const parsed = patchCampanhaSchema.safeParse(corpo);
+  if (!parsed.success) {
+    return fail("validation_failed", "Campanha inválida.", 422, { requestId });
+  }
+
+  const supabase = await createClient();
+  const { data: atual } = await supabase
+    .from("campaigns")
+    .select("id, status, settings")
+    .eq("id", id)
+    .eq("organization_id", authz.org.orgId)
+    .maybeSingle();
+  if (!atual) return fail("not_found", "Campanha não encontrada.", 404, { requestId });
+  if ((atual as { status: string }).status !== "draft") {
+    return fail("state_conflict", "Só rascunho pode ser editado.", 409, { requestId });
+  }
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (parsed.data.name !== undefined) patch.name = parsed.data.name;
+  if (parsed.data.body_text !== undefined) patch.body_text = parsed.data.body_text;
+  if (parsed.data.segment !== undefined) patch.segment = parsed.data.segment;
+  if (parsed.data.scheduled_at !== undefined) patch.scheduled_at = parsed.data.scheduled_at;
+  if (parsed.data.channel_session_id !== undefined) {
+    patch.channel_session_id = parsed.data.channel_session_id;
+  }
+  if (parsed.data.template_id !== undefined) patch.template_id = parsed.data.template_id;
+  if (parsed.data.settings !== undefined) {
+    patch.settings = { ...lerSettings((atual as { settings?: unknown }).settings), ...parsed.data.settings };
+  }
+
+  const { data, error } = await supabase
+    .from("campaigns")
+    .update(patch)
+    .eq("id", id)
+    .eq("organization_id", authz.org.orgId)
+    .select("*")
+    .single();
+  if (error || !data) {
+    return fail("internal_error", error?.message ?? "Falha ao atualizar.", 500, { requestId });
+  }
+
+  void audit({
+    action: "campaign.updated",
+    requestId,
+    organizationId: authz.org.orgId,
+    actorUserId: authz.user.id,
+    resourceType: "campaigns",
+    resourceId: id,
+  });
+  return ok(data, { requestId });
 }

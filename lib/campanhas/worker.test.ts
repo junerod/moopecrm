@@ -73,7 +73,7 @@ describe("métricas", () => {
       { status: "sent" },
       { status: "delivered" },
       { status: "replied", lead_id: "l1" },
-      { status: "skipped" },
+      { status: "skipped", error: "consent_declined" },
       { status: "failed" },
       { status: "pending" },
     ]);
