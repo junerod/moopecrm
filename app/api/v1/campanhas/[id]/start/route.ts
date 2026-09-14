@@ -6,11 +6,17 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { authorizeAiAction } from "@/lib/ai/acoes/autorizar";
 import { carregarContatosDoSegmento } from "@/lib/campanhas/carregar-contatos";
-import { campanhaComercialRealPermitida, campanhaExigeTemplateOficial } from "@/lib/campanhas/capabilities";
+import { campanhaExigeTemplateOficial } from "@/lib/campanhas/capabilities";
 import { diagnosticoDeDispatch } from "@/lib/campanhas/diagnostico";
 import { previewDaCampanha } from "@/lib/campanhas/preview";
 import { estimarSegmento } from "@/lib/campanhas/segmento";
+import {
+  escolherSessaoParaCampanha,
+  type SessaoDaCampanha,
+} from "@/lib/campanhas/sessao-da-campanha";
 import { lerSettings } from "@/lib/campanhas/settings";
+import { campanhaQrExigeConversaExistente } from "@/lib/channels/campaign-send";
+import { CHANNEL_SESSION_REF_COLUMNS } from "@/lib/channels/session-ref";
 import { podeTransitarCampanha } from "@/lib/campanhas/transicoes";
 import {
   LIMITE_CONFIRMACAO_LOTE,
@@ -63,17 +69,16 @@ export async function POST(
     return fail("validation_failed", "Template tem variável desconhecida.", 422, { requestId });
   }
 
-  const sessionId = (camp as { channel_session_id: string | null }).channel_session_id;
-  let provider: ChannelProvider | null = null;
-  if (sessionId) {
-    const { data: sess } = await supabase
-      .from("channel_sessions")
-      .select("provider")
-      .eq("id", sessionId)
-      .eq("organization_id", authz.org.orgId)
-      .maybeSingle();
-    provider = ((sess as { provider?: string } | null)?.provider ?? null) as ChannelProvider | null;
-  }
+  const { data: sessoes } = await supabase
+    .from("channel_sessions")
+    .select(`id, status, phone_number, archived_at, ${CHANNEL_SESSION_REF_COLUMNS}`)
+    .eq("organization_id", authz.org.orgId);
+  const irmas = (sessoes ?? []) as SessaoDaCampanha[];
+  const pedidaId = (camp as { channel_session_id: string | null }).channel_session_id;
+  const pedida = pedidaId ? (irmas.find((s) => s.id === pedidaId) ?? null) : null;
+  const escolhida = escolherSessaoParaCampanha(pedida, irmas);
+  const sessionId = escolhida?.id ?? pedidaId;
+  const provider = (escolhida?.provider ?? pedida?.provider ?? null) as ChannelProvider | null;
 
   const selecaoPreliminar = settings.channels ?? "whatsapp";
   const querWhatsapp = selecaoPreliminar !== "email";
@@ -81,14 +86,6 @@ export async function POST(
     provider,
     templateId: (camp as { template_id: string | null }).template_id,
   });
-  if (querWhatsapp && provider && !campanhaComercialRealPermitida(provider)) {
-    return fail(
-      "validation_failed",
-      "WhatsApp por QR não dispara campanha comercial.",
-      422,
-      { requestId },
-    );
-  }
   if (
     querWhatsapp &&
     provider &&
@@ -136,7 +133,15 @@ export async function POST(
   await supabase
     .from("campaigns")
     .update({
-      settings: { ...settings, preparing: true, materializing: true },
+      channel_session_id: sessionId ?? (camp as { channel_session_id: string | null }).channel_session_id,
+      settings: {
+        ...settings,
+        preparing: true,
+        materializing: true,
+        somente_conversa_existente: provider
+          ? campanhaQrExigeConversaExistente(provider)
+          : settings.somente_conversa_existente,
+      },
       updated_at: agora,
     })
     .eq("id", id)

@@ -46,7 +46,7 @@ export function montarSelectConversaEnvio(omitir: ReadonlySet<string>): string {
     .join(", ");
   const contato = CONTATO_BASE.filter((c) => !omitir.has(c)).join(", ");
   const archived = omitir.has(ARCHIVED_AT) ? "" : `, ${ARCHIVED_AT}`;
-  return `${CONVERSA_BASE}, contacts:contact_id(${contato}), channel_sessions:channel_session_id(${session}, status${archived})`;
+  return `${CONVERSA_BASE}, contacts:contact_id(${contato}), channel_sessions:channel_session_id(${session}, status, phone_number${archived})`;
 }
 
 const CANDIDATAS_A_OMITIR = [

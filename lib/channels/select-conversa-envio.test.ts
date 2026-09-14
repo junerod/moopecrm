@@ -12,6 +12,7 @@ describe("montarSelectConversaEnvio", () => {
     expect(select).toContain("archived_at");
     expect(select).toContain("twilio_from");
     expect(select).toContain("wa_lid");
+    expect(select).toContain("phone_number");
   });
 
   it("omite só a coluna que o 42703 nomeou", () => {

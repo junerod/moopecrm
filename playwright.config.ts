@@ -28,6 +28,9 @@ function envDoE2E(): Record<string, string> {
     if (i <= 0) continue;
     env[limpa.slice(0, i)] = limpa.slice(i + 1);
   }
+  if (!env.CAMPAIGN_DISPATCH_ADAPTER) {
+    env.CAMPAIGN_DISPATCH_ADAPTER = "mock";
+  }
   const url = env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   // Um `.env.e2e` apontando para fora do localhost é pior que nenhum, porque
   // parece seguro.

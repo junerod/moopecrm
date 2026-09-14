@@ -4,14 +4,22 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { CLASSIFICACAO_CAMPANHA, type CanalDaCampanha } from "@/lib/campanhas/tipos";
+import { acharFioExistenteParaCampanha, registrarOutboundDaCampanha } from "@/lib/campanhas/conversa";
 import { viaDoEmail, viaDoWhatsapp, type ViaDoCanal } from "@/lib/campanhas/diagnostico";
 import { montarEnvelopeDeEmail } from "@/lib/campanhas/email-envelope";
 import { enviarCampanhaMock } from "@/lib/campanhas/mock-envio";
-import { registrarOutboundDaCampanha } from "@/lib/campanhas/conversa";
-import { sendEmail } from "@/lib/email/resend";
-import { enviarWhatsappDaCampanha } from "@/lib/channels/campaign-send";
+import { CLASSIFICACAO_CAMPANHA, type CanalDaCampanha } from "@/lib/campanhas/tipos";
+import {
+  campanhaQrExigeConversaExistente,
+  enviarWhatsappDaCampanha,
+} from "@/lib/channels/campaign-send";
+import {
+  CHANNEL_SESSION_REF_COLUMNS,
+  resolveSessionRef,
+  type ChannelSessionRef,
+} from "@/lib/channels/session-ref";
 import type { ChannelProvider } from "@/lib/channels/types";
+import { sendEmail } from "@/lib/email/resend";
 
 export interface PedidoDeDispatch {
   organizationId: string;
@@ -42,12 +50,14 @@ export interface PedidoDeDispatch {
   modo: "auto" | "mock" | "real";
   adapterConfigured?: boolean;
   channelSessionId?: string | null;
+  waLid?: string | null;
+  waIdentity?: string | null;
 }
 
 export interface ResultadoDeDispatch {
   via: ViaDoCanal;
   classificacao: typeof CLASSIFICACAO_CAMPANHA;
-  status: "sent" | "failed";
+  status: "sent" | "failed" | "skipped";
   reason?: string;
   messageId?: string | null;
   externalId?: string | null;
@@ -86,7 +96,40 @@ async function dispatchWhatsapp(
     return { via, classificacao: CLASSIFICACAO_CAMPANHA, status: "sent" };
   }
 
-  if (via === "indisponivel" || !pedido.provider || !pedido.sessionRef) {
+  if (via === "indisponivel" || !pedido.provider) {
+    return {
+      via: "indisponivel",
+      classificacao: CLASSIFICACAO_CAMPANHA,
+      status: "failed",
+      reason: "provider_indisponivel",
+    };
+  }
+
+  const qr = campanhaQrExigeConversaExistente(pedido.provider);
+  let sessionId = pedido.channelSessionId ?? null;
+  let conversationId: string | null = null;
+  if (qr) {
+    const fio = await acharFioExistenteParaCampanha(db, {
+      organizationId: pedido.organizationId,
+      contactId: pedido.contactId,
+      channelSessionId: pedido.channelSessionId,
+    });
+    if (!fio) {
+      return {
+        via: "real",
+        classificacao: CLASSIFICACAO_CAMPANHA,
+        status: "skipped",
+        reason: "sem_conversa_no_numero",
+      };
+    }
+    conversationId = fio.conversationId;
+    sessionId = fio.sessionId;
+  }
+
+  const sessionRef =
+    (sessionId ? await refDaSessao(db, pedido.organizationId, sessionId) : null) ??
+    pedido.sessionRef;
+  if (!sessionRef) {
     return {
       via: "indisponivel",
       classificacao: CLASSIFICACAO_CAMPANHA,
@@ -98,7 +141,7 @@ async function dispatchWhatsapp(
   const r = await enviarWhatsappDaCampanha(db, {
     organizationId: pedido.organizationId,
     provider: pedido.provider,
-    sessionRef: pedido.sessionRef,
+    sessionRef,
     to: pedido.destination,
     body: pedido.body,
     templateName: pedido.templateName,
@@ -110,6 +153,9 @@ async function dispatchWhatsapp(
           kind: pedido.mediaKind ?? "image",
         }
       : null,
+    somenteConversaExistente: qr,
+    waLid: pedido.waLid,
+    waIdentity: pedido.waIdentity,
   });
 
   if (!r.ok) {
@@ -129,7 +175,8 @@ async function dispatchWhatsapp(
     destination: pedido.destination,
     externalId: r.externalId,
     mediaPath: null,
-    channelSessionId: pedido.channelSessionId,
+    channelSessionId: sessionId,
+    conversationId,
   });
 
   return {
@@ -207,4 +254,24 @@ async function dispatchEmail(
     status: "sent",
     externalId: r.id ?? null,
   };
+}
+
+async function refDaSessao(
+  db: SupabaseClient,
+  organizationId: string,
+  sessionId: string,
+): Promise<string | null> {
+  const { data } = await db
+    .from("channel_sessions")
+    .select(`id, ${CHANNEL_SESSION_REF_COLUMNS}`)
+    .eq("id", sessionId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!data) return null;
+  try {
+    const ref = resolveSessionRef(data as ChannelSessionRef);
+    return ref?.trim() ? ref : null;
+  } catch {
+    return null;
+  }
 }

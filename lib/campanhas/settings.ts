@@ -42,6 +42,7 @@ export function lerSettings(bruto: unknown): SettingsDaCampanha {
     cta_url: typeof o.cta_url === "string" ? o.cta_url : null,
     cta_label: typeof o.cta_label === "string" ? o.cta_label : null,
     timezone: typeof o.timezone === "string" ? o.timezone : null,
+    somente_conversa_existente: o.somente_conversa_existente === true,
   };
 }
 

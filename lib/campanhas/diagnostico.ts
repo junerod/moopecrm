@@ -27,7 +27,12 @@ export function viaDoWhatsapp(input: {
     return input.modo === "real" ? "indisponivel" : "mock";
   }
   const caps = capabilitiesOf(input.provider);
-  if (caps.banRisk) return "indisponivel";
+  if (caps.banRisk) {
+    if (input.adapterConfigured === false) {
+      return input.modo === "real" ? "indisponivel" : "mock";
+    }
+    return "real";
+  }
   if (!campanhaComercialPermitidaPelasCaps(input.provider)) return "indisponivel";
   if (campanhaExigeTemplatePelasCaps(input.provider) && !input.templateId) {
     return "indisponivel";

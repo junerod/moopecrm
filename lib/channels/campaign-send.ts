@@ -2,7 +2,8 @@
  * Envio comercial de campanha pelo seam de canal.
  *
  * Mora aqui porque pergunta capabilities e chama adapter — feature nenhuma
- * nomeia provider. QR (banRisk) nunca dispara campanha comercial.
+ * nomeia provider. Canal com banRisk não faz disparo frio: só envia no fio
+ * que já existe naquele número (`somenteConversaExistente`).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -21,6 +22,10 @@ export interface PedidoDeEnvioWhatsappCampanha {
   templateLanguage?: string | null;
   templateValues?: Record<string, string>;
   media?: { url: string; filename?: string; kind: "image" | "video" | "document" } | null;
+  /** QR: só depois de achar conversa neste número. */
+  somenteConversaExistente?: boolean;
+  waIdentity?: string | null;
+  waLid?: string | null;
 }
 
 export type ResultadoEnvioWhatsappCampanha =
@@ -40,10 +45,12 @@ export function midiaPermitidaPelasCaps(
   provider: ChannelProvider,
   kind: "image" | "video" | "document",
 ): boolean {
-  const caps = capabilitiesOf(provider);
-  if (caps.banRisk) return false;
   void kind;
   return true;
+}
+
+export function campanhaQrExigeConversaExistente(provider: ChannelProvider): boolean {
+  return capabilitiesOf(provider).banRisk;
 }
 
 export async function enviarWhatsappDaCampanha(
@@ -51,7 +58,7 @@ export async function enviarWhatsappDaCampanha(
   pedido: PedidoDeEnvioWhatsappCampanha,
 ): Promise<ResultadoEnvioWhatsappCampanha> {
   const caps = capabilitiesOf(pedido.provider);
-  if (caps.banRisk) {
+  if (caps.banRisk && !pedido.somenteConversaExistente) {
     return { ok: false, reason: "qr_nao_dispara_campanha", via: "real" };
   }
   if (caps.requiresTemplates && !pedido.templateName) {
@@ -83,11 +90,19 @@ export async function enviarWhatsappDaCampanha(
   }
 
   const kind: OutboundKind = pedido.media ? pedido.media.kind : "text";
+  const destino =
+    adapter.resolveRecipient({
+      isGroup: false,
+      groupChatId: null,
+      phoneNumber: pedido.to,
+      waIdentity: pedido.waIdentity,
+      waLid: pedido.waLid,
+    }) ?? pedido.to.replace(/\D/g, "");
   try {
     const r = await adapter.send({
       organizationId: pedido.organizationId,
       sessionRef: pedido.sessionRef,
-      to: pedido.to.replace(/\D/g, ""),
+      to: destino,
       kind,
       body: pedido.body,
       media: pedido.media

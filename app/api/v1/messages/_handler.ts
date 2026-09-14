@@ -19,6 +19,13 @@ import {
 } from "@/lib/channels";
 import { carregarConversaDoEnvio } from "@/lib/channels/select-conversa-envio";
 import { conferirDefinicao } from "@/lib/channels/conferir-definicao";
+import { CHANNEL_SESSION_REF_COLUMNS } from "@/lib/channels/session-ref";
+import {
+  escolherSessaoVivaParaEnvio,
+  sessaoAindaPodeVoltar,
+  sessaoEstaProntaParaEnvio,
+  type SessaoParaEnvio,
+} from "@/lib/channels/sessao-viva-para-envio";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { isMediaPathOwnedBy } from "@/lib/messaging/media/upload-validation";
 import {
@@ -288,9 +295,53 @@ export async function sendMessageHandler(
       is_blocked: boolean;
       force_human?: boolean | null;
     } | null;
-    channel_sessions: (ChannelSessionRef & { status: string; archived_at?: string | null }) | null;
+    channel_sessions: (ChannelSessionRef & {
+      id?: string;
+      status: string;
+      phone_number?: string | null;
+      archived_at?: string | null;
+    }) | null;
   };
   const c = conv as unknown as Joined;
+
+  if (
+    !c.channel_sessions ||
+    !sessaoEstaProntaParaEnvio({
+      id: c.channel_session_id,
+      status: c.channel_sessions.status,
+      phone_number: c.channel_sessions.phone_number,
+      archived_at: c.channel_sessions.archived_at,
+    })
+  ) {
+    const { data: irmas } = await supabase
+      .from("channel_sessions")
+      .select(`id, status, phone_number, archived_at, ${CHANNEL_SESSION_REF_COLUMNS}`)
+      .eq("organization_id", c.organization_id);
+    const atual: SessaoParaEnvio = {
+      id: c.channel_session_id,
+      status: c.channel_sessions?.status ?? null,
+      phone_number: c.channel_sessions?.phone_number ?? null,
+      archived_at: c.channel_sessions?.archived_at ?? null,
+    };
+    const viva = escolherSessaoVivaParaEnvio(atual, (irmas ?? []) as SessaoParaEnvio[]);
+    if (viva && viva.id !== c.channel_session_id) {
+      const escolhida = (irmas ?? []).find((s) => (s as { id: string }).id === viva.id) as
+        | (Joined["channel_sessions"] & { id: string })
+        | undefined;
+      if (escolhida) {
+        await supabase
+          .from("conversations")
+          .update({
+            channel_session_id: escolhida.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", c.id)
+          .eq("organization_id", c.organization_id);
+        c.channel_session_id = escolhida.id;
+        c.channel_sessions = escolhida;
+      }
+    }
+  }
 
   if (c.contacts?.is_blocked) {
     throw new ApiError(
@@ -586,19 +637,42 @@ export async function sendMessageHandler(
       .select(MSG_COLS)
       .maybeSingle();
     if (updated) message = updated as unknown as Message;
-  } else if (!c.channel_sessions || c.channel_sessions.status !== "WORKING") {
-    const { data: updated } = await supabase
-      .from("messages")
-      .update({
-        metadata: {
-          ...(message.metadata ?? {}),
-          queued_reason: "channel_session_not_working",
-        },
-      })
-      .eq("id", message.id)
-      .select(MSG_COLS)
-      .maybeSingle();
-    if (updated) message = updated as unknown as Message;
+  } else if (
+    !c.channel_sessions ||
+    !sessaoEstaProntaParaEnvio({
+      id: c.channel_session_id,
+      status: c.channel_sessions.status,
+      phone_number: c.channel_sessions.phone_number,
+      archived_at: c.channel_sessions.archived_at,
+    })
+  ) {
+    if (sessaoAindaPodeVoltar(c.channel_sessions?.status)) {
+      const { data: updated } = await supabase
+        .from("messages")
+        .update({
+          metadata: {
+            ...(message.metadata ?? {}),
+            queued_reason: "channel_session_not_working",
+          },
+        })
+        .eq("id", message.id)
+        .select(MSG_COLS)
+        .maybeSingle();
+      if (updated) message = updated as unknown as Message;
+    } else {
+      const { data: updated } = await supabase
+        .from("messages")
+        .update({
+          status: "failed",
+          error_code: "channel_session_not_working",
+          error_message:
+            "Este atendimento é de um número que não está mais conectado. Abra uma conversa nova no número atual.",
+        })
+        .eq("id", message.id)
+        .select(MSG_COLS)
+        .maybeSingle();
+      if (updated) message = updated as unknown as Message;
+    }
   } else {
     try {
       // O que separa mídia de texto é a presença de `media` no envelope — o

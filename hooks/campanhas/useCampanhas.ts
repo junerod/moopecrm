@@ -23,6 +23,7 @@ export interface CampanhaLista {
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
+  metricas?: MetricasDaCampanha;
 }
 
 export interface CampanhaDetalhe extends CampanhaLista {
@@ -45,6 +46,9 @@ export interface DestinatarioDaCampanha {
   error: string | null;
   lead_id: string | null;
   message_id: string | null;
+  conversation_id?: string | null;
+  resposta?: string | null;
+  resposta_em?: string | null;
 }
 
 export interface ModeloDeCampanha {

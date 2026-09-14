@@ -43,10 +43,12 @@ export const ROTULO_MOTIVO_PULO: Record<string, string> = {
   no_email: "Sem e-mail",
   no_contact: "Contato ausente",
   no_channel: "Sem canal",
-  provider_indisponivel: "Canal indisponível",
+  provider_indisponivel: "Canal não dispara este tipo de campanha",
   email_nao_configurado: "E-mail não configurado",
   template_oficial_obrigatorio: "Falta modelo oficial",
-  qr_nao_dispara_campanha: "QR não dispara campanha",
+  qr_nao_dispara_campanha: "Não envia frio neste número — falta conversa",
+  mock_nao_enviou: "Não saiu no WhatsApp — envio de prova",
+  sem_conversa_no_numero: "Ainda sem conversa neste WhatsApp — abra o fio na caixa",
 };
 
 export function rotuloStatusCampanha(status: string): string {

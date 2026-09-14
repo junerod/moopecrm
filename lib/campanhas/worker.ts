@@ -6,11 +6,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { carregarContatosDoSegmento } from "@/lib/campanhas/carregar-contatos";
 import { destinatarioPodeReceberNoCanal } from "@/lib/campanhas/consentimento";
-import { dispatchRecipient } from "@/lib/campanhas/dispatcher";
 import { lerModoDoDispatch } from "@/lib/campanhas/diagnostico";
+import { dispatchRecipient } from "@/lib/campanhas/dispatcher";
 import { materializarProximoLote, selecaoDosSettings } from "@/lib/campanhas/materializar";
 import { PACING_CAMPANHA_MS, podeEnviarAgora } from "@/lib/campanhas/pacing";
 import { previewDaCampanha } from "@/lib/campanhas/preview";
+import {
+  escolherSessaoParaCampanha,
+  type SessaoDaCampanha,
+} from "@/lib/campanhas/sessao-da-campanha";
 import { lerSettings } from "@/lib/campanhas/settings";
 import { destinatarioTerminal, podeTransitarCampanha } from "@/lib/campanhas/transicoes";
 import type {
@@ -20,6 +24,8 @@ import type {
   StatusDaCampanha,
 } from "@/lib/campanhas/tipos";
 import { LOTE_ENVIO } from "@/lib/campanhas/tipos";
+import { getAdapter } from "@/lib/channels";
+import { CHANNEL_SESSION_REF_COLUMNS, resolveSessionRef, type ChannelSessionRef } from "@/lib/channels/session-ref";
 import type { ChannelProvider } from "@/lib/channels/types";
 
 export interface ResultadoDoTick {
@@ -146,17 +152,18 @@ export async function processarTickDasCampanhas(
   for (const camp of (campanhas ?? []) as CampanhaRow[]) {
     resultado.processadas += 1;
     const settings = lerSettings(camp.settings);
-    const { data: sessao } = camp.channel_session_id
-      ? await db
-          .from("channel_sessions")
-          .select("provider, id")
-          .eq("id", camp.channel_session_id)
-          .eq("organization_id", camp.organization_id)
-          .maybeSingle()
-      : { data: null };
-    const provider = ((sessao as { provider?: string } | null)?.provider ?? null) as
-      | ChannelProvider
-      | null;
+    const sessao = await resolverSessaoDaCampanha(db, camp);
+    const provider = (sessao?.provider ?? null) as ChannelProvider | null;
+    let sessionRef: string | null = null;
+    if (sessao) {
+      try {
+        const ref = resolveSessionRef(sessao as unknown as ChannelSessionRef);
+        sessionRef = ref?.trim() ? ref : null;
+      } catch {
+        sessionRef = null;
+      }
+    }
+    const adapterConfigured = provider ? getAdapter(provider).isConfigured() : false;
 
     const { data: dests } = await db
       .from("campaign_recipients")
@@ -187,7 +194,7 @@ export async function processarTickDasCampanhas(
 
       const { data: contato } = await db
         .from("contacts")
-        .select("id, display_name, name, phone_number, email, is_blocked, consent")
+        .select("id, display_name, name, phone_number, email, is_blocked, consent, wa_lid, wa_identity")
         .eq("id", dest.contact_id)
         .eq("organization_id", camp.organization_id)
         .maybeSingle();
@@ -227,8 +234,11 @@ export async function processarTickDasCampanhas(
         destination: guarda.destination,
         body: preview.texto,
         provider,
-        sessionRef: camp.channel_session_id,
-        channelSessionId: camp.channel_session_id,
+        sessionRef,
+        channelSessionId: sessao?.id ?? camp.channel_session_id,
+        adapterConfigured,
+        waLid: (contato as { wa_lid?: string | null } | null)?.wa_lid ?? null,
+        waIdentity: (contato as { wa_identity?: string | null } | null)?.wa_identity ?? null,
         templateId: camp.template_id,
         mediaKind: anexo?.kind ?? null,
         mediaFilename: anexo?.filename ?? null,
@@ -245,6 +255,20 @@ export async function processarTickDasCampanhas(
       });
 
       const iso = agora.toISOString();
+      if (entrega.status === "skipped") {
+        await db
+          .from("campaign_recipients")
+          .update({
+            status: "skipped",
+            error: entrega.reason ?? "skipped",
+            destination: guarda.destination,
+          })
+          .eq("id", dest.id)
+          .eq("organization_id", camp.organization_id)
+          .eq("status", "pending");
+        resultado.pulados += 1;
+        continue;
+      }
       if (entrega.status === "failed") {
         await db
           .from("campaign_recipients")
@@ -269,7 +293,7 @@ export async function processarTickDasCampanhas(
           delivered_at: entrega.via === "real" ? null : null,
           phone: canal === "whatsapp" ? guarda.destination : dest.phone,
           destination: guarda.destination,
-          error: null,
+          error: entrega.via === "mock" ? "mock_nao_enviou" : null,
           message_id: entrega.messageId ?? null,
         })
         .eq("id", dest.id)
@@ -391,7 +415,7 @@ async function atribuirRespostasRecentes(
   void agora;
   const { data: enviados } = await db
     .from("campaign_recipients")
-    .select("id, contact_id, lead_id")
+    .select("id, contact_id, lead_id, message_id")
     .eq("campaign_id", camp.id)
     .eq("organization_id", camp.organization_id)
     .in("status", ["sent", "delivered", "read"])
@@ -401,7 +425,10 @@ async function atribuirRespostasRecentes(
     id: string;
     contact_id: string;
     lead_id: string | null;
+    message_id: string | null;
   }>) {
+    // Mock não cria message — atribuir inbound antigo vira "respondeu" mentiroso.
+    if (!dest.message_id) continue;
     const { data: conv } = await db
       .from("conversations")
       .select("id")
@@ -439,6 +466,30 @@ async function atribuirRespostasRecentes(
       .eq("id", dest.id)
       .eq("organization_id", camp.organization_id);
   }
+}
+
+async function resolverSessaoDaCampanha(
+  db: SupabaseClient,
+  camp: CampanhaRow,
+): Promise<SessaoDaCampanha | null> {
+  const { data } = await db
+    .from("channel_sessions")
+    .select(`id, status, phone_number, archived_at, ${CHANNEL_SESSION_REF_COLUMNS}`)
+    .eq("organization_id", camp.organization_id);
+  const irmas = (data ?? []) as SessaoDaCampanha[];
+  const pedida = camp.channel_session_id
+    ? (irmas.find((s) => s.id === camp.channel_session_id) ?? null)
+    : null;
+  const escolhida = escolherSessaoParaCampanha(pedida, irmas);
+  if (escolhida && escolhida.id !== camp.channel_session_id) {
+    await db
+      .from("campaigns")
+      .update({ channel_session_id: escolhida.id, updated_at: new Date().toISOString() })
+      .eq("id", camp.id)
+      .eq("organization_id", camp.organization_id);
+    camp.channel_session_id = escolhida.id;
+  }
+  return escolhida;
 }
 
 async function promoverAgendadas(db: SupabaseClient, agora: Date): Promise<void> {

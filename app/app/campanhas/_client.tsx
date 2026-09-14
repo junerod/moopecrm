@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useCampanhas, useCancelarCampanha } from "@/hooks/campanhas/useCampanhas";
 import { lerSettings, statusVisual } from "@/lib/campanhas/settings";
 import { rotuloStatusCampanha, tomStatusCampanha } from "@/lib/campanhas/rotulos";
+import { rotuloDoObjetivo } from "@/lib/campanhas/objetivo";
 import type { StatusVisualDaCampanha } from "@/lib/campanhas/tipos";
 import { AppCard } from "@/components/ds/AppCard";
 import { EmptyState } from "@/components/ds/EmptyState";
 import { StatusBadge } from "@/components/ds/StatusBadge";
-import { Megaphone } from "@/lib/ui/icons";
+import { CaretRight, Megaphone } from "@/lib/ui/icons";
 
 const CARDS: Array<{ status: StatusVisualDaCampanha; titulo: string }> = [
   { status: "draft", titulo: "Rascunhos" },
@@ -37,7 +38,7 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--color-text-muted)]">
           {podeEnviar
-            ? "Dirija o público, veja a mensagem como o contato vê e acompanhe respostas. Envio real só com canal oficial ou e-mail configurado."
+            ? "Clique numa campanha para ver o que saiu, quem respondeu e o que falhou."
             : "Você pode consultar campanhas. Envio é de manager/admin."}
         </p>
         {podeEnviar ? (
@@ -77,34 +78,72 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
           </li>
         ) : (
           items.map((c) => {
-            const vis = statusVisual(c.status, lerSettings(c.settings));
+            const settings = lerSettings(c.settings);
+            const vis = statusVisual(c.status, settings);
+            const canal =
+              settings.channels === "ambos"
+                ? "WhatsApp + e-mail"
+                : settings.channels === "email"
+                  ? "E-mail"
+                  : "WhatsApp";
+            const m = c.metricas;
             return (
               <li key={c.id} data-status={vis === "preparing" ? "preparing" : c.status}>
-                <AppCard className="flex items-center justify-between gap-3" hover>
-                  <div className="min-w-0">
-                    <Link
-                      href={`/app/campanhas/${c.id}`}
-                      className="text-sm font-semibold text-[var(--color-text)] hover:underline"
-                    >
-                      {c.name}
-                    </Link>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <StatusBadge tone={tomStatusCampanha(vis)}>
-                        {rotuloStatusCampanha(vis)}
-                      </StatusBadge>
-                    </div>
-                  </div>
-                  {podeEnviar && (c.status === "running" || c.status === "scheduled" || vis === "preparing") ? (
+                <div className="flex items-stretch gap-2">
+                  <Link
+                    href={`/app/campanhas/${c.id}`}
+                    data-testid={`campanha-abrir-${c.id}`}
+                    className="min-w-0 flex-1 cursor-pointer"
+                  >
+                    <AppCard hover className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--color-text)]">
+                          {c.name}
+                        </p>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-[var(--color-text-muted)]">
+                          {rotuloDoObjetivo(settings.objective)} · {canal}
+                          {c.body_text ? ` · ${c.body_text}` : ""}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <StatusBadge tone={tomStatusCampanha(vis)}>
+                            {rotuloStatusCampanha(vis)}
+                          </StatusBadge>
+                          {m && m.destinatarios > 0 ? (
+                            <span className="text-xs tabular-nums text-[var(--color-text-muted)]">
+                              {m.enviadas} enviadas
+                              {m.respondidas > 0 ? ` · ${m.respondidas} respostas` : ""}
+                              {m.falharam > 0 ? ` · ${m.falharam} falhas` : ""}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[var(--color-text-muted)]">
+                              {c.finished_at
+                                ? `Encerrada ${quando(c.finished_at)}`
+                                : c.started_at
+                                  ? `Iniciada ${quando(c.started_at)}`
+                                  : `Criada ${quando(c.created_at)}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--color-text-muted)]">
+                        Ver resultado
+                        <CaretRight size={14} />
+                      </span>
+                    </AppCard>
+                  </Link>
+                  {podeEnviar &&
+                  (c.status === "running" || c.status === "scheduled" || vis === "preparing") ? (
                     <Button
                       size="sm"
                       variant="outline"
+                      className="self-center"
                       data-testid={`campanha-cancelar-${c.id}`}
                       onClick={() => cancelar.mutate(c.id)}
                     >
                       Cancelar
                     </Button>
                   ) : null}
-                </AppCard>
+                </div>
               </li>
             );
           })
@@ -112,4 +151,13 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
       </ul>
     </div>
   );
+}
+
+function quando(iso: string): string {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

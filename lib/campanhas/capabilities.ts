@@ -1,7 +1,8 @@
 /**
- * Quem PODE disparar campanha comercial de verdade.
+ * Quem PODE disparar campanha comercial em massa no canal oficial.
  *
- * Canal com risco de banimento (QR) não habilita envio comercial.
+ * Canal com risco de banimento (QR) continua falso aqui — o disparo
+ * daquele número é outro caminho: só no fio que já existe.
  * Canal oficial exige template aprovado fora da janela.
  */
 import { capabilitiesOf } from "@/lib/channels/capabilities";
@@ -19,7 +20,7 @@ export function campanhaExigeTemplateOficial(provider: ChannelProvider): boolean
 export function rotuloDaCapability(provider: ChannelProvider): string {
   const caps = capabilitiesOf(provider);
   if (caps.banRisk) {
-    return "WhatsApp por QR não dispara campanha comercial real.";
+    return "Neste número a campanha só chega em quem já tem conversa aberta.";
   }
   if (caps.requiresTemplates) {
     return "Canal oficial: use template aprovado.";

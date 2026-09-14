@@ -98,6 +98,7 @@ export interface SettingsDaCampanha {
   cta_url?: string | null;
   cta_label?: string | null;
   timezone?: string | null;
+  somente_conversa_existente?: boolean;
 }
 
 export interface ContatoParaSegmento {

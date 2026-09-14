@@ -39,6 +39,7 @@ import { parseAbaDaInbox } from "@/lib/inbox/aba-padrao";
 import { precisaBuscarConversaAvulsa } from "@/lib/inbox/deep-link-conversa";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { InboxEmptyState } from "./InboxEmptyState";
+import { NovaConversaDialog } from "@/components/inbox/NovaConversaDialog";
 import { cn } from "@/lib/utils";
 
 /**
@@ -142,6 +143,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [novaConversaAberta, setNovaConversaAberta] = useState(false);
   /** A ficha do contato como painel deslizante — só existe abaixo do `xl`. */
   const [fichaAberta, setFichaAberta] = useState(false);
   /**
@@ -364,6 +366,16 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         )}
       >
         <InboxFilters value={filterValue} onChange={setFilterValue} />
+        <div className="border-b border-[var(--color-border)] px-3 py-2">
+          <button
+            type="button"
+            data-testid="inbox-nova-conversa-btn"
+            className="w-full rounded-lg bg-[var(--color-surface)] px-3 py-1.5 text-left text-xs font-medium ring-1 ring-[var(--color-border)] hover:bg-[var(--color-bg)]"
+            onClick={() => setNovaConversaAberta(true)}
+          >
+            + Nova conversa
+          </button>
+        </div>
         <div className="min-h-0 flex-1 overflow-hidden">
           <ConversationList
             filters={filters}
@@ -508,6 +520,14 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         onToggleHelp={() => setHelpOpen((v) => !v)}
       />
       <ShortcutsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      <NovaConversaDialog
+        open={novaConversaAberta}
+        onOpenChange={setNovaConversaAberta}
+        onAbriu={(id) => {
+          setSelectedId(id);
+          setFilterValue({ ...filterValue, tab: "all", papel: "todos", search: "" });
+        }}
+      />
     </div>
   );
 }

@@ -71,9 +71,11 @@ function conversationRow(shape: ConversationShape = {}): Row {
         : {
             // `provider` sai do banco desde a migration 0087 — o handler não
             // supõe mais o canal, então a linha falsa também não pode supor.
+            id: SESSION,
             provider: shape.provider ?? 'waha',
             waha_session_name: 'default',
             status: shape.sessionStatus ?? 'WORKING',
+            phone_number: '+5531999998888',
             archived_at: shape.archivedAt ?? null,
           },
   };
@@ -128,7 +130,14 @@ function makeSupabase(
               },
             }),
           }),
-          update: () => ({ eq: async () => ({ error: null }) }),
+          update: () => {
+            const cadeiaUpdate: Record<string, unknown> = {
+              eq: () => cadeiaUpdate,
+              then: (resolve: (v: { error: null }) => unknown) =>
+                Promise.resolve({ error: null }).then(resolve),
+            };
+            return cadeiaUpdate;
+          },
         };
       }
       if (table === 'meta_templates') {
@@ -169,6 +178,14 @@ function makeSupabase(
             };
           },
         };
+      }
+      if (table === 'channel_sessions') {
+        const cadeiaSessions: Record<string, unknown> = {
+          eq: () => cadeiaSessions,
+          then: (resolve: (v: { data: unknown[]; error: null }) => unknown) =>
+            Promise.resolve({ data: [], error: null }).then(resolve),
+        };
+        return { select: () => cadeiaSessions };
       }
       if (table === "contacts") {
         // O envio carimba `contacts.last_activity_at` (migration 0162). O dublê

@@ -3,14 +3,16 @@
  */
 import { randomUUID } from "node:crypto";
 
-import { fail, ok } from "@/lib/api/wrappers";
+import { ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { campanhaComercialRealPermitida } from "@/lib/campanhas/capabilities";
-import { diagnosticoDeDispatch } from "@/lib/campanhas/diagnostico";
 import { rotuloDisponibilidadeEmail, rotuloDisponibilidadeWhatsapp } from "@/lib/campanhas/canais";
+import { rotuloDaCapability } from "@/lib/campanhas/capabilities";
+import { diagnosticoDeDispatch } from "@/lib/campanhas/diagnostico";
+import { sessaoApareceNasOpcoesDaCampanha } from "@/lib/campanhas/sessao-da-campanha";
+import { capabilitiesOf } from "@/lib/channels/capabilities";
+import type { ChannelProvider } from "@/lib/channels/types";
 import { isEmailConfigured } from "@/lib/email/resend";
 import { createClient } from "@/lib/supabase/server";
-import type { ChannelProvider } from "@/lib/channels/types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +43,7 @@ export async function GET(): Promise<Response> {
         .limit(40),
       supabase
         .from("channel_sessions")
-        .select("id, provider, display_name, status")
+        .select("id, provider, display_name, status, phone_number")
         .eq("organization_id", authz.org.orgId)
         .limit(20),
       supabase
@@ -62,10 +64,11 @@ export async function GET(): Promise<Response> {
 
   const sessoesOk = ((sessoes ?? []) as Array<{
     id: string;
-    provider: string;
+    provider: ChannelProvider;
     display_name?: string | null;
     status?: string | null;
-  }>).filter((s) => campanhaComercialRealPermitida(s.provider as ChannelProvider));
+    phone_number?: string | null;
+  }>).filter((s) => sessaoApareceNasOpcoesDaCampanha(s));
 
   const emailOk = isEmailConfigured();
   const diag = diagnosticoDeDispatch({
@@ -93,8 +96,11 @@ export async function GET(): Promise<Response> {
       funis: funis ?? [],
       sessoes: sessoesOk.map((s) => ({
         id: s.id,
-        rotulo: s.display_name || "WhatsApp oficial",
+        rotulo: capabilitiesOf(s.provider).banRisk
+          ? `${s.display_name || s.phone_number || "WhatsApp"} · só quem já conversou`
+          : s.display_name || "WhatsApp oficial",
         provider: s.provider,
+        dica: rotuloDaCapability(s.provider),
       })),
       templates_oficiais: ((oficiais ?? []) as Array<{ id: string; name: string; language: string; status: string }>)
         .filter((t) => t.status === "APPROVED" || t.status === "approved")

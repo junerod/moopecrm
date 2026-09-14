@@ -11,6 +11,11 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  sessoesSupersedidasDoNumero,
+  type SessaoParaEnvio,
+} from "@/lib/channels/sessao-viva-para-envio";
+
 const OPEN_STATUSES = ["open", "pending", "claimed", "ai_handling"];
 
 export async function ensureConversation(
@@ -41,6 +46,14 @@ export async function ensureConversation(
     return row.id;
   }
 
+  const herdada = await reatacharConversaDaSessaoAntiga(
+    admin,
+    organizationId,
+    contactId,
+    channelSessionId,
+  );
+  if (herdada) return herdada;
+
   const { data: created, error } = await admin
     .from("conversations")
     .insert({
@@ -70,4 +83,45 @@ export async function ensureConversation(
     throw new Error(error?.message ?? "conversation_insert_failed");
   }
   return (created as { id: string }).id;
+}
+
+async function reatacharConversaDaSessaoAntiga(
+  admin: SupabaseClient,
+  organizationId: string,
+  contactId: string,
+  channelSessionId: string,
+): Promise<string | null> {
+  const { data: sessoes } = await admin
+    .from("channel_sessions")
+    .select("id, status, phone_number, archived_at")
+    .eq("organization_id", organizationId);
+  const irmas = (sessoes ?? []) as SessaoParaEnvio[];
+  const viva = irmas.find((s) => s.id === channelSessionId);
+  const antigas = sessoesSupersedidasDoNumero(viva, irmas);
+  if (antigas.length === 0) return null;
+
+  const { data: antiga } = await admin
+    .from("conversations")
+    .select("id, status")
+    .eq("organization_id", organizationId)
+    .eq("contact_id", contactId)
+    .in("channel_session_id", antigas)
+    .order("last_message_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  if (!antiga) return null;
+
+  const row = antiga as { id: string; status: string };
+  const patch: Record<string, unknown> = {
+    channel_session_id: channelSessionId,
+    updated_at: new Date().toISOString(),
+  };
+  if (!OPEN_STATUSES.includes(row.status)) patch.status = "open";
+  const { error } = await admin
+    .from("conversations")
+    .update(patch)
+    .eq("id", row.id)
+    .eq("organization_id", organizationId);
+  if (error) return null;
+  return row.id;
 }

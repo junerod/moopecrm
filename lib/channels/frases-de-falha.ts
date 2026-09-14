@@ -20,7 +20,7 @@
 const FRASES: Record<string, string> = {
   // Sessão do canal fora de WORKING — o número está desconectado.
   channel_session_not_working:
-    "O número escolhido não está conectado no momento. Reconecte em Conexões — a mensagem sai sozinha quando ele voltar.",
+    "Este atendimento é de um número que não está mais conectado. Abra uma conversa nova no número atual da empresa.",
   // Credencial do transporte ausente no ambiente da instalação.
   waha_not_configured: "A conexão de WhatsApp ainda não foi configurada nesta instalação.",
   meta_not_configured: "A conexão de WhatsApp ainda não foi configurada nesta instalação.",

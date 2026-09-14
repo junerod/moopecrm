@@ -8,6 +8,7 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { agregarMetricas } from "@/lib/campanhas/metricas";
 import { createCampanhaSchema } from "@/lib/campanhas/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,7 +31,55 @@ export async function GET(): Promise<Response> {
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) return fail("internal_error", error.message, 500, { requestId });
-  return ok(data ?? [], { requestId });
+  const camps = data ?? [];
+  const ids = camps.map((c) => (c as { id: string }).id);
+  const resumoPorCampanha = new Map<
+    string,
+    ReturnType<typeof agregarMetricas>
+  >();
+  if (ids.length > 0) {
+    const primeira = await supabase
+      .from("campaign_recipients")
+      .select("campaign_id, status, lead_id, error, channel")
+      .eq("organization_id", authz.org.orgId)
+      .in("campaign_id", ids)
+      .limit(20_000);
+    const recs = primeira.error
+      ? (
+          await supabase
+            .from("campaign_recipients")
+            .select("campaign_id, status, lead_id, error")
+            .eq("organization_id", authz.org.orgId)
+            .in("campaign_id", ids)
+            .limit(20_000)
+        ).data
+      : primeira.data;
+    const agrupado = new Map<
+      string,
+      Array<{ status: string; lead_id: string | null; error: string | null; channel: string | null }>
+    >();
+    for (const r of (recs ?? []) as Array<{
+      campaign_id: string;
+      status: string;
+      lead_id: string | null;
+      error: string | null;
+      channel: string | null;
+    }>) {
+      const lista = agrupado.get(r.campaign_id) ?? [];
+      lista.push(r);
+      agrupado.set(r.campaign_id, lista);
+    }
+    for (const [campId, linhas] of agrupado) {
+      resumoPorCampanha.set(campId, agregarMetricas(linhas));
+    }
+  }
+  return ok(
+    camps.map((c) => ({
+      ...c,
+      metricas: resumoPorCampanha.get((c as { id: string }).id) ?? agregarMetricas([]),
+    })),
+    { requestId },
+  );
 }
 
 export async function POST(req: NextRequest): Promise<Response> {

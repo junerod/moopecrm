@@ -723,6 +723,12 @@ export function NovaCampanhaClient() {
           <p className="text-sm">
             WhatsApp: {opcoes.data?.whatsapp.rotulo ?? "…"} · E-mail: {opcoes.data?.email.rotulo ?? "…"}
           </p>
+          <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
+            No número do celular a campanha só chega em quem já tem conversa
+            aberta nesse WhatsApp. Quem nunca falou precisa de Nova conversa na
+            caixa. Quem já conversou — mesmo que o aparelho tenha sido
+            reconectado — entra na fila.
+          </p>
           {(canais === "whatsapp" || canais === "ambos") && (opcoes.data?.sessoes.length ?? 0) > 0 ? (
             <div>
               <Label htmlFor="camp-sessao">Número que envia</Label>

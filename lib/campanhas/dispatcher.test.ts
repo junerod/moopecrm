@@ -26,6 +26,14 @@ describe("dispatcher e diagnóstico", () => {
     const d = diagnosticoDeDispatch({ provider: null });
     expect(typeof d.campaign_dispatch_real).toBe("boolean");
   });
+
+  it("QR com adapter configurado envia no fio existente", () => {
+    expect(viaDoWhatsapp({ modo: "auto", provider: "waha", adapterConfigured: true })).toBe("real");
+  });
+
+  it("QR sem adapter no auto continua mock", () => {
+    expect(viaDoWhatsapp({ modo: "auto", provider: "waha", adapterConfigured: false })).toBe("mock");
+  });
 });
 
 describe("materialização em lote", () => {
