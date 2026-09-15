@@ -48,7 +48,7 @@ export interface PdfExtraido {
  * mentia "PDF danificado" para arquivo textual válido.
  */
 export async function garantirAmbientePdf(): Promise<void> {
-  const g = globalThis as typeof globalThis & { DOMMatrix?: unknown };
+  const g = globalThis as { DOMMatrix?: unknown };
   if (typeof g.DOMMatrix !== "undefined") return;
   try {
     const canvas = await import("@napi-rs/canvas");
