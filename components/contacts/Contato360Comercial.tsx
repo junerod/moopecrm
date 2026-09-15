@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/api/client";
 import { estadoDaProximaAcao, rotuloDoAtraso, rotuloDoQuando } from "@/lib/comercial/proxima-acao";
 import type { CrmSummaryData } from "@/lib/inbox/crm-summary-tipos";
 import type { ProximaAcaoLinha } from "@/lib/demandas/listar-proximas-acoes";
+import { rotuloDaOrigem } from "@/lib/crm/origem-comercial";
 import { cn } from "@/lib/utils";
 import { isToday } from "date-fns";
 
@@ -87,6 +88,11 @@ export function Contato360Comercial({ contactId }: { contactId: string }) {
                   <StatusBadge tone="blue">{l.stage.name}</StatusBadge>
                 ) : null}
                 <span className="text-xs text-[var(--color-text-muted)]">{l.status}</span>
+                {l.source ? (
+                  <span className="text-xs text-[var(--color-text-muted)]" data-testid="contato-360-origem">
+                    · {rotuloDaOrigem(l.source)}
+                  </span>
+                ) : null}
               </li>
             ))
           )}

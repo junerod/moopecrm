@@ -13,4 +13,10 @@ describe("rotuloDaOrigem", () => {
     expect(rotuloDaOrigem("ads_meta")).toBe("ads_meta");
     expect(rotuloDaOrigem(null)).toBe("—");
   });
+
+  it("traduz o first-touch de anúncio que o contato já grava", () => {
+    expect(rotuloDaOrigem("meta_ads")).toBe("Anúncio (Meta)");
+    expect(rotuloDaOrigem("Meta_ads")).toBe("Anúncio (Meta)");
+    expect(rotuloDaOrigem("google_ads")).toBe("Anúncio (Google)");
+  });
 });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ProximoPasso } from "@/components/ds/ProximoPasso";
 import { TestDriveDoPack } from "@/components/negocio/TestDriveDoPack";
 import { Button } from "@/components/ui/button";
 import { perguntaDeTeste } from "@/lib/business-packs/apresentacao";
@@ -44,6 +45,8 @@ export function LandingAssistentes({
   const [aberto, setAberto] = useState<string | null>(null);
   const [teste, setTeste] = useState<ResultadoTeste | null>(null);
   const [testando, setTestando] = useState(false);
+  const inativos = cards.filter((c) => !c.ativo);
+  const primeiroInativo = inativos[0];
 
   async function testar(card: CardAssistente) {
     const definition = packId ? resolverPack(packId) : null;
@@ -105,6 +108,27 @@ export function LandingAssistentes({
           </Button>
         </div>
       </div>
+
+      {cards.length === 0 && canWrite ? (
+        <ProximoPasso
+          titulo="Nenhum assistente ainda"
+          texto="Crie um assistente para atender conversas com o que a empresa já sabe."
+          acao="Criar assistente"
+          href="/app/ai/agents/simples"
+        />
+      ) : null}
+      {primeiroInativo ? (
+        <ProximoPasso
+          titulo="Estes assistentes ainda não atendem clientes"
+          texto={
+            inativos.length === 1
+              ? "Publique para ele começar a responder."
+              : `${inativos.length} ainda estão em rascunho. Publique para começar a atender.`
+          }
+          acao="Publicar"
+          href={`/app/ai/agents/${primeiroInativo.id}`}
+        />
+      ) : null}
 
       <ul className="grid gap-3 md:grid-cols-2" data-testid="meus-assistentes">
         {cards.map((card) => {

@@ -4,7 +4,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { agregarMetricas } from "@/lib/campanhas/metricas";
+import { agregarMetricas, aplicarDesfecho, desfechoDosLeads } from "@/lib/campanhas/metricas";
+import { rotuloDaOrigem } from "@/lib/crm/origem-comercial";
 import { getQueueStatus } from "@/lib/routing/queue";
 import { CONVERSATION_TERMINAL_STATUSES } from "@/lib/schemas";
 
@@ -38,7 +39,18 @@ export interface KpisDeSupervisao {
     respostas: number;
     leads_associados: number;
     opt_outs: number;
+    ganhos: number;
+    perdidos: number;
+    valor_ganho_cents: number;
   };
+  origem: Array<{
+    chave: string;
+    rotulo: string;
+    novos: number;
+    ganhos: number;
+    perdidos: number;
+    valor_ganho_cents: number;
+  }>;
   atendentes: Array<{
     user_id: string;
     conversas: number;
@@ -211,6 +223,26 @@ export async function carregarKpisDeSupervisao(
       .eq("organization_id", org)
       .in("campaign_id", campIds);
     campAgg = agregarMetricas((recs ?? []) as Array<{ status: string; lead_id: string | null }>);
+    const leadIds = [
+      ...new Set(
+        ((recs ?? []) as Array<{ lead_id: string | null }>)
+          .map((r) => r.lead_id)
+          .filter((x): x is string => Boolean(x)),
+      ),
+    ];
+    if (leadIds.length > 0) {
+      const { data: leadsCamp } = await db
+        .from("crm_leads")
+        .select("status, value_cents")
+        .eq("organization_id", org)
+        .in("id", leadIds);
+      campAgg = aplicarDesfecho(
+        campAgg,
+        desfechoDosLeads(
+          (leadsCamp ?? []) as Array<{ status: string | null; value_cents: number | null }>,
+        ),
+      );
+    }
   }
 
   const { data: resolvidas } = await db
@@ -277,7 +309,71 @@ export async function carregarKpisDeSupervisao(
       respostas: campAgg.respondidas,
       leads_associados: campAgg.leads_associados,
       opt_outs: campAgg.opt_outs,
+      ganhos: campAgg.ganhos,
+      perdidos: campAgg.perdidos,
+      valor_ganho_cents: campAgg.valor_ganho_cents,
     },
+    origem: await agregarOrigemDoPeriodo(db, org, fromIso, toIso),
     atendentes,
   };
+}
+
+async function agregarOrigemDoPeriodo(
+  db: SupabaseClient,
+  org: string,
+  fromIso: string,
+  toIso: string,
+): Promise<KpisDeSupervisao["origem"]> {
+  const por = new Map<
+    string,
+    { chave: string; rotulo: string; novos: number; ganhos: number; perdidos: number; valor_ganho_cents: number }
+  >();
+  function linha(source: string | null) {
+    const chave = source && source.trim() ? source : "sem_origem";
+    const atual = por.get(chave);
+    if (atual) return atual;
+    const nova = {
+      chave,
+      rotulo: chave === "sem_origem" ? "Sem origem" : rotuloDaOrigem(chave),
+      novos: 0,
+      ganhos: 0,
+      perdidos: 0,
+      valor_ganho_cents: 0,
+    };
+    por.set(chave, nova);
+    return nova;
+  }
+
+  const { data: nascidos } = await db
+    .from("crm_leads")
+    .select("source")
+    .eq("organization_id", org)
+    .gte("created_at", fromIso)
+    .lte("created_at", toIso);
+  for (const l of (nascidos ?? []) as Array<{ source: string | null }>) {
+    linha(l.source).novos += 1;
+  }
+
+  const { data: fechados } = await db
+    .from("crm_leads")
+    .select("source, status, value_cents")
+    .eq("organization_id", org)
+    .in("status", ["won", "lost"])
+    .gte("closed_at", fromIso)
+    .lte("closed_at", toIso);
+  for (const l of (fechados ?? []) as Array<{
+    source: string | null;
+    status: string;
+    value_cents: number | null;
+  }>) {
+    const row = linha(l.source);
+    if (l.status === "won") {
+      row.ganhos += 1;
+      row.valor_ganho_cents += Math.max(0, l.value_cents ?? 0);
+    } else if (l.status === "lost") {
+      row.perdidos += 1;
+    }
+  }
+
+  return [...por.values()].sort((a, b) => b.ganhos + b.novos - (a.ganhos + a.novos));
 }

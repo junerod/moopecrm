@@ -19,5 +19,12 @@ export function rotuloDaOrigem(source: string | null | undefined): string {
   if (hit) return hit.label;
   if (source === "moope") return "MOOPE";
   if (source === "import_csv") return "Importado";
+  const anuncio: Record<string, string> = {
+    meta_ads: "Anúncio (Meta)",
+    Meta_ads: "Anúncio (Meta)",
+    google_ads: "Anúncio (Google)",
+    Google_ads: "Anúncio (Google)",
+  };
+  if (anuncio[source]) return anuncio[source];
   return source;
 }

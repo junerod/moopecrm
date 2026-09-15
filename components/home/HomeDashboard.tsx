@@ -580,7 +580,7 @@ function Campanha({ snap }: { snap: SnapshotDaHome }) {
           </StatusBadge>
         ) : null}
       </div>
-      <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
         <div>
           <dt className="text-[11px] text-[var(--color-text-muted)]">enviados</dt>
           <dd className="text-[16px] font-semibold tabular-nums">{c.enviados}</dd>
@@ -590,11 +590,23 @@ function Campanha({ snap }: { snap: SnapshotDaHome }) {
           <dd className="text-[16px] font-semibold tabular-nums">{c.respostas}</dd>
         </div>
         <div>
-          <dt className="text-[11px] text-[var(--color-text-muted)]">resposta</dt>
-          <dd className="text-[16px] font-semibold tabular-nums">{taxa ? `${taxa}%` : "—"}</dd>
+          <dt className="text-[11px] text-[var(--color-text-muted)]">ganhos</dt>
+          <dd className="text-[16px] font-semibold tabular-nums" data-testid="home-campanha-ganhos">
+            {c.ganhos}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[11px] text-[var(--color-text-muted)]">receita</dt>
+          <dd className="text-[16px] font-semibold tabular-nums" data-testid="home-campanha-receita">
+            {formatarValorEtapa(c.valor_ganho_cents) ?? "—"}
+          </dd>
         </div>
       </dl>
-      <p className="mt-2 text-[12px] text-[var(--color-text-muted)]">{c.opt_outs} opt-out</p>
+      <p className="mt-2 text-[12px] text-[var(--color-text-muted)]">
+        {taxa ? `${taxa}% responderam` : "Ainda sem resposta"}
+        {c.perdidos > 0 ? ` · ${c.perdidos} perdas` : ""}
+        {c.opt_outs > 0 ? ` · ${c.opt_outs} opt-out` : ""}
+      </p>
       {c.enviados > 0 ? (
         <div
           className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-elevated)]"

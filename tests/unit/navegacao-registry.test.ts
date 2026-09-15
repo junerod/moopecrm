@@ -7,6 +7,7 @@ import {
   hubSections,
   searchable,
   sidebarGroups,
+  textoBuscavel,
 } from "@/lib/navigation/registry";
 
 /**
@@ -44,6 +45,18 @@ describe("integridade do registro", () => {
   it("todo destino tem descrição — é o que o hub e o ⌘K mostram", () => {
     const semTexto = NAV_DESTINATIONS.filter((d) => d.description.trim() === "").map((d) => d.href);
     expect(semTexto).toEqual([]);
+  });
+
+  it("o ⌘K acha a função pelo nome que a pessoa usa, não só pelo rótulo", () => {
+    const inbox = dest("/app/inbox");
+    const desempenho = dest("/app/metrics");
+    const execucoes = dest("/app/ai/runs");
+    expect(textoBuscavel(inbox)).toMatch(/conversas/i);
+    expect(textoBuscavel(desempenho)).toMatch(/resultados/i);
+    expect(textoBuscavel(execucoes)).toMatch(/erro da ia/i);
+    // Instagram ainda não é canal. Apelido mentiroso faria achar WhatsApp
+    // achando que o Direct já está ligado.
+    expect(textoBuscavel(inbox).toLowerCase()).not.toContain("instagram");
   });
 
   it("todo destino de um grupo com hub declara sua seção", () => {

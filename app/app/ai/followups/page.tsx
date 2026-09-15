@@ -66,7 +66,7 @@ export default async function FollowupFlowsPage() {
         titulo="Automações"
         descricao="Recados e tarefas que o sistema faz sozinho. Se o cliente responder ou pedir para parar, o retorno para."
       />
-      <Tabs defaultValue="minhas" className="flex flex-1 flex-col">
+      <Tabs defaultValue={silencioAtivo ? "minhas" : "prontas"} className="flex flex-1 flex-col">
         <TabsList>
           <TabsTrigger value="prontas">Prontas</TabsTrigger>
           <TabsTrigger value="minhas">Minhas automações</TabsTrigger>

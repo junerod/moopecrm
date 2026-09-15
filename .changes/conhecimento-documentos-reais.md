@@ -1,5 +1,7 @@
 ---
-efeito: capacidade_nova
+impacto: capacidade_nova
+secao: adicionado
+titulo: Central de Conhecimento aceita PDF, DOCX, TXT e Markdown
 ---
 
 A Central de Conhecimento aceita PDF real, DOCX, TXT e Markdown com diagnóstico

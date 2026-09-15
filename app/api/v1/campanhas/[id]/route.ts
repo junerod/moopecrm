@@ -4,7 +4,7 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { agregarMetricas } from "@/lib/campanhas/metricas";
+import { agregarMetricas, aplicarDesfecho, desfechoDosLeads } from "@/lib/campanhas/metricas";
 import { patchCampanhaSchema } from "@/lib/campanhas/schema";
 import { lerSettings } from "@/lib/campanhas/settings";
 import { createClient } from "@/lib/supabase/server";
@@ -36,18 +36,33 @@ export async function GET(
     .eq("campaign_id", id)
     .eq("organization_id", authz.org.orgId);
 
+  const linhas = (recs ?? []) as Array<{
+    status: string;
+    lead_id: string | null;
+    error: string | null;
+    channel: string | null;
+  }>;
+  let metricas = agregarMetricas(linhas);
+  const leadIds = [...new Set(linhas.map((r) => r.lead_id).filter((x): x is string => Boolean(x)))];
+  if (leadIds.length > 0) {
+    const { data: leads } = await supabase
+      .from("crm_leads")
+      .select("id, status, value_cents")
+      .eq("organization_id", authz.org.orgId)
+      .in("id", leadIds);
+    metricas = aplicarDesfecho(
+      metricas,
+      desfechoDosLeads(
+        (leads ?? []) as Array<{ status: string | null; value_cents: number | null }>,
+      ),
+    );
+  }
+
   return ok(
     {
       ...data,
       settings: lerSettings((data as { settings?: unknown }).settings),
-      metricas: agregarMetricas(
-        (recs ?? []) as Array<{
-          status: string;
-          lead_id: string | null;
-          error: string | null;
-          channel: string | null;
-        }>,
-      ),
+      metricas,
     },
     { requestId },
   );

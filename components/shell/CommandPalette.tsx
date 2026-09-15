@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { PORTA_DA_PLATAFORMA } from "@/lib/navigation/porta-da-plataforma";
-import { NAV_GROUPS, searchable, type NavDestination } from "@/lib/navigation/registry";
+import {
+  NAV_GROUPS,
+  searchable,
+  textoBuscavel,
+  type NavDestination,
+} from "@/lib/navigation/registry";
 import { MagnifyingGlass, ShieldCheck } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -74,7 +79,7 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
     // Sem termo, abre no trabalho do dia em vez de uma tela vazia que não
     // ensina nada sobre o que dá para procurar aqui.
     if (!termo) return visiveis.filter((d) => d.group === "atendimento");
-    return visiveis.filter((d) => normalizar(`${d.label} ${d.description}`).includes(termo));
+    return visiveis.filter((d) => normalizar(textoBuscavel(d)).includes(termo));
   }, [busca, visiveis]);
 
   function navegar(destino: NavDestination) {
@@ -119,7 +124,7 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
           value={busca}
           onChange={(e) => aoDigitar(e.target.value)}
           onKeyDown={aoTeclar}
-          placeholder="Buscar telas do sistema…"
+          placeholder="Buscar telas… conversas, resultados, campanhas"
           className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>

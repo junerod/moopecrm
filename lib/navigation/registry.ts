@@ -93,6 +93,19 @@ export interface NavDestination {
   /** Ausente = só no hub. `true` = uso diário, sobe para o sidebar. */
   sidebar?: boolean;
   healthDot?: boolean;
+  /**
+   * Palavras que a pessoa digita no ⌘K e que NÃO cabem no rótulo.
+   * "resultados" acha Desempenho; "conversas" acha a Caixa de entrada.
+   * Não cria tela nova — só evita que a função exista e ninguém a ache.
+   */
+  aliases?: readonly string[];
+}
+
+/** Texto que o ⌘K varre: rótulo + descrição + apelidos. */
+export function textoBuscavel(
+  d: Pick<NavDestination, "label" | "description" | "aliases">,
+): string {
+  return [d.label, d.description, ...(d.aliases ?? [])].join(" ");
 }
 
 /**
@@ -159,7 +172,9 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/inbox",
     label: "Caixa de entrada",
-    description: "As conversas de WhatsApp, com você e a IA atendendo lado a lado.",
+    description:
+      "As conversas com clientes. Hoje entram pelo WhatsApp; o canal fica na conversa.",
+    aliases: ["conversas", "inbox", "mensagens", "whatsapp", "atendimento"],
     icon: Inbox,
     group: "atendimento",
     sidebar: true,
@@ -191,6 +206,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/kanban",
     label: "Funis",
     description: "Seus funis de venda — clique em um para abrir o quadro de clientes.",
+    aliases: ["funil", "pipeline", "kanban", "quadro", "leads", "oportunidades"],
     icon: Kanban,
     group: "atendimento",
     sidebar: true,
@@ -199,6 +215,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/contacts",
     label: "Contatos",
     description: "As pessoas do outro lado da conversa e seu histórico.",
+    aliases: ["clientes", "pessoas", "360", "ficha"],
     icon: Users,
     group: "atendimento",
     sidebar: true,
@@ -213,6 +230,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/agenda",
     label: "Agenda",
     description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
+    aliases: ["tarefas", "compromissos", "calendario", "calendário"],
     icon: CalendarBlank,
     group: "atendimento",
     sidebar: true,
@@ -221,6 +239,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/campanhas",
     label: "Campanhas",
     description: "Disparo comercial essencial: quem recebe, a mensagem e o resultado.",
+    aliases: ["disparo", "marketing", "mensagem em massa"],
     icon: Megaphone,
     group: "atendimento",
     sidebar: true,
@@ -230,6 +249,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/radar",
     label: "Radar",
     description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
+    aliases: ["parados", "risco", "esfriaram"],
     icon: ClockCountdown,
     group: "atendimento",
     sidebar: true,
@@ -269,6 +289,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/settings/tenant/pipelines",
     label: "Etapas do funil",
     description: "As colunas de cada funil, o vocabulário do negócio e os motivos de perda.",
+    aliases: ["etapas", "colunas", "configurar funil"],
     icon: Funnel,
     group: "organizacao",
     section: "Sua empresa",
@@ -280,6 +301,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/ai/agents",
     label: "Assistentes IA",
     description: "Quem atende por você: instruções, conhecimento e publicação.",
+    aliases: ["bots", "agentes", "assistente", "ia"],
     icon: Robot,
     group: "ia",
     section: "Montar o agente",
@@ -293,6 +315,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     // botão de ação, não uma tela. A URL não muda.
     label: "Automações",
     description: "Se o cliente para de responder, o sistema manda uma mensagem na hora certa.",
+    aliases: ["follow-up", "followup", "fluxo", "lembrete"],
     icon: FlowArrow,
     group: "ia",
     section: "Montar o agente",
@@ -338,6 +361,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/ai/knowledge/sources",
     label: "Conhecimento",
     description: "Ensine o sistema sobre a empresa — textos, perguntas e documentos.",
+    aliases: ["knowledge", "ensinar", "material", "precos", "preços", "documentos"],
     icon: BookOpen,
     group: "ia",
     section: "Ensinar o agente",
@@ -357,6 +381,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/ai/skills",
     label: "Skills",
     description: "As ações que o agente pode executar sozinho durante o atendimento.",
+    aliases: ["acoes", "ações", "ferramentas", "tools"],
     icon: PuzzlePiece,
     group: "ia",
     section: "Ensinar o agente",
@@ -397,6 +422,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/ai/runs",
     label: "Execuções",
     description: "O que a IA fez — e, quando falhou, o que aconteceu e o que fazer.",
+    aliases: ["atividade da ia", "erro da ia", "falhou", "logs"],
     icon: ListChecks,
     group: "ia",
     section: "Acompanhar o agente",
@@ -424,6 +450,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     // varre a descrição além do rótulo.
     description:
       "Seus números de WhatsApp: por QR ou canal oficial da Meta, com saúde, reconexão e templates.",
+    aliases: ["conectar", "qr", "canal", "numero", "número"],
     icon: PlugsConnected,
     group: "canais",
     minRole: "admin",
@@ -454,6 +481,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/metrics",
     label: "Desempenho",
     description: "Fila, funil, próxima ação e campanhas — Hoje, 7 ou 30 dias.",
+    aliases: ["resultados", "metricas", "métricas", "kpis", "vendas", "conversao", "conversão"],
     icon: ChartBar,
     group: "organizacao",
     section: "Análise",
@@ -472,6 +500,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/audit",
     label: "Audit Log",
     description: "Quem fez o quê, quando — o histórico que não se apaga.",
+    aliases: ["auditoria", "historico", "histórico"],
     icon: ClockCounterClockwise,
     group: "organizacao",
     section: "Análise",
@@ -507,6 +536,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/team",
     label: "Equipe",
     description: "Quem trabalha aqui, com qual papel e quanta conversa cada um aguenta.",
+    aliases: ["time", "atendentes", "usuarios", "usuários"],
     icon: UsersThree,
     group: "organizacao",
     section: "Sua empresa",
@@ -545,6 +575,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/modelos-prontos",
     label: "Modelos prontos",
     description: "Escolha o tipo de operação da sua empresa.",
+    aliases: ["pack", "nicho", "loja de modelos"],
     icon: Car,
     group: "organizacao",
     section: "Sua empresa",
@@ -554,6 +585,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/meu-modelo",
     label: "Meu modelo",
     description: "Termine a configuração do modelo ativo: WhatsApp, conhecimento e assistentes.",
+    aliases: ["pack", "checklist", "locadora"],
     icon: Storefront,
     group: "organizacao",
     section: "Sua empresa",

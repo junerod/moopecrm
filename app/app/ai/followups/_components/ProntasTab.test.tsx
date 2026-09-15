@@ -35,6 +35,20 @@ describe("ProntasTab", () => {
     });
   });
 
+  it("desligada mostra o próximo passo para ligar o lembrete", () => {
+    render(<ProntasTab jaAtivo={false} canWrite />);
+    expect(screen.getByTestId("proximo-passo")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ativar lembrete" })).toHaveAttribute(
+      "href",
+      "#pronto-followup-24h",
+    );
+  });
+
+  it("ligada não insiste no próximo passo", () => {
+    render(<ProntasTab jaAtivo canWrite />);
+    expect(screen.queryByTestId("proximo-passo")).toBeNull();
+  });
+
   it("ligado continua editável — Salvar, não só o rótulo travado", async () => {
     render(
       <ProntasTab

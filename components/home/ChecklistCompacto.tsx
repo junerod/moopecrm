@@ -12,12 +12,14 @@ export interface ItemDoSetup {
 
 export function ChecklistCompacto({ itens }: { itens: ItemDoSetup[] }) {
   const feitos = itens.filter((i) => i.feito).length;
+  const proximo = itens.find((i) => !i.feito);
+  const hrefContinuar = proximo?.href ?? "/app/settings/business";
   const [aberto, setAberto] = useState(false);
 
   return (
     <div data-testid="checklist-primeiros-passos" className="inline-flex max-w-full flex-col gap-1">
       <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-surface)] px-3 py-1.5 text-[12px] shadow-[var(--shadow-xs)] ring-1 ring-[var(--color-border)]">
-        <Link href="/app/settings/business" className="hover:underline">
+        <Link href={hrefContinuar} className="hover:underline">
           Configuração {feitos}/{itens.length} concluída
         </Link>
         <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-[var(--color-surface-elevated)] sm:block" aria-hidden>
@@ -35,7 +37,8 @@ export function ChecklistCompacto({ itens }: { itens: ItemDoSetup[] }) {
           {aberto ? "Recolher" : "Itens"}
         </button>
         <Link
-          href="/app/settings/business"
+          href={hrefContinuar}
+          data-testid="checklist-continuar"
           className="font-medium text-[var(--moope-primary)] hover:underline"
         >
           Continuar

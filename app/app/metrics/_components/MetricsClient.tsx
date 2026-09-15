@@ -143,14 +143,46 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
             <CardHeader>
               <CardTitle className="text-base">Campanhas</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
+            <CardContent className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
               <Kpi rotulo="Executadas" valor={supervisao.data.campanhas.executadas} />
               <Kpi rotulo="Enviados" valor={supervisao.data.campanhas.enviados} />
               <Kpi rotulo="Respostas" valor={supervisao.data.campanhas.respostas} />
               <Kpi rotulo="Leads associados" valor={supervisao.data.campanhas.leads_associados} />
               <Kpi rotulo="Opt-outs" valor={supervisao.data.campanhas.opt_outs} />
+              <Kpi rotulo="Ganhos" valor={supervisao.data.campanhas.ganhos} />
+              <Kpi rotulo="Perdas" valor={supervisao.data.campanhas.perdidos} />
+              <Kpi
+                rotulo="Receita ganha"
+                valor={(supervisao.data.campanhas.valor_ganho_cents / 100).toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              />
             </CardContent>
           </Card>
+          {supervisao.data.origem.length > 0 ? (
+            <Card data-testid="desempenho-origem">
+              <CardHeader>
+                <CardTitle className="text-base">De onde vêm — e de onde se perde</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {supervisao.data.origem.map((o) => (
+                  <div
+                    key={o.chave}
+                    className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 py-1.5 last:border-0"
+                  >
+                    <span className="font-medium">{o.rotulo}</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      {o.novos} novos · {o.ganhos} ganhos · {o.perdidos} perdas
+                      {o.valor_ganho_cents
+                        ? ` · ${(o.valor_ganho_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                        : ""}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       ) : null}
 

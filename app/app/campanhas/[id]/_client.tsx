@@ -21,7 +21,8 @@ import { AppCard } from "@/components/ds/AppCard";
 import { MetricCard } from "@/components/ds/MetricCard";
 import { PageHeader } from "@/components/ds/PageHeader";
 import { AppIcon } from "@/components/ds/AppIcon";
-import { ChatCircle, Checks, Megaphone, PaperPlaneTilt, Warning } from "@/lib/ui/icons";
+import { formatCentsBRL } from "@/lib/money";
+import { ChatCircle, Checks, Megaphone, PaperPlaneTilt, Trophy, Warning } from "@/lib/ui/icons";
 
 type FiltroDest = "todos" | "enviados" | "respostas" | "falhas" | "ignorados";
 
@@ -139,7 +140,7 @@ export function CampanhaDetalheClient({ id }: { id: string }) {
       <PainelDeAjuda
         testid="campanha-ajuda-detalhe"
         titulo="Como ler este resultado"
-        texto="Enviado saiu no WhatsApp. Respondeu é resposta depois do envio. Ignorado ficou de fora — o motivo está na linha. Sem conversa neste número: abra Nova conversa na caixa e só então dispare de novo."
+        texto="Enviado saiu no WhatsApp. Respondeu é resposta depois do envio. Ganho e valor vêm do funil — resposta sozinha não é sucesso. Ignorado ficou de fora. Sem conversa neste número: abra Nova conversa na caixa e só então dispare de novo."
         href="/app/manual#campanhas"
         rotuloDoLink="Guia de campanhas"
       />
@@ -187,6 +188,42 @@ export function CampanhaDetalheClient({ id }: { id: string }) {
           delta={
             <p className="mt-2 text-xs text-[var(--color-text-muted)]">
               {m.falharam} falharam · {m.ignoradas} de fora · {m.opt_outs} opt-out
+            </p>
+          }
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3" data-testid="campanha-desfecho">
+        <MetricCard
+          icon={Trophy}
+          tone="green"
+          label="Ganhos"
+          value={String(m.ganhos)}
+          delta={
+            <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+              {m.leads_associados} {m.leads_associados === 1 ? "negócio" : "negócios"} desta campanha
+            </p>
+          }
+        />
+        <MetricCard
+          icon={Warning}
+          tone="amber"
+          label="Perdas"
+          value={String(m.perdidos)}
+          delta={
+            <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+              {m.perdidos === 0 ? "Nenhuma perda marcada ainda" : "Negócios perdidos depois do disparo"}
+            </p>
+          }
+        />
+        <MetricCard
+          icon={Megaphone}
+          tone="blue"
+          label="Receita ganha"
+          value={formatCentsBRL(m.valor_ganho_cents)}
+          delta={
+            <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+              Soma do valor dos ganhos — sem chute
             </p>
           }
         />

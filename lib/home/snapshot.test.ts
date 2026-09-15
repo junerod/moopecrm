@@ -121,7 +121,17 @@ const kpisOk = {
   funil: [
     { stage_id: "s1", stage_name: "Novo", pipeline_id: "p1", count: 5, value_cents: 100000 },
   ],
-  campanhas: { executadas: 1, enviados: 10, respostas: 2, leads_associados: 0, opt_outs: 0 },
+  campanhas: {
+    executadas: 1,
+    enviados: 10,
+    respostas: 2,
+    leads_associados: 0,
+    opt_outs: 0,
+    ganhos: 0,
+    perdidos: 0,
+    valor_ganho_cents: 0,
+  },
+  origem: [],
   atendentes: [],
 };
 

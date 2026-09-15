@@ -52,6 +52,27 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("option", { name: /Uso e orçamento/ })).toBeTruthy();
   });
 
+  it("acha Desempenho quando a pessoa procura resultados", async () => {
+    const user = userEvent.setup();
+    abrir();
+    await user.type(screen.getByRole("combobox"), "resultados");
+    expect(screen.getByRole("option", { name: /Desempenho/ })).toBeTruthy();
+  });
+
+  it("acha a Caixa de entrada quando a pessoa procura conversas", async () => {
+    const user = userEvent.setup();
+    abrir();
+    await user.type(screen.getByRole("combobox"), "conversas");
+    expect(screen.getByRole("option", { name: /Caixa de entrada/ })).toBeTruthy();
+  });
+
+  it("acha Contatos quando a pessoa procura clientes", async () => {
+    const user = userEvent.setup();
+    abrir();
+    await user.type(screen.getByRole("combobox"), "clientes");
+    expect(screen.getByRole("option", { name: /Contatos/ })).toBeTruthy();
+  });
+
   it("busca também na descrição, não só no rótulo", async () => {
     const user = userEvent.setup();
     abrir();

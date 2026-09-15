@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ProximoPasso } from "@/components/ds/ProximoPasso";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -63,7 +64,17 @@ export function ProntasTab({
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <Card className="space-y-3 p-4" data-testid="pronto-followup-24h">
+      {!ativo && canWrite ? (
+        <div className="md:col-span-2">
+          <ProximoPasso
+            titulo="Nenhuma automação ligada"
+            texto="Se o cliente parar de responder, ninguém volta a falar. Ative o lembrete de 24h — a mensagem é sua."
+            acao="Ativar lembrete"
+            href="#pronto-followup-24h"
+          />
+        </div>
+      ) : null}
+      <Card id="pronto-followup-24h" className="space-y-3 p-4" data-testid="pronto-followup-24h">
         <h2 className="text-sm font-semibold">Lembrar cliente se ele não responder</h2>
         <p className="text-sm text-muted-foreground">
           Se o cliente ficar em silêncio, o sistema manda este recado. Se ele

@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { ProximoPasso } from "@/components/ds/ProximoPasso";
 import { AdicionarConhecimento } from "@/components/negocio/AdicionarConhecimento";
 import { ColecoesDaEmpresa } from "@/components/negocio/ColecoesDaEmpresa";
 import { DocumentosDaEmpresa } from "@/components/negocio/DocumentosDaEmpresa";
 import { FontesDaEmpresa } from "@/components/negocio/FontesDaEmpresa";
 import { TestarConhecimento } from "@/components/negocio/TestarConhecimento";
-import { sourcesQueryKey, type SourceRow } from "@/hooks/ai/useKnowledgeSources";
+import {
+  sourcesQueryKey,
+  useKnowledgeSources,
+  type SourceRow,
+} from "@/hooks/ai/useKnowledgeSources";
 import { cn } from "@/lib/utils";
 
 const ABAS = [
@@ -21,6 +26,10 @@ const ABAS = [
 
 type Aba = (typeof ABAS)[number]["id"];
 
+export function ehConhecimentoVazio(sources: SourceRow[]): boolean {
+  return sources.filter((s) => s.status !== "archived" && s.is_active).length === 0;
+}
+
 export function ConhecimentoDaEmpresaClient({
   agentId,
   initialSources,
@@ -31,11 +40,21 @@ export function ConhecimentoDaEmpresaClient({
   contextoAgente?: { id: string; name: string } | null;
 }) {
   const qc = useQueryClient();
+  const { data: sources } = useKnowledgeSources(agentId, { initialData: initialSources });
   const [aba, setAba] = useState<Aba>("documentos");
   const [perguntaTeste, setPerguntaTeste] = useState<string>("");
+  const vazio = ehConhecimentoVazio(sources ?? initialSources);
 
   return (
     <div className="space-y-4">
+      {vazio ? (
+        <ProximoPasso
+          titulo="Os assistentes ainda não conhecem a empresa"
+          texto="Solte um PDF, uma tabela ou um texto com preços e regras. Sem isso, a IA inventa ou pede uma pessoa."
+          acao="Adicionar material"
+          href="#conhecimento-documentos"
+        />
+      ) : null}
       <div
         role="tablist"
         aria-label="Áreas do conhecimento"
@@ -62,6 +81,7 @@ export function ConhecimentoDaEmpresaClient({
       </div>
 
       {aba === "documentos" ? (
+        <div id="conhecimento-documentos">
         <DocumentosDaEmpresa
           agentId={agentId}
           initialSources={initialSources}
@@ -70,6 +90,7 @@ export function ConhecimentoDaEmpresaClient({
             setAba("testar");
           }}
         />
+        </div>
       ) : null}
       {aba === "texto" ? (
         <AdicionarConhecimento

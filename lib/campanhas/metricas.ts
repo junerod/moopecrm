@@ -13,6 +13,9 @@ export interface MetricasDaCampanha {
   ignoradas: number;
   pendentes: number;
   leads_associados: number;
+  ganhos: number;
+  perdidos: number;
+  valor_ganho_cents: number;
   por_canal?: Partial<Record<CanalDaCampanha, { enviadas: number; falharam: number }>>;
 }
 
@@ -36,6 +39,9 @@ export function agregarMetricas(
     ignoradas: 0,
     pendentes: 0,
     leads_associados: 0,
+    ganhos: 0,
+    perdidos: 0,
+    valor_ganho_cents: 0,
     por_canal: { whatsapp: { enviadas: 0, falharam: 0 }, email: { enviadas: 0, falharam: 0 } },
   };
   for (const d of destinatarios) {
@@ -84,6 +90,31 @@ export function agregarMetricas(
     }
   }
   return m;
+}
+
+/** Desfecho comercial dos leads já associados — sem contar o mesmo lead duas vezes. */
+export function desfechoDosLeads(
+  leads: Array<{ status?: string | null; value_cents?: number | null }>,
+): Pick<MetricasDaCampanha, "ganhos" | "perdidos" | "valor_ganho_cents"> {
+  let ganhos = 0;
+  let perdidos = 0;
+  let valor_ganho_cents = 0;
+  for (const l of leads) {
+    if (l.status === "won") {
+      ganhos += 1;
+      valor_ganho_cents += Math.max(0, l.value_cents ?? 0);
+    } else if (l.status === "lost") {
+      perdidos += 1;
+    }
+  }
+  return { ganhos, perdidos, valor_ganho_cents };
+}
+
+export function aplicarDesfecho(
+  m: MetricasDaCampanha,
+  d: Pick<MetricasDaCampanha, "ganhos" | "perdidos" | "valor_ganho_cents">,
+): MetricasDaCampanha {
+  return { ...m, ...d };
 }
 
 export function taxasDaCampanha(

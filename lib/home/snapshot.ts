@@ -3,7 +3,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { agregarMetricas } from "@/lib/campanhas/metricas";
+import { agregarMetricas, aplicarDesfecho, desfechoDosLeads } from "@/lib/campanhas/metricas";
 import { ehAcaoDeHoje } from "@/lib/comercial/proxima-acao";
 import {
   listarProximasAcoes,
@@ -281,13 +281,37 @@ export async function carregarSnapshotDaHome(
           .eq("organization_id", pedido.organizationId)
           .eq("campaign_id", camp.id);
         if (e2) throw new Error(e2.message);
-        const m = agregarMetricas((recs ?? []) as Array<{ status: string; lead_id: string | null }>);
+        let m = agregarMetricas((recs ?? []) as Array<{ status: string; lead_id: string | null }>);
+        const leadIds = [
+          ...new Set(
+            ((recs ?? []) as Array<{ lead_id: string | null }>)
+              .map((r) => r.lead_id)
+              .filter((x): x is string => Boolean(x)),
+          ),
+        ];
+        if (leadIds.length > 0) {
+          const { data: leads, error: e3 } = await db
+            .from("crm_leads")
+            .select("status, value_cents")
+            .eq("organization_id", pedido.organizationId)
+            .in("id", leadIds);
+          if (e3) throw new Error(e3.message);
+          m = aplicarDesfecho(
+            m,
+            desfechoDosLeads(
+              (leads ?? []) as Array<{ status: string | null; value_cents: number | null }>,
+            ),
+          );
+        }
         return {
           id: camp.id,
           name: camp.name,
           enviados: m.enviadas,
           respostas: m.respondidas,
           opt_outs: m.opt_outs,
+          ganhos: m.ganhos,
+          perdidos: m.perdidos,
+          valor_ganho_cents: m.valor_ganho_cents,
           status: camp.status,
         };
       }),
