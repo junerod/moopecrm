@@ -212,7 +212,7 @@ export async function gravarSessaoDirect(
         .from("channel_sessions")
         .insert({ ...linha, webhook_secret_encrypted: cifrado } as never);
 
-  if (error) return { error: error.message };
+  if (error) return { error: error.message ?? "gravar_falhou" };
 
   try {
     await receberDirectAposAutorizar(admin, {

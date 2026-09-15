@@ -44,6 +44,7 @@ export function useSyncDirectChannel() {
     mutationFn: async () =>
       apiClient.post<{ data: { subscribed: boolean; imported: number } }>(
         "/api/v1/channels/direct/sync",
+        {},
       ),
     onError: showApiError,
     onSuccess: () => {
