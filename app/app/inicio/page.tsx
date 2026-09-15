@@ -11,7 +11,10 @@ export const metadata = { title: "Início" };
 export default async function InicioPage() {
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
-  if (!activeOrg) redirect("/app");
+  if (!activeOrg) {
+    if (user.is_platform_admin) redirect("/admin/dashboard");
+    redirect("/app");
+  }
 
   const estado = await carregarEstadoDoSetup(await createClient(), activeOrg.orgId);
   const completo = estado.checklist.every((i) => i.feito);

@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { safeNext } from "@/lib/auth/safe-next";
+import { destinoAposSessao } from "@/lib/auth/destino-apos-login";
 import { precisaTrocarSenhaInicial } from "@/lib/auth/senha-inicial";
 
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +26,8 @@ export type SignInResult = {
 /**
  * Sign in with password.
  *
- * On success: redirects server-side to `next` (or /app/inbox / /onboarding/mfa).
+ * On success: redirects server-side to `next` (or /admin se for
+ * platform admin sem empresa, senão /app/inbox).
  * The redirect ensures Set-Cookie headers from supabase.auth propagate before
  * middleware re-evaluates the session — fixes Next 15 Server Action cookie
  * propagation race.
@@ -112,5 +113,5 @@ export async function signInWithPassword(
   }
 
   // Server-side redirect ensures fresh session cookie is sent to browser.
-  redirect(safeNext(next, "/app/inbox"));
+  redirect(await destinoAposSessao(supabase, data.user.id, next));
 }

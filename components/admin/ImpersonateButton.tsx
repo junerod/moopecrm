@@ -30,6 +30,8 @@ interface ImpersonateButtonProps {
   displayName: string;
   disabled?: boolean;
   disabledReason?: string;
+  /** `compact` cabe na linha da lista de tenants. */
+  tamanho?: "padrao" | "compacto";
 }
 
 export function ImpersonateButton({
@@ -37,6 +39,7 @@ export function ImpersonateButton({
   displayName,
   disabled,
   disabledReason,
+  tamanho = "padrao",
 }: ImpersonateButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -78,9 +81,11 @@ export function ImpersonateButton({
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button
-          className="w-full"
+          className={tamanho === "padrao" ? "w-full" : undefined}
+          size={tamanho === "compacto" ? "sm" : "default"}
           variant="outline"
           disabled={disabled}
+          data-testid="impersonar-tenant"
           aria-label={
             disabled
               ? (disabledReason ?? "Impersonate indisponível")
@@ -88,7 +93,7 @@ export function ImpersonateButton({
           }
           title={disabled ? disabledReason : undefined}
         >
-          Impersonar tenant
+          {tamanho === "compacto" ? "Impersonar" : "Impersonar tenant"}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

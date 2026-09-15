@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Buildings } from "@/lib/ui/icons";
 import type { AdminTenantRow } from "@/hooks/useAdminTenants";
+import { ImpersonateButton } from "@/components/admin/ImpersonateButton";
 import { formatarData } from "./datas";
 
 // ---------------------------------------------------------------------------
@@ -146,7 +147,7 @@ export function TenantsTable({
               <TableHead className="w-[70px] text-right">Usuários</TableHead>
               <TableHead className="w-[90px] text-right">Conversas</TableHead>
               <TableHead className="w-[120px]">Entrou em</TableHead>
-              <TableHead className="w-[60px]" />
+              <TableHead className="w-[180px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -170,12 +171,25 @@ export function TenantsTable({
                   {formatarData(row.created_at)}
                 </TableCell>
                 <TableCell>
-                  <Link
-                    href={`/admin/tenants/${row.id}`}
-                    className="text-xs font-medium text-accent hover:underline"
-                  >
-                    Ver
-                  </Link>
+                  <div className="flex items-center justify-end gap-2">
+                    <ImpersonateButton
+                      organizationId={row.id}
+                      displayName={row.display_name}
+                      tamanho="compacto"
+                      disabled={row.status === "redacted"}
+                      disabledReason={
+                        row.status === "redacted"
+                          ? "Tenant redigido — ação não disponível"
+                          : undefined
+                      }
+                    />
+                    <Link
+                      href={`/admin/tenants/${row.id}`}
+                      className="text-xs font-medium text-accent hover:underline"
+                    >
+                      Ver
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

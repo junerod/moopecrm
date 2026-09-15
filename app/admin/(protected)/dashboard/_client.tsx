@@ -1,5 +1,7 @@
 "use client";
+import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { KPICards } from "@/components/admin/dashboard/KPICards";
 import { AlertsBanner } from "@/components/admin/dashboard/AlertsBanner";
@@ -46,6 +48,22 @@ export function DashboardClient() {
           Visão cross-tenant — atualiza a cada 30 segundos.
         </p>
       </div>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold">Suporte a um tenant</h2>
+            <p className="text-sm text-muted-foreground">
+              Impersonar abre a empresa do cliente por 1 hora. Você continua
+              sendo o admin da instalação — não vira o login deles. Cada ação
+              fica no audit.
+            </p>
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href="/admin/tenants">Abrir tenants</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {isLoading || !data ? (
         <>

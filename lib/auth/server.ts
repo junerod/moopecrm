@@ -12,6 +12,11 @@ import { logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { empresaExigeMfa, exigeCadastroDeMfa } from "@/lib/auth/politica-mfa";
+import { escolherOrgAtiva } from "@/lib/auth/org-ativa";
+import {
+  IMPERSONATE_COOKIE_NAME,
+  verifyImpersonateCookie,
+} from "@/lib/impersonate/cookie";
 import type { AuthUser, Role, UserOrgMembership, ActiveOrg } from "./types";
 
 const ACTIVE_ORG_COOKIE = "active_org";
@@ -184,22 +189,40 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
 
 /**
  * Resolves the active organization for the current request.
- * Priority: cookie `active_org` (if member of) → first membership.
- * Returns null if user has zero memberships.
+ * Priority: impersonate cookie (platform admin em suporte) → cookie
+ * `active_org` (se for membro) → primeira membership.
+ * Returns null if there is nothing to operate.
  */
 export async function resolveActiveOrg(authUser: AuthUser): Promise<ActiveOrg | null> {
-  if (authUser.organizations.length === 0) return null;
   const store = await cookies();
-  const cookieOrg = store.get(ACTIVE_ORG_COOKIE)?.value;
-  if (cookieOrg) {
-    const found = authUser.organizations.find((o) => o.organization_id === cookieOrg);
-    if (found) {
-      return { orgId: found.organization_id, name: found.organization_name, role: found.role };
+  let impersonate: { tenantId: string; name: string } | null = null;
+  const rawImpersonate = store.get(IMPERSONATE_COOKIE_NAME)?.value;
+  if (rawImpersonate && authUser.is_platform_admin) {
+    const result = verifyImpersonateCookie(rawImpersonate);
+    if (
+      result.valid &&
+      result.payload &&
+      result.payload.platformAdminId === authUser.id
+    ) {
+      const admin = createAdminClient();
+      const { data: org } = await admin
+        .from("organizations")
+        .select("display_name, status")
+        .eq("id", result.payload.tenantId)
+        .maybeSingle();
+      if (org && org.status !== "redacted") {
+        impersonate = {
+          tenantId: result.payload.tenantId,
+          name: org.display_name,
+        };
+      }
     }
   }
-  const first = authUser.organizations[0];
-  if (!first) return null;
-  return { orgId: first.organization_id, name: first.organization_name, role: first.role };
+  return escolherOrgAtiva({
+    memberships: authUser.organizations,
+    cookieOrg: store.get(ACTIVE_ORG_COOKIE)?.value,
+    impersonate,
+  });
 }
 
 /**
