@@ -7,6 +7,7 @@ export {
   DIRECT_CHANNEL_LABEL,
   estadoDoDirect,
   gravarSessaoDirect,
+  sincronizarDirectDaOrg,
   tokenOficialDaOrg,
   validateDirectCredentials,
 } from "./instagram/connect";
@@ -17,6 +18,7 @@ export {
   montarUrlDeConsentimento,
   trocarCodigoPorConta,
 } from "./instagram/oauth";
+export { receberDirectAposAutorizar } from "./instagram/receber";
 export {
   emitirEstadoInstagram,
   normalizarArrobaInstagram,

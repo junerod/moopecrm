@@ -7,13 +7,16 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { logger } from "@/lib/logger";
 import { decryptWebhookSecret, encryptWebhookSecret } from "@/lib/webhooks/secrets";
 
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "../archived";
 import { CHANNEL_PROVIDER_INSTAGRAM, CHANNEL_PROVIDER_META } from "../capabilities";
 import { metaPodeReceber } from "../meta/webhook";
 import { reactivateChannelSession } from "../reactivate";
+import { resolveDirectCreds } from "./credentials";
 import { configuracaoDoAppMeta } from "./oauth";
+import { receberDirectAposAutorizar } from "./receber";
 
 export const DIRECT_CHANNEL_LABEL = "Instagram";
 
@@ -209,5 +212,54 @@ export async function gravarSessaoDirect(
         .from("channel_sessions")
         .insert({ ...linha, webhook_secret_encrypted: cifrado } as never);
 
-  return { error: error?.message ?? null };
+  if (error) return { error: error.message };
+
+  try {
+    await receberDirectAposAutorizar(admin, {
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      token: input.token,
+    });
+  } catch (err) {
+    logger.warn("direct.receber_apos_autorizar", {
+      reason: err instanceof Error ? err.message : "falhou",
+    });
+  }
+
+  return { error: null };
+}
+
+export async function sincronizarDirectDaOrg(
+  admin: SupabaseClient,
+  organizationId: string,
+): Promise<{ error: string | null; subscribed: boolean; imported: number }> {
+  const { data } = await queryTolerantToMissingArchived(
+    () =>
+      admin
+        .from("channel_sessions")
+        .select("instagram_account_id")
+        .eq("organization_id", organizationId)
+        .eq("provider", CHANNEL_PROVIDER_INSTAGRAM)
+        .is(ARCHIVED_AT, null)
+        .maybeSingle(),
+    () =>
+      admin
+        .from("channel_sessions")
+        .select("instagram_account_id")
+        .eq("organization_id", organizationId)
+        .eq("provider", CHANNEL_PROVIDER_INSTAGRAM)
+        .maybeSingle(),
+  );
+  const accountId = (data?.instagram_account_id as string | undefined) ?? "";
+  if (!accountId) return { error: "instagram_nao_conectado", subscribed: false, imported: 0 };
+
+  const creds = await resolveDirectCreds(admin, { organizationId, accountId });
+  if (!creds) return { error: "token_ausente", subscribed: false, imported: 0 };
+
+  const r = await receberDirectAposAutorizar(admin, {
+    organizationId,
+    accountId: creds.accountId,
+    token: creds.token,
+  });
+  return { error: null, subscribed: r.subscribed, imported: r.imported };
 }

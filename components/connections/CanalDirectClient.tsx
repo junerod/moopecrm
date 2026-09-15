@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
-import { useConnectDirectChannel, useDirectChannel } from "@/hooks/channels/useDirectChannel";
+import {
+  useConnectDirectChannel,
+  useDirectChannel,
+  useSyncDirectChannel,
+} from "@/hooks/channels/useDirectChannel";
 import { ProximoPasso } from "@/components/ds/ProximoPasso";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +38,9 @@ function AjudaOperador() {
       <p className="text-sm text-muted-foreground">
         Você só precisa do <strong>@</strong> da empresa. Clique no botão: a
         Meta pede senha e Authenticator. O CRM acha a conta e traz as
-        mensagens para a Inbox. Não lê post nem anúncio.
+        mensagens da caixa para a Inbox. Não lê post nem anúncio. Enquanto
+        o app da Meta estiver em desenvolvimento, só entra Direct de quem
+        também é testador.
       </p>
     </Card>
   );
@@ -55,13 +61,14 @@ function AjudaInstalador() {
 export function CanalDirectClient() {
   const { data, isPending } = useDirectChannel();
   const conectar = useConnectDirectChannel();
+  const sincronizar = useSyncDirectChannel();
   const params = useSearchParams();
   const [form, setForm] = useState({ account_id: "", token: "" });
   const estado = data?.data;
 
   useEffect(() => {
     if (params.get("ok") === "1") {
-      toast.success("Instagram ligado. As mensagens entram na Inbox.");
+      toast.success("Instagram ligado. Direct de testador entra na Inbox.");
       return;
     }
     const codigo = params.get("erro");
@@ -96,11 +103,33 @@ export function CanalDirectClient() {
       </div>
 
       {estado?.connected ? (
-        <Card className="p-4" data-testid="direct-conectado">
+        <Card className="space-y-3 p-4" data-testid="direct-conectado">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{estado.displayName}</span>
             <Badge>{estado.status ?? "—"}</Badge>
           </div>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            Se mandou Direct e a Inbox ficou vazia: enquanto o app da Meta
+            está em desenvolvimento, quem envia também precisa ser testador
+            do Instagram. Depois, mande de novo ou busque aqui.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="instagram-buscar"
+            disabled={sincronizar.isPending}
+            onClick={async () => {
+              const r = await sincronizar.mutateAsync();
+              const n = r.data.imported;
+              toast.success(
+                n > 0
+                  ? `${n} mensagem${n === 1 ? "" : "ns"} do Instagram na Inbox.`
+                  : "Nenhuma conversa nova. A Meta só entrega Direct de testador enquanto o app não está publicado.",
+              );
+            }}
+          >
+            {sincronizar.isPending ? "Buscando…" : "Buscar mensagens"}
+          </Button>
         </Card>
       ) : null}
 

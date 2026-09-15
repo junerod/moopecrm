@@ -56,7 +56,9 @@ Isto liga a **caixa de mensagens** do Instagram (a conversa com o cliente) na me
 
 1. Na aba, escreva o **@** da empresa (exemplo: `moopetec`).
 2. Clique em **Continuar com Instagram**. Senha e Authenticator, se a Meta pedir, são na tela dela — o CRM nunca pede.
-3. Escolha o mesmo @ na Meta. Ao voltar, as mensagens entram na Inbox.
+3. Escolha o mesmo @ na Meta. Ao voltar, o estado fica WORKING.
+4. Enquanto o app da Meta estiver em **desenvolvimento** (ainda não publicado), só entra Direct de quem também é **testador** do Instagram nesse app. Quem mandar de um @ comum: a mensagem chega no celular do Instagram e **não** na Inbox. Convide esse @ em Funções → Instagram Testers e peça para aceitar o convite; depois mande de novo, ou clique em **Buscar mensagens**.
+5. No app da Meta, cole a URL do webhook da instalação, o token de verificação e marque o campo `messages`. Sem isso a Meta não avisa o CRM das mensagens novas.
 
 O CRM não liga post, story nem resultado de anúncio.
 

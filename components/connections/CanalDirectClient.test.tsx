@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/hooks/channels/useDirectChannel", () => ({
   useDirectChannel: vi.fn(),
   useConnectDirectChannel: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSyncDirectChannel: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { useDirectChannel } from "@/hooks/channels/useDirectChannel";
@@ -67,5 +68,19 @@ describe("CanalDirectClient", () => {
     expect(screen.queryByTestId("direct-conectar")).toBeNull();
     expect(screen.getByTestId("instagram-ajuda")).toHaveTextContent("só precisa do");
     expect(screen.getByTestId("instagram-ajuda")).not.toHaveTextContent("META_");
+  });
+
+  it("conectado — oferece buscar mensagens", () => {
+    vi.mocked(useDirectChannel).mockReturnValue(
+      estado({
+        podeConectarComoApp: true,
+        connected: true,
+        displayName: "@moopetec",
+        status: "WORKING",
+      }),
+    );
+    render(<CanalDirectClient />);
+    expect(screen.getByTestId("instagram-buscar")).toHaveTextContent("Buscar mensagens");
+    expect(screen.getByTestId("direct-conectado")).toHaveTextContent("testador");
   });
 });
