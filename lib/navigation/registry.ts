@@ -173,7 +173,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     href: "/app/inbox",
     label: "Caixa de entrada",
     description:
-      "As conversas com clientes. Hoje entram pelo WhatsApp; o canal fica na conversa.",
+      "As conversas com clientes. O canal fica na conversa — WhatsApp agora, Direct quando conectar.",
     aliases: ["conversas", "inbox", "mensagens", "whatsapp", "atendimento"],
     icon: Inbox,
     group: "atendimento",
@@ -449,8 +449,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     // e "Meta" de propósito — é por esses nomes que se procura no ⌘K, e a busca
     // varre a descrição além do rótulo.
     description:
-      "Seus números de WhatsApp: por QR ou canal oficial da Meta, com saúde, reconexão e templates.",
-    aliases: ["conectar", "qr", "canal", "numero", "número"],
+      "Por onde o negócio fala com o cliente: WhatsApp (QR ou oficial) e a porta do Direct.",
+    aliases: ["conectar", "qr", "canal", "numero", "número", "direct"],
     icon: PlugsConnected,
     group: "canais",
     minRole: "admin",

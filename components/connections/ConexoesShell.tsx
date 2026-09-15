@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import { CanalDirectClient } from "./CanalDirectClient";
 import { CanalHospedadoClient } from "./CanalHospedadoClient";
 import { CanalOficialClient } from "./CanalOficialClient";
 import { CanalParceiroClient } from "./CanalParceiroClient";
@@ -44,7 +45,9 @@ export function ConexoesShell({ wahaConfigured }: { wahaConfigured: boolean }) {
         ? "parceiro"
         : abaParam === "hospedado"
           ? "hospedado"
-          : "numeros";
+          : abaParam === "direct"
+            ? "direct"
+            : "numeros";
   const sub = params.get("sub") === "templates" ? "templates" : "conexao";
 
   const irPara = (proximaAba: string, proximaSub?: string): void => {
@@ -78,6 +81,7 @@ export function ConexoesShell({ wahaConfigured }: { wahaConfigured: boolean }) {
             Aqui fica o CONCEITO; lá dentro o cartão diz de quem se trata. */}
         <TabsTrigger value="parceiro">Provedor parceiro</TabsTrigger>
         <TabsTrigger value="hospedado">API de mensagens</TabsTrigger>
+        <TabsTrigger value="direct">Direct</TabsTrigger>
       </TabsList>
 
       <TabsContent value="numeros" className="mt-0">
@@ -106,6 +110,10 @@ export function ConexoesShell({ wahaConfigured }: { wahaConfigured: boolean }) {
 
       <TabsContent value="hospedado" className="mt-0">
         <CanalHospedadoClient />
+      </TabsContent>
+
+      <TabsContent value="direct" className="mt-0">
+        <CanalDirectClient />
       </TabsContent>
 
       <TabsContent value="oficial" className="mt-0">

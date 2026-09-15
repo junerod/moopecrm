@@ -29,6 +29,7 @@ import { rotuloDoDono } from "@/lib/inbox/rotulo-do-dono";
 import { ReassignDialog } from "@/components/inbox/ReassignDialog";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { especieDoProvider, rotuloDaEspecie } from "@/lib/channels/especie";
 import { MarcarPessoa } from "./MarcarPessoa";
 import { SeloDaPessoa } from "./SeloDaPessoa";
 
@@ -84,6 +85,7 @@ export function ConversationHeader({ conversation }: Props) {
     automaticoDaOrg: automaticoDaOrg.data,
   });
 
+  const especie = especieDoProvider(conversation.channel_sessions?.provider ?? null);
   const encerrada = status === "closed" || status === "archived";
   const podeDevolver = travaVigente;
   const podePausar =
@@ -101,6 +103,15 @@ export function ConversationHeader({ conversation }: Props) {
         <div className="flex items-center gap-2">
           <h2 className="truncate text-base font-semibold md:text-lg">{displayName}</h2>
           <SeloDaPessoa contact={c} />
+          {especie ? (
+            <Badge
+              variant="outline"
+              className="h-5 px-1.5 text-[11px]"
+              data-testid="canal-da-conversa"
+            >
+              {rotuloDaEspecie(especie)}
+            </Badge>
+          ) : null}
           <Badge variant="outline" className="hidden h-5 px-1.5 text-[11px] sm:inline-flex">
             {t(STATUS_LABEL[status] ?? status)}
           </Badge>

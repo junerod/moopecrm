@@ -87,6 +87,22 @@ function renderHeader() {
   );
 }
 
+describe("header do inbox — canal da conversa", () => {
+  it("pinta o selo quando a conversa tem canal", () => {
+    const comCanal = {
+      ...conversation,
+      channel_sessions: { provider: "waha", phone_number: "+5511" },
+    } as typeof conversation;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ConversationHeader conversation={comCanal} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("canal-da-conversa")).toHaveTextContent("WhatsApp");
+  });
+});
+
 describe("header do inbox — não trava a largura da tela", () => {
   it("a barra de ações NÃO é shrink-0 — era isso que impunha o piso de 707px", () => {
     const { container } = renderHeader();

@@ -54,8 +54,9 @@ describe("integridade do registro", () => {
     expect(textoBuscavel(inbox)).toMatch(/conversas/i);
     expect(textoBuscavel(desempenho)).toMatch(/resultados/i);
     expect(textoBuscavel(execucoes)).toMatch(/erro da ia/i);
-    // Instagram ainda não é canal. Apelido mentiroso faria achar WhatsApp
-    // achando que o Direct já está ligado.
+    expect(textoBuscavel(dest("/app/connections"))).toMatch(/direct/i);
+    // Inbox não leva apelido de Instagram: o Direct ainda não recebe, e o ⌘K
+    // abriria conversas de WhatsApp como se já fosse a mesma coisa.
     expect(textoBuscavel(inbox).toLowerCase()).not.toContain("instagram");
   });
 
