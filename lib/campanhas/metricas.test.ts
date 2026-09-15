@@ -51,6 +51,29 @@ describe("compararDuasCampanhas", () => {
     const ganhos = linhas.find((l) => l.chave === "ganhos");
     expect(receita?.delta).toBe(640000 - 1890000);
     expect(ganhos).toMatchObject({ a: 1, b: 4, delta: -3 });
+    const conversao = linhas.find((l) => l.chave === "conversao");
+    expect(conversao).toMatchObject({ a: 100, b: 400, delta: -300 });
+  });
+
+  it("conversão é ganho por envio, não disparo cru", () => {
+    const a = aplicarDesfecho(
+      agregarMetricas([
+        { status: "sent" },
+        { status: "sent" },
+        { status: "sent" },
+        { status: "sent" },
+        { status: "replied", lead_id: "l1" },
+      ]),
+      { ganhos: 1, perdidos: 0, valor_ganho_cents: 100 },
+    );
+    const b = aplicarDesfecho(agregarMetricas([{ status: "replied", lead_id: "l2" }]), {
+      ganhos: 1,
+      perdidos: 0,
+      valor_ganho_cents: 100,
+    });
+    const linhas = compararDuasCampanhas(a, b);
+    const conversao = linhas.find((l) => l.chave === "conversao");
+    expect(conversao).toMatchObject({ a: 20, b: 100, delta: -80 });
   });
 
   it("desfechoPorLeadIds só olha os leads daquela campanha", () => {

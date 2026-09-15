@@ -133,7 +133,13 @@ export interface LinhaDeComparacao {
   delta: number;
 }
 
-/** Mesmo recorte: envio, resposta, negócio, ganho, perda e receita. */
+/** Ganhos por envio, em pontos percentuais inteiros. Sem envio = 0. */
+export function taxaDeGanhoDaCampanha(m: Pick<MetricasDaCampanha, "enviadas" | "ganhos">): number {
+  if (m.enviadas <= 0) return 0;
+  return Math.round((m.ganhos / m.enviadas) * 100);
+}
+
+/** Mesmo recorte: envio, resposta, negócio, ganho, conversão, perda e receita. */
 export function compararDuasCampanhas(
   a: MetricasDaCampanha,
   b: MetricasDaCampanha,
@@ -143,6 +149,7 @@ export function compararDuasCampanhas(
     ["respondidas", "Respostas", a.respondidas, b.respondidas],
     ["leads", "Negócios", a.leads_associados, b.leads_associados],
     ["ganhos", "Ganhos", a.ganhos, b.ganhos],
+    ["conversao", "Conversão", taxaDeGanhoDaCampanha(a), taxaDeGanhoDaCampanha(b)],
     ["perdidos", "Perdas", a.perdidos, b.perdidos],
     ["receita", "Receita ganha", a.valor_ganho_cents, b.valor_ganho_cents],
   ];

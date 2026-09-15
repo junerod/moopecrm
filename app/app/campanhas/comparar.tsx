@@ -20,8 +20,8 @@ export function CompararCampanhas({
     <AppCard testid="campanhas-comparar">
       <p className="text-sm font-semibold text-[var(--color-text)]">Comparar campanhas</p>
       <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-        Mesmo recorte: envio, resposta, negócio, ganho e receita. Quem disparou
-        mais não é automaticamente quem vendeu.
+        Mesmo recorte: envio, resposta, negócio, ganho, conversão e receita.
+        Quem disparou mais não é automaticamente quem vendeu.
       </p>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-sm">
@@ -50,6 +50,12 @@ export function CompararCampanhas({
 }
 
 function celula(chave: string, n: number, comSinal = false): string {
+  if (chave === "conversao") {
+    const texto = `${Math.abs(n)}%`;
+    if (!comSinal) return `${n}%`;
+    if (n === 0) return "0%";
+    return `${n > 0 ? "+" : "−"}${texto}`;
+  }
   const texto =
     chave === "receita"
       ? formatCentsBRL(Math.abs(n))

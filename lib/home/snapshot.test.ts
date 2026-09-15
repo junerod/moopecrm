@@ -133,6 +133,7 @@ const kpisOk = {
   },
   origem: [],
   conteudos: [],
+  perdas: [],
   atendentes: [],
 };
 

@@ -58,6 +58,11 @@ export interface KpisDeSupervisao {
     perdidos: number;
     valor_ganho_cents: number;
   }>;
+  perdas: Array<{
+    motivo: string;
+    quantidade: number;
+    valor_cents: number;
+  }>;
   atendentes: Array<{
     user_id: string;
     conversas: number;
@@ -322,6 +327,7 @@ export async function carregarKpisDeSupervisao(
     },
     origem: await agregarOrigemDoPeriodo(db, org, fromIso, toIso),
     conteudos: await agregarConteudosDoPeriodo(db, org, fromIso, toIso),
+    perdas: await agregarMotivosDePerdaDoPeriodo(db, org, fromIso, toIso),
     atendentes,
   };
 }
@@ -439,4 +445,37 @@ async function agregarConteudosDoPeriodo(
   }
 
   return [...por.values()].sort((a, b) => b.ganhos + b.novos - (a.ganhos + a.novos));
+}
+
+/** Motivo que o humano digitou ao perder — sem inventar taxonomia. */
+export function agregarMotivosDePerda(
+  perdas: Array<{ lost_reason: string | null; value_cents?: number | null }>,
+): KpisDeSupervisao["perdas"] {
+  const por = new Map<string, { motivo: string; quantidade: number; valor_cents: number }>();
+  for (const l of perdas) {
+    const motivo = (l.lost_reason ?? "").trim() || "Sem motivo";
+    const atual = por.get(motivo) ?? { motivo, quantidade: 0, valor_cents: 0 };
+    atual.quantidade += 1;
+    atual.valor_cents += Math.max(0, l.value_cents ?? 0);
+    por.set(motivo, atual);
+  }
+  return [...por.values()].sort((a, b) => b.quantidade - a.quantidade);
+}
+
+async function agregarMotivosDePerdaDoPeriodo(
+  db: SupabaseClient,
+  org: string,
+  fromIso: string,
+  toIso: string,
+): Promise<KpisDeSupervisao["perdas"]> {
+  const { data } = await db
+    .from("crm_leads")
+    .select("lost_reason, value_cents")
+    .eq("organization_id", org)
+    .eq("status", "lost")
+    .gte("closed_at", fromIso)
+    .lte("closed_at", toIso);
+  return agregarMotivosDePerda(
+    (data ?? []) as Array<{ lost_reason: string | null; value_cents: number | null }>,
+  );
 }
