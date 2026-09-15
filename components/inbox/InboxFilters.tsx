@@ -113,7 +113,7 @@ export function InboxFilters({ value, onChange }: Props) {
             onChange({ ...value, channel_session_id: v === "all" ? undefined : v })
           }
         >
-          <SelectTrigger className="h-8 text-sm" aria-label="Filtrar por número de WhatsApp">
+          <SelectTrigger className="h-8 text-sm" aria-label="Filtrar por canal">
             <SelectValue placeholder={t("Todos os números")} />
           </SelectTrigger>
           <SelectContent>

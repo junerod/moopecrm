@@ -24,6 +24,7 @@ import {
   type PipelineFicha,
   type PipelineUtilizavel,
 } from "@/lib/inbox/crm-summary-tipos";
+import { tituloDoConteudo } from "@/lib/crm/origem-comercial";
 import { createClient } from "@/lib/supabase/server";
 import { nomesDosAtendentes } from "@/lib/users/nome-do-atendente";
 
@@ -55,7 +56,7 @@ export async function GET(
 
   const { data: contato, error: contatoErr } = await supabase
     .from("contacts")
-    .select("id, organization_id")
+    .select("id, organization_id, source, source_metadata")
     .eq("id", contactId)
     .maybeSingle();
 
@@ -201,6 +202,10 @@ export async function GET(
   return ok(
     {
       leads: leadsFicha,
+      origem_do_contato: {
+        source: (contato.source as string | null) ?? null,
+        conteudo: tituloDoConteudo(contato.source_metadata),
+      },
       negocio: resolverNegocioAberto(leadsFicha),
       pipelines_utilizaveis,
       proximo_passo_comercial: primeiraDemanda

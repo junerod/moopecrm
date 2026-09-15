@@ -75,7 +75,10 @@ export function BlocoNegocio({
   summary,
   onAtualizou,
 }: Props) {
-  const { negocio, pipelines_utilizaveis, proximo_passo_comercial } = summary;
+  const { negocio, pipelines_utilizaveis, proximo_passo_comercial, origem_do_contato } = summary;
+  const origemVisivel =
+    origem_do_contato?.conteudo ??
+    (origem_do_contato?.source ? rotuloDaOrigem(origem_do_contato.source) : null);
   const umFunil = pipelines_utilizaveis.length <= 1;
   const leadUnico =
     negocio.resolucao === "unico" ? (negocio.leads_abertos[0] ?? null) : null;
@@ -116,7 +119,7 @@ export function BlocoNegocio({
         stage_id: stageId,
         title: titulo.slice(0, 200),
         contact_id: contactId,
-        source: "whatsapp",
+        source: origem_do_contato?.source ?? "whatsapp",
         reuse_open_if_exists: true,
       });
       onAtualizou();
@@ -212,6 +215,11 @@ export function BlocoNegocio({
         {negocio.resolucao === "nenhum" ? (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">Nenhuma oportunidade aberta.</p>
+            {origemVisivel && origemVisivel !== "—" ? (
+              <p className="text-xs text-muted-foreground" data-testid="inbox-origem-conteudo">
+                Veio de {origemVisivel}
+              </p>
+            ) : null}
             {!umFunil ? (
               <label className="block min-w-0 text-xs">
                 <span className="text-muted-foreground">Funil</span>
@@ -320,7 +328,11 @@ export function BlocoNegocio({
                       ? "Atendente"
                       : "Sem responsável")}
               </p>
-              {rotuloOrigem(leadUnico.source) ? (
+              {origemVisivel && origemVisivel !== "—" ? (
+                <span className="text-muted-foreground" data-testid="inbox-origem-conteudo">
+                  · {origemVisivel}
+                </span>
+              ) : rotuloOrigem(leadUnico.source) ? (
                 <span className="text-muted-foreground">· {rotuloOrigem(leadUnico.source)}</span>
               ) : null}
               <button

@@ -29,3 +29,13 @@ export function rotuloDaOrigem(source: string | null | undefined): string {
   if (anuncio[source]) return anuncio[source];
   return source;
 }
+
+/** Título do anúncio/conteúdo gravado no first-touch — sem inventar. */
+export function tituloDoConteudo(meta: unknown): string | null {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  const m = meta as Record<string, unknown>;
+  const titulo = typeof m.ad_title === "string" ? m.ad_title.trim() : "";
+  if (titulo) return titulo;
+  const id = typeof m.ad_source_id === "string" ? m.ad_source_id.trim() : "";
+  return id || null;
+}

@@ -17,6 +17,7 @@ import {
   resolveSessionRef,
   type ChannelSessionRef,
 } from "@/lib/channels";
+import { especieDoProvider } from "@/lib/channels/especie";
 import { carregarConversaDoEnvio } from "@/lib/channels/select-conversa-envio";
 import { conferirDefinicao } from "@/lib/channels/conferir-definicao";
 import { CHANNEL_SESSION_REF_COLUMNS } from "@/lib/channels/session-ref";
@@ -631,7 +632,10 @@ export async function sendMessageHandler(
       .update({
         status: "failed",
         error_code: "missing_phone_number",
-        error_message: "Contato sem telefone para envio WhatsApp.",
+        error_message:
+          especieDoProvider(c.channel_sessions?.provider) === "direct"
+            ? "Contato sem identidade do Instagram para envio."
+            : "Contato sem telefone para envio WhatsApp.",
       })
       .eq("id", message.id)
       .select(MSG_COLS)

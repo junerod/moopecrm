@@ -56,8 +56,14 @@ export interface NegocioFicha {
   leads_abertos: LeadFicha[];
 }
 
+export interface OrigemDoContato {
+  source: string | null;
+  conteudo: string | null;
+}
+
 export interface CrmSummaryData {
   leads: LeadFicha[];
+  origem_do_contato?: OrigemDoContato | null;
   negocio: NegocioFicha;
   pipelines_utilizaveis: PipelineUtilizavel[];
   proximo_passo_comercial: ProximoPassoComercial | null;

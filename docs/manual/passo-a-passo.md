@@ -73,7 +73,7 @@ O CRM não liga post, story nem resultado de anúncio.
 5. **`/`** no começo da linha abre Respostas rápidas.
 6. O **+** anexa foto, vídeo, documento ou contato. Dá para gravar áudio e mandar emoji.
 
-A janela de 24 h do WhatsApp (número não oficial / QR) fecha o envio livre quando o cliente parou de falar há mais de um dia. O aviso acima do campo diz o motivo. Número oficial da Meta usa **modelo** (template) para furar essa janela — **Enviar modelo**.
+A janela de 24 h do WhatsApp (número não oficial / QR) fecha o envio livre quando o cliente parou de falar há mais de um dia. O aviso acima do campo diz o motivo. Número oficial da Meta usa **modelo** (template) para furar essa janela — **Enviar modelo**. No Instagram não existe modelo: depois de 24 h, só volta a responder quando o cliente escrever de novo. A lista marca a conversa como **Instagram** para não parecer WhatsApp.
 
 A IA só responde mensagem **nova** que chega pelo WhatsApp ao vivo. Texto puxado do histórico do aparelho entra no CRM marcado como histórico: o agente **não** responde essas.
 

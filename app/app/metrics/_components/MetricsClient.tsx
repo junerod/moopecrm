@@ -183,6 +183,29 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
               </CardContent>
             </Card>
           ) : null}
+          {supervisao.data.conteudos && supervisao.data.conteudos.length > 0 ? (
+            <Card data-testid="desempenho-conteudos">
+              <CardHeader>
+                <CardTitle className="text-base">Conteúdo que vendeu</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {supervisao.data.conteudos.map((c) => (
+                  <div
+                    key={c.titulo}
+                    className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 py-1.5 last:border-0"
+                  >
+                    <span className="font-medium">{c.titulo}</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      {c.novos} leads · {c.ganhos} ganhos · {c.perdidos} perdas
+                      {c.valor_ganho_cents
+                        ? ` · ${(c.valor_ganho_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                        : ""}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       ) : null}
 

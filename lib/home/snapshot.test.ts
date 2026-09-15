@@ -132,6 +132,7 @@ const kpisOk = {
     valor_ganho_cents: 0,
   },
   origem: [],
+  conteudos: [],
   atendentes: [],
 };
 

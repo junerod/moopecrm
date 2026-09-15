@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
+  canalExigeModelo,
   estadoDaJanela,
   formatarDecorrido,
   formatarRestante,
@@ -60,13 +61,18 @@ export function JanelaSelo({
       estado.fechadaHaMs === null
         ? "O cliente nunca escreveu"
         : `Janela fechada há ${formatarDecorrido(estado.fechadaHaMs)}`;
+    const saida = canalExigeModelo(provider) ? "só modelo" : "aguarde o cliente";
     return (
       <Badge
         variant="outline"
         className="h-4 border-amber-400 px-1.5 text-[10px] text-amber-700 dark:border-amber-700 dark:text-amber-300"
-        title="Passaram 24h desde a última mensagem do cliente. Só um modelo aprovado sai daqui — texto livre é recusado pela plataforma."
+        title={
+          canalExigeModelo(provider)
+            ? "Passaram 24h desde a última mensagem do cliente. Só um modelo aprovado sai daqui — texto livre é recusado pela plataforma."
+            : "Passaram 24h. Neste canal não existe modelo: a próxima mensagem só sai depois que o cliente escrever de novo."
+        }
       >
-        {quanto} · só modelo
+        {quanto} · {saida}
       </Badge>
     );
   }

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useSincronizarContatosDoAparelho } from "@/hooks/channels/useSincronizarContatosDoAparelho";
-import { estadoDaJanela, formatarDecorrido } from "@/lib/channels/janela";
+import { canalExigeModelo, estadoDaJanela, formatarDecorrido } from "@/lib/channels/janela";
 import { JanelaFechadaAviso } from "@/components/inbox/JanelaFechadaAviso";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useCloseConversation } from "@/hooks/inbox/useCloseConversation";
@@ -473,7 +473,9 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
                       nome={nomeOutro}
                     />
                   )}
-                  {motivoDaJanela && colisao.podeEnviar && (
+                  {motivoDaJanela &&
+                    colisao.podeEnviar &&
+                    canalExigeModelo(selectedConversation.channel_sessions?.provider) && (
                     <JanelaFechadaAviso
                       conversationId={selectedConversation.id}
                       provider={selectedConversation.channel_sessions?.provider ?? null}

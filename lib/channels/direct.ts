@@ -8,6 +8,7 @@ export {
   estadoDoDirect,
   gravarSessaoDirect,
   sincronizarDirectDaOrg,
+  sincronizarDirectDeTodasAsOrgs,
   tokenOficialDaOrg,
   validateDirectCredentials,
 } from "./instagram/connect";

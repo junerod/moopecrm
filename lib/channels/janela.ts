@@ -53,6 +53,16 @@ export type EstadoDaJanela =
  * tem regra conhecida, e inventar "fechada" faria a tela travar um envio que
  * talvez saísse sem problema.
  */
+/** Canal que, com a janela fechada, ainda tem modelo aprovado como saída. */
+export function canalExigeModelo(provider: string | null | undefined): boolean {
+  if (!provider) return false;
+  try {
+    return capabilitiesOf(provider as ChannelProvider).requiresTemplates;
+  } catch {
+    return false;
+  }
+}
+
 export function estadoDaJanela(
   provider: string | null | undefined,
   lastInboundAt: string | null,

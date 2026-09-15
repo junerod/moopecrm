@@ -263,3 +263,40 @@ export async function sincronizarDirectDaOrg(
   });
   return { error: null, subscribed: r.subscribed, imported: r.imported };
 }
+
+export async function sincronizarDirectDeTodasAsOrgs(
+  admin: SupabaseClient,
+): Promise<{ sessoes: number; imported: number; erros: number }> {
+  const { data } = await queryTolerantToMissingArchived(
+    () =>
+      admin
+        .from("channel_sessions")
+        .select("organization_id")
+        .eq("provider", CHANNEL_PROVIDER_INSTAGRAM)
+        .eq("status", "WORKING")
+        .is(ARCHIVED_AT, null),
+    () =>
+      admin
+        .from("channel_sessions")
+        .select("organization_id")
+        .eq("provider", CHANNEL_PROVIDER_INSTAGRAM)
+        .eq("status", "WORKING"),
+  );
+  const orgs = [
+    ...new Set(
+      ((data ?? []) as Array<{ organization_id: string }>).map((s) => s.organization_id),
+    ),
+  ];
+  let imported = 0;
+  let erros = 0;
+  for (const orgId of orgs) {
+    try {
+      const r = await sincronizarDirectDaOrg(admin, orgId);
+      if (r.error) erros += 1;
+      else imported += r.imported;
+    } catch {
+      erros += 1;
+    }
+  }
+  return { sessoes: orgs.length, imported, erros };
+}

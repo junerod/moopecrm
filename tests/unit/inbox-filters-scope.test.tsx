@@ -72,7 +72,7 @@ function canal(over: Partial<ChannelSession> = {}): ChannelSession {
   };
 }
 
-const SELETOR = "Filtrar por número de WhatsApp";
+const SELETOR = "Filtrar por canal";
 
 beforeEach(() => {
   setOrg("agent", "own_and_unassigned");
@@ -123,8 +123,8 @@ describe("InboxFilters render — 3 visões + escopo", () => {
   it("o filtro de papel existe e começa em Comercial", () => {
     setOrg("manager", "all");
     render(<InboxFilters value={VALUE} onChange={() => {}} />);
-    expect(screen.getByLabelText("Filtrar por papel")).toBeInTheDocument();
-    expect(screen.getByLabelText("Filtrar por papel")).toHaveTextContent("Comercial");
+    expect(screen.getAllByLabelText("Filtrar por papel")[0]).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Filtrar por papel")[0]).toHaveTextContent("Comercial");
   });
 
   it("contagens por visão são renderizadas (Fila=3, Minhas=2)", () => {
@@ -148,7 +148,7 @@ describe("InboxFilters — seletor de número e o filtro órfão", () => {
     setOrg("manager", "all");
     canaisRef.current = [canal(), canal({ id: "canal-2", display_name: "Suporte" })];
     render(<InboxFilters value={VALUE} onChange={() => {}} />);
-    expect(screen.getByLabelText(SELETOR)).toBeInTheDocument();
+    expect(screen.getAllByLabelText(SELETOR)[0]).toBeInTheDocument();
   });
 
   /**
@@ -163,7 +163,7 @@ describe("InboxFilters — seletor de número e o filtro órfão", () => {
     render(
       <InboxFilters value={{ ...VALUE, channel_session_id: "canal-excluido" }} onChange={() => {}} />,
     );
-    const seletor = screen.getByLabelText(SELETOR);
+    const seletor = screen.getAllByLabelText(SELETOR)[0];
     expect(seletor).toBeInTheDocument();
     expect(seletor).toHaveTextContent("Número removido");
   });
@@ -172,7 +172,7 @@ describe("InboxFilters — seletor de número e o filtro órfão", () => {
     setOrg("manager", "all");
     canaisRef.current = [canal(), canal({ id: "canal-2", display_name: "Suporte" })];
     render(<InboxFilters value={{ ...VALUE, channel_session_id: "canal-2" }} onChange={() => {}} />);
-    const seletor = screen.getByLabelText(SELETOR);
+    const seletor = screen.getAllByLabelText(SELETOR)[0];
     expect(seletor).toHaveTextContent("Suporte");
     expect(seletor).not.toHaveTextContent("Número removido");
   });

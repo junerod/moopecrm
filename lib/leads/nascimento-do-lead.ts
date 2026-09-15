@@ -61,6 +61,16 @@ const ROTULO_DE_ANUNCIO: Record<string, string> = {
   google_ads: "Google_ads",
 };
 
+/** Direct não é WhatsApp. Anúncio mantém a plataforma que o first-touch gravou. */
+export function origemAoNascer(
+  source: string | null | undefined,
+  ehAnuncio: boolean,
+): string {
+  if (ehAnuncio && source) return source;
+  if (source === "instagram" || source === "direct") return "instagram";
+  return "whatsapp";
+}
+
 /**
  * Por que um lead NÃO nasceu. Cada motivo é registrado — silêncio não distingue
  * "não devia nascer" de "falhou ao nascer", e a segunda é a que custa caro.
@@ -208,9 +218,7 @@ export async function garantirLeadDaConversa(
   } catch {
     campanhaId = null;
   }
-  const metaBase = rotuloDeAnuncio
-    ? ((contato!.source_metadata ?? {}) as Record<string, unknown>)
-    : {};
+  const metaBase = ((contato?.source_metadata ?? {}) as Record<string, unknown>);
   const sourceMetadata = campanhaId ? { ...metaBase, campaign_id: campanhaId } : metaBase;
 
   const { data: lead, error } = await db
@@ -221,7 +229,7 @@ export async function garantirLeadDaConversa(
       stage_id: destino.stageId,
       contact_id: contactId,
       title: titulo,
-      source: rotuloDeAnuncio ? contato!.source : "whatsapp",
+      source: origemAoNascer(contato?.source, Boolean(rotuloDeAnuncio)),
       source_metadata: sourceMetadata,
       // O ponto ao lado do título só acende se a organização cadastrar este
       // rótulo em `crm_pipelines.settings.canonical_tags` (Configurações do

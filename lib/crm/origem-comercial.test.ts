@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { rotuloDaOrigem } from "./origem-comercial";
+import { rotuloDaOrigem, tituloDoConteudo } from "./origem-comercial";
 
 describe("rotuloDaOrigem", () => {
   it("traduz as origens do comercial", () => {
@@ -22,5 +22,12 @@ describe("rotuloDaOrigem", () => {
     expect(rotuloDaOrigem("meta_ads")).toBe("Anúncio (Meta)");
     expect(rotuloDaOrigem("Meta_ads")).toBe("Anúncio (Meta)");
     expect(rotuloDaOrigem("google_ads")).toBe("Anúncio (Google)");
+  });
+
+  it("tituloDoConteudo só existe quando o first-touch gravou", () => {
+    expect(tituloDoConteudo({ ad_title: "Reel do SUV" })).toBe("Reel do SUV");
+    expect(tituloDoConteudo({ ad_source_id: "post-9" })).toBe("post-9");
+    expect(tituloDoConteudo({})).toBeNull();
+    expect(tituloDoConteudo(null)).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contat
 import { ehTemperaturaDoLead } from "@/lib/crm/papel-e-temperatura";
 import { CLASSE_DOT_TEMPERATURA } from "@/lib/crm/temperatura-visual";
 import { metaDaLinha } from "@/lib/inbox/meta-da-linha";
+import { especieDoProvider, rotuloDaEspecie } from "@/lib/channels/especie";
 import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
@@ -147,6 +148,9 @@ export function ConversationListItem({
   // respondendo. Cai no nome do canal quando não há número (canal recém-criado).
   const canal = conversation.channel_sessions ?? null;
   const rotuloCanal = canal?.phone_number ?? canal?.display_name ?? null;
+  const especie = especieDoProvider(canal?.provider ?? null);
+  const ehDirect = especie === "direct";
+  const rotuloEspecie = especie ? rotuloDaEspecie(especie) : null;
 
   return (
     <button
@@ -256,7 +260,16 @@ export function ConversationListItem({
               {rotuloDoDono({ viewerUserId: viewerUserId ?? "", comando }).texto}
             </span>
           )}
-          {mostrarCanal && rotuloCanal && (
+          {ehDirect ? (
+            <span
+              className="inline-flex h-5 items-center gap-1 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
+              data-testid="lista-canal-especie"
+              title={rotuloCanal ? `Entrou por ${rotuloCanal}` : "Entrou pelo Instagram"}
+            >
+              {rotuloEspecie}
+              {mostrarCanal && rotuloCanal ? ` · ${rotuloCanal}` : ""}
+            </span>
+          ) : mostrarCanal && rotuloCanal ? (
             <span
               className="inline-flex h-5 items-center gap-1 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
               title={`Entrou por ${rotuloCanal}`}
@@ -264,7 +277,7 @@ export function ConversationListItem({
               <Phone size={9} weight="regular" aria-hidden />
               {rotuloCanal}
             </span>
-          )}
+          ) : null}
           {c?.is_blocked && <StatusBadge tone="red">Bloqueado</StatusBadge>}
           {c?.is_anonymized && <StatusBadge tone="indigo">Anonimizado</StatusBadge>}
           {unread > 0 && (

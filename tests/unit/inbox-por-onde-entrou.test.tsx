@@ -32,8 +32,9 @@ const base = {
   contacts: { id: "ct1", display_name: "Cliente", name: null, phone_number: "+595999", tags: [], is_blocked: false, is_anonymized: false },
 } as unknown as ConversationWithContact;
 
-const comCanal = (canal: { phone_number: string | null; display_name: string | null } | null) =>
-  ({ ...base, channel_sessions: canal }) as ConversationWithContact;
+const comCanal = (
+  canal: { phone_number: string | null; display_name: string | null; provider?: string | null } | null,
+) => ({ ...base, channel_sessions: canal }) as ConversationWithContact;
 
 const pintar = (conv: ConversationWithContact, mostrarCanal: boolean) =>
   render(
@@ -69,6 +70,20 @@ describe("mostra o número da empresa quando há mais de um canal", () => {
     pintar(comCanal({ phone_number: "+19392301037", display_name: null }), true);
     expect(screen.getByTitle("Entrou por +19392301037")).toBeInTheDocument();
     expect(screen.queryByTitle("Entrou por +595999")).not.toBeInTheDocument();
+  });
+});
+
+describe("Instagram não se disfarça de WhatsApp", () => {
+  it("pinta Instagram mesmo com um canal só", () => {
+    pintar(
+      comCanal({
+        phone_number: null,
+        display_name: "@moopetec",
+        provider: "instagram",
+      }),
+      false,
+    );
+    expect(screen.getByTestId("lista-canal-especie")).toHaveTextContent("Instagram");
   });
 });
 

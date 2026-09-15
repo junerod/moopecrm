@@ -115,6 +115,17 @@ describe("o selo na tela", () => {
     expect(screen.getByText(/fechada há 6h/i)).toBeInTheDocument();
   });
 
+  it("canal sem modelo não promete modelo", () => {
+    render(
+      <JanelaSelo
+        provider="instagram"
+        lastInboundAt={new Date(Date.now() - 30 * 3_600_000).toISOString()}
+      />,
+    );
+    expect(screen.getByText(/aguarde o cliente/i)).toBeInTheDocument();
+    expect(screen.queryByText(/só modelo/i)).not.toBeInTheDocument();
+  });
+
   it("cliente que nunca escreveu não ganha um prazo inventado", () => {
     render(<JanelaSelo provider="zernio" lastInboundAt={null} />);
     expect(screen.getByText(/nunca escreveu/i)).toBeInTheDocument();
@@ -185,7 +196,7 @@ describe("os elos que somem sem barulho", () => {
     const fonte = readFileSync("components/inbox/InboxLayout.tsx", "utf8");
     // A GUARDA junto com a tag: `{false && (` deixava a tag na linha seguinte e
     // o caso passava verde com a saída removida da tela.
-    expect(fonte).toMatch(/motivoDaJanela && colisao\.podeEnviar && \(/);
+    expect(fonte).toMatch(/motivoDaJanela &&\s*colisao\.podeEnviar &&\s*canalExigeModelo/);
     expect(fonte).toMatch(/<JanelaFechadaAviso/);
     const aviso = readFileSync("components/inbox/JanelaFechadaAviso.tsx", "utf8");
     expect(aviso).toMatch(/type: "template"/);
