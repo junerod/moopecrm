@@ -225,6 +225,36 @@ describe("carregarSnapshotDaHome", () => {
     expect(manager.commercial?.paradas).toBe(5);
     expect(manager.funnel[0]?.count).toBe(5);
     expect(manager.commercial?.vs_anterior?.leads_novos).toBe(4);
+    expect(manager.origem).toEqual([]);
+    expect(manager.perdas).toEqual([]);
+    expect(agent.origem).toEqual([]);
+  });
+
+  it("gestor herda origem e motivo de perda dos kpis, sem inventar linha", async () => {
+    vi.mocked(carregarKpisDeSupervisao).mockResolvedValue({
+      ...kpisOk,
+      origem: [
+        {
+          chave: "instagram",
+          rotulo: "Instagram",
+          novos: 4,
+          ganhos: 2,
+          perdidos: 1,
+          valor_ganho_cents: 80000,
+        },
+      ],
+      perdas: [{ motivo: "Preço", quantidade: 2, valor_cents: 30000 }],
+    });
+    const db = dbComContagens();
+    const manager = await carregarSnapshotDaHome(db as never, {
+      organizationId: ORG_A,
+      userId: USER,
+      role: "manager",
+      periodo: "7d",
+      agora,
+    });
+    expect(manager.origem[0]?.rotulo).toBe("Instagram");
+    expect(manager.perdas[0]).toEqual({ motivo: "Preço", quantidade: 2, valor_cents: 30000 });
   });
 
   it("vs_anterior usa a janela imediatamente anterior, sem inventar", async () => {

@@ -21,6 +21,7 @@ import { AppCard } from "@/components/ds/AppCard";
 import { MetricCard } from "@/components/ds/MetricCard";
 import { PageHeader } from "@/components/ds/PageHeader";
 import { AppIcon } from "@/components/ds/AppIcon";
+import { taxaDeGanhoDaCampanha } from "@/lib/campanhas/metricas";
 import { formatCentsBRL } from "@/lib/money";
 import { ChatCircle, Checks, Megaphone, PaperPlaneTilt, Trophy, Warning } from "@/lib/ui/icons";
 
@@ -77,6 +78,8 @@ export function CampanhaDetalheClient({ id }: { id: string }) {
   const podeCancelar = camp.data.status === "running" || camp.data.status === "scheduled" || vis === "preparing";
   const taxaResposta = m.enviadas > 0 ? Math.round((m.respondidas / m.enviadas) * 100) : null;
   const taxaEnvio = total > 0 ? Math.round((m.enviadas / total) * 100) : null;
+  const taxaGanho = taxaDeGanhoDaCampanha(m);
+  const perdas = camp.data.perdas ?? [];
   const canal =
     settings.channels === "ambos"
       ? "WhatsApp + e-mail"
@@ -227,7 +230,39 @@ export function CampanhaDetalheClient({ id }: { id: string }) {
             </p>
           }
         />
+        <MetricCard
+          icon={Trophy}
+          tone="teal"
+          label="Conversão"
+          value={m.enviadas > 0 ? `${taxaGanho}%` : "—"}
+          delta={
+            <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+              Ganho por envio. Quem disparou mais não é quem vendeu.
+            </p>
+          }
+        />
       </div>
+
+      {perdas.length > 0 ? (
+        <AppCard testid="campanha-motivos-perda">
+          <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+            Por que se perdeu nesta campanha
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {perdas.map((p) => (
+              <li key={p.motivo} className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-medium">{p.motivo}</span>
+                <span className="text-[var(--color-text-muted)] tabular-nums">
+                  {p.quantidade} {p.quantidade === 1 ? "perda" : "perdas"}
+                  {p.valor_cents
+                    ? ` · ${formatCentsBRL(p.valor_cents)}`
+                    : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </AppCard>
+      ) : null}
 
       {respostas.length > 0 ? (
         <AppCard>

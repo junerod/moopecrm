@@ -538,6 +538,79 @@ function Equipe({ snap }: { snap: SnapshotDaHome }) {
   );
 }
 
+function OrigemEPerda({ snap }: { snap: SnapshotDaHome }) {
+  const origem = snap.origem ?? [];
+  const perdas = snap.perdas ?? [];
+  const conteudos = snap.conteudos ?? [];
+  if (origem.length === 0 && perdas.length === 0 && conteudos.length === 0) return null;
+  return (
+    <div className="grid gap-3 md:grid-cols-2" data-testid="home-origem-perda">
+      {origem.length > 0 ? (
+        <AppCard testid="home-origem">
+          <SectionHeader
+            titulo="De onde vêm as vendas"
+            href="/app/metrics"
+            cta="Ver desempenho"
+            icon={<AppIcon icon={TrendUp} tone="green" size="sm" />}
+          />
+          <ul className="space-y-2 text-[13px]">
+            {origem.slice(0, 5).map((o) => (
+              <li key={o.chave} className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-medium">{o.rotulo}</span>
+                <span className="text-[var(--color-text-muted)] tabular-nums">
+                  {o.ganhos} ganhos · {o.perdidos} perdas
+                  {o.valor_ganho_cents ? ` · ${formatarValorEtapa(o.valor_ganho_cents)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </AppCard>
+      ) : null}
+      {perdas.length > 0 ? (
+        <AppCard testid="home-perdas">
+          <SectionHeader
+            titulo="Por que se perde"
+            href="/app/metrics"
+            cta="Ver desempenho"
+            icon={<AppIcon icon={Warning} tone="amber" size="sm" />}
+          />
+          <ul className="space-y-2 text-[13px]">
+            {perdas.slice(0, 5).map((p) => (
+              <li key={p.motivo} className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-medium">{p.motivo}</span>
+                <span className="text-[var(--color-text-muted)] tabular-nums">
+                  {p.quantidade} {p.quantidade === 1 ? "perda" : "perdas"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </AppCard>
+      ) : null}
+      {conteudos.length > 0 ? (
+        <AppCard testid="home-conteudos" className="md:col-span-2">
+          <SectionHeader
+            titulo="Conteúdo que vendeu"
+            href="/app/metrics"
+            cta="Ver desempenho"
+            icon={<AppIcon icon={Megaphone} tone="violet" size="sm" />}
+          />
+          <ul className="space-y-2 text-[13px]">
+            {conteudos.slice(0, 5).map((c) => (
+              <li key={c.titulo} className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-medium">{c.titulo}</span>
+                <span className="text-[var(--color-text-muted)] tabular-nums">
+                  {c.ganhos} ganhos
+                  {c.valor_ganho_cents ? ` · ${formatarValorEtapa(c.valor_ganho_cents)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </AppCard>
+      ) : null}
+    </div>
+  );
+}
+
 function Campanha({ snap }: { snap: SnapshotDaHome }) {
   if (snap.sources.campaigns === "error") {
     return (
@@ -604,6 +677,7 @@ function Campanha({ snap }: { snap: SnapshotDaHome }) {
       </dl>
       <p className="mt-2 text-[12px] text-[var(--color-text-muted)]">
         {taxa ? `${taxa}% responderam` : "Ainda sem resposta"}
+        {c.enviados > 0 ? ` · ${Math.round((c.ganhos / c.enviados) * 100)}% viraram ganho` : ""}
         {c.perdidos > 0 ? ` · ${c.perdidos} perdas` : ""}
         {c.opt_outs > 0 ? ` · ${c.opt_outs} opt-out` : ""}
       </p>
@@ -719,6 +793,7 @@ export function HomeDashboard({
       ) : (
         <>
           {manager && snap ? <KpiRow snap={snap} /> : null}
+          {manager && snap ? <OrigemEPerda snap={snap} /> : null}
 
           {manager ? (
             <>

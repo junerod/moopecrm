@@ -44,5 +44,17 @@ export function insightsDoSnapshot(snap: SnapshotDaHome): InsightDaHome[] {
       });
     }
   }
-  return out.slice(0, 3);
+  const topOrigem = snap.origem?.[0];
+  if (snap.papel === "manager" && topOrigem && topOrigem.ganhos > 0) {
+    out.push({
+      texto: `${topOrigem.rotulo} lidera os ganhos neste período.`,
+    });
+  }
+  const topPerda = snap.perdas?.[0];
+  if (snap.papel === "manager" && topPerda && topPerda.quantidade > 0) {
+    out.push({
+      texto: `Motivo mais comum de perda: ${topPerda.motivo} (${topPerda.quantidade}).`,
+    });
+  }
+  return out.slice(0, 4);
 }

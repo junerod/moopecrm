@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { agregarMetricas, aplicarDesfecho, desfechoDosLeads } from "@/lib/campanhas/metricas";
+import { agregarMotivosDePerda } from "@/lib/supervisao/kpis";
 import { patchCampanhaSchema } from "@/lib/campanhas/schema";
 import { lerSettings } from "@/lib/campanhas/settings";
 import { createClient } from "@/lib/supabase/server";
@@ -43,19 +44,21 @@ export async function GET(
     channel: string | null;
   }>;
   let metricas = agregarMetricas(linhas);
+  let perdas: ReturnType<typeof agregarMotivosDePerda> = [];
   const leadIds = [...new Set(linhas.map((r) => r.lead_id).filter((x): x is string => Boolean(x)))];
   if (leadIds.length > 0) {
     const { data: leads } = await supabase
       .from("crm_leads")
-      .select("id, status, value_cents")
+      .select("id, status, value_cents, lost_reason")
       .eq("organization_id", authz.org.orgId)
       .in("id", leadIds);
-    metricas = aplicarDesfecho(
-      metricas,
-      desfechoDosLeads(
-        (leads ?? []) as Array<{ status: string | null; value_cents: number | null }>,
-      ),
-    );
+    const lista = (leads ?? []) as Array<{
+      status: string | null;
+      value_cents: number | null;
+      lost_reason: string | null;
+    }>;
+    metricas = aplicarDesfecho(metricas, desfechoDosLeads(lista));
+    perdas = agregarMotivosDePerda(lista.filter((l) => l.status === "lost"));
   }
 
   return ok(
@@ -63,6 +66,7 @@ export async function GET(
       ...data,
       settings: lerSettings((data as { settings?: unknown }).settings),
       metricas,
+      perdas,
     },
     { requestId },
   );

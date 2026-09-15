@@ -222,9 +222,15 @@ export async function carregarSnapshotDaHome(
   let funnel: SnapshotDaHome["funnel"] = [];
   let funnelSrc: SnapshotDaHome["sources"]["funnel"] = "ok";
   let pipelineHref = "/app/kanban";
+  let origem: SnapshotDaHome["origem"] = [];
+  let conteudos: SnapshotDaHome["conteudos"] = [];
+  let perdas: SnapshotDaHome["perdas"] = [];
   if (funilF.ok) {
     if (funilF.data.via === "kpis") {
       funnel = funilF.data.kpis.funil;
+      origem = funilF.data.kpis.origem ?? [];
+      conteudos = funilF.data.kpis.conteudos ?? [];
+      perdas = funilF.data.kpis.perdas ?? [];
       const k = funilF.data.kpis;
       commercial = {
         leads_novos: k.comercial.leads_novos,
@@ -416,6 +422,9 @@ export async function carregarSnapshotDaHome(
     commercial: gestor ? commercial : null,
     funnel,
     campaigns: gestor ? campaigns : null,
+    origem: gestor ? origem : [],
+    conteudos: gestor ? conteudos : [],
+    perdas: gestor ? perdas : [],
     pipeline_href: pipelineHref,
     sources: {
       personal: personalOk,

@@ -96,6 +96,27 @@ export interface SnapshotDaHome {
   commercial: SnapshotComercial | null;
   funnel: EtapaDoFunilDaHome[];
   campaigns: UltimaCampanhaDaHome | null;
+  /** Só gestor. Vazio = não pintar. */
+  origem: Array<{
+    chave: string;
+    rotulo: string;
+    novos: number;
+    ganhos: number;
+    perdidos: number;
+    valor_ganho_cents: number;
+  }>;
+  conteudos: Array<{
+    titulo: string;
+    novos: number;
+    ganhos: number;
+    perdidos: number;
+    valor_ganho_cents: number;
+  }>;
+  perdas: Array<{
+    motivo: string;
+    quantidade: number;
+    valor_cents: number;
+  }>;
   pipeline_href: string;
   sources: {
     personal: FonteDoSnapshot;

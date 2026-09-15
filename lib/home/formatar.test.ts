@@ -70,10 +70,28 @@ describe("home/insights", () => {
       },
     } as unknown as SnapshotDaHome;
     const frases = insightsDoSnapshot(snap).map((i) => i.texto);
-    expect(frases).toHaveLength(3);
+    expect(frases).toHaveLength(4);
     expect(frases[0]).toMatch(/3 retornos vencidos/);
     expect(frases[1]).toMatch(/5 leads quentes/);
     expect(frases[2]).toMatch(/18 min/);
+    expect(frases[3]).toMatch(/Conversão/);
+  });
+
+  it("gestor vê origem e motivo de perda só quando o snapshot trouxe dado", () => {
+    const snap = {
+      papel: "manager",
+      personal: { atrasadas: 0, quentes_sem_acao: 0, hoje: 0, conversas_minhas: 0, acoes: [], compromissos: [] },
+      team: { fila: 0, espera_mais_antiga_s: 0, primeira_resposta_media_s: null, conversas_abertas: 0, disponiveis: 0, pessoas: [] },
+      commercial: {
+        leads_novos: 0, oportunidades_abertas: 0, ganhos: 2, perdidos: 1,
+        conversao: null, sem_proxima_acao: 0, atrasadas: 0, paradas: 0, vs_anterior: null,
+      },
+      origem: [{ chave: "instagram", rotulo: "Instagram", novos: 3, ganhos: 2, perdidos: 1, valor_ganho_cents: 0 }],
+      perdas: [{ motivo: "Preço", quantidade: 1, valor_cents: 0 }],
+    } as unknown as SnapshotDaHome;
+    const frases = insightsDoSnapshot(snap).map((i) => i.texto);
+    expect(frases).toContain("Instagram lidera os ganhos neste período.");
+    expect(frases).toContain("Motivo mais comum de perda: Preço (1).");
   });
 });
 

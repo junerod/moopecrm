@@ -28,6 +28,7 @@ export interface CampanhaLista {
 
 export interface CampanhaDetalhe extends CampanhaLista {
   metricas: MetricasDaCampanha;
+  perdas?: Array<{ motivo: string; quantidade: number; valor_cents: number }>;
 }
 
 export interface DestinatarioDaCampanha {

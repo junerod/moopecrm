@@ -81,6 +81,7 @@ describe("CanalDirectClient", () => {
     );
     render(<CanalDirectClient />);
     expect(screen.getByTestId("instagram-buscar")).toHaveTextContent("Buscar mensagens");
-    expect(screen.getByTestId("direct-conectado")).toHaveTextContent("testador");
+    expect(screen.getByTestId("instagram-proximo-passo")).toHaveTextContent("aceita o convite");
+    expect(screen.getByTestId("direct-conectado")).toHaveTextContent("Buscar mensagens");
   });
 });

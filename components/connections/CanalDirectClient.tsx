@@ -108,11 +108,13 @@ export function CanalDirectClient() {
             <span className="font-medium">{estado.displayName}</span>
             <Badge>{estado.status ?? "—"}</Badge>
           </div>
-          <p className="max-w-xl text-sm text-muted-foreground">
-            Se mandou Direct e a Inbox ficou vazia: enquanto o app da Meta
-            está em desenvolvimento, quem envia também precisa ser testador
-            do Instagram. Depois, mande de novo ou busque aqui.
-          </p>
+          <ProximoPasso
+            testId="instagram-proximo-passo"
+            titulo="Para a DM aparecer na Inbox"
+            texto="1) No app da Meta, convide o @ que vai escrever. 2) Essa pessoa aceita o convite de testador. 3) Ela manda Direct de novo. 4) Clique em Buscar mensagens. Sem o aceite, a mensagem chega no celular e não aqui."
+            acao="Abrir a Inbox"
+            href="/app/inbox"
+          />
           <Button
             type="button"
             variant="outline"
