@@ -11,3 +11,12 @@ export {
   validateDirectCredentials,
 } from "./instagram/connect";
 export type { DirectSessionState, DirectValidation } from "./instagram/connect";
+export {
+  configuracaoDoAppMeta,
+  montarUrlDeConsentimento,
+  trocarCodigoPorConta,
+} from "./instagram/oauth";
+export {
+  emitirEstadoInstagram,
+  verificarEstadoInstagram,
+} from "./instagram/oauth-estado";

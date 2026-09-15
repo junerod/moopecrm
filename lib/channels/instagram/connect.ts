@@ -13,6 +13,7 @@ import { ARCHIVED_AT, queryTolerantToMissingArchived } from "../archived";
 import { CHANNEL_PROVIDER_INSTAGRAM, CHANNEL_PROVIDER_META } from "../capabilities";
 import { metaPodeReceber } from "../meta/webhook";
 import { reactivateChannelSession } from "../reactivate";
+import { configuracaoDoAppMeta } from "./oauth";
 
 export const DIRECT_CHANNEL_LABEL = "Instagram";
 
@@ -80,6 +81,8 @@ export async function tokenOficialDaOrg(
 export interface DirectSessionState {
   connected: boolean;
   podeReceber: boolean;
+  /** Dá para abrir o consentimento da Meta — o CRM vira um app autorizado. */
+  podeConectarComoApp: boolean;
   hasToken: boolean;
   accountId: string | null;
   displayName: string | null;
@@ -132,6 +135,7 @@ export async function estadoDoDirect(
   return {
     connected: Boolean(direta),
     podeReceber: metaPodeReceber(),
+    podeConectarComoApp: configuracaoDoAppMeta() !== null,
     hasToken: Boolean(direta?.meta_token_encrypted),
     accountId: (direta?.instagram_account_id as string | undefined) ?? null,
     displayName: (direta?.display_name as string | undefined) ?? null,

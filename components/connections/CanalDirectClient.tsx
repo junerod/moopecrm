@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { useConnectDirectChannel, useDirectChannel } from "@/hooks/channels/useDirectChannel";
@@ -11,61 +12,57 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { copyToClipboard } from "@/lib/clipboard";
 
-/**
- * Porta do Instagram na mesma Inbox.
- *
- * Sem o app da instalação pronto para receber, não há botão de conectar —
- * ligar agora seria prometer mensagem que não chega. O passo a passo fica
- * visível do mesmo jeito: é a ajuda de como chegar lá.
- */
+const ERRO_DA_VOLTA: Record<string, string> = {
+  cancelado: "Você cancelou na Meta. Nada foi ligado.",
+  app_nao_configurado: "Esta instalação ainda não é um app da Meta (falta o id do app no servidor).",
+  segredo_indisponivel: "Não foi possível assinar o retorno. Fale com quem administra o servidor.",
+  state_invalido: "O retorno da Meta expirou. Clique de novo em Continuar com Instagram.",
+  sessao: "Entre de novo e tente outra vez.",
+  codigo_ausente: "A Meta voltou sem o código. Tente de novo.",
+  instagram_sem_pagina:
+    "Essa conta profissional precisa estar ligada a uma Página no Meta Business Suite.",
+  troca_falhou: "A Meta recusou a troca. Confira se o app tem Instagram Messaging.",
+  gravar: "A autorização passou, mas não deu para guardar. Tente de novo.",
+};
+
 function AjudaInstagram() {
   return (
     <Card className="max-w-2xl space-y-3 p-4" data-testid="instagram-ajuda">
       <div>
         <h3 className="text-sm font-semibold">O que isto liga — e o que não liga</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Liga a <strong>caixa de mensagens</strong> do Instagram (a conversa
-          com o cliente) na mesma Inbox do WhatsApp. Não lê post, story nem
-          resultado de anúncio. Quem faz propaganda no @ continua vendo
-          campanha no Gerenciador de Anúncios da Meta; essa análise ainda
-          não é esta tela.
+          O CRM vira um <strong>app autorizado</strong> da conta profissional
+          — o mesmo lugar de Contas › Conexões de apps no celular. Liga a
+          caixa de mensagens na Inbox. Não lê post, story nem resultado de
+          anúncio.
         </p>
       </div>
       <div>
-        <h3 className="text-sm font-semibold">Como ligar a conta profissional</h3>
+        <h3 className="text-sm font-semibold">Como ligar o @moopetec (ou o @ da empresa)</h3>
         <ol className="mt-1 list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
           <li>
-            Entre no Instagram / Meta no celular. Se pedir Authenticator, o
-            código é lá — o CRM nunca pede senha nem esse número.
+            A conta já precisa ser <strong>profissional</strong> e estar na
+            Central de contas. Authenticator, se pedir, é no celular.
           </li>
           <li>
-            A conta tem de ser <strong>profissional</strong> (Criador ou
-            Empresa). Pessoal não tem caixa para o CRM receber.
+            No Meta Business Suite, ligue esse Instagram a uma{" "}
+            <strong>Página do Facebook</strong> da empresa.
           </li>
           <li>
-            No <strong>Meta Business Suite</strong>, ligue esse Instagram a
-            uma Página do Facebook da empresa.
-          </li>
-          <li>
-            Anote o <strong>ID da conta profissional</strong> — um número
-            longo, não o @. Em Business Suite: Configurações → Contas do
-            Instagram. Ou, na Página: Instagram → ID da conta.
-          </li>
-          <li>
-            No app da Meta (developers.facebook.com), ative{" "}
-            <strong>Instagram Messaging</strong> e o webhook. Cole a URL que
-            esta tela mostrar quando o app da instalação já receber.
-          </li>
-          <li>
-            Quem administra o servidor liga{" "}
-            <code className="text-xs">META_WEBHOOK_VERIFY_TOKEN</code> e{" "}
+            Quem administra o servidor cria o app em developers.facebook.com
+            (Instagram Messaging + Login) e põe{" "}
+            <code className="text-xs">META_APP_ID</code> e{" "}
             <code className="text-xs">META_APP_SECRET</code>. Sem isto o
-            botão de conectar não aparece — não prometemos mensagem que não
-            chega.
+            botão <strong>Continuar com Instagram</strong> não aparece.
           </li>
           <li>
-            Volte aqui, cole o ID e o token do app (ou use o token da API
-            oficial, se ela já estiver ligada) e <strong>Conectar Instagram</strong>.
+            Clique no botão. A Meta pede o Authenticator. Ao aceitar, o CRM
+            entra em Conexões de apps.
+          </li>
+          <li>
+            Para a mensagem chegar, o mesmo app precisa do webhook (
+            <code className="text-xs">META_WEBHOOK_VERIFY_TOKEN</code>
+            ). Sem isso a conta autoriza e a Inbox ainda não recebe.
           </li>
         </ol>
       </div>
@@ -76,8 +73,18 @@ function AjudaInstagram() {
 export function CanalDirectClient() {
   const { data, isPending } = useDirectChannel();
   const conectar = useConnectDirectChannel();
+  const params = useSearchParams();
   const [form, setForm] = useState({ account_id: "", token: "" });
   const estado = data?.data;
+
+  useEffect(() => {
+    if (params.get("ok") === "1") {
+      toast.success("Instagram autorizado. O CRM agora é um app desta conta.");
+      return;
+    }
+    const codigo = params.get("erro");
+    if (codigo) toast.error(ERRO_DA_VOLTA[codigo] ?? "Não deu para autorizar.");
+  }, [params]);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -97,33 +104,53 @@ export function CanalDirectClient() {
     <div>
       <h2 className="text-base font-semibold">Instagram</h2>
       <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-        A conta em que o negócio anuncia. A conversa do cliente entra nesta
-        Inbox, do lado do WhatsApp.
+        A conta em que o negócio anuncia. Você autoriza o CRM como um app —
+        senha e Authenticator ficam na Meta.
       </p>
     </div>
   );
 
-  if (!estado?.podeReceber && !estado?.connected) {
-    return (
-      <div className="space-y-4" data-testid="canal-direct">
-        {cabecalho}
-        <ProximoPasso
-          testId="direct-proximo-passo"
-          titulo="Esta instalação ainda não recebe o Instagram"
-          texto="O administrador precisa ligar o app da Meta no servidor. Enquanto isso, o atendimento continua no WhatsApp que já está no ar."
-          acao="Ver conversas"
-          href="/app/inbox"
-        />
-        <AjudaInstagram />
-      </div>
-    );
-  }
+  const botaoApp = estado?.podeConectarComoApp ? (
+    <Button asChild data-testid="instagram-continuar">
+      <a href="/api/v1/channels/direct/oauth">Continuar com Instagram</a>
+    </Button>
+  ) : null;
+
+  const formulario =
+    estado?.podeReceber || estado?.connected ? (
+      <form onSubmit={enviar} className="grid max-w-xl gap-3" data-testid="direct-conectar">
+        <div className="grid gap-1.5">
+          <Label htmlFor="direct-account-id">Id da conta profissional do Instagram</Label>
+          <Input
+            id="direct-account-id"
+            value={form.account_id}
+            onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value }))}
+            required
+            autoComplete="off"
+            placeholder="Número longo — não é o @"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="direct-token">Token do app (atalho, se não for pelo botão acima)</Label>
+          <Input
+            id="direct-token"
+            type="password"
+            value={form.token}
+            onChange={(e) => setForm((f) => ({ ...f, token: e.target.value }))}
+            autoComplete="off"
+          />
+        </div>
+        <Button type="submit" disabled={conectar.isPending}>
+          {conectar.isPending ? "Conectando…" : "Conectar Instagram"}
+        </Button>
+      </form>
+    ) : null;
 
   return (
     <div className="space-y-4" data-testid="canal-direct">
       {cabecalho}
 
-      {estado.connected ? (
+      {estado?.connected ? (
         <Card className="p-4" data-testid="direct-conectado">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{estado.displayName}</span>
@@ -136,13 +163,32 @@ export function CanalDirectClient() {
         </Card>
       ) : null}
 
-      {estado.webhook ? (
+      {botaoApp}
+
+      {!estado?.podeReceber && !estado?.connected ? (
+        <ProximoPasso
+          testId="direct-proximo-passo"
+          titulo={
+            estado?.podeConectarComoApp
+              ? "Pode autorizar o app; a mensagem ainda não chega"
+              : "Esta instalação ainda não é um app da Meta"
+          }
+          texto={
+            estado?.podeConectarComoApp
+              ? "Continuar com Instagram abre a Meta. Para a conversa cair na Inbox, falta o webhook no servidor."
+              : "Quem administra o servidor precisa criar o app e colocar o id e o secret. Enquanto isso, o WhatsApp que já está no ar continua atendendo."
+          }
+          acao="Ver conversas"
+          href="/app/inbox"
+        />
+      ) : null}
+
+      {estado?.webhook ? (
         <Card className="flex flex-col gap-3 p-4">
           <div>
-            <h3 className="font-medium">Cole isto no app da Meta</h3>
+            <h3 className="font-medium">Cole isto no webhook do app da Meta</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mesma URL do WhatsApp oficial, se ele já estiver no ar. Sem
-              este passo o Instagram envia e não recebe.
+              Sem este passo o Instagram autoriza e a Inbox não recebe.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -163,33 +209,7 @@ export function CanalDirectClient() {
         </Card>
       ) : null}
 
-      <form onSubmit={enviar} className="grid max-w-xl gap-3" data-testid="direct-conectar">
-        <div className="grid gap-1.5">
-          <Label htmlFor="direct-account-id">Id da conta profissional do Instagram</Label>
-          <Input
-            id="direct-account-id"
-            value={form.account_id}
-            onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value }))}
-            required
-            autoComplete="off"
-            placeholder="Número longo — não é o @"
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="direct-token">Token do app (se a API oficial ainda não estiver conectada)</Label>
-          <Input
-            id="direct-token"
-            type="password"
-            value={form.token}
-            onChange={(e) => setForm((f) => ({ ...f, token: e.target.value }))}
-            autoComplete="off"
-          />
-        </div>
-        <Button type="submit" disabled={conectar.isPending}>
-          {conectar.isPending ? "Conectando…" : "Conectar Instagram"}
-        </Button>
-      </form>
-
+      {formulario}
       <AjudaInstagram />
     </div>
   );

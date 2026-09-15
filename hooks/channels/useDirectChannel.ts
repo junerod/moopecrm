@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/api/client";
 export interface DirectChannelState {
   connected: boolean;
   podeReceber: boolean;
+  podeConectarComoApp: boolean;
   hasToken: boolean;
   accountId: string | null;
   displayName: string | null;
