@@ -236,6 +236,7 @@ aplica.
 | `20260913120000` | `0207_varios_documentos_de_politica` | **N PDFs ativos por agente.** O unique `(agent_id, source_type) WHERE is_active` impedia o segundo documento. FAQ/conversas/catálogo continuam singleton; `policy` sai do predicado. |
 | `20260913180000` | `0208_ai_policy_aceita_docx` | Bucket `ai-policy` passa a aceitar DOCX (`wordprocessingml`). PDF/MD/TXT seguem. Sem coluna nova. |
 | `20260914120000` | `0209_campanhas_premium` | **Campanha premium.** `campaigns.settings` (objetivo, canais, anexos por path, preparing). Destinatário ganha `channel` + `destination`; unique vira `(campaign_id, contact_id, channel)` para WhatsApp + e-mail no mesmo contato. `preparing` não entra no CHECK de status. LGPD zera `destination`. |
+| `20260915120000` | `0210_canal_instagram_vocabulario` | **Quinto canal** (Direct). Coluna `instagram_account_id` (sessionRef = IG user id), CHECKs recriados (quatro → cinco providers), unique parcial nos ativos. Sem isto a DM não tem sessão para gravar. |
 
 ## Reproducibility
 

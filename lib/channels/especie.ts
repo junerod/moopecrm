@@ -1,10 +1,9 @@
 /**
  * A FACE do canal na conversa — o que o operador vê, não o motor.
  *
- * WhatsApp hoje chega por mais de um transporte. Direct é outra FACE, e ainda
- * não tem transporte. Colapsar os dois num rótulo só ("mensagem") faria a
- * Inbox mentir no dia em que o Direct nascer: toda linha continuaria parecendo
- * a mesma coisa.
+ * WhatsApp hoje chega por mais de um transporte. Direct é outra FACE, com
+ * transporte próprio. Colapsar os dois num rótulo só ("mensagem") faria a
+ * Inbox mentir: a DM pareceria WhatsApp.
  *
  * Provider nenhum sai daqui. Quem pergunta "posso mandar texto livre?" usa
  * `capabilities`. Quem pergunta "que selo pinto na conversa?" usa isto.
@@ -25,6 +24,7 @@ const ESPECIE_POR_PROVIDER: Record<ChannelProvider, EspecieDoCanal> = {
   meta_cloud: "whatsapp",
   zernio: "whatsapp",
   twilio: "whatsapp",
+  instagram: "direct",
 };
 
 export function rotuloDaEspecie(especie: EspecieDoCanal): string {

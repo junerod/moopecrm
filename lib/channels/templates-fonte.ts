@@ -44,6 +44,7 @@ const FONTE: Record<ChannelProvider, FonteDeTemplates | null> = {
   zernio: "parceiro",
   // Definições já aprovadas no provedor (SID). Sem espelho/CRUD no CRM.
   twilio: null,
+  instagram: null,
 };
 
 /** `null` quando este canal não trabalha com definições aprovadas. */

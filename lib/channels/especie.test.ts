@@ -16,7 +16,8 @@ describe("especie do canal", () => {
     expect(especieDoProvider("desconhecido")).toBeNull();
   });
 
-  it("Direct já tem rótulo — o selo existe antes do adapter", () => {
+  it("Direct é a face do transporte Instagram", () => {
+    expect(especieDoProvider("instagram")).toBe("direct");
     expect(rotuloDaEspecie("direct")).toBe("Direct");
   });
 });

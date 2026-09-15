@@ -47,7 +47,7 @@
  * por rota, componente e cópia de tela. Provider novo = uma linha aqui, no
  * mesmo commit.
  */
-const SEPARADO = /(?<![a-zA-Z0-9])(waha|meta_cloud|zernio|twilio|graph\.facebook\.com)(?![a-zA-Z0-9])/i;
+const SEPARADO = /(?<![a-zA-Z0-9])(waha|meta_cloud|zernio|twilio|instagram_account_id|lib\/channels\/instagram|CHANNEL_PROVIDER_INSTAGRAM|graph\.facebook\.com)(?![a-zA-Z0-9])/i;
 
 /**
  * Grafia PascalCase dentro de identificador: `WahaClient`,

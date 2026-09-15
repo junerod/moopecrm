@@ -54,6 +54,9 @@ describe("fronteira do padrão de nome de provider", () => {
     ["twilio", "quarto provider"],
     ["twilio_from", "coluna de sessionRef do canal hospedado"],
     ["Twilio", "PascalCase do quarto provider"],
+    ["instagram_account_id", "coluna de sessionRef do Direct"],
+    ["lib/channels/instagram", "pasta do transporte"],
+    ["CHANNEL_PROVIDER_INSTAGRAM", "constante do quinto provider"],
   ])("reconhece %s (%s)", (texto) => {
     expect(nomeiaProvider(texto)).toBe(true);
   });
@@ -65,6 +68,7 @@ describe("fronteira do padrão de nome de provider", () => {
     ["Wahalla", "idem, em PascalCase — `Waha` seguido de minúscula não é segmento"],
     ["metacloud", "sem o separador, não é o termo do vocabulário"],
     ["graphxfacebookxcom", "o ponto do host é literal, não coringa"],
+    ["instagram", "rede/origem comercial — não é o nome do transporte"],
   ])("NÃO reconhece %s (%s)", (texto) => {
     expect(nomeiaProvider(texto)).toBe(false);
   });

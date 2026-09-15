@@ -13,7 +13,7 @@
  */
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "../archived";
-import { CHANNEL_PROVIDER_META } from "../capabilities";
+import { CHANNEL_PROVIDER_INSTAGRAM, CHANNEL_PROVIDER_META } from "../capabilities";
 
 export interface MetaWebhookSession {
   id: string;
@@ -48,7 +48,7 @@ export async function metaSessionByWebhookToken(
       .from("channel_sessions")
       .select("id, organization_id, meta_waba_id")
       .eq("webhook_path_token", token)
-      .eq("provider", CHANNEL_PROVIDER_META);
+      .in("provider", [CHANNEL_PROVIDER_META, CHANNEL_PROVIDER_INSTAGRAM]);
   const { data } = await queryTolerantToMissingArchived(
     () => base().is(ARCHIVED_AT, null).maybeSingle(),
     () => base().maybeSingle(),

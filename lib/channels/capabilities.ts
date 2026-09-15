@@ -83,6 +83,19 @@ export const CHANNEL_CAPABILITIES: Record<ChannelProvider, ChannelCapabilities> 
     groups: "none",
     costPerMessage: true,
   },
+  // Direct: janela humana de 24h, texto livre dentro dela, sem HSM e sem
+  // disparo frio de campanha (requiresTemplates false + a regra da campanha
+  // exige template). Sem isto a Inbox trata a DM como se fosse WhatsApp.
+  instagram: {
+    freeformOutsideWindow: false,
+    requiresTemplates: false,
+    canManageTemplates: false,
+    banRisk: false,
+    minIntervalMs: null,
+    voiceNote: "opus-only",
+    groups: "none",
+    costPerMessage: false,
+  },
 };
 
 /**
@@ -105,6 +118,7 @@ export const CHANNEL_PROVIDER_WAHA: ChannelProvider = "waha";
 export const CHANNEL_PROVIDER_META: ChannelProvider = "meta_cloud";
 export const CHANNEL_PROVIDER_ZERNIO: ChannelProvider = "zernio";
 export const CHANNEL_PROVIDER_TWILIO: ChannelProvider = "twilio";
+export const CHANNEL_PROVIDER_INSTAGRAM: ChannelProvider = "instagram";
 
 export function capabilitiesOf(provider: ChannelProvider): ChannelCapabilities {
   const caps = CHANNEL_CAPABILITIES[provider];

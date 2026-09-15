@@ -172,6 +172,32 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "workers/ai-response-worker.ts",
     ],
   },
+  {
+    reason:
+      "Já estavam na main nomeando o transporte legado (WAHA, coluna " +
+      "`waha_session_name`, `getWahaClient`, prosa 'não chama WAHA') e a " +
+      "catraca não os tinha declarado — o verde mentia. Registrar, não " +
+      "reescrever: limpar é absorver `lib/waha/` na Fase 3. A lista só " +
+      "encolhe daqui pra frente.",
+    files: [
+      "app/api/v1/contacts/_handler.ts",
+      "app/api/v1/cron/demanda-reminders/route.ts",
+      "app/api/v1/messages/_handler.ts",
+      "components/inbox/NovaConversaDialog.tsx",
+      "lib/campanhas/dispatcher.test.ts",
+      "lib/campanhas/sessao-da-campanha.test.ts",
+      "lib/campanhas/worker.test.ts",
+      "lib/comercial/enviar-alerta-interno.ts",
+      "lib/contacts/completar-identidade-lid.test.ts",
+      "lib/contacts/completar-identidade-lid.ts",
+      "lib/contacts/rotulo-do-contato.ts",
+      "lib/moope/canal-do-parceiro.ts",
+      "lib/moope/enviar.test.ts",
+      "lib/moope/enviar.ts",
+      "lib/moope/pacing-do-disparo.ts",
+      "lib/moope/reconectar-parceiro.ts",
+    ],
+  },
 ];
 
 const DEBT = new Set(KNOWN_DEBT.flatMap((g) => g.files));

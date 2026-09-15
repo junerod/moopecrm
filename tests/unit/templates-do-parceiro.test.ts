@@ -47,6 +47,7 @@ describe("de onde vêm as definições", () => {
     // solução para um problema que aquele canal não tem.
     expect(fonteDeTemplates("waha")).toBeNull();
     expect(fonteDeTemplates("twilio")).toBeNull();
+    expect(fonteDeTemplates("instagram")).toBeNull();
   });
 
   it("sem canal resolvido, não busca nada", () => {

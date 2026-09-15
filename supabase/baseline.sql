@@ -16003,6 +16003,45 @@ create unique index if not exists channel_sessions_twilio_from_ativo_unique
   on public.channel_sessions (twilio_from)
   where archived_at is null and twilio_from is not null;
 
+-- ---- quinto canal: Direct (migration 0210) ----
+-- Espelho da 0210. CHECKs recriados: o bloco da 0201 deixou a versão de
+-- quatro providers. duplicate_object engoliria a quinta e o canal novo
+-- seria recusado com update.sh verde.
+alter table public.channel_sessions
+  add column if not exists instagram_account_id text;
+
+alter table public.channel_sessions
+  drop constraint if exists channel_sessions_provider_check;
+
+alter table public.channel_sessions
+  add constraint channel_sessions_provider_check
+  check (provider = any (array[
+    'waha'::text,
+    'meta_cloud'::text,
+    'zernio'::text,
+    'twilio'::text,
+    'instagram'::text
+  ]));
+
+alter table public.channel_sessions
+  drop constraint if exists channel_sessions_provider_ref_check;
+
+alter table public.channel_sessions
+  add constraint channel_sessions_provider_ref_check check (
+    (provider = 'waha'       and waha_session_name     is not null) or
+    (provider = 'meta_cloud' and meta_phone_number_id  is not null) or
+    (provider = 'zernio'     and zernio_account_id     is not null) or
+    (provider = 'twilio'     and twilio_from           is not null) or
+    (provider = 'instagram'  and instagram_account_id  is not null)
+  );
+
+comment on column public.channel_sessions.instagram_account_id is
+  'IG user id da conta profissional. É o sessionRef deste canal.';
+
+create unique index if not exists channel_sessions_instagram_account_id_ativo_unique
+  on public.channel_sessions (instagram_account_id)
+  where archived_at is null and instagram_account_id is not null;
+
 -- ---- copiloto e action policy (migration 0202) ----
 -- job_queue.kind `copilot_turn` entra no ÚNICO bloco de
 -- job_queue_kind_check / job_queue_turn_needs_contact (mais acima). Este
