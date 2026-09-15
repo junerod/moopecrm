@@ -8,12 +8,14 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/auth/require-role";
 import {
+  COOKIE_DO_RETORNO_INSTAGRAM,
   configuracaoDoAppMeta,
   emitirEstadoInstagram,
   montarUrlDeConsentimento,
   normalizarArrobaInstagram,
 } from "@/lib/channels/direct";
 import { env } from "@/lib/env";
+import { cookieSecure } from "@/lib/supabase/cookie-secure";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,5 +54,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return voltarComErro("segredo_indisponivel");
   }
 
-  return NextResponse.redirect(montarUrlDeConsentimento({ app, redirectUri, state }));
+  const destino = NextResponse.redirect(
+    montarUrlDeConsentimento({ app, redirectUri, state }),
+  );
+  destino.cookies.set(COOKIE_DO_RETORNO_INSTAGRAM, state, {
+    httpOnly: true,
+    secure: cookieSecure(),
+    sameSite: "lax",
+    path: "/",
+    maxAge: 10 * 60,
+  });
+  return destino;
 }

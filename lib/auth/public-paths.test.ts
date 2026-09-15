@@ -51,6 +51,12 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/v1/integrations/moope/provision/x")).toBe(false);
   });
 
+  it("libera a volta do Instagram Login, e só o callback", () => {
+    expect(isPublicPath("/api/v1/channels/direct/oauth/callback")).toBe(true);
+    expect(isPublicPath("/api/v1/channels/direct/oauth")).toBe(false);
+    expect(isPublicPath("/api/v1/channels/direct/oauth/callback/x")).toBe(false);
+  });
+
   it("e só esses dois: /legal não é um portão aberto", () => {
     // Entrada larga aqui é furo de auth em toda a aplicação, não só nesta tela.
     expect(isPublicPath("/legal")).toBe(false);

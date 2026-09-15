@@ -24,6 +24,17 @@ describe("configuracaoDoAppMeta", () => {
       expect.objectContaining({ appId: "123", appSecret: "s" }),
     );
   });
+
+  it("o id do produto Instagram ganha do id pai do Facebook", () => {
+    expect(
+      configuracaoDoAppMeta({
+        META_APP_ID: "pai",
+        META_APP_SECRET: "segredo-pai",
+        META_INSTAGRAM_APP_ID: "ig",
+        META_INSTAGRAM_APP_SECRET: "segredo-ig",
+      }),
+    ).toEqual(expect.objectContaining({ appId: "ig", appSecret: "segredo-ig" }));
+  });
 });
 
 describe("montarUrlDeConsentimento", () => {
@@ -35,9 +46,12 @@ describe("montarUrlDeConsentimento", () => {
         state: "abc",
       }),
     );
-    expect(url.origin).toBe("https://www.facebook.com");
+    expect(url.origin).toBe("https://www.instagram.com");
     expect(url.searchParams.get("client_id")).toBe("123");
-    expect(url.searchParams.get("scope")).toMatch(/instagram_manage_messages/);
+    expect(url.searchParams.get("scope")).toBe(
+      "instagram_business_basic,instagram_business_manage_messages",
+    );
+    expect(url.searchParams.get("scope")).not.toMatch(/pages_/);
   });
 });
 
@@ -80,25 +94,16 @@ describe("normalizarArrobaInstagram", () => {
 });
 
 describe("trocarCodigoPorConta", () => {
-  it("escolhe a Página que tem Instagram profissional", async () => {
-    const fetchImpl = async (input: RequestInfo | URL) => {
-      const href = String(input);
-      if (href.includes("oauth/access_token") && href.includes("code=")) {
-        return Response.json({ access_token: "curto" });
+  it("troca o código pela conta do Instagram Login", async () => {
+    const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (href.includes("api.instagram.com/oauth/access_token") && init?.method === "POST") {
+        return Response.json({ access_token: "curto", user_id: "17841400000" });
       }
-      if (href.includes("fb_exchange_token")) {
+      if (href.includes("ig_exchange_token")) {
         return Response.json({ access_token: "longo" });
       }
-      return Response.json({
-        data: [
-          { id: "page-sem-ig", access_token: "p1" },
-          {
-            id: "page-com-ig",
-            access_token: "page-tok",
-            instagram_business_account: { id: "17841400000", username: "moopetec" },
-          },
-        ],
-      });
+      return Response.json({ user_id: "17841400000", username: "moopetec" });
     };
     const r = await trocarCodigoPorConta({
       app: { appId: "123", appSecret: "s", graphVersion: "v22.0" },
@@ -109,17 +114,20 @@ describe("trocarCodigoPorConta", () => {
     expect(r).toEqual({
       accountId: "17841400000",
       username: "moopetec",
-      token: "page-tok",
+      token: "longo",
     });
   });
 
-  it("sem Página ligada ao Instagram — não inventa conta", async () => {
-    const fetchImpl = async (input: RequestInfo | URL) => {
-      const href = String(input);
-      if (href.includes("oauth/access_token")) {
+  it("sem id da conta — não inventa", async () => {
+    const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (href.includes("api.instagram.com") && init?.method === "POST") {
         return Response.json({ access_token: "curto" });
       }
-      return Response.json({ data: [{ id: "page", access_token: "p1" }] });
+      if (href.includes("ig_exchange_token")) {
+        return Response.json({ access_token: "longo" });
+      }
+      return Response.json({ username: "x" });
     };
     const r = await trocarCodigoPorConta({
       app: { appId: "123", appSecret: "s", graphVersion: "v22.0" },
@@ -130,26 +138,16 @@ describe("trocarCodigoPorConta", () => {
     expect(r).toEqual({ erro: "instagram_sem_pagina" });
   });
 
-  it("com @ esperado — escolhe essa conta, não a primeira Página", async () => {
-    const fetchImpl = async (input: RequestInfo | URL) => {
-      const href = String(input);
-      if (href.includes("oauth/access_token")) {
-        return Response.json({ access_token: "curto" });
+  it("com @ esperado diferente — recusa", async () => {
+    const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (href.includes("api.instagram.com") && init?.method === "POST") {
+        return Response.json({ access_token: "curto", user_id: "1" });
       }
-      return Response.json({
-        data: [
-          {
-            id: "outra",
-            access_token: "p1",
-            instagram_business_account: { id: "1", username: "outra" },
-          },
-          {
-            id: "certa",
-            access_token: "p2",
-            instagram_business_account: { id: "17841400000", username: "moopetec" },
-          },
-        ],
-      });
+      if (href.includes("ig_exchange_token")) {
+        return Response.json({ access_token: "longo" });
+      }
+      return Response.json({ user_id: "1", username: "outra" });
     };
     const r = await trocarCodigoPorConta({
       app: { appId: "123", appSecret: "s", graphVersion: "v22.0" },
@@ -158,10 +156,6 @@ describe("trocarCodigoPorConta", () => {
       usernameEsperado: "@moopetec",
       fetchImpl: fetchImpl as typeof fetch,
     });
-    expect(r).toEqual({
-      accountId: "17841400000",
-      username: "moopetec",
-      token: "p2",
-    });
+    expect(r).toEqual({ erro: "conta_diferente" });
   });
 });

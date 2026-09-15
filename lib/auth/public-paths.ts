@@ -40,6 +40,10 @@ export const PUBLIC_PATHS: RegExp[] = [
   // dois nomes de propósito: `/^\/legal/` deixaria qualquer sub-path futuro
   // nascer público de carona.
   /^\/legal\/(terms|privacy)$/,
+  // Volta do Instagram Login. O cookie de sessão é SameSite=Strict e a Meta
+  // não o manda; sem esta linha o proxy devolve JSON `unauthenticated`.
+  // A rota ainda exige o `state` HMAC + o cookie Lax `dc_ig_oauth`.
+  /^\/api\/v1\/channels\/direct\/oauth\/callback$/,
 ];
 
 export function isPublicPath(pathname: string): boolean {

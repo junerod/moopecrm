@@ -12,6 +12,7 @@ export {
 } from "./instagram/connect";
 export type { DirectSessionState, DirectValidation } from "./instagram/connect";
 export {
+  COOKIE_DO_RETORNO_INSTAGRAM,
   configuracaoDoAppMeta,
   montarUrlDeConsentimento,
   trocarCodigoPorConta,

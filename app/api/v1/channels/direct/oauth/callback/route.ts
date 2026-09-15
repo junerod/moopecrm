@@ -10,6 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { loadAuthUser } from "@/lib/auth/server";
 import {
+  COOKIE_DO_RETORNO_INSTAGRAM,
   configuracaoDoAppMeta,
   gravarSessaoDirect,
   trocarCodigoPorConta,
@@ -23,7 +24,9 @@ export const runtime = "nodejs";
 
 function voltar(qs: string): NextResponse {
   const base = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return NextResponse.redirect(new URL(`/app/connections?aba=instagram&${qs}`, base));
+  const res = NextResponse.redirect(new URL(`/app/connections?aba=instagram&${qs}`, base));
+  res.cookies.delete(COOKIE_DO_RETORNO_INSTAGRAM);
+  return res;
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -48,8 +51,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
   if (!estado) return voltar("erro=state_invalido");
 
+  const cookie = req.cookies.get(COOKIE_DO_RETORNO_INSTAGRAM)?.value;
+  const mesmoNavegador = Boolean(cookie && cookie === params.get("state"));
   const user = await loadAuthUser();
-  if (!user || user.id !== estado.userId) return voltar("erro=sessao");
+  if (user && user.id !== estado.userId) return voltar("erro=sessao");
+  if (!user && !mesmoNavegador) return voltar("erro=sessao");
 
   const code = params.get("code")?.trim() ?? "";
   if (!code) return voltar("erro=codigo_ausente");
