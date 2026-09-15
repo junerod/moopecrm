@@ -81,10 +81,20 @@ export default async function AgendaPage() {
   const inicio = startOfWeek(new Date(), { weekStartsOn: 0 });
   const fim = addDays(inicio, 7);
 
+  // ⚠️ `organization_id` AQUI, não só na RLS.
+  //
+  // Platform admin (`fn_is_platform_admin`) lê `calendar_event_types` de
+  // QUALQUER organização. Sem este filtro a tela pintava Consulta/Reunião/
+  // Atendimento de todo tenant da VPS — o chip existia, o GET de horários
+  // livres filtrava a org ativa e devolvia 404 "Tipo de agendamento não
+  // encontrado." Configurações › Agenda já filtrava; esta página era a
+  // exceção. O dono da instalação é platform admin por construção do
+  // `install.sh`.
   const [{ data: tipos }, { data: linhas }] = await Promise.all([
     supabase
       .from("calendar_event_types")
       .select("id, name, duration_minutes, location_kind, location_details, is_active, default_owner_user_id")
+      .eq("organization_id", activeOrg.orgId)
       .eq("is_active", true)
       .order("name"),
     supabase
@@ -92,6 +102,7 @@ export default async function AgendaPage() {
       .select(
         `id, title, starts_at, ends_at, status, owner_user_id, contact_id, event_type_id, location_kind, contacts(${COLUNAS_DO_ROTULO})`,
       )
+      .eq("organization_id", activeOrg.orgId)
       .gte("starts_at", inicio.toISOString())
       .lt("starts_at", fim.toISOString())
       .order("starts_at"),
@@ -103,6 +114,7 @@ export default async function AgendaPage() {
   const { data: conexao } = await supabase
     .from("calendar_connections")
     .select("account_email, status")
+    .eq("organization_id", activeOrg.orgId)
     .eq("user_id", user.id)
     .eq("provider", "google")
     .neq("status", "disconnected")
