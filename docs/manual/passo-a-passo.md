@@ -54,12 +54,11 @@ Precisa ser **administrador**. Aba **Canais › Conexões › Instagram**.
 
 Isto liga a **caixa de mensagens** do Instagram (a conversa com o cliente) na mesma Inbox do WhatsApp. **Não** liga post, story nem resultado de anúncio — campanha continua no Gerenciador de Anúncios da Meta.
 
-1. A conta tem de ser **profissional** (Criador ou Empresa), ligada a uma Página no Meta Business Suite. Authenticator, se a Meta pedir, é no celular — o CRM nunca pede senha nem o código.
-2. Quem administra o servidor cria o app em developers.facebook.com e põe `META_APP_ID` + `META_APP_SECRET`. Aí a aba mostra **Continuar com Instagram**.
-3. Clique. A Meta pede o Authenticator. Ao aceitar, o CRM entra em Contas › Conexões de apps.
-4. Para a mensagem chegar na Inbox, o mesmo app precisa do webhook (`META_WEBHOOK_VERIFY_TOKEN`). Sem isto a conta autoriza e a conversa ainda não cai.
+1. Na aba, escreva o **@** da empresa (exemplo: `moopetec`).
+2. Clique em **Continuar com Instagram**. Senha e Authenticator, se a Meta pedir, são na tela dela — o CRM nunca pede.
+3. Escolha o mesmo @ na Meta. Ao voltar, as mensagens entram na Inbox.
 
-A ajuda completa está na própria aba.
+O CRM não liga post, story nem resultado de anúncio.
 
 ---
 

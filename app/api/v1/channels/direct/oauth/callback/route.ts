@@ -57,11 +57,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const base = env.NEXT_PUBLIC_APP_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
   const redirectUri = `${base.replace(/\/$/, "")}/api/v1/channels/direct/oauth/callback`;
 
-  const conta = await trocarCodigoPorConta({ app, code, redirectUri });
+  const conta = await trocarCodigoPorConta({
+    app,
+    code,
+    redirectUri,
+    usernameEsperado: estado.contaEsperada,
+  });
   if ("erro" in conta) {
-    return voltar(
-      `erro=${conta.erro === "instagram_sem_pagina" ? "instagram_sem_pagina" : "troca_falhou"}`,
-    );
+    const codigo =
+      conta.erro === "instagram_sem_pagina" || conta.erro === "conta_diferente"
+        ? conta.erro
+        : "troca_falhou";
+    return voltar(`erro=${codigo}`);
   }
 
   const gravado = await gravarSessaoDirect(createAdminClient(), {

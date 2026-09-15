@@ -11,6 +11,7 @@ import {
   configuracaoDoAppMeta,
   emitirEstadoInstagram,
   montarUrlDeConsentimento,
+  normalizarArrobaInstagram,
 } from "@/lib/channels/direct";
 import { env } from "@/lib/env";
 
@@ -30,13 +31,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const app = configuracaoDoAppMeta();
   if (!app) return voltarComErro("app_nao_configurado");
 
+  const digitado = req.nextUrl.searchParams.get("conta");
+  const contaEsperada = normalizarArrobaInstagram(digitado);
+  if ((digitado ?? "").trim() && !contaEsperada) return voltarComErro("conta_invalida");
+
   const base = env.NEXT_PUBLIC_APP_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
   const redirectUri = `${base.replace(/\/$/, "")}/api/v1/channels/direct/oauth/callback`;
 
   let state: string;
   try {
     state = emitirEstadoInstagram(
-      { organizationId: autorizado.org.orgId, userId: autorizado.user.id },
+      {
+        organizationId: autorizado.org.orgId,
+        userId: autorizado.user.id,
+        contaEsperada,
+      },
       { segredo: env.INTERNAL_SECRET, agora: new Date() },
     );
   } catch {

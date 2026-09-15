@@ -4,6 +4,8 @@
  * Depois disto o CRM aparece em Contas › Conexões de apps. Authenticator,
  * senha e 2FA ficam na tela da Meta, nunca aqui.
  */
+import { normalizarArrobaInstagram } from "./oauth-estado";
+
 export const ESCOPOS_DO_INSTAGRAM = [
   "pages_show_list",
   "pages_manage_metadata",
@@ -56,6 +58,7 @@ export async function trocarCodigoPorConta(input: {
   app: AppMeta;
   code: string;
   redirectUri: string;
+  usernameEsperado?: string | null;
   fetchImpl?: typeof fetch;
 }): Promise<ContaInstagramAutorizada | { erro: string }> {
   const fetchImpl = input.fetchImpl ?? fetch;
@@ -83,17 +86,25 @@ export async function trocarCodigoPorConta(input: {
     return { erro: body.error?.message ?? `http_${res.status}` };
   }
 
+  const candidatas: ContaInstagramAutorizada[] = [];
   for (const pagina of body.data ?? []) {
     const ig = pagina.instagram_business_account;
     if (ig?.id && pagina.access_token) {
-      return {
+      candidatas.push({
         accountId: ig.id,
         username: ig.username ?? null,
         token: pagina.access_token,
-      };
+      });
     }
   }
-  return { erro: "instagram_sem_pagina" };
+  if (candidatas.length === 0) return { erro: "instagram_sem_pagina" };
+
+  const esperado = normalizarArrobaInstagram(input.usernameEsperado);
+  if (!esperado) return candidatas[0]!;
+  const bate = candidatas.find(
+    (c) => normalizarArrobaInstagram(c.username) === esperado,
+  );
+  return bate ?? { erro: "conta_diferente" };
 }
 
 async function pedirToken(

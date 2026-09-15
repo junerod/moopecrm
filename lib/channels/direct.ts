@@ -18,5 +18,6 @@ export {
 } from "./instagram/oauth";
 export {
   emitirEstadoInstagram,
+  normalizarArrobaInstagram,
   verificarEstadoInstagram,
 } from "./instagram/oauth-estado";

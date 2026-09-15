@@ -13,6 +13,18 @@ export interface EstadoDaConexaoInstagram {
   userId: string;
   nonce: string;
   expiraEmMs: number;
+  /** @ que a pessoa digitou — sem @. Vazio = aceitar a primeira conta da Meta. */
+  contaEsperada: string | null;
+}
+
+/** O operador conhece o @, não o id numérico. */
+export function normalizarArrobaInstagram(
+  valor: string | null | undefined,
+): string | null {
+  const s = (valor ?? "").trim().replace(/^@+/u, "").toLowerCase();
+  if (!s) return null;
+  if (s.length > 30 || !/^[a-z0-9._]+$/u.test(s)) return null;
+  return s;
 }
 
 function assinar(carga: string, segredo: string): Buffer {
@@ -28,7 +40,7 @@ function conferirSegredo(segredo: string): string {
 }
 
 export function emitirEstadoInstagram(
-  dados: { organizationId: string; userId: string },
+  dados: { organizationId: string; userId: string; contaEsperada?: string | null },
   opcoes: { segredo: string; agora: Date; nonce?: string; validadeMs?: number },
 ): string {
   const segredo = conferirSegredo(opcoes.segredo);
@@ -42,7 +54,8 @@ export function emitirEstadoInstagram(
   }
   const nonce = opcoes.nonce?.trim() || randomBytes(16).toString("hex");
   const expira = opcoes.agora.getTime() + (opcoes.validadeMs ?? VALIDADE_DO_ESTADO_MS);
-  const carga = `${organizationId}.${userId}.${nonce}.${expira}`;
+  const conta = normalizarArrobaInstagram(dados.contaEsperada) ?? "";
+  const carga = `${organizationId}.${userId}.${nonce}.${expira}.${Buffer.from(conta, "utf8").toString("base64url")}`;
   const assinatura = assinar(carga, segredo).toString("hex");
   return `${Buffer.from(carga, "utf8").toString("base64url")}.${assinatura}`;
 }
@@ -68,10 +81,20 @@ export function verificarEstadoInstagram(
   if (recebida.length !== esperada.length) return null;
   if (!timingSafeEqual(recebida, esperada)) return null;
   const campos = carga.split(".");
-  if (campos.length !== 4) return null;
-  const [organizationId, userId, nonce, expiraTexto] = campos;
+  if (campos.length !== 4 && campos.length !== 5) return null;
+  const [organizationId, userId, nonce, expiraTexto, contaB64] = campos;
   const expiraEmMs = Number(expiraTexto);
   if (!organizationId || !userId || !nonce || !Number.isFinite(expiraEmMs)) return null;
   if (opcoes.agora.getTime() > expiraEmMs) return null;
-  return { organizationId, userId, nonce, expiraEmMs };
+  let contaEsperada: string | null = null;
+  if (contaB64) {
+    try {
+      contaEsperada = normalizarArrobaInstagram(
+        Buffer.from(contaB64, "base64url").toString("utf8"),
+      );
+    } catch {
+      return null;
+    }
+  }
+  return { organizationId, userId, nonce, expiraEmMs, contaEsperada };
 }

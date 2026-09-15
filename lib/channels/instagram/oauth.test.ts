@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { emitirEstadoInstagram, verificarEstadoInstagram } from "./oauth-estado";
+import {
+  emitirEstadoInstagram,
+  normalizarArrobaInstagram,
+  verificarEstadoInstagram,
+} from "./oauth-estado";
 import {
   configuracaoDoAppMeta,
   montarUrlDeConsentimento,
@@ -45,9 +49,33 @@ describe("estado do consentimento", () => {
       { segredo: SEGREDO, agora },
     );
     expect(verificarEstadoInstagram(token, { segredo: SEGREDO, agora })).toEqual(
-      expect.objectContaining({ organizationId: "org-1", userId: "user-1" }),
+      expect.objectContaining({
+        organizationId: "org-1",
+        userId: "user-1",
+        contaEsperada: null,
+      }),
     );
     expect(verificarEstadoInstagram("lixo", { segredo: SEGREDO, agora })).toBeNull();
+  });
+
+  it("guarda o @ que a pessoa digitou", () => {
+    const agora = new Date("2026-09-15T14:00:00.000Z");
+    const token = emitirEstadoInstagram(
+      { organizationId: "org-1", userId: "user-1", contaEsperada: "@MoopeTec" },
+      { segredo: SEGREDO, agora },
+    );
+    expect(verificarEstadoInstagram(token, { segredo: SEGREDO, agora })?.contaEsperada).toBe(
+      "moopetec",
+    );
+  });
+});
+
+describe("normalizarArrobaInstagram", () => {
+  it("aceita o @ que o operador conhece e recusa lixo", () => {
+    expect(normalizarArrobaInstagram("@MoopeTec")).toBe("moopetec");
+    expect(normalizarArrobaInstagram("  moopetec  ")).toBe("moopetec");
+    expect(normalizarArrobaInstagram("não é @")).toBeNull();
+    expect(normalizarArrobaInstagram("")).toBeNull();
   });
 });
 
@@ -100,5 +128,40 @@ describe("trocarCodigoPorConta", () => {
       fetchImpl: fetchImpl as typeof fetch,
     });
     expect(r).toEqual({ erro: "instagram_sem_pagina" });
+  });
+
+  it("com @ esperado — escolhe essa conta, não a primeira Página", async () => {
+    const fetchImpl = async (input: RequestInfo | URL) => {
+      const href = String(input);
+      if (href.includes("oauth/access_token")) {
+        return Response.json({ access_token: "curto" });
+      }
+      return Response.json({
+        data: [
+          {
+            id: "outra",
+            access_token: "p1",
+            instagram_business_account: { id: "1", username: "outra" },
+          },
+          {
+            id: "certa",
+            access_token: "p2",
+            instagram_business_account: { id: "17841400000", username: "moopetec" },
+          },
+        ],
+      });
+    };
+    const r = await trocarCodigoPorConta({
+      app: { appId: "123", appSecret: "s", graphVersion: "v22.0" },
+      code: "code-1",
+      redirectUri: "https://crm.exemplo.com/cb",
+      usernameEsperado: "@moopetec",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+    expect(r).toEqual({
+      accountId: "17841400000",
+      username: "moopetec",
+      token: "p2",
+    });
   });
 });
