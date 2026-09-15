@@ -1,11 +1,13 @@
-import Link from "next/link";
+"use client";
 
 import { AppCard } from "@/components/ds/AppCard";
+import { LinkDoManual } from "@/components/manual/LinkDoManual";
 
 export function PainelDeAjuda({
   titulo,
   texto,
   passos,
+  capitulo,
   href,
   rotuloDoLink = "Abrir o passo a passo completo",
   testid,
@@ -13,10 +15,14 @@ export function PainelDeAjuda({
   titulo: string;
   texto: string;
   passos?: readonly string[];
-  href: string;
+  capitulo?: string;
+  /** @deprecated use `capitulo` — o guia abre na tela atual. */
+  href?: string;
   rotuloDoLink?: string;
   testid?: string;
 }) {
+  const id = capitulo ?? capituloDoHref(href);
+
   return (
     <AppCard testid={testid}>
       <p className="text-sm font-semibold text-[var(--color-text)]">{titulo}</p>
@@ -36,14 +42,22 @@ export function PainelDeAjuda({
           ))}
         </ol>
       ) : null}
-      <p className="mt-3">
-        <Link
-          href={href}
-          className="text-sm font-medium text-[var(--color-accent)] underline-offset-4 hover:underline"
-        >
-          {rotuloDoLink}
-        </Link>
-      </p>
+      {id ? (
+        <p className="mt-3">
+          <LinkDoManual
+            capitulo={id}
+            className="text-sm font-medium text-[var(--color-accent)] underline-offset-4 hover:underline"
+          >
+            {rotuloDoLink}
+          </LinkDoManual>
+        </p>
+      ) : null}
     </AppCard>
   );
+}
+
+function capituloDoHref(href?: string): string | null {
+  if (!href) return null;
+  const hash = href.split("#")[1];
+  return hash || "primeiro-acesso";
 }

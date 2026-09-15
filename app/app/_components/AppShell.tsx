@@ -1,5 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+import { PortaDoManual } from "@/components/manual/PortaDoManual";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { useAttendantHeartbeat } from "@/hooks/inbox/useAttendantHeartbeat";
@@ -16,7 +18,9 @@ export function AppShell({ sidebarCollapsed, children }: AppShellProps) {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <div className="hidden md:block">
-        <Sidebar collapsed={sidebarCollapsed} />
+        <Suspense fallback={<div className={sidebarCollapsed ? "h-screen w-16" : "h-screen w-56"} />}>
+          <Sidebar collapsed={sidebarCollapsed} />
+        </Suspense>
       </div>
       {/*
         `min-w-0` é o que permite a coluna de conteúdo ENCOLHER. Um flex item
@@ -40,6 +44,9 @@ export function AppShell({ sidebarCollapsed, children }: AppShellProps) {
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <TopBar />
         <main className="flex-1 overflow-auto p-6">{children}</main>
+        <Suspense fallback={null}>
+          <PortaDoManual collapsed={sidebarCollapsed} />
+        </Suspense>
       </div>
     </div>
   );

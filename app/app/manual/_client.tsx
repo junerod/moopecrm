@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { AppIcon } from "@/components/ds/AppIcon";
@@ -10,6 +11,11 @@ import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
 import { ESTILO_DO_TOM, type TomDs } from "@/lib/design-system/tones";
 import { buscarCapitulos } from "@/lib/manual/buscar";
 import { CAPITULOS, type Bloco, type Capitulo } from "@/lib/manual/conteudo";
+import {
+  ehCapituloDoManual,
+  hrefComAjuda,
+  telaAntesDoManual,
+} from "@/lib/manual/porta";
 import { capitulosPorGrupo, visualDoCapitulo } from "@/lib/manual/visual";
 import { ArrowRight, BookOpen, MagnifyingGlass } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
@@ -182,10 +188,42 @@ function CapituloView({ capitulo }: { capitulo: Capitulo }) {
   );
 }
 
-export function ManualDoOperador() {
+/** ⌘K e bookmark: se havia uma tela aberta, o guia volta para ela como painel. */
+export function PaginaDoManual() {
+  const router = useRouter();
+  const [sozinho, setSozinho] = useState(false);
+
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    const cap = ehCapituloDoManual(hash) ? hash : "primeiro-acesso";
+    const previa = telaAntesDoManual();
+    if (previa) {
+      const [path, qs] = previa.split("?");
+      router.replace(hrefComAjuda(path || "/app/inicio", qs ?? "", cap));
+      return;
+    }
+    setSozinho(true);
+  }, [router]);
+
+  if (!sozinho) {
+    return <p className="text-sm text-[var(--color-text-muted)]">Abrindo o guia…</p>;
+  }
+
+  return <ManualDoOperador onVoltar={() => router.push("/app/inicio")} />;
+}
+
+export function ManualDoOperador({
+  capituloInicial,
+  compacto = false,
+  onVoltar,
+}: {
+  capituloInicial?: string | null;
+  compacto?: boolean;
+  onVoltar?: () => void;
+} = {}) {
   const marca = useMarcaDaInstalacao();
   const [q, setQ] = useState("");
-  const [alvo, setAlvo] = useState<string | null>(null);
+  const [alvo, setAlvo] = useState<string | null>(capituloInicial ?? null);
   const visiveis = useMemo(() => buscarCapitulos(CAPITULOS, q), [q]);
   const buscando = q.trim().length > 0;
   const grupos = useMemo(() => capitulosPorGrupo(), []);
@@ -196,10 +234,14 @@ export function ManualDoOperador() {
   }
 
   useEffect(() => {
+    if (capituloInicial) {
+      setAlvo(capituloInicial);
+      return;
+    }
     const id = window.location.hash.replace(/^#/, "");
     if (!id) return;
     document.getElementById(id)?.scrollIntoView({ block: "start" });
-  }, []);
+  }, [capituloInicial]);
 
   useEffect(() => {
     if (!alvo || buscando) return;
@@ -208,7 +250,11 @@ export function ManualDoOperador() {
   }, [alvo, buscando]);
 
   return (
-    <div className="flex h-full min-h-0 bg-[var(--color-bg)]" data-testid="manual-do-operador">
+    <div
+      className={cn("flex min-h-0 bg-[var(--color-bg)]", compacto ? "flex-col" : "h-full")}
+      data-testid="manual-do-operador"
+    >
+      {compacto ? null : (
       <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4 lg:block">
         <p className="px-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
           O que você quer fazer
@@ -242,9 +288,22 @@ export function ManualDoOperador() {
           ))}
         </nav>
       </aside>
+      )}
 
       <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-4xl flex-col gap-8 px-4 py-8 sm:px-8">
+        <div className={cn("mx-auto flex max-w-4xl flex-col gap-8 px-4", compacto ? "py-5 sm:px-5" : "py-8 sm:px-8")}>
+          {onVoltar && !compacto ? (
+            <div>
+              <button
+                type="button"
+                data-testid="manual-voltar"
+                onClick={onVoltar}
+                className="text-sm font-medium text-[var(--color-text-muted)] underline-offset-4 hover:underline"
+              >
+                Voltar
+              </button>
+            </div>
+          ) : null}
           <header className="overflow-hidden rounded-3xl bg-[var(--color-surface)] shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]">
             <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
               <div className="space-y-4 p-6 sm:p-8">

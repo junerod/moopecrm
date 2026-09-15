@@ -1,8 +1,9 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 
 import { AppIcon } from "@/components/ds/AppIcon";
 import { PageHeader } from "@/components/ds/PageHeader";
+import { LinkDoManual } from "@/components/manual/LinkDoManual";
 import { AtalhoDoManual } from "@/components/negocio/AtalhoDoManual";
 import { Button } from "@/components/ui/button";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -46,16 +47,20 @@ export default async function DetalheDoModeloPage({
         titulo="Modelo pronto"
         descricao="Veja o que entra antes de ativar."
         acoes={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/app/manual#modelos-prontos">Como usar</Link>
-          </Button>
+          <Suspense fallback={null}>
+            <Button asChild variant="outline" size="sm">
+              <LinkDoManual capitulo="modelos-prontos">Como usar</LinkDoManual>
+            </Button>
+          </Suspense>
         }
       />
-      <AtalhoDoManual
-        testid="detalhe-abrir-manual"
-        titulo="Como ativar sem se perder"
-        texto="Loja escolhe. Meu modelo configura. Assistentes e Funil são o trabalho."
-      />
+      <Suspense fallback={null}>
+        <AtalhoDoManual
+          testid="detalhe-abrir-manual"
+          titulo="Como ativar sem se perder"
+          texto="Loja escolhe. Meu modelo configura. Assistentes e Funil são o trabalho."
+        />
+      </Suspense>
       <DetalheDoModeloClient
         packId={definition.id}
         label={definition.label}

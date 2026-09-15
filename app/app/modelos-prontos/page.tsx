@@ -1,8 +1,9 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { AppIcon } from "@/components/ds/AppIcon";
 import { PageHeader } from "@/components/ds/PageHeader";
+import { LinkDoManual } from "@/components/manual/LinkDoManual";
 import { AtalhoDoManual } from "@/components/negocio/AtalhoDoManual";
 import { Button } from "@/components/ui/button";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -48,12 +49,16 @@ export default async function ModelosProntosPage({
         titulo="Modelos prontos"
         descricao="Escolha o tipo de operação da sua empresa."
         acoes={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/app/manual#modelos-prontos">Como usar</Link>
-          </Button>
+          <Suspense fallback={null}>
+            <Button asChild variant="outline" size="sm">
+              <LinkDoManual capitulo="modelos-prontos">Como usar</LinkDoManual>
+            </Button>
+          </Suspense>
         }
       />
-      <AtalhoDoManual />
+      <Suspense fallback={null}>
+        <AtalhoDoManual />
+      </Suspense>
       <ModelosProntosClient
         loja={montarLojaDePacks()}
         instalado={instalado}

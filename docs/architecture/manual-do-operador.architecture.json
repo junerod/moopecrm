@@ -34,7 +34,7 @@
     { "id": "e8", "from": "busca", "to": "tela", "label": "capítulos que restam" },
     { "id": "e9", "from": "conteudo", "to": "tela", "label": "os capítulos tipados" },
     { "id": "e10", "from": "tela", "to": "inbox", "label": "capítulo WhatsApp — o empty deixa de ser o fim" },
-    { "id": "e11", "from": "loja", "to": "tela", "label": "atalho #modelos-prontos" },
-    { "id": "e12", "from": "tela", "to": "loja", "label": "capítulo abre Modelos prontos" }
+    { "id": "e11", "from": "loja", "to": "tela", "label": "?ajuda= na mesma rota" },
+    { "id": "e12", "from": "tela", "to": "loja", "label": "Voltar fecha o guia" }
   ]
 }

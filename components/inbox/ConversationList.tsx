@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { hrefComAjuda } from "@/lib/manual/porta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChannelSessions } from "@/hooks/channels/useChannelSessions";
 
@@ -43,6 +45,8 @@ export function ConversationList({
   // `?? []` e não `undefined`: enquanto a lista de canais carrega, o certo é
   // NÃO mostrar. Mostrar e sumir depois é pior que aparecer um instante tarde.
   const { user } = useAuth();
+  const pathname = usePathname();
+  const search = useSearchParams();
   const canais = useChannelSessions().data ?? [];
   const maisDeUmCanal = canais.length > 1;
 
@@ -116,7 +120,10 @@ export function ConversationList({
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyInbox
-          secondary={{ label: "Como usar o sistema", href: "/app/manual" }}
+          secondary={{
+            label: "Como usar o sistema",
+            href: hrefComAjuda(pathname, search.toString(), "mensagens"),
+          }}
         />
       </div>
     );

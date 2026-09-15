@@ -1,23 +1,24 @@
-import Link from "next/link";
+"use client";
 
 import { AppIcon } from "@/components/ds/AppIcon";
+import { LinkDoManual } from "@/components/manual/LinkDoManual";
 import { BookOpen } from "@/lib/ui/icons";
 
 export function AtalhoDoManual({
-  href = "/app/manual#modelos-prontos",
+  capitulo = "modelos-prontos",
   titulo = "Como usar os modelos",
   texto = "Guia ilustrado: escolher, ativar e terminar os quatro passos.",
   testid = "loja-abrir-manual",
 }: {
-  href?: string;
+  capitulo?: string;
   titulo?: string;
   texto?: string;
   testid?: string;
 }) {
   return (
-    <Link
-      href={href}
-      data-testid={testid}
+    <LinkDoManual
+      capitulo={capitulo}
+      testid={testid}
       className="flex items-start gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--moope-primary)_8%,var(--color-surface))] px-4 py-3 ring-1 ring-[color-mix(in_srgb,var(--moope-primary)_22%,var(--color-border))] transition-colors hover:bg-[color-mix(in_srgb,var(--moope-primary)_12%,var(--color-surface))]"
     >
       <AppIcon icon={BookOpen} tone="blue" size="lg" />
@@ -25,6 +26,6 @@ export function AtalhoDoManual({
         <span className="block text-sm font-semibold tracking-tight">{titulo}</span>
         <span className="mt-0.5 block text-sm leading-5 text-[var(--color-text-muted)]">{texto}</span>
       </span>
-    </Link>
+    </LinkDoManual>
   );
 }

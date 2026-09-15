@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 
-import { ManualDoOperador } from "./_client";
+import { PaginaDoManual } from "./_client";
 
 export const metadata = { title: "Como usar" };
 export const dynamic = "force-dynamic";
@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
  *  2. Alimenta: o operador perdido; Inbox vazio aponta para cá.
  *  3. Registro: leitura pura — sem mutação, sem audit.
  *  4. Tela: esta.
- *  5. Porta: Configurações › Ajuda › Manual + ⌘K + Inbox vazio + atalho em Modelos prontos e Meu modelo.
+ *  5. Porta: Ajuda no rodapé (abre na tela atual), ⌘K, Inbox vazio, atalhos
+ *     em Modelos prontos e Campanhas. Voltar devolve a tela de onde veio.
  *  6. Anti-morte: não se aplica (leitura). A busca é o próximo passo de quem
  *     não acha o capítulo.
  *  7. Configuração: o texto é código; quem muda, muda o conteúdo e a tela muda.
@@ -29,5 +30,5 @@ export default async function ManualPage() {
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) redirect("/app");
 
-  return <ManualDoOperador />;
+  return <PaginaDoManual />;
 }

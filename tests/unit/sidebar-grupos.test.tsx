@@ -26,6 +26,7 @@ vi.mock("@/hooks/auth/AuthProvider", () => ({
 }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/app/inbox",
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@/components/connections/ConnectionHealthDot", () => ({
   ConnectionHealthDot: () => null,
@@ -97,7 +98,7 @@ describe("Sidebar agrupado", () => {
     render(<Sidebar collapsed={false} />);
     const config = screen.getByRole("link", { name: /Configurações/ });
     const ajuda = screen.getByRole("link", { name: "Ajuda" });
-    expect(ajuda).toHaveAttribute("href", "/app/manual");
+    expect(ajuda).toHaveAttribute("href", "/app/inbox?ajuda=mensagens");
     const nav = screen.getByRole("navigation", { name: "Navegação principal" });
     expect(nav.contains(ajuda)).toBe(false);
     const links = screen.getAllByRole("link");

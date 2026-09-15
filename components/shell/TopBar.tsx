@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import { AlertsBell } from "./AlertsBell";
 import { MobileSidebar } from "./MobileSidebar";
 import { TenantSwitcher } from "./TenantSwitcher";
@@ -10,7 +11,9 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 px-3 backdrop-blur md:gap-4 md:px-6">
       <div className="flex min-w-0 items-center gap-2">
-        <MobileSidebar />
+        <Suspense fallback={null}>
+          <MobileSidebar />
+        </Suspense>
         <TenantSwitcher />
       </div>
       <div className="flex min-w-0 flex-1 justify-center md:max-w-xl">

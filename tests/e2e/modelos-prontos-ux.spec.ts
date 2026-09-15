@@ -89,6 +89,12 @@ test("sem pack: loja mostra só o catálogo e o detalhe resume", async ({ page }
   await page.goto("/app/modelos-prontos");
   await expect(page.getByRole("heading", { name: "Modelos prontos" })).toBeVisible();
   await expect(page.getByTestId("loja-abrir-manual")).toBeVisible();
+  await page.getByTestId("loja-abrir-manual").click();
+  await expect(page).toHaveURL(/\/app\/modelos-prontos/);
+  await expect(page.getByTestId("painel-do-manual")).toBeVisible();
+  await expect(page.getByTestId("manual-voltar")).toBeVisible();
+  await page.getByTestId("manual-voltar").click();
+  await expect(page.getByTestId("painel-do-manual")).toHaveCount(0);
   await expect(page.getByTestId("catalogo-de-modelos")).toBeVisible();
   await expect(page.getByTestId("catalogo-pack-locadora_veiculos")).toBeVisible();
   await expect(page.getByTestId("catalogo-pack-escritorio_advocacia")).toBeVisible();

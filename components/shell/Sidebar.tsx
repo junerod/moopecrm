@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { capituloSugerido, hrefComAjuda, PARAM_AJUDA } from "@/lib/manual/porta";
 import { useTransition } from "react";
 import { AppIcon } from "@/components/ds/AppIcon";
 import { tomDaNav } from "@/lib/design-system/tones";
@@ -59,6 +60,8 @@ export function SidebarContent({
   // escolha de idioma virar algo visível no primeiro clique.
   const t = useT();
   const pathname = usePathname();
+  const search = useSearchParams();
+  const ajudaAberta = search.get(PARAM_AJUDA) !== null || pathname.startsWith("/app/manual");
   const [isPending, startTransition] = useTransition();
   const { user, activeOrg } = useAuth();
   const todos = sidebarGroups(user.is_platform_admin, activeOrg?.role ?? null);
@@ -291,17 +294,18 @@ export function SidebarContent({
         )}
         {mostraAjuda && ajuda ? (
           <Link
-            href={ajuda.href}
+            href={hrefComAjuda(pathname, search.toString(), capituloSugerido(pathname))}
+            scroll={false}
             title={collapsed ? t("Ajuda") : undefined}
-            aria-current={pathname.startsWith(ajuda.href) ? "page" : undefined}
+            aria-current={ajudaAberta ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
               "mb-1",
-              classeDoItemDaTrilha(pathname.startsWith(ajuda.href)),
+              classeDoItemDaTrilha(ajudaAberta),
               collapsed && "justify-center px-2",
             )}
           >
-            {pathname.startsWith(ajuda.href) ? (
+            {ajudaAberta ? (
               <Question size={18} aria-hidden />
             ) : (
               <AppIcon icon={Question} tone={tomDaNav(ajuda.href)} surface="nav" />
