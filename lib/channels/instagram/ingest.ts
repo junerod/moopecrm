@@ -70,7 +70,7 @@ async function acharOuCriarContato(
       display_name: nome,
       name: nome,
       wa_identity: identidade,
-      source: "direct",
+      source: "instagram",
       source_metadata: { igsid, ...(username ? { username } : {}) },
     })
     .select("id")

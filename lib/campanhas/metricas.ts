@@ -117,6 +117,44 @@ export function aplicarDesfecho(
   return { ...m, ...d };
 }
 
+export function desfechoPorLeadIds(
+  leadIds: string[],
+  leads: Array<{ id: string; status?: string | null; value_cents?: number | null }>,
+): Pick<MetricasDaCampanha, "ganhos" | "perdidos" | "valor_ganho_cents"> {
+  const ids = new Set(leadIds);
+  return desfechoDosLeads(leads.filter((l) => ids.has(l.id)));
+}
+
+export interface LinhaDeComparacao {
+  chave: string;
+  rotulo: string;
+  a: number;
+  b: number;
+  delta: number;
+}
+
+/** Mesmo recorte: envio, resposta, negócio, ganho, perda e receita. */
+export function compararDuasCampanhas(
+  a: MetricasDaCampanha,
+  b: MetricasDaCampanha,
+): LinhaDeComparacao[] {
+  const pares: Array<[string, string, number, number]> = [
+    ["enviadas", "Enviadas", a.enviadas, b.enviadas],
+    ["respondidas", "Respostas", a.respondidas, b.respondidas],
+    ["leads", "Negócios", a.leads_associados, b.leads_associados],
+    ["ganhos", "Ganhos", a.ganhos, b.ganhos],
+    ["perdidos", "Perdas", a.perdidos, b.perdidos],
+    ["receita", "Receita ganha", a.valor_ganho_cents, b.valor_ganho_cents],
+  ];
+  return pares.map(([chave, rotulo, va, vb]) => ({
+    chave,
+    rotulo,
+    a: va,
+    b: vb,
+    delta: va - vb,
+  }));
+}
+
 export function taxasDaCampanha(
   m: MetricasDaCampanha,
   disponibilidade: { entregue: boolean; lida: boolean; resposta: boolean },

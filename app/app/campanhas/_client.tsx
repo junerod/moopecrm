@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { AppCard } from "@/components/ds/AppCard";
 import { EmptyState } from "@/components/ds/EmptyState";
 import { StatusBadge } from "@/components/ds/StatusBadge";
 import { CaretRight, Megaphone } from "@/lib/ui/icons";
+import { CompararCampanhas } from "./comparar";
 
 const CARDS: Array<{ status: StatusVisualDaCampanha; titulo: string }> = [
   { status: "draft", titulo: "Rascunhos" },
@@ -25,6 +27,19 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
   const lista = useCampanhas();
   const cancelar = useCancelarCampanha();
   const items = lista.data ?? [];
+  const [escolhidas, setEscolhidas] = useState<string[]>([]);
+
+  function marcarParaComparar(id: string) {
+    setEscolhidas((atual) => {
+      if (atual.includes(id)) return atual.filter((x) => x !== id);
+      if (atual.length >= 2) return [atual[1]!, id];
+      return [...atual, id];
+    });
+  }
+
+  const par = escolhidas
+    .map((id) => items.find((c) => c.id === id))
+    .filter((c): c is NonNullable<typeof items[number]> => Boolean(c));
 
   const contagem = (alvo: StatusVisualDaCampanha) =>
     items.filter((c) => {
@@ -72,6 +87,22 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
           </AppCard>
         ))}
       </div>
+
+      {items.length >= 2 ? (
+        <p className="text-xs text-[var(--color-text-muted)]" data-testid="campanhas-comparar-ajuda">
+          Marque duas campanhas para ver envio, resposta, ganho e receita lado a
+          lado.
+        </p>
+      ) : null}
+
+      {par.length === 2 && par[0]?.metricas && par[1]?.metricas ? (
+        <CompararCampanhas
+          nomeA={par[0].name}
+          nomeB={par[1].name}
+          a={par[0].metricas}
+          b={par[1].metricas}
+        />
+      ) : null}
 
       <ul className="space-y-2" data-testid="campanhas-lista">
         {items.length === 0 ? (
@@ -126,6 +157,7 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
                             <span className="text-xs tabular-nums text-[var(--color-text-muted)]">
                               {m.enviadas} enviadas
                               {m.respondidas > 0 ? ` · ${m.respondidas} respostas` : ""}
+                              {m.ganhos > 0 ? ` · ${m.ganhos} ganhos` : ""}
                               {m.falharam > 0 ? ` · ${m.falharam} falhas` : ""}
                             </span>
                           ) : (
@@ -145,6 +177,17 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
                       </span>
                     </AppCard>
                   </Link>
+                  {items.length >= 2 ? (
+                    <Button
+                      size="sm"
+                      variant={escolhidas.includes(c.id) ? "default" : "outline"}
+                      className="self-center"
+                      data-testid={`campanha-comparar-${c.id}`}
+                      onClick={() => marcarParaComparar(c.id)}
+                    >
+                      {escolhidas.includes(c.id) ? "Nesta comparação" : "Comparar"}
+                    </Button>
+                  ) : null}
                   {podeEnviar &&
                   (c.status === "running" || c.status === "scheduled" || vis === "preparing") ? (
                     <Button

@@ -89,7 +89,7 @@ describe("ingestDirectInbound", () => {
         organization_id: "org-1",
         phone_number: null,
         wa_identity: "igsid:igsid-ana",
-        source: "direct",
+        source: "instagram",
       }),
     );
   });

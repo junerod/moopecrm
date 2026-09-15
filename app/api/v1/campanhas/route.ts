@@ -8,7 +8,7 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { agregarMetricas } from "@/lib/campanhas/metricas";
+import { agregarMetricas, aplicarDesfecho, desfechoPorLeadIds } from "@/lib/campanhas/metricas";
 import { createCampanhaSchema } from "@/lib/campanhas/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -69,8 +69,34 @@ export async function GET(): Promise<Response> {
       lista.push(r);
       agrupado.set(r.campaign_id, lista);
     }
+    const leadIds = [
+      ...new Set(
+        [...agrupado.values()].flatMap((linhas) =>
+          linhas.map((r) => r.lead_id).filter((x): x is string => Boolean(x)),
+        ),
+      ),
+    ];
+    const { data: leads } =
+      leadIds.length > 0
+        ? await supabase
+            .from("crm_leads")
+            .select("id, status, value_cents")
+            .eq("organization_id", authz.org.orgId)
+            .in("id", leadIds)
+        : { data: [] as Array<{ id: string; status: string | null; value_cents: number | null }> };
+
     for (const [campId, linhas] of agrupado) {
-      resumoPorCampanha.set(campId, agregarMetricas(linhas));
+      const idsDesta = linhas.map((r) => r.lead_id).filter((x): x is string => Boolean(x));
+      resumoPorCampanha.set(
+        campId,
+        aplicarDesfecho(
+          agregarMetricas(linhas),
+          desfechoPorLeadIds(
+            idsDesta,
+            (leads ?? []) as Array<{ id: string; status: string | null; value_cents: number | null }>,
+          ),
+        ),
+      );
     }
   }
   return ok(

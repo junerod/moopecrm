@@ -246,6 +246,8 @@ Campanha é um recado comercial para várias pessoas. No WhatsApp do celular, **
 
 Na campanha aberta: **Enviado** saiu; **Respondeu** respondeu depois; **Ignorado** ficou de fora (o motivo está na linha). Envio de prova não chega no celular.
 
+Na lista, **Comparar** em duas campanhas mostra envio, resposta, ganho e receita lado a lado. Quem disparou mais não é automaticamente quem vendeu.
+
 O mesmo texto vive na tela **Como usar**, capítulo Campanhas.
 
 ---

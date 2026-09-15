@@ -14,6 +14,10 @@ describe("rotuloDaOrigem", () => {
     expect(rotuloDaOrigem(null)).toBe("—");
   });
 
+  it("Direct entra como Instagram, não como jargão de transporte", () => {
+    expect(rotuloDaOrigem("direct")).toBe("Instagram");
+  });
+
   it("traduz o first-touch de anúncio que o contato já grava", () => {
     expect(rotuloDaOrigem("meta_ads")).toBe("Anúncio (Meta)");
     expect(rotuloDaOrigem("Meta_ads")).toBe("Anúncio (Meta)");
