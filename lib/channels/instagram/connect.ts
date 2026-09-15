@@ -14,7 +14,7 @@ import { CHANNEL_PROVIDER_INSTAGRAM, CHANNEL_PROVIDER_META } from "../capabiliti
 import { metaPodeReceber } from "../meta/webhook";
 import { reactivateChannelSession } from "../reactivate";
 
-export const DIRECT_CHANNEL_LABEL = "Direct";
+export const DIRECT_CHANNEL_LABEL = "Instagram";
 
 export type DirectValidation =
   | { ok: true; accountId: string; username: string | null }

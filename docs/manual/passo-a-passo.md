@@ -48,6 +48,22 @@ Canal oficial da Meta (aba ao lado) é outro caminho: credencial da Meta, não Q
 
 ---
 
+## 2b. Conectar o Instagram
+
+Precisa ser **administrador**. Aba **Canais › Conexões › Instagram**.
+
+Isto liga a **caixa de mensagens** do Instagram (a conversa com o cliente) na mesma Inbox do WhatsApp. **Não** liga post, story nem resultado de anúncio — campanha continua no Gerenciador de Anúncios da Meta.
+
+1. A conta tem de ser **profissional** (Criador ou Empresa), ligada a uma Página no Meta Business Suite. Authenticator, se a Meta pedir, é no celular — o CRM nunca pede senha nem o código.
+2. Anote o **ID da conta profissional** (número longo, não o @). Business Suite → Configurações → Contas do Instagram.
+3. No app da Meta, ative Instagram Messaging e o webhook.
+4. Quem administra o servidor liga `META_WEBHOOK_VERIFY_TOKEN` e `META_APP_SECRET`. Sem isto a tela **não** mostra Conectar — não promete mensagem que não chega.
+5. Quando o botão aparecer: cole o ID e o token do app → **Conectar Instagram**.
+
+A ajuda completa está na própria aba.
+
+---
+
 ## 3. Mandar e receber mensagem
 
 1. **Atendimento › Inbox**.

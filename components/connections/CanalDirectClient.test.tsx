@@ -29,6 +29,7 @@ describe("CanalDirectClient", () => {
     render(<CanalDirectClient />);
     expect(screen.getByTestId("canal-direct")).toBeInTheDocument();
     expect(screen.getByTestId("direct-proximo-passo")).toBeInTheDocument();
+    expect(screen.getByTestId("instagram-ajuda")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /conectar/i })).toBeNull();
   });
 
@@ -49,6 +50,7 @@ describe("CanalDirectClient", () => {
     } as never);
     render(<CanalDirectClient />);
     expect(screen.getByTestId("direct-conectar")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /conectar direct/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /conectar instagram/i })).toBeTruthy();
+    expect(screen.getByTestId("instagram-ajuda")).toBeInTheDocument();
   });
 });

@@ -45,7 +45,7 @@ export function ConexoesShell({ wahaConfigured }: { wahaConfigured: boolean }) {
         ? "parceiro"
         : abaParam === "hospedado"
           ? "hospedado"
-          : abaParam === "direct"
+          : abaParam === "direct" || abaParam === "instagram"
             ? "direct"
             : "numeros";
   const sub = params.get("sub") === "templates" ? "templates" : "conexao";
@@ -81,7 +81,7 @@ export function ConexoesShell({ wahaConfigured }: { wahaConfigured: boolean }) {
             Aqui fica o CONCEITO; lá dentro o cartão diz de quem se trata. */}
         <TabsTrigger value="parceiro">Provedor parceiro</TabsTrigger>
         <TabsTrigger value="hospedado">API de mensagens</TabsTrigger>
-        <TabsTrigger value="direct">Direct</TabsTrigger>
+        <TabsTrigger value="direct">Instagram</TabsTrigger>
       </TabsList>
 
       <TabsContent value="numeros" className="mt-0">

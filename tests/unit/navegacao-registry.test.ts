@@ -54,10 +54,8 @@ describe("integridade do registro", () => {
     expect(textoBuscavel(inbox)).toMatch(/conversas/i);
     expect(textoBuscavel(desempenho)).toMatch(/resultados/i);
     expect(textoBuscavel(execucoes)).toMatch(/erro da ia/i);
-    expect(textoBuscavel(dest("/app/connections"))).toMatch(/direct/i);
-    // Inbox não leva apelido de Instagram: o Direct ainda não recebe, e o ⌘K
-    // abriria conversas de WhatsApp como se já fosse a mesma coisa.
-    expect(textoBuscavel(inbox).toLowerCase()).not.toContain("instagram");
+    expect(textoBuscavel(dest("/app/connections"))).toMatch(/instagram/i);
+    expect(textoBuscavel(inbox).toLowerCase()).toContain("instagram");
   });
 
   it("todo destino de um grupo com hub declara sua seção", () => {

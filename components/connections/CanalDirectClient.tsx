@@ -12,12 +12,67 @@ import { Label } from "@/components/ui/label";
 import { copyToClipboard } from "@/lib/clipboard";
 
 /**
- * Porta do Direct na mesma Inbox.
+ * Porta do Instagram na mesma Inbox.
  *
  * Sem o app da instalação pronto para receber, não há botão de conectar —
- * ligar agora seria prometer mensagem que não chega. Com o app no ar, a
- * conta profissional entra aqui e a DM cai do lado do WhatsApp.
+ * ligar agora seria prometer mensagem que não chega. O passo a passo fica
+ * visível do mesmo jeito: é a ajuda de como chegar lá.
  */
+function AjudaInstagram() {
+  return (
+    <Card className="max-w-2xl space-y-3 p-4" data-testid="instagram-ajuda">
+      <div>
+        <h3 className="text-sm font-semibold">O que isto liga — e o que não liga</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Liga a <strong>caixa de mensagens</strong> do Instagram (a conversa
+          com o cliente) na mesma Inbox do WhatsApp. Não lê post, story nem
+          resultado de anúncio. Quem faz propaganda no @ continua vendo
+          campanha no Gerenciador de Anúncios da Meta; essa análise ainda
+          não é esta tela.
+        </p>
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold">Como ligar a conta profissional</h3>
+        <ol className="mt-1 list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
+          <li>
+            Entre no Instagram / Meta no celular. Se pedir Authenticator, o
+            código é lá — o CRM nunca pede senha nem esse número.
+          </li>
+          <li>
+            A conta tem de ser <strong>profissional</strong> (Criador ou
+            Empresa). Pessoal não tem caixa para o CRM receber.
+          </li>
+          <li>
+            No <strong>Meta Business Suite</strong>, ligue esse Instagram a
+            uma Página do Facebook da empresa.
+          </li>
+          <li>
+            Anote o <strong>ID da conta profissional</strong> — um número
+            longo, não o @. Em Business Suite: Configurações → Contas do
+            Instagram. Ou, na Página: Instagram → ID da conta.
+          </li>
+          <li>
+            No app da Meta (developers.facebook.com), ative{" "}
+            <strong>Instagram Messaging</strong> e o webhook. Cole a URL que
+            esta tela mostrar quando o app da instalação já receber.
+          </li>
+          <li>
+            Quem administra o servidor liga{" "}
+            <code className="text-xs">META_WEBHOOK_VERIFY_TOKEN</code> e{" "}
+            <code className="text-xs">META_APP_SECRET</code>. Sem isto o
+            botão de conectar não aparece — não prometemos mensagem que não
+            chega.
+          </li>
+          <li>
+            Volte aqui, cole o ID e o token do app (ou use o token da API
+            oficial, se ela já estiver ligada) e <strong>Conectar Instagram</strong>.
+          </li>
+        </ol>
+      </div>
+    </Card>
+  );
+}
+
 export function CanalDirectClient() {
   const { data, isPending } = useDirectChannel();
   const conectar = useConnectDirectChannel();
@@ -38,37 +93,35 @@ export function CanalDirectClient() {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
   }
 
+  const cabecalho = (
+    <div>
+      <h2 className="text-base font-semibold">Instagram</h2>
+      <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+        A conta em que o negócio anuncia. A conversa do cliente entra nesta
+        Inbox, do lado do WhatsApp.
+      </p>
+    </div>
+  );
+
   if (!estado?.podeReceber && !estado?.connected) {
     return (
       <div className="space-y-4" data-testid="canal-direct">
-        <div>
-          <h2 className="text-base font-semibold">Direct</h2>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            A mesma Inbox, outro canal. Ainda não conecta: o app desta
-            instalação não está pronto para receber. Ligar agora seria
-            prometer mensagem que não chega.
-          </p>
-        </div>
+        {cabecalho}
         <ProximoPasso
           testId="direct-proximo-passo"
-          titulo="WhatsApp já atende nesta Inbox"
-          texto="O Direct usa o mesmo lugar. Enquanto o app da instalação não recebe, o atendimento continua no número que já está no ar."
+          titulo="Esta instalação ainda não recebe o Instagram"
+          texto="O administrador precisa ligar o app da Meta no servidor. Enquanto isso, o atendimento continua no WhatsApp que já está no ar."
           acao="Ver conversas"
           href="/app/inbox"
         />
+        <AjudaInstagram />
       </div>
     );
   }
 
   return (
     <div className="space-y-4" data-testid="canal-direct">
-      <div>
-        <h2 className="text-base font-semibold">Direct</h2>
-        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-          A conversa do cliente entra aqui do lado do WhatsApp — sem fila
-          separada e sem app paralelo.
-        </p>
-      </div>
+      {cabecalho}
 
       {estado.connected ? (
         <Card className="p-4" data-testid="direct-conectado">
@@ -86,10 +139,10 @@ export function CanalDirectClient() {
       {estado.webhook ? (
         <Card className="flex flex-col gap-3 p-4">
           <div>
-            <h3 className="font-medium">Cole isto no app da instalação</h3>
+            <h3 className="font-medium">Cole isto no app da Meta</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mesma URL do canal oficial, se ele já estiver no ar. Sem este
-              passo o Direct envia e não recebe.
+              Mesma URL do WhatsApp oficial, se ele já estiver no ar. Sem
+              este passo o Instagram envia e não recebe.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -112,13 +165,14 @@ export function CanalDirectClient() {
 
       <form onSubmit={enviar} className="grid max-w-xl gap-3" data-testid="direct-conectar">
         <div className="grid gap-1.5">
-          <Label htmlFor="direct-account-id">Id da conta profissional</Label>
+          <Label htmlFor="direct-account-id">Id da conta profissional do Instagram</Label>
           <Input
             id="direct-account-id"
             value={form.account_id}
             onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value }))}
             required
             autoComplete="off"
+            placeholder="Número longo — não é o @"
           />
         </div>
         <div className="grid gap-1.5">
@@ -132,9 +186,11 @@ export function CanalDirectClient() {
           />
         </div>
         <Button type="submit" disabled={conectar.isPending}>
-          {conectar.isPending ? "Conectando…" : "Conectar Direct"}
+          {conectar.isPending ? "Conectando…" : "Conectar Instagram"}
         </Button>
       </form>
+
+      <AjudaInstagram />
     </div>
   );
 }

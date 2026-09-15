@@ -15,7 +15,7 @@ export type EspecieDoCanal = (typeof ESPECIES_DO_CANAL)[number];
 
 const ROTULO: Record<EspecieDoCanal, string> = {
   whatsapp: "WhatsApp",
-  direct: "Direct",
+  direct: "Instagram",
 };
 
 /** Todo transporte que existe hoje fala WhatsApp. Direct entra quando tiver adapter. */

@@ -16,8 +16,8 @@ describe("especie do canal", () => {
     expect(especieDoProvider("desconhecido")).toBeNull();
   });
 
-  it("Direct é a face do transporte Instagram", () => {
+  it("a face do transporte Instagram é o Instagram", () => {
     expect(especieDoProvider("instagram")).toBe("direct");
-    expect(rotuloDaEspecie("direct")).toBe("Direct");
+    expect(rotuloDaEspecie("direct")).toBe("Instagram");
   });
 });
