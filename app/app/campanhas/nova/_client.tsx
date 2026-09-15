@@ -34,6 +34,7 @@ import type {
   SettingsDaCampanha,
 } from "@/lib/campanhas/tipos";
 import { ROTULO_DA_TEMPERATURA, ROTULO_DO_PAPEL } from "@/lib/crm/papel-e-temperatura";
+import { PainelDeAjuda } from "@/components/ajuda/PainelDeAjuda";
 import { AppCard } from "@/components/ds/AppCard";
 
 import { AjudaCampo } from "./ajuda-campo";
@@ -222,7 +223,14 @@ export function NovaCampanhaClient() {
   const lista = estimativa.data?.preview ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-5xl" data-testid="campanha-wizard">
+    <div className="mx-auto w-full max-w-5xl space-y-4" data-testid="campanha-wizard">
+      <PainelDeAjuda
+        testid="campanha-ajuda-wizard"
+        titulo="Seis passos, nesta ordem"
+        texto="Objetivo, público, texto, por onde envia, quando, e a revisão. No WhatsApp do celular a campanha só chega em quem já conversou nesse número."
+        href="/app/manual#campanhas"
+        rotuloDoLink="Ler o guia completo de campanhas"
+      />
       <IndicadorDePassos passos={PASSOS} atual={passo} onIr={setPasso} />
 
       {passo === 0 ? (

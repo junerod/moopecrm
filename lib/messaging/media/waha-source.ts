@@ -15,22 +15,30 @@ import {
   type FetchedMedia,
 } from "@/lib/messaging/media/types";
 
-const FETCH_TIMEOUT_MS = 30_000;
+import { chatIdFromWaMessageId } from "@/lib/waha/message-id";
 
-export async function fetchWahaMedia(
-  mediaUrl: string,
-  hintMime?: string | null,
-): Promise<FetchedMedia> {
+const FETCH_TIMEOUT_MS = 30_000;
+const PATH_ARQUIVO = /^\/api\/files\/([^/]+)\/(.+)$/;
+
+/** Troca a pasta da sessão STOPPED pela WORKING — o arquivo às vezes já está lá. */
+export function reescreverPathDaSessao(pathname: string, sessionRef: string): string | null {
+  const m = pathname.match(PATH_ARQUIVO);
+  if (!m) return null;
+  if (m[1] === sessionRef) return null;
+  return `/api/files/${sessionRef}/${m[2]}`;
+}
+
+function resolverUrl(mediaUrl: string): URL {
   const base = process.env.WAHA_API_BASE_URL;
-  let url: URL;
   try {
     const advertised = new URL(mediaUrl);
-    // Host/porta descartados: só path+query sobrevivem, resolvidos na base.
-    url = new URL(advertised.pathname + advertised.search, base ?? "");
+    return new URL(advertised.pathname + advertised.search, base ?? "");
   } catch {
     throw new Error("waha_media_untrusted_host");
   }
+}
 
+async function baixar(url: URL, hintMime?: string | null): Promise<FetchedMedia> {
   const apiKey = process.env.WAHA_API_KEY;
   const res = await fetch(url.toString(), {
     headers: apiKey ? { "X-Api-Key": apiKey } : {},
@@ -46,4 +54,54 @@ export async function fetchWahaMedia(
 
   const mime = res.headers.get("content-type") || hintMime || "application/octet-stream";
   return { buffer, mime };
+}
+
+export async function fetchWahaMedia(
+  mediaUrl: string,
+  hintMime?: string | null,
+  sessionRef?: string | null,
+): Promise<FetchedMedia> {
+  const url = resolverUrl(mediaUrl);
+  try {
+    return await baixar(url, hintMime);
+  } catch (err) {
+    const detalhe = err instanceof Error ? err.message : String(err);
+    if (!sessionRef || !detalhe.includes("404")) throw err;
+    const alt = reescreverPathDaSessao(url.pathname, sessionRef);
+    if (!alt) throw err;
+    return baixar(new URL(alt + url.search, process.env.WAHA_API_BASE_URL ?? ""), hintMime);
+  }
+}
+
+/**
+ * Pede ao canal que baixe de novo do aparelho (downloadMedia=true).
+ * O cache em /api/files some; o áudio continua no celular.
+ */
+export async function fetchWahaMediaDoAparelho(
+  sessionRef: string,
+  messageExternalId: string,
+  hintMime?: string | null,
+): Promise<FetchedMedia> {
+  const base = process.env.WAHA_API_BASE_URL;
+  if (!base) throw new Error("waha_media_sem_base");
+  const chat = chatIdFromWaMessageId(messageExternalId);
+  if (!chat) throw new Error("waha_media_sem_chat");
+
+  const apiKey = process.env.WAHA_API_KEY;
+  const url =
+    `${base}/api/${encodeURIComponent(sessionRef)}/chats/` +
+    `${encodeURIComponent(chat)}/messages/${encodeURIComponent(messageExternalId)}` +
+    `?downloadMedia=true`;
+  const res = await fetch(url, {
+    headers: apiKey ? { "X-Api-Key": apiKey } : {},
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`waha_media_phone_${res.status}`);
+  const json = (await res.json()) as {
+    mediaUrl?: string | null;
+    media?: { url?: string | null; mimetype?: string | null };
+  };
+  const nova = json.media?.url ?? json.mediaUrl ?? null;
+  if (!nova) throw new Error("waha_media_phone_empty");
+  return fetchWahaMedia(nova, hintMime ?? json.media?.mimetype ?? null, sessionRef);
 }

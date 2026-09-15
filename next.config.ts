@@ -39,7 +39,12 @@ const nextConfig: NextConfig = {
    * sem exigir que alguém lembre de editar esta linha.
    */
   outputFileTracingIncludes: {
-    "/**": ["./node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/**"],
+    "/**": [
+      "./node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/**",
+      "./node_modules/.pnpm/@napi-rs+canvas@*/node_modules/@napi-rs/canvas/**",
+      "./node_modules/.pnpm/@napi-rs+canvas-linux-*-musl@*/**",
+      "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/**",
+    ],
   },
   reactStrictMode: true,
   poweredByHeader: false,

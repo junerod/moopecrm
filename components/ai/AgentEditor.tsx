@@ -24,9 +24,11 @@ import { rotuloDoModoIa } from "@/lib/negocio/rotulos";
 import {
   AGENT_CONFIG_DEFAULTS,
   AGENT_MODELS,
+  ROTULO_DO_MODELO,
   agentConfigSchema,
   agentPatchSchema,
   guardrailsSchema,
+  modeloInicialDoAgente,
   type AgentConfig,
   type AgentModel,
   type AgentPatch,
@@ -52,6 +54,11 @@ interface FormState {
   guardrails: GuardrailItem[];
 }
 
+function opcoesDeModelo(atual: string): string[] {
+  if ((AGENT_MODELS as readonly string[]).includes(atual)) return [...AGENT_MODELS];
+  return [atual, ...AGENT_MODELS];
+}
+
 function buildFormState(agent: AgentRow): FormState {
   const cfgRaw = (agent.config ?? {}) as Record<string, unknown>;
   const cfgParsed = agentConfigSchema.safeParse({ ...AGENT_CONFIG_DEFAULTS, ...cfgRaw });
@@ -61,8 +68,7 @@ function buildFormState(agent: AgentRow): FormState {
   const grParsed = guardrailsSchema.safeParse(grRaw);
   const guardrails: GuardrailItem[] = grParsed.success ? grParsed.data : [];
 
-  const modelOk = (AGENT_MODELS as readonly string[]).includes(agent.model);
-  const model: AgentModel = (modelOk ? agent.model : "anthropic/claude-sonnet-4-6") as AgentModel;
+  const model = modeloInicialDoAgente(agent.model);
 
   return {
     name: agent.name,
@@ -317,9 +323,11 @@ export function AgentEditor({
         <TabsContent value="advanced">
           <Card className="space-y-6 p-4">
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Modelo de IA</h3>
+              <h3 className="text-sm font-semibold">Quem conversa com o cliente</h3>
               <p className="text-xs text-muted-foreground">
-                Escolha técnica. A maioria das empresas não precisa mexer aqui.
+                Isto não é a chave de documentos. Chave da OpenAI em Credenciais lê
+                material e áudio. Aqui você escolhe o cérebro da conversa — GPT se a
+                chave for OpenAI, Claude se for Anthropic.
               </p>
               <Select
                 value={formState.model}
@@ -330,9 +338,9 @@ export function AgentEditor({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {AGENT_MODELS.map((m) => (
+                  {opcoesDeModelo(formState.model).map((m) => (
                     <SelectItem key={m} value={m}>
-                      {m}
+                      {ROTULO_DO_MODELO[m as keyof typeof ROTULO_DO_MODELO] ?? m}
                     </SelectItem>
                   ))}
                 </SelectContent>

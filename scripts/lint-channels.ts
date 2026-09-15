@@ -74,7 +74,6 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "app/api/v1/channel-sessions/[id]/route.ts",
       "app/api/v1/channel-sessions/route.ts",
       "app/api/v1/health/route.ts",
-      "app/api/v1/messages/[id]/media/route.ts",
       "app/api/v1/onboarding/whatsapp/qr/route.ts",
       "app/api/v1/onboarding/whatsapp/session/route.ts",
       "app/api/v1/webhooks/waha/[token]/route.ts",
@@ -85,7 +84,6 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "app/app/connections/page.tsx",
       "app/onboarding/connect-whatsapp/page.tsx",
       "lib/agent-engine/edge/crm/session-reconciler.ts",
-      "workers/media-persist-worker.ts",
     ],
   },
   {
@@ -149,7 +147,6 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       "app/api/v1/webhook-sources/route.ts",
       "app/api/v1/webhooks/in/[token]/route.ts",
       "app/app/ai/agents/[id]/_components/TestPanel.tsx",
-      "components/inbox/media/media-utils.ts",
       "lib/agent-engine/channel-adapter.ts",
       "lib/agent-engine/cron/scheduler.ts",
       "lib/agent-engine/edge/channel/waha-adapter.ts",

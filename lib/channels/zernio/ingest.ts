@@ -22,6 +22,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { persistirMidiaDaMensagem } from "@/lib/messaging/media/persistir";
 import { logger } from "@/lib/logger";
 
 import { extrairAtribuicaoMeta } from "@/lib/channels/atribuicao-de-anuncio-oficial";
@@ -287,6 +288,15 @@ async function pedirPersistenciaDaMidia(
   conversationId: string,
   messageId: string,
 ): Promise<void> {
+  try {
+    const r = await persistirMidiaDaMensagem({ organizationId, messageId, attempts: 0 });
+    if (r.status === "ok" || r.status === "skipped") return;
+  } catch (err) {
+    logger.warn("[zernio] persistencia imediata falhou", {
+      messageId,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
   const { error } = await admin.rpc("emit_event" as never, {
     p_event_type: "media.persist_requested",
     p_entity_kind: "message",

@@ -29,6 +29,7 @@ export function AudioPlayer({ messageId, isOutbound }: Props) {
   const [current, setCurrent] = useState(0);
   const [rateIdx, setRateIdx] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -36,7 +37,10 @@ export function AudioPlayer({ messageId, isOutbound }: Props) {
     const onTime = () => setCurrent(el.currentTime);
     const onMeta = () => setDuration(el.duration);
     const onEnded = () => setPlaying(false);
-    const onError = () => setFailed(true);
+    const onError = () => {
+      if (tentativa < 1) setTentativa((n) => n + 1);
+      else setFailed(true);
+    };
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("loadedmetadata", onMeta);
     el.addEventListener("durationchange", onMeta);
@@ -49,7 +53,7 @@ export function AudioPlayer({ messageId, isOutbound }: Props) {
       el.removeEventListener("ended", onEnded);
       el.removeEventListener("error", onError);
     };
-  }, []);
+  }, [tentativa]);
 
   if (failed) return <MediaUnavailable kind="Áudio" className="h-12 w-60" />;
 
@@ -81,7 +85,11 @@ export function AudioPlayer({ messageId, isOutbound }: Props) {
 
   return (
     <div className="flex w-60 items-center gap-2 py-1">
-      <audio ref={audioRef} src={mediaSrc(messageId)} preload="metadata" />
+      <audio
+        ref={audioRef}
+        src={`${mediaSrc(messageId)}${tentativa > 0 ? `?retry=${tentativa}` : ""}`}
+        preload="metadata"
+      />
       <button
         type="button"
         aria-label={playing ? "Pausar áudio" : "Reproduzir áudio"}

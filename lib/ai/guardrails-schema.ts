@@ -9,13 +9,38 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 
 export const AGENT_MODELS = [
+  "openai/gpt-4o-mini",
+  "openai/gpt-4o",
+  "openai/gpt-4.1",
   "anthropic/claude-sonnet-4-6",
   "anthropic/claude-haiku-4-5",
   "anthropic/claude-opus-4-7",
 ] as const;
 
-export const agentModelSchema = z.enum(AGENT_MODELS);
+export const ROTULO_DO_MODELO: Record<(typeof AGENT_MODELS)[number], string> = {
+  "openai/gpt-4o-mini": "GPT-4o mini — OpenAI (barato, rápido)",
+  "openai/gpt-4o": "GPT-4o — OpenAI",
+  "openai/gpt-4.1": "GPT-4.1 — OpenAI",
+  "anthropic/claude-sonnet-4-6": "Claude Sonnet — Anthropic",
+  "anthropic/claude-haiku-4-5": "Claude Haiku — Anthropic (leve)",
+  "anthropic/claude-opus-4-7": "Claude Opus — Anthropic (mais capaz)",
+};
+
+/** Aceita os da lista e qualquer id `provedor/modelo` já gravado (OpenRouter etc.). */
+export const agentModelSchema = z
+  .string()
+  .min(3)
+  .max(120)
+  .refine((v) => v.includes("/"), "modelo no formato provedor/nome");
 export type AgentModel = z.infer<typeof agentModelSchema>;
+
+/** Não empurra Claude em quem já escolheu GPT. */
+export function modeloInicialDoAgente(model: string | null | undefined): AgentModel {
+  const v = (model ?? "").trim();
+  const parsed = agentModelSchema.safeParse(v);
+  if (parsed.success) return parsed.data;
+  return "openai/gpt-4o-mini";
+}
 
 // ---------------------------------------------------------------------------
 // Guardrails (5 kinds — Spec 05 §8.1)

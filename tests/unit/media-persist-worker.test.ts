@@ -1,31 +1,79 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const uploadMock = vi.fn();
-const updateEqMock = vi.fn();
-const rpcMock = vi.fn();
-const messageRow = {
-  id: "msg1",
-  organization_id: "org1",
-  conversation_id: "conv1",
-  media_url: "http://localhost:3030/api/files/abc.jpg",
-  media_mime: "image/jpeg",
-  media_storage_path: null as string | null,
-  metadata: { raw_type: "image" },
-};
+const {
+  uploadMock,
+  updateEqMock,
+  rpcMock,
+  messageRow,
+  sessoesDaOrg,
+  sessionArquivo,
+  sessionViva,
+  consulta,
+} = vi.hoisted(() => {
+  function consulta(data: unknown) {
+    const resultado = { data, error: null };
+    const builder = {
+      eq: () => builder,
+      maybeSingle: async () => ({
+        data: Array.isArray(data) ? (data[0] ?? null) : data,
+        error: null,
+      }),
+      then: (resolve: (v: typeof resultado) => unknown, reject?: (e: unknown) => unknown) =>
+        Promise.resolve(resultado).then(resolve, reject),
+    };
+    return builder;
+  }
+
+  const sessionArquivo = {
+    id: "sess-arquivo",
+    status: "STOPPED",
+    phone_number: "556194114879",
+    provider: "waha" as const,
+    waha_session_name: "org_velha",
+    meta_phone_number_id: null,
+    zernio_account_id: null,
+    twilio_from: null,
+  };
+
+  const sessionViva = {
+    id: "sess-viva",
+    status: "WORKING",
+    phone_number: "556194114879",
+    provider: "waha" as const,
+    waha_session_name: "org_viva",
+    meta_phone_number_id: null,
+    zernio_account_id: null,
+    twilio_from: null,
+  };
+
+  return {
+    uploadMock: vi.fn(),
+    updateEqMock: vi.fn(),
+    rpcMock: vi.fn(),
+    messageRow: {
+      id: "msg1",
+      organization_id: "org1",
+      conversation_id: "conv1",
+      channel_session_id: "sess-arquivo",
+      type: "image",
+      media_url: "http://localhost:3030/api/files/abc.jpg",
+      external_id: "false_x@lid_ABC",
+      media_mime: "image/jpeg",
+      media_storage_path: null as string | null,
+      metadata: { raw_type: "image" },
+    },
+    sessionArquivo,
+    sessionViva,
+    sessoesDaOrg: [sessionArquivo, sessionViva] as typeof sessionArquivo[],
+    consulta,
+  };
+});
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
-    // Duas consultas agora, e cada uma com um encadeamento diferente: a
-    // mensagem casa por `id` + `organization_id` (dois `eq`), a SESSÃO casa só
-    // por `id` (um `eq`). O dublê responde pela TABELA porque, sem isso, a
-    // consulta da sessão receberia a linha da mensagem — e o worker cairia em
-    // "canal sem mídia" achando que a sessão não existe.
     from: (tabela: string) => ({
-      select: () => {
-        const linha = tabela === "channel_sessions" ? sessionRow : messageRow;
-        const resolvido = { maybeSingle: async () => ({ data: linha, error: null }) };
-        return { eq: () => ({ ...resolvido, eq: () => resolvido }) };
-      },
+      select: () =>
+        tabela === "channel_sessions" ? consulta(sessoesDaOrg) : consulta(messageRow),
       update: (patch: Record<string, unknown>) => {
         updateEqMock(patch);
         return { eq: () => ({ eq: async () => ({ error: null }) }) };
@@ -36,23 +84,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-/**
- * A sessão que o worker resolve para escolher QUEM baixa.
- *
- * `provider: "waha"` mantém este arquivo exercitando o mesmo caminho de sempre —
- * o que muda é que agora ele passa pelo adapter em vez de chamar o transporte
- * fixo. Se o dublê não existisse, o worker sairia em "canal sem mídia" e todos
- * os casos abaixo passariam por AUSÊNCIA.
- */
-const sessionRow = {
-  provider: "waha",
-  waha_session_name: "default",
-  meta_phone_number_id: null,
-  zernio_account_id: null,
-};
-
 vi.mock("@/lib/messaging/media/waha-source", () => ({
   fetchWahaMedia: vi.fn(async () => ({ buffer: Buffer.from([1, 2, 3]), mime: "image/jpeg" })),
+  fetchWahaMediaDoAparelho: vi.fn(async () => {
+    throw new Error("waha_media_phone_empty");
+  }),
 }));
 
 import { persistMessageMedia } from "@/workers/media-persist-worker";
@@ -78,10 +114,24 @@ describe("persistMessageMedia", () => {
     updateEqMock.mockReset();
     rpcMock.mockReset().mockResolvedValue({ error: null });
     messageRow.media_storage_path = null;
+    messageRow.channel_session_id = "sess-arquivo";
+    messageRow.type = "image";
+    messageRow.media_url = "http://localhost:3030/api/files/abc.jpg";
+    sessoesDaOrg.splice(0, sessoesDaOrg.length, sessionArquivo, sessionViva);
     vi.mocked(fetchWahaMedia).mockResolvedValue({
       buffer: Buffer.from([1, 2, 3]),
       mime: "image/jpeg",
     });
+  });
+
+  it("baixa pela sessão WORKING quando a da mensagem está STOPPED", async () => {
+    const result = await persistMessageMedia(eventRow());
+    expect(result.status).toBe("ok");
+    expect(fetchWahaMedia).toHaveBeenCalledWith(
+      "http://localhost:3030/api/files/abc.jpg",
+      "image/jpeg",
+      "org_viva",
+    );
   });
 
   it("baixa, sobe pro bucket e atualiza a mensagem", async () => {

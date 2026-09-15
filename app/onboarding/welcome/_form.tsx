@@ -9,6 +9,8 @@ import { AcoesDoPasso } from "@/app/onboarding/_components/VoltarDoPasso";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { catalogoDePacks, packParaRamo, resolverPack } from "@/lib/business-packs/catalogo";
+import { testidCardOnboarding } from "@/lib/business-packs/testids";
 import {
   RAMOS_DO_NEGOCIO,
   ROTULOS_SUBTYPE,
@@ -17,7 +19,7 @@ import {
   type IdDoRamo,
   type SubtypeLocacao,
 } from "@/lib/onboarding/ramo-do-negocio";
-import { Car, Handshake, PuzzlePiece, ScalesSimple, Storefront, Wrench } from "@/lib/ui/icons";
+import { Car, Handshake, Pulse, PuzzlePiece, ScalesSimple, Storefront, Wrench } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 const FUSO_PADRAO = "America/Sao_Paulo";
@@ -29,6 +31,15 @@ const ICONE_DO_RAMO = {
   servicos: Wrench,
   personalizado: PuzzlePiece,
 } as const;
+
+const ICONE_DO_PACK: Record<string, typeof Storefront> = {
+  locadora_veiculos: Car,
+  escritorio_advocacia: ScalesSimple,
+  vendas_saas: Storefront,
+  comercial_geral: Handshake,
+  clinica_medica: Pulse,
+  clinica_odontologica: Pulse,
+};
 
 export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
   const [displayName, setDisplayName] = useState(defaultOrgName);
@@ -82,71 +93,48 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-zinc-100">Qual é o seu tipo de negócio?</legend>
-          <label
-            data-testid="pack-locadora-card"
-            className={cn(
-              "flex cursor-pointer flex-col gap-2 rounded-xl border p-4 transition-colors",
-              packId === "locadora_veiculos"
-                ? "border-accent bg-accent/10 ring-1 ring-accent/40"
-                : "border-white/10 hover:border-accent/40 hover:bg-white/5",
-            )}
-          >
-            <input
-              type="radio"
-              name="ready_model_id"
-              value="locacao"
-              checked={packId === "locadora_veiculos"}
-              onChange={() => {
-                setRamo("locacao");
-                setSubtype("veiculos");
-                setPackId("locadora_veiculos");
-              }}
-              className="sr-only"
-            />
-            <Car
-              size={22}
-              weight={packId === "locadora_veiculos" ? "fill" : "regular"}
-              className={packId === "locadora_veiculos" ? "text-accent" : "text-zinc-400"}
-              aria-hidden
-            />
-            <span className="text-sm font-medium text-zinc-100">Locadora de veículos</span>
-            <span className="text-xs leading-snug text-zinc-500">
-              Atendimento, vendas, disponibilidade, cobranças, pós-locação e relacionamento com
-              clientes.
-            </span>
-          </label>
-          <label
-            data-testid="pack-advocacia-card"
-            className={cn(
-              "flex cursor-pointer flex-col gap-2 rounded-xl border p-4 transition-colors",
-              packId === "escritorio_advocacia"
-                ? "border-accent bg-accent/10 ring-1 ring-accent/40"
-                : "border-white/10 hover:border-accent/40 hover:bg-white/5",
-            )}
-          >
-            <input
-              type="radio"
-              name="ready_model_id"
-              value="advocacia"
-              checked={packId === "escritorio_advocacia"}
-              onChange={() => {
-                setRamo("advocacia");
-                setSubtype(null);
-                setPackId("escritorio_advocacia");
-              }}
-              className="sr-only"
-            />
-            <ScalesSimple
-              size={22}
-              weight={packId === "escritorio_advocacia" ? "fill" : "regular"}
-              className={packId === "escritorio_advocacia" ? "text-accent" : "text-zinc-400"}
-              aria-hidden
-            />
-            <span className="text-sm font-medium text-zinc-100">Escritório de advocacia</span>
-            <span className="text-xs leading-snug text-zinc-500">
-              Organize novos atendimentos, clientes, documentos, retornos e relacionamento.
-            </span>
-          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {catalogoDePacks().map((item) => {
+              const def = resolverPack(item.id);
+              if (!def) return null;
+              const Icone = ICONE_DO_PACK[item.id] ?? Storefront;
+              const marcada = packId === item.id;
+              return (
+                <label
+                  key={item.id}
+                  data-testid={testidCardOnboarding(item.id)}
+                  className={cn(
+                    "flex cursor-pointer flex-col gap-2 rounded-xl border p-4 transition-colors",
+                    marcada
+                      ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                      : "border-white/10 hover:border-accent/40 hover:bg-white/5",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="ready_model_id"
+                    value={def.ready_model_id}
+                    checked={marcada}
+                    onChange={() => {
+                      setRamo(def.ready_model_id);
+                      setSubtype(def.ready_model_subtype ?? null);
+                      setPackId(item.id);
+                    }}
+                    className="sr-only"
+                  />
+                  <Icone
+                    size={22}
+                    weight={marcada ? "fill" : "regular"}
+                    className={marcada ? "text-accent" : "text-zinc-400"}
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium text-zinc-100">{item.label}</span>
+                  <span className="text-xs leading-snug text-zinc-500">{item.description}</span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-xs text-zinc-500">Ou só o tipo de negócio, sem modelo completo:</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {RAMOS_DO_NEGOCIO.map((r) => {
               const Icone = ICONE_DO_RAMO[r.id];
@@ -168,7 +156,7 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
                     checked={marcada}
                     onChange={() => {
                       setRamo(r.id);
-                      setPackId(r.id === "advocacia" ? "escritorio_advocacia" : "");
+                      setPackId(packParaRamo(r.id) ?? "");
                       if (r.id !== "locacao") setSubtype(null);
                     }}
                     className="sr-only"
@@ -282,7 +270,9 @@ export function WelcomeForm({ defaultOrgName }: { defaultOrgName: string }) {
                   ? "Usar modelo para locadora"
                   : packId === "escritorio_advocacia"
                     ? "Usar modelo para escritório"
-                    : "Continuar"}
+                    : packId
+                      ? "Usar este modelo"
+                      : "Continuar"}
             </Button>
           }
         />

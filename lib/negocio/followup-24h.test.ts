@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import { validateFlowForPublish } from "@/lib/followup/validate-publish";
 
 import {
+  ajusteFollowup24hSchema,
   ehFollowupDeSilencio,
   grafoDeSilencio24h,
+  horasDoFollowup,
   MINUTOS_FOLLOWUP_24H,
+  resolverAjusteFollowup24h,
 } from "./followup-24h";
 
 describe("follow-up 24h pronto", () => {
@@ -28,5 +31,19 @@ describe("follow-up 24h pronto", () => {
         trigger_config: { kind: "manual" },
       }),
     ).toBe(true);
+  });
+
+  it("a tela manda a mensagem e as horas — a semente não trava o texto", () => {
+    const atual = {
+      mensagem: "Olá, conseguiu analisar nossa proposta?",
+      minutos: MINUTOS_FOLLOWUP_24H,
+    };
+    expect(
+      resolverAjusteFollowup24h({ mensagem: "Ainda precisa de ajuda com o laudo?", horas: 48 }, atual),
+    ).toEqual({ mensagem: "Ainda precisa de ajuda com o laudo?", minutos: 2880 });
+    expect(resolverAjusteFollowup24h({}, atual)).toEqual(atual);
+    expect(ajusteFollowup24hSchema.safeParse({ mensagem: "", horas: 24 }).success).toBe(false);
+    expect(ajusteFollowup24hSchema.safeParse({ horas: 200 }).success).toBe(false);
+    expect(horasDoFollowup({ kind: "silence", params: { threshold_minutes: 2880 } })).toBe(48);
   });
 });

@@ -88,6 +88,20 @@ describe("extractPdfText", () => {
     );
   });
 
+  it("preenche DOMMatrix antes de importar o pdfjs", async () => {
+    const { garantirAmbientePdf } = await import("@/lib/ai/rag/extractors/pdf");
+    const g = globalThis as typeof globalThis & { DOMMatrix?: unknown };
+    const antigo = g.DOMMatrix;
+    try {
+      // @ts-expect-error — o teste apaga de propósito
+      delete g.DOMMatrix;
+      await garantirAmbientePdf();
+      expect(typeof g.DOMMatrix).toBe("function");
+    } finally {
+      if (antigo) g.DOMMatrix = antigo;
+    }
+  });
+
   it("diz o que fazer quando o binário nativo do canvas falta", async () => {
     // O pdfjs 6 estoura no import sem @napi-rs/canvas. Sem esta tradução o
     // self-hoster vê "DOMMatrix is not defined" e não tem como ligar isso a uma

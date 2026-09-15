@@ -186,8 +186,9 @@ const schema = z.object({
   OPENAI_API_KEY: z.string().optional().default(""),
 
   /**
-   * Storage documental do Knowledge. Default supabase = instalações atuais.
-   * `r2` exige R2_* abaixo. String livre de propósito: typo não derruba o boot.
+   * Storage documental do Knowledge. String livre: typo não derruba o boot.
+   * Se as chaves R2_* estão preenchidas, o binário vai para o Cloudflare
+   * mesmo com este valor em supabase — PDF de cliente não mora no disco da VPS.
    */
   KNOWLEDGE_STORAGE_PROVIDER: z.string().optional().default("supabase"),
   R2_ACCOUNT_ID: z.string().optional().default(""),

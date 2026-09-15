@@ -6,7 +6,7 @@
  * Nenhuma regra de negócio mora neste arquivo (ver `ChannelAdapter` em ../types).
  */
 import { wahaContactPayload } from "@/lib/waha/contact-card";
-import { fetchWahaMedia } from "@/lib/messaging/media/waha-source";
+import { fetchWahaMedia, fetchWahaMediaDoAparelho } from "@/lib/messaging/media/waha-source";
 import { getWahaClient } from "@/lib/waha/client";
 import { wahaSendPlanFor } from "@/lib/waha/media-send";
 import { ehRestricaoDeAlcance } from "@/lib/waha/restricao-de-alcance";
@@ -165,11 +165,24 @@ export const wahaAdapter: ChannelAdapter = {
     sessionRef: string;
     url: string;
     hintMime?: string | null;
+    messageExternalId?: string | null;
   }): Promise<FetchedMedia> {
     // Devolve o objeto INTEIRO, sem remontar campo a campo: `FetchedMedia` é o
     // mesmo tipo dos dois lados, e reconstruí-lo faria a próxima adição de
     // campo sumir em silêncio aqui no meio.
-    return fetchWahaMedia(input.url, input.hintMime ?? null);
+    const hint = input.hintMime ?? null;
+    let ultimo: unknown = null;
+    if (input.url) {
+      try {
+        return await fetchWahaMedia(input.url, hint, input.sessionRef);
+      } catch (err) {
+        ultimo = err;
+      }
+    }
+    if (input.messageExternalId) {
+      return fetchWahaMediaDoAparelho(input.sessionRef, input.messageExternalId, hint);
+    }
+    throw ultimo instanceof Error ? ultimo : new Error("waha_media_sem_ponteiro");
   },
 
   async send(envelope: OutboundEnvelope): Promise<{ externalId: string | null }> {

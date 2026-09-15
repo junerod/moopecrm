@@ -8,6 +8,7 @@ import { lerSettings, statusVisual } from "@/lib/campanhas/settings";
 import { rotuloStatusCampanha, tomStatusCampanha } from "@/lib/campanhas/rotulos";
 import { rotuloDoObjetivo } from "@/lib/campanhas/objetivo";
 import type { StatusVisualDaCampanha } from "@/lib/campanhas/tipos";
+import { PainelDeAjuda } from "@/components/ajuda/PainelDeAjuda";
 import { AppCard } from "@/components/ds/AppCard";
 import { EmptyState } from "@/components/ds/EmptyState";
 import { StatusBadge } from "@/components/ds/StatusBadge";
@@ -47,6 +48,19 @@ export function CampanhasClient({ podeEnviar }: { podeEnviar: boolean }) {
           </Button>
         ) : null}
       </div>
+
+      <PainelDeAjuda
+        testid="campanha-ajuda"
+        titulo="Como funciona uma campanha"
+        texto="É um recado para várias pessoas de uma vez. No WhatsApp do celular, só recebe quem já tem conversa neste número. Quem nunca falou precisa de Nova conversa na caixa."
+        passos={[
+          "Criar campanha — escolha o motivo.",
+          "Marque o público e escreva o texto. {{nome}} vira o nome da pessoa.",
+          "Escolha o número que envia, revise e dispare.",
+          "Abra a campanha para ver quem recebeu, quem respondeu e quem ficou de fora.",
+        ]}
+        href="/app/manual#campanhas"
+      />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="campanhas-resumo">
         {CARDS.map((c) => (

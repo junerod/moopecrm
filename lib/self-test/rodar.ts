@@ -42,8 +42,8 @@ export async function rodarSelfTestContrato(): Promise<ResultadoModulo[]> {
   );
 
   return [
-    { modulo: "onboarding", status: packOk ? "PASS" : "FAIL", detalhe: "Catálogo tem Locadora e Advocacia." },
-    { modulo: "pack", status: packOk ? "PASS" : "FAIL", detalhe: "Dois packs no mesmo motor, tenants separados no padrão." },
+    { modulo: "onboarding", status: packOk ? "PASS" : "FAIL", detalhe: "Catálogo tem Locadora, Advocacia e os packs comerciais/clínicas." },
+    { modulo: "pack", status: packOk ? "PASS" : "FAIL", detalhe: "Packs no mesmo motor; self-test padrão usa Locadora e Advocacia em tenants separados." },
     {
       modulo: "assistentes",
       status: assistentes && juridico?.precisa_humano ? "PASS" : "FAIL",

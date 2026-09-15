@@ -57,3 +57,10 @@ export function bufferParecePdf(buffer: Buffer): boolean {
   const inicio = buffer.subarray(0, 8).toString("latin1");
   return inicio.startsWith("%PDF-");
 }
+
+/** Cabeçalho + %%EOF. Sem isto o arquivo foi cortado no upload — aí sim está danificado. */
+export function pdfEstruturaLegivel(buffer: Buffer): boolean {
+  if (!bufferParecePdf(buffer)) return false;
+  const cauda = buffer.subarray(Math.max(0, buffer.length - 2048)).toString("latin1");
+  return /%%EOF/.test(cauda);
+}

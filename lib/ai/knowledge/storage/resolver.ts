@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import { r2DocumentStorage } from "@/lib/ai/knowledge/storage/r2";
+import { r2Configurado, r2DocumentStorage } from "@/lib/ai/knowledge/storage/r2";
 import { supabaseDocumentStorage } from "@/lib/ai/knowledge/storage/supabase";
 import type { DocumentStorage, KnowledgeStorageProvider } from "@/lib/ai/knowledge/storage/tipos";
 
@@ -13,9 +13,22 @@ export function storagePorNome(nome: KnowledgeStorageProvider): DocumentStorage 
   return supabaseDocumentStorage();
 }
 
+/**
+ * PDF/DOCX de cliente não moram no disco da VPS.
+ * Se o R2 está configurado, ele ganha — mesmo com KNOWLEDGE_STORAGE_PROVIDER=supabase.
+ */
+export function providerPadraoDoConhecimento(opts?: {
+  providerEnv?: string;
+  r2Pronto?: boolean;
+}): KnowledgeStorageProvider {
+  const r2 = opts?.r2Pronto ?? r2Configurado();
+  if (r2) return "r2";
+  return normalizarStorageProvider(opts?.providerEnv ?? env.KNOWLEDGE_STORAGE_PROVIDER);
+}
+
 /** Provider dos NOVOS uploads. Documentos antigos usam o gravado na metadata. */
 export function storagePadrao(): DocumentStorage {
-  return storagePorNome(normalizarStorageProvider(env.KNOWLEDGE_STORAGE_PROVIDER));
+  return storagePorNome(providerPadraoDoConhecimento());
 }
 
 /** Reprocess / delete: lê o provider que CRIOU o objeto. */

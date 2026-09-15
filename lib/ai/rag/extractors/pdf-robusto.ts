@@ -9,6 +9,7 @@ import type { DocumentoExtraido, PaginaOuSecao } from "@/lib/ai/rag/extractors/c
 import {
   bufferParecePdf,
   medirQualidadePdf,
+  pdfEstruturaLegivel,
   pdfPareceCriptografado,
 } from "@/lib/ai/rag/extractors/pdf-classificar";
 import { extrairPdfPorFluxo } from "@/lib/ai/rag/extractors/pdf-fluxo";
@@ -101,7 +102,9 @@ export async function extractPdfRobusto(buffer: Buffer): Promise<DocumentoExtrai
       qualidade = qFluxo;
       warnings.push("Extração textual do pdfjs foi insuficiente; usamos o parser de operadores.");
     } else if (primeiro === "fail" && qFluxo.chars === 0) {
-      throw new DocumentExtractError("pdf_corrupt");
+      // Manual da operação (HTML→PDF com JPEG) quase sempre zera o parser
+      // de fluxo. Sem pdfjs isso NÃO é arquivo podre — é o ambiente.
+      throw new DocumentExtractError(pdfEstruturaLegivel(buffer) ? "extract_failed" : "pdf_corrupt");
     }
   }
 

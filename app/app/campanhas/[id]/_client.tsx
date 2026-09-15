@@ -15,6 +15,7 @@ import {
 import { rotuloDoObjetivo } from "@/lib/campanhas/objetivo";
 import { ROTULO_DA_TEMPERATURA, ROTULO_DO_PAPEL } from "@/lib/crm/papel-e-temperatura";
 import type { SegmentoDaCampanha } from "@/lib/campanhas/tipos";
+import { PainelDeAjuda } from "@/components/ajuda/PainelDeAjuda";
 import { StatusBadge } from "@/components/ds/StatusBadge";
 import { AppCard } from "@/components/ds/AppCard";
 import { MetricCard } from "@/components/ds/MetricCard";
@@ -134,6 +135,14 @@ export function CampanhaDetalheClient({ id }: { id: string }) {
           </p>
         </AppCard>
       ) : null}
+
+      <PainelDeAjuda
+        testid="campanha-ajuda-detalhe"
+        titulo="Como ler este resultado"
+        texto="Enviado saiu no WhatsApp. Respondeu é resposta depois do envio. Ignorado ficou de fora — o motivo está na linha. Sem conversa neste número: abra Nova conversa na caixa e só então dispare de novo."
+        href="/app/manual#campanhas"
+        rotuloDoLink="Guia de campanhas"
+      />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="campanha-metricas">
         <MetricCard

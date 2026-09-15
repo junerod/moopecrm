@@ -68,11 +68,19 @@ describe("AudioPlayer", () => {
     await waitFor(() => expect(input).toHaveAttribute("max", "42"));
   });
 
-  it("erro ao carregar exibe MediaUnavailable", async () => {
+  it("erro ao carregar tenta de novo e só então exibe MediaUnavailable", async () => {
     const { container } = render(<AudioPlayer messageId="m3" isOutbound={false} />);
-    const audio = container.querySelector("audio") as HTMLAudioElement;
+    const primeiro = container.querySelector("audio") as HTMLAudioElement;
     act(() => {
-      audio.dispatchEvent(new Event("error"));
+      primeiro.dispatchEvent(new Event("error"));
+    });
+    await waitFor(() => {
+      const deNovo = container.querySelector("audio") as HTMLAudioElement | null;
+      expect(deNovo?.getAttribute("src")).toContain("retry=1");
+    });
+    const segundo = container.querySelector("audio") as HTMLAudioElement;
+    act(() => {
+      segundo.dispatchEvent(new Event("error"));
     });
 
     await waitFor(() => expect(screen.getByText(/mídia indisponível/i)).toBeInTheDocument());

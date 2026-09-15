@@ -20,7 +20,7 @@
     { "id": "assistentes", "lane": "humano", "col": 3, "type": "frontend", "label": "/app/ai/agents", "sublabel": "6 cards · criar · testar" },
     { "id": "modelos", "lane": "humano", "col": 2, "type": "frontend", "label": "/app/modelos-prontos", "sublabel": "revisar 6 · ativar · desativar" },
     { "id": "estado", "lane": "copia", "col": 3, "type": "service", "label": "definirEstadoDoPack", "sublabel": "liga / desliga · não apaga" },
-    { "id": "catalogo", "lane": "dado", "col": 1, "type": "service", "label": "lib/business-packs/catalogo", "sublabel": "locadora_veiculos@1.0 · escritorio_advocacia@1.0" },
+    { "id": "catalogo", "lane": "dado", "col": 1, "type": "service", "label": "lib/business-packs/catalogo", "sublabel": "locadora · advocacia · saas · comercial · clinica medica · odonto" },
     { "id": "definition", "lane": "dado", "col": 2, "type": "service", "label": "BusinessPackDefinition", "sublabel": "funil · especialidades · intents" },
     { "id": "instalador", "lane": "copia", "col": 2, "type": "service", "label": "aplicarBusinessPack", "sublabel": "idempotente · não sobrescreve" },
     { "id": "ready", "lane": "copia", "col": 1, "type": "service", "label": "aplicarReadyModel", "sublabel": "pipeline override do pack" },

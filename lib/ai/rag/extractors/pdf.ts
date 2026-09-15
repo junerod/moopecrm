@@ -42,8 +42,36 @@ export interface PdfExtraido {
  * Extrai texto por página. `pageCount` é o número de páginas do arquivo,
  * mesmo quando alguma página não tem texto.
  */
+/**
+ * pdfjs 6 instancia `DOMMatrix` no import. Sem `@napi-rs/canvas` (imagem
+ * standalone, optional deps podadas) o módulo nem carrega — e o upload
+ * mentia "PDF danificado" para arquivo textual válido.
+ */
+export async function garantirAmbientePdf(): Promise<void> {
+  const g = globalThis as typeof globalThis & { DOMMatrix?: unknown };
+  if (typeof g.DOMMatrix !== "undefined") return;
+  try {
+    const canvas = await import("@napi-rs/canvas");
+    if (canvas.DOMMatrix) {
+      g.DOMMatrix = canvas.DOMMatrix;
+      return;
+    }
+  } catch {
+    // segue o stub — extração de TEXTO não pinta canvas
+  }
+  g.DOMMatrix = class DOMMatrix {
+    a = 1;
+    b = 0;
+    c = 0;
+    d = 1;
+    e = 0;
+    f = 0;
+  };
+}
+
 export async function extractPdfDocument(buffer: Buffer): Promise<PdfExtraido> {
   try {
+    await garantirAmbientePdf();
     const pdfjsLib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as typeof PdfjsDist;
 
     // NÃO mexa em GlobalWorkerOptions.workerSrc aqui (issue #102).

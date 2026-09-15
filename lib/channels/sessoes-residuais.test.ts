@@ -7,6 +7,7 @@ import {
   ehSessaoSupersedida,
   filtrarCaidasParaFaixa,
   orgTemSessaoWorking,
+  sessaoVivaParaMidia,
 } from "@/lib/channels/sessoes-residuais";
 import { readFileSync } from "node:fs";
 
@@ -102,6 +103,11 @@ describe("cenário F — mesmo número em duas sessões (o defeito medido em pro
     expect(ehSessaoSupersedida(lista[0]!, lista)).toBe(true);
     expect(filtrarCaidasParaFaixa(lista)).toEqual([]);
     expect(deriveOverallHealth(lista as never)).toBe("connected");
+  });
+
+  it("mídia baixa pela sessão viva, não pela STOPPED", () => {
+    expect(sessaoVivaParaMidia(lista[0]!, lista).id).toBe("viva");
+    expect(sessaoVivaParaMidia(lista[1]!, lista).id).toBe("viva");
   });
 
   it("+55 e só dígitos são o mesmo número", () => {

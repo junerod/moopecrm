@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import { ocrConfigurado, ocrProviderNome } from "@/lib/ai/rag/ocr/resolver";
 import { r2Configurado } from "@/lib/ai/knowledge/storage/r2";
-import { normalizarStorageProvider } from "@/lib/ai/knowledge/storage/resolver";
+import { providerPadraoDoConhecimento } from "@/lib/ai/knowledge/storage/resolver";
 import { diagnosticoVision } from "@/lib/ai/knowledge/visual/analisar";
 
 /** Health técnico — sem secret. */
@@ -18,7 +18,7 @@ export function saudeDoConhecimento(): {
     missing?: string;
   };
 } {
-  const provider = normalizarStorageProvider(env.KNOWLEDGE_STORAGE_PROVIDER);
+  const provider = providerPadraoDoConhecimento();
   const v = diagnosticoVision();
   return {
     storage: {

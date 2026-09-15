@@ -28,7 +28,7 @@ import { describe, expect, it } from "vitest";
  */
 
 const INGEST = readFileSync("lib/channels/zernio/ingest.ts", "utf8");
-const WORKER = readFileSync("workers/media-persist-worker.ts", "utf8");
+const PERSISTIR = readFileSync("lib/messaging/media/persistir.ts", "utf8");
 const TYPES = readFileSync("lib/channels/types.ts", "utf8");
 
 describe("elo 1 — a URL é gravada onde o worker a procura", () => {
@@ -48,6 +48,10 @@ describe("elo 1 — a URL é gravada onde o worker a procura", () => {
 });
 
 describe("elo 2 — alguém acorda o worker", () => {
+  it("tenta persistir na hora do webhook, antes do evento", () => {
+    expect(INGEST).toMatch(/persistirMidiaDaMensagem\(\{/);
+  });
+
   it("emite `media.persist_requested`", () => {
     expect(INGEST).toMatch(/p_event_type: "media\.persist_requested"/);
   });
@@ -85,8 +89,8 @@ describe("elo 3 — quem baixa é o CANAL, não uma função fixa", () => {
     expect(TYPES).toMatch(/fetchInboundMedia\?\(input: ChannelTenantScope & \{/);
   });
 
-  it("o worker despacha pelo adapter", () => {
-    expect(WORKER).toMatch(/await adapter\.fetchInboundMedia\(\{/);
+  it("o persistir despacha pelo adapter", () => {
+    expect(PERSISTIR).toMatch(/await adapter\.fetchInboundMedia\(\{/);
   });
 
   it("e NÃO chama mais a função de um canal só", () => {
@@ -95,26 +99,26 @@ describe("elo 3 — quem baixa é o CANAL, não uma função fixa", () => {
     // A CHAMADA, não a menção: o comentário que explica o defeito cita o nome
     // da função, e a primeira versão deste caso ficava vermelha por causa da
     // própria documentação da correção.
-    expect(WORKER, "o worker voltou a chamar o transporte fixo").not.toMatch(
+    expect(PERSISTIR, "o persistir voltou a chamar o transporte fixo").not.toMatch(
       /await fetchWahaMedia\(|= fetchWahaMedia\(/,
     );
   });
 
   it("pede a sessão para resolver QUEM baixa", () => {
     // Sem `channel_session_id` no select, não há como pedir o adapter — e o
-    // worker voltaria a depender de um canal fixo por falta de dado.
-    expect(WORKER).toMatch(/channel_session_id/);
-    expect(WORKER).toMatch(/CHANNEL_SESSION_REF_COLUMNS/);
+    // persistir voltaria a depender de um canal fixo por falta de dado.
+    expect(PERSISTIR).toMatch(/channel_session_id/);
+    expect(PERSISTIR).toMatch(/CHANNEL_SESSION_REF_COLUMNS/);
   });
 
   it("canal que não sabe baixar é PULADO, não marcado como falho", () => {
     // É o estado normal de um canal sem mídia de entrada. Marcar `failed` faria
     // a Central acusar um defeito que não existe.
-    expect(WORKER).toMatch(/status: "skipped", detail: "canal_sem_midia_de_entrada"/);
+    expect(PERSISTIR).toMatch(/status: "skipped", detail: "canal_sem_midia_de_entrada"/);
   });
 
-  it("o worker não nomeia nenhum provider", () => {
-    expect(WORKER, "o worker está decidindo por provider").not.toMatch(
+  it("o persistir não nomeia nenhum provider", () => {
+    expect(PERSISTIR, "o persistir está decidindo por provider").not.toMatch(
       /"waha"|"zernio"|"meta_cloud"/,
     );
   });
@@ -138,7 +142,8 @@ describe("o que cada canal faz com a URL", () => {
     // O risco desta mudança é mexer no canal que funciona bem. Ele chama a
     // MESMA função, com os mesmos argumentos; só mudou quem a escolhe.
     const w = readFileSync("lib/channels/adapters/waha.ts", "utf8");
-    expect(w).toMatch(/return fetchWahaMedia\(input\.url, input\.hintMime \?\? null\)/);
+    expect(w).toMatch(/fetchWahaMedia\(input\.url, hint, input\.sessionRef\)/);
+    expect(w).toMatch(/fetchWahaMediaDoAparelho/);
   });
 
   it("os dois devolvem o MESMO tipo, reusado e não redefinido", () => {

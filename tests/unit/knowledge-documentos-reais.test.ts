@@ -9,9 +9,16 @@ import { saudeDoConhecimento } from "@/lib/ai/knowledge/saude";
 import { statusDoDocumento } from "@/lib/ai/knowledge/status-do-documento";
 import { chaveDocumental, chavePertenceAOrg } from "@/lib/ai/knowledge/storage/caminho";
 import { r2DocumentStorage } from "@/lib/ai/knowledge/storage/r2";
-import { normalizarStorageProvider } from "@/lib/ai/knowledge/storage/resolver";
+import {
+  normalizarStorageProvider,
+  providerPadraoDoConhecimento,
+} from "@/lib/ai/knowledge/storage/resolver";
 import { extractDocument } from "@/lib/ai/rag/extractors/registro";
-import { medirQualidadePdf, pdfPareceCriptografado } from "@/lib/ai/rag/extractors/pdf-classificar";
+import {
+  medirQualidadePdf,
+  pdfEstruturaLegivel,
+  pdfPareceCriptografado,
+} from "@/lib/ai/rag/extractors/pdf-classificar";
 import { DocumentExtractError, extrairPoliticaDoBuffer } from "@/lib/ai/rag/ingest/policy";
 
 const dir = join(process.cwd(), "tests/fixtures/knowledge");
@@ -34,6 +41,7 @@ describe("qualidade e classificação PDF", () => {
   it("detecta /Encrypt no buffer", () => {
     expect(pdfPareceCriptografado(fixture("pdf-protegido.pdf"))).toBe(true);
     expect(pdfPareceCriptografado(fixture("pdf-real-plataforma.pdf"))).toBe(false);
+    expect(pdfEstruturaLegivel(fixture("pdf-real-plataforma.pdf"))).toBe(true);
   });
 });
 
@@ -105,6 +113,8 @@ describe("mensagens e status", () => {
   it("não usa mais a frase genérica como único diagnóstico", () => {
     expect(mensagemDoErroDocumental("pdf_needs_ocr")).toMatch(/digitalizado/);
     expect(mensagemDoErroDocumental("pdf_encrypted")).toMatch(/senha/);
+    expect(mensagemDoErroDocumental("pdf_corrupt")).toMatch(/danificado/);
+    expect(mensagemDoErroDocumental("extract_failed")).not.toMatch(/danificado/);
     expect(mensagemDoErroDocumental("pdf_needs_ocr")).not.toBe(
       "Não foi possível encontrar texto neste documento.",
     );
@@ -150,6 +160,13 @@ describe("storage e tenant", () => {
     expect(normalizarStorageProvider("")).toBe("supabase");
     expect(normalizarStorageProvider("R2")).toBe("r2");
     expect(saudeDoConhecimento().ocr).toBe("nao_configurado");
+  });
+
+  it("R2 configurado ganha — PDF de cliente não vai para o disco da VPS", () => {
+    expect(providerPadraoDoConhecimento({ providerEnv: "supabase", r2Pronto: true })).toBe("r2");
+    expect(providerPadraoDoConhecimento({ providerEnv: "supabase", r2Pronto: false })).toBe(
+      "supabase",
+    );
   });
 
   it("R2 mock: put/get/delete no prefixo do tenant", async () => {
@@ -200,6 +217,15 @@ describe("storage e tenant", () => {
     ).rejects.toBeInstanceOf(DocumentExtractError);
     await storage.delete({ organizationId: org, key });
     expect(await storage.exists({ organizationId: org, key })).toBe(false);
+  });
+});
+
+describe("imagem de produção leva o leitor de PDF", () => {
+  it("next.config rastreia canvas e pdfjs no standalone", () => {
+    const cfg = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
+    expect(cfg).toMatch(/@napi-rs\+canvas/);
+    expect(cfg).toMatch(/pdfjs-dist/);
+    expect(cfg).toMatch(/serverExternalPackages/);
   });
 });
 

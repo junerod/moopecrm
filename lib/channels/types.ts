@@ -290,6 +290,8 @@ export interface ChannelAdapter {
     url: string;
     /** Mime declarado no webhook, quando houve. Dica, não verdade. */
     hintMime?: string | null;
+    /** Id externo da mensagem — o canal pode pedir o arquivo de novo ao aparelho. */
+    messageExternalId?: string | null;
   }): Promise<FetchedMedia>;
 
   sendTemplate?(input: ChannelTenantScope & {

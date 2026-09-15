@@ -96,4 +96,74 @@ describe("fetchWahaMedia", () => {
   it("mapeia mediaUrl malformada p/ waha_media_untrusted_host", async () => {
     await expect(fetchWahaMedia("not-a-url")).rejects.toThrow("waha_media_untrusted_host");
   });
+
+  it("404 na sessão velha tenta de novo na sessão WORKING", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([9, 8]).buffer, {
+          status: 200,
+          headers: { "content-type": "audio/ogg; codecs=opus" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const media = await fetchWahaMedia(
+      "http://localhost:3000/api/files/org_velha/ABC.oga",
+      "audio/ogg; codecs=opus",
+      "org_viva",
+    );
+    expect(media.buffer.byteLength).toBe(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${WAHA_BASE}/api/files/org_velha/ABC.oga`);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(`${WAHA_BASE}/api/files/org_viva/ABC.oga`);
+  });
+});
+
+describe("fetchWahaMediaDoAparelho", () => {
+  beforeEach(() => {
+    vi.stubEnv("WAHA_API_BASE_URL", WAHA_BASE);
+    vi.stubEnv("WAHA_API_KEY", "hash123");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("pede a mensagem com downloadMedia e baixa a URL nova", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "false_263@lid_ABC",
+            hasMedia: true,
+            media: {
+              url: "http://localhost:3000/api/files/org_viva/ABC.oga",
+              mimetype: "audio/ogg; codecs=opus",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([1, 2, 3, 4]).buffer, {
+          status: 200,
+          headers: { "content-type": "audio/ogg; codecs=opus" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { fetchWahaMediaDoAparelho } = await import("@/lib/messaging/media/waha-source");
+    const media = await fetchWahaMediaDoAparelho(
+      "org_viva",
+      "false_263@lid_ABC",
+      "audio/ogg; codecs=opus",
+    );
+    expect(media.buffer.byteLength).toBe(4);
+    const pedido = String(fetchMock.mock.calls[0]?.[0]);
+    expect(pedido).toContain("/api/org_viva/chats/");
+    expect(pedido).toContain("downloadMedia=true");
+    expect(pedido).toContain("263%40lid");
+  });
 });

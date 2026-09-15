@@ -104,6 +104,22 @@ export function ehSessaoSupersedida(
   return irmaWorkingComEsteNumero(sessao, irmas);
 }
 
+/** Se a sessão da mensagem caiu e o número vive em outra, baixa por essa. */
+export function sessaoVivaParaMidia<T extends SessaoParaClassificar>(
+  sessao: T,
+  irmas: T[],
+): T {
+  if (!ehSessaoSupersedida(sessao, irmas)) return sessao;
+  const fone = digitosDoTelefone(sessao.phone_number);
+  const viva = irmas.find(
+    (s) =>
+      s.id !== sessao.id &&
+      (s.status ?? "").toUpperCase() === "WORKING" &&
+      (!fone || digitosDoTelefone(s.phone_number) === fone),
+  );
+  return viva ?? sessao;
+}
+
 /** Caídas que a faixa do topo pode anunciar — supersedida não entra. */
 export function filtrarCaidasParaFaixa<T extends SessaoParaClassificar>(sessoes: T[]): T[] {
   return sessoes.filter((s) => {

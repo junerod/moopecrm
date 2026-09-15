@@ -1,7 +1,7 @@
 /**
  * Helpers puros da renderização de mídia no inbox (Onda 1).
  * A mídia é SEMPRE servida por /api/v1/messages/{id}/media (Onda 0) —
- * o browser segue o 302 pra signed URL; nunca usar media_url do WAHA.
+ * a rota devolve os bytes (same-origin). Nunca usar a URL crua do canal.
  */
 
 export function mediaSrc(messageId: string): string {

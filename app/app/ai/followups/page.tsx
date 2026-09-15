@@ -7,7 +7,11 @@ import type { FollowupFlowPointerRow } from "@/hooks/followup/useFollowupFlows";
 import { AppIcon } from "@/components/ds/AppIcon";
 import { PageHeader } from "@/components/ds/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ehFollowupDeSilencio } from "@/lib/negocio/followup-24h";
+import {
+  ehFollowupDeSilencio,
+  horasDoFollowup,
+  TITULO_TEMPLATE_FOLLOWUP_24H,
+} from "@/lib/negocio/followup-24h";
 import { FlowArrow } from "@/lib/ui/icons";
 
 import { FlowsList } from "./_components/FlowsList";
@@ -35,14 +39,24 @@ export default async function FollowupFlowsPage() {
 
   const flows = (data ?? []) as unknown as FollowupFlowPointerRow[];
   const canWrite = ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
-  const silencioAtivo = flows.some(
-    (f) =>
-      f.status === "active" &&
-      ehFollowupDeSilencio({
-        name: f.name,
-        status: f.status,
-        trigger_config: (f as { trigger_config?: unknown }).trigger_config,
-      }),
+  const silencio = flows.find((f) =>
+    ehFollowupDeSilencio({
+      name: f.name,
+      status: f.status,
+      trigger_config: (f as { trigger_config?: unknown }).trigger_config,
+    }),
+  );
+  const silencioAtivo = silencio?.status === "active";
+  const { data: templatePronto } = await supabase
+    .from("message_templates")
+    .select("body")
+    .eq("organization_id", activeOrg.orgId)
+    .eq("title", TITULO_TEMPLATE_FOLLOWUP_24H)
+    .maybeSingle();
+  const mensagemInicial =
+    typeof templatePronto?.body === "string" ? templatePronto.body : undefined;
+  const horasInicial = horasDoFollowup(
+    (silencio as { trigger_config?: unknown } | undefined)?.trigger_config,
   );
 
   return (
@@ -60,7 +74,12 @@ export default async function FollowupFlowsPage() {
           <TabsTrigger value="fila">Fila</TabsTrigger>
         </TabsList>
         <TabsContent value="prontas">
-          <ProntasTab jaAtivo={silencioAtivo} canWrite={canWrite} />
+          <ProntasTab
+            jaAtivo={silencioAtivo}
+            canWrite={canWrite}
+            mensagemInicial={mensagemInicial}
+            horasInicial={horasInicial}
+          />
         </TabsContent>
         <TabsContent value="minhas">
           <FlowsList initialData={flows} canWrite={canWrite} />

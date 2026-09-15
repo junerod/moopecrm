@@ -21,10 +21,45 @@ import { ackToStatus } from "@/lib/types/messaging";
 import { ehIdentificadorTecnico, ehLixoDeCanal } from "@/lib/contacts/rotulo-do-contato";
 import { nomeDoPayloadWaha, type WahaEnvelope, type WahaPayload } from "@/lib/waha/envelope";
 import { bareWaMessageId, chatIdFromWaMessageId } from "@/lib/waha/message-id";
+import { persistirMidiaDaMensagem } from "@/lib/messaging/media/persistir";
 import { logger } from "@/lib/logger";
 import { avisarConversaAbertaSeNova } from "@/lib/moope/emitir";
 
 type Admin = ReturnType<typeof createAdminClient>;
+
+/**
+ * Grava os bytes AINDA no webhook — é quando o arquivo existe.
+ * Se falhar, emite `media.persist_requested` (o worker tenta de novo).
+ * Erro aqui NÃO derruba a ingestão: a mensagem já está visível.
+ */
+async function persistirMidiaOuAgendar(
+  admin: Admin,
+  organizationId: string,
+  conversationId: string,
+  messageId: string,
+  requestId: string,
+): Promise<void> {
+  try {
+    const r = await persistirMidiaDaMensagem({ organizationId, messageId, attempts: 0 });
+    if (r.status === "ok" || r.status === "skipped") return;
+  } catch (err) {
+    logger.warn("waha.ingest: persistencia imediata falhou", {
+      organization_id: organizationId,
+      message_id: messageId,
+      detail: err instanceof Error ? err.message.slice(0, 160) : String(err),
+    });
+  }
+
+  const { error } = await admin.rpc("emit_event" as never, {
+    p_event_type: "media.persist_requested",
+    p_entity_kind: "message",
+    p_entity_id: messageId,
+    p_payload: { message_id: messageId, conversation_id: conversationId },
+    p_metadata: { source: "waha_webhook", request_id: requestId },
+    p_organization_id: organizationId,
+  } as never);
+  if (error) console.error("[waha.ingest] emit media.persist_requested failed", error.message);
+}
 
 interface Session {
   id: string;
@@ -622,22 +657,14 @@ async function handleInbound(
   //
   // Quem precisar do preview do corpo: ele está na própria linha de `messages`,
   // alcançável pelo `message_id` que o gatilho manda.
-  if (insertedMessage?.id) {
-    const inboundMessageId = insertedMessage.id;
-    if (mediaUrlOf(p)) {
-      admin
-        .rpc("emit_event" as never, {
-          p_event_type: "media.persist_requested",
-          p_entity_kind: "message",
-          p_entity_id: inboundMessageId,
-          p_payload: { message_id: inboundMessageId, conversation_id: conversationId },
-          p_metadata: { source: "waha_webhook", request_id: requestId },
-          p_organization_id: session.organization_id,
-        } as never)
-        .then(({ error }) => {
-          if (error) console.error("[waha.ingest] emit media.persist_requested failed", error.message);
-        });
-    }
+  if (insertedMessage?.id && mediaUrlOf(p)) {
+    await persistirMidiaOuAgendar(
+      admin,
+      session.organization_id,
+      conversationId,
+      insertedMessage.id,
+      requestId,
+    );
   }
 }
 
@@ -777,18 +804,13 @@ async function handleOutboundFromUserPhone(
   });
 
   if (insertedOutbound?.id && mediaUrlOf(p)) {
-    admin
-      .rpc("emit_event" as never, {
-        p_event_type: "media.persist_requested",
-        p_entity_kind: "message",
-        p_entity_id: insertedOutbound.id,
-        p_payload: { message_id: insertedOutbound.id, conversation_id: conversationId },
-        p_metadata: { source: "waha_webhook", request_id: requestId },
-        p_organization_id: session.organization_id,
-      } as never)
-      .then(({ error }) => {
-        if (error) console.error("[waha.ingest] emit media.persist_requested failed", error.message);
-      });
+    await persistirMidiaOuAgendar(
+      admin,
+      session.organization_id,
+      conversationId,
+      insertedOutbound.id,
+      requestId,
+    );
   }
 }
 

@@ -18,7 +18,7 @@ export default async function CampanhasPage() {
       <PageHeader
         icon={<AppIcon icon={Megaphone} tone="violet" size="lg" />}
         titulo="Campanhas"
-        descricao="Disparo comercial: público, conteúdo, canal e resultado."
+        descricao="Recado para várias pessoas. Passo a passo no quadro abaixo e em Como usar."
       />
       <CampanhasClient podeEnviar={podeEnviar} />
     </div>
