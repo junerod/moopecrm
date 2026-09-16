@@ -277,6 +277,7 @@ Authorization: Bearer <MOOPE_PROVISION_SECRET>
   "partner_tenant_id": "9",
   "display_name": "Locadora Norte",
   "owner_email": "dona@locadora.com",
+  "owner_password": "senha-escolhida-na-locadora",
   "partner_webhook_url": "https://frota.exemplo/api/crm/events/9",
   "partner_api_url": "https://frota.exemplo"
 }
@@ -284,6 +285,8 @@ Authorization: Bearer <MOOPE_PROVISION_SECRET>
 
 | status | significado |
 |--------|-------------|
+`owner_password` é opcional. Usuário **novo** nasce com ela (ou com a senha inicial se faltar). Conta que já existia **não** é resetada.
+
 | 201 | Tenant novo. `inbound_key` e `outbound_secret` vêm no JSON — gravar já. |
 | 200 | Já existia. Sem plaintext, a menos que `rotate_keys: true`. |
 | 401 | Segredo de provisionamento errado |

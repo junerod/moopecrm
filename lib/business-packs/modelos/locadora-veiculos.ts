@@ -49,7 +49,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
       description: "Entende a intenção, identifica lead ou cliente e encaminha.",
       is_default: true,
       collection_slugs: ["conhecimento-geral", "comercial-da-locadora"],
-      tool_ids: ["moope_lookup_locatario", "moope_get_atendimento"],
+      tool_ids: ["moope_lookup_locatario", "moope_get_atendimento", "moope_get_retrato"],
       voice:
         VOZ_BASE +
         " Você é a recepção. Entenda se é lead ou cliente, colete o mínimo (nome, período, cidade) e encaminhe. " +
@@ -60,7 +60,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
       name: "Consultor Comercial",
       description: "Qualifica interessados, registra oportunidade e avança o funil quando permitido.",
       collection_slugs: ["comercial-da-locadora", "conhecimento-geral"],
-      tool_ids: ["moope_listar_oferta"],
+      tool_ids: ["moope_lookup_locatario", "moope_listar_oferta"],
       voice:
         VOZ_BASE +
         " Você é o consultor comercial. Entenda período, datas, cidade/unidade, categoria e finalidade. " +
@@ -73,7 +73,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
       name: "Assistente Financeiro",
       description: "Orienta sobre cobrança. Valores vêm da gestão, nunca da memória.",
       collection_slugs: ["politicas-e-contratos", "conhecimento-geral"],
-      tool_ids: ["moope_lookup_locatario", "moope_get_retrato"],
+      tool_ids: ["moope_lookup_locatario", "moope_get_retrato", "moope_obter_segunda_via", "moope_consultar_financeiro"],
       voice:
         VOZ_BASE +
         " Você é o assistente financeiro. Valor, vencimento, status e boleto são dados operacionais. " +
@@ -85,7 +85,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
       name: "Assistente de Disponibilidade",
       description: "Consulta frota quando a gestão existir; senão coleta o pedido.",
       collection_slugs: ["comercial-da-locadora", "conhecimento-geral"],
-      tool_ids: ["moope_listar_oferta"],
+      tool_ids: ["moope_listar_oferta", "moope_consultar_disponibilidade"],
       voice:
         VOZ_BASE +
         " Você consulta disponibilidade. Nunca afirme estoque sem consulta real. " +
@@ -107,7 +107,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
       name: "Relacionamento",
       description: "Leads parados, clientes antigos e follow-up — sem disparar campanha sozinho.",
       collection_slugs: ["comercial-da-locadora", "conhecimento-geral"],
-      tool_ids: [],
+      tool_ids: ["moope_lookup_locatario", "moope_get_retrato"],
       voice:
         VOZ_BASE +
         " Você cuida de reativação e relacionamento. Não dispare campanha sem configuração e consentimento. " +

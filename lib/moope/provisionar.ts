@@ -24,6 +24,8 @@ export type PedidoDeProvisionamento = {
   partner_tenant_id: string;
   display_name: string;
   owner_email: string;
+  /** Senha escolhida na locadora. Sem isto, cai na senha inicial. Conta já existente não é resetada. */
+  owner_password?: string | null;
   partner_webhook_url?: string | null;
   partner_api_url?: string | null;
   rotate_keys?: boolean;
@@ -274,11 +276,12 @@ async function garantirDonoEPerfil(
   orgId: string,
   pedido: PedidoDeProvisionamento,
 ): Promise<{ criadoAgora: boolean; senhaDefinidaAqui: boolean; userId: string }> {
+  const senhaPedida = pedido.owner_password?.trim() ?? "";
   const dono = await provisionarDonoDoTenant(admin, {
     orgId,
     orgName: pedido.display_name.trim(),
     email: pedido.owner_email,
-    senha: SENHA_INICIAL_LOCADORA,
+    senha: senhaPedida.length >= 8 ? senhaPedida : SENHA_INICIAL_LOCADORA,
   });
   try {
     const definition = resolverDefinition("locacao", "veiculos");

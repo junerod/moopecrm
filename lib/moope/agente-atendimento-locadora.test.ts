@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   NOME_AGENTE_ATENDIMENTO_LOCADORA,
   promptEhPadraoDeLoja,
+  toolIdsDoConversadorLocadora,
+  TOOLS_MOOPE_NO_WHATSAPP,
   VOZ_ATENDIMENTO_LOCADORA,
 } from "@/lib/moope/agente-atendimento-locadora";
 
@@ -29,6 +31,7 @@ vi.mock("@/lib/ai/agents/capacidades-padrao", () => ({
   ],
 }));
 
+import { TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
 import { listSelectableChannels } from "@/lib/channels/selectable";
 import { carregarConexaoLocadora } from "@/lib/moope/cliente-locadora";
 import { garantirAgenteAtendimentoLocadora } from "@/lib/moope/agente-atendimento-locadora";
@@ -126,6 +129,16 @@ function adminDeMemoria(estado: {
   };
   return { from: abrir };
 }
+
+describe("tools do WhatsApp da locadora", () => {
+  it("o conversador leva as tools da gestão, não só o pacote atender", () => {
+    const ids = toolIdsDoConversadorLocadora();
+    for (const id of TOOLS_MOOPE_NO_WHATSAPP) {
+      expect(ids, id).toContain(id);
+    }
+    expect(ids.length).toBeLessThanOrEqual(TETO_TOOLS_POR_AGENTE);
+  });
+});
 
 describe("voz do agente", () => {
   it("texto de loja do onboarding é o que se adapta", () => {

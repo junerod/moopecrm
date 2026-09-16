@@ -2,13 +2,17 @@
  * GET /api/v1/integrations/moope/entrar?t=
  *
  * Troca o token de 90s por sessão. Não cria usuário.
+ * Sucesso devolve HTML neste domínio (não 302) — ver continuar-launch.ts.
  */
+import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { env } from "@/lib/env";
 import { emailEMembro } from "@/lib/moope/auth";
+import { htmlParaContinuarLaunch } from "@/lib/moope/continuar-launch";
 import { verificarLaunch } from "@/lib/moope/launch";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cookieSecure } from "@/lib/supabase/cookie-secure";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -40,5 +44,20 @@ export async function GET(req: NextRequest): Promise<Response> {
   });
   if (otpErr) return ir("/login?error=link_invalido");
 
-  return ir(payload.path);
+  const jar = await cookies();
+  jar.set("active_org", payload.orgId, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: cookieSecure(),
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
+  return new NextResponse(htmlParaContinuarLaunch(payload.path), {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
 }

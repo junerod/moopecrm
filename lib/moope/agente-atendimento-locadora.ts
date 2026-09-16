@@ -11,7 +11,7 @@ import { listSelectableChannels } from "@/lib/channels/selectable";
 import { escolherModeloDoProvedor } from "@/lib/ai/agents/escolher-modelo";
 import { chaveDePlataforma } from "@/lib/ai/runtime/agent";
 import { catalogoComHandler } from "@/lib/ai/agents/capacidades-padrao";
-import { ligarPacote } from "@/lib/mcp/tools/selecao-por-pacote";
+import { ligarPacote, TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
 import { TOOLS_IDS_OPERADOR_LOCADORA } from "@/lib/mcp/tools/locadora";
 import { carregarConexaoLocadora } from "@/lib/moope/cliente-locadora";
 
@@ -53,8 +53,28 @@ export function promptEhPadraoDeLoja(prompt: string | null | undefined): boolean
   return prompt.startsWith("Você atende os clientes de");
 }
 
+/**
+ * O WhatsApp lê a gestão. Estas tools existiam só no copiloto humano
+ * (`operator_tool_ids`) e no pacote "organizar" — o conversador ligava
+ * só "atender" e o prompt pedia `moope_get_retrato` que o turno não tinha.
+ */
+export const TOOLS_MOOPE_NO_WHATSAPP = [
+  "moope_lookup_locatario",
+  "moope_get_atendimento",
+  "moope_get_retrato",
+  "moope_lookup_investidor",
+  "moope_get_retrato_investidor",
+  "moope_listar_oferta",
+  "moope_obter_segunda_via",
+  "moope_consultar_financeiro",
+] as const;
+
 export function toolIdsDoConversadorLocadora(): string[] {
-  return ligarPacote([], catalogoComHandler(), "atender");
+  const atender = ligarPacote([], catalogoComHandler(), "atender");
+  return [...new Set([...TOOLS_MOOPE_NO_WHATSAPP, ...atender])].slice(
+    0,
+    TETO_TOOLS_POR_AGENTE,
+  );
 }
 
 async function funisDaLocadora(admin: SupabaseClient, orgId: string): Promise<string[]> {
