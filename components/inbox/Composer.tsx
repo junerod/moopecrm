@@ -315,91 +315,48 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             </button>
           </div>
         )}
-        <div className="flex items-end gap-2">
-          {mode === "reply" && (
-            <AttachMenu
-              disabled={respostaBarrada}
-              onPick={setPendingFile}
-              onPickContact={() => setContactPickerOpen(true)}
-            />
-          )}
-          {mode === "reply" && (
-            <DraftReplyButton conversationId={conversationId} disabled={isDisabled} onDraft={applyDraft} />
-          )}
-          {mode === "reply" && (
-            <button
-              type="button"
-              data-testid="quick-replies"
-              className="shrink-0 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
-              onClick={() => {
-                setQuickOpen((v) => !v);
-                setQuickQuery("");
-                setMenuDismissed(true);
-              }}
-              title="Respostas rápidas — também dá para digitar /"
-            >
-              Respostas rápidas
-            </button>
-          )}
-          <EmojiButton
-            disabled={isDisabled}
-            onPick={(emoji) => {
-              const ta = taRef.current;
-              if (!ta) {
-                setText((t) => t + emoji);
-                return;
-              }
-              const start = ta.selectionStart ?? text.length;
-              const end = ta.selectionEnd ?? text.length;
-              const next = text.slice(0, start) + emoji + text.slice(end);
-              setText(next);
-              requestAnimationFrame(() => {
-                ta.focus();
-                ta.selectionStart = ta.selectionEnd = start + emoji.length;
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={taRef}
+              data-testid="inbox-composer"
+              value={text}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (deveReabrirMenuSlash(text, next)) setMenuDismissed(false);
+                setText(next);
                 autoresize();
-              });
-            }}
-          />
-          <textarea
-            ref={taRef}
-            data-testid="inbox-composer"
-            value={text}
-            onChange={(e) => {
-              const next = e.target.value;
-              if (deveReabrirMenuSlash(text, next)) setMenuDismissed(false);
-              setText(next);
-              autoresize();
-            }}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            rows={1}
-            // O atalho saiu do placeholder e foi para o diálogo de atalhos (`?`)
-            // e para o `title` aqui. Dois motivos, nesta ordem: ele some assim
-            // que se digita a primeira letra — isto é, some justamente quando
-            // você ia quebrar linha —; e, com a coluna do inbox mais estreita
-            // depois do conserto do layout, a frase quebrava em duas linhas
-            // dentro de um campo de uma linha só.
-            //
-            // "(só o time vê)" FICA: não é atalho, é consequência. Quem escreve
-            // uma nota interna precisa saber que ela não vai para o cliente, e
-            // essa informação não pode depender de abrir um diálogo.
-            placeholder={
-              mode === "note" ? t("Escreva uma nota interna… (só o time vê)") : t("Escreva uma mensagem…")
-            }
-            title={
-              mode === "note"
-                ? "Enter salva a nota · Shift+Enter quebra linha"
-                : "Enter envia · Shift+Enter quebra linha"
-            }
-            className={cn(
-              "min-h-9 max-h-40 flex-1 resize-none rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm shadow-[var(--shadow-sm)]",
-              "placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)]",
-              mode === "note" && "bg-[var(--color-surface)]",
-            )}
-            disabled={mode === "note" ? isDisabled : respostaBarrada}
-            aria-label="Mensagem"
-          />
-          {text.trim() || mode === "note" ? (
+              }}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              rows={1}
+              enterKeyHint="send"
+              // O atalho saiu do placeholder e foi para o diálogo de atalhos (`?`)
+              // e para o `title` aqui. Dois motivos, nesta ordem: ele some assim
+              // que se digita a primeira letra — isto é, some justamente quando
+              // você ia quebrar linha —; e, com a coluna do inbox mais estreita
+              // depois do conserto do layout, a frase quebrava em duas linhas
+              // dentro de um campo de uma linha só.
+              //
+              // "(só o time vê)" FICA: não é atalho, é consequência. Quem escreve
+              // uma nota interna precisa saber que ela não vai para o cliente, e
+              // essa informação não pode depender de abrir um diálogo.
+              placeholder={
+                mode === "note" ? t("Escreva uma nota interna… (só o time vê)") : t("Escreva uma mensagem…")
+              }
+              title={
+                mode === "note"
+                  ? "Enter salva a nota · Shift+Enter quebra linha · no celular use Enviar"
+                  : "Enter envia · Shift+Enter quebra linha · no celular use Enviar"
+              }
+              className={cn(
+                "min-h-9 max-h-40 min-w-0 flex-1 resize-none rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm shadow-[var(--shadow-sm)]",
+                "placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)]",
+                mode === "note" && "bg-[var(--color-surface)]",
+              )}
+              disabled={mode === "note" ? isDisabled : respostaBarrada}
+              aria-label="Mensagem"
+            />
             <Button
               type="button"
               size="icon"
@@ -407,13 +364,61 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               data-testid="inbox-enviar"
               onClick={handleSubmit}
               disabled={(mode === "note" ? isDisabled : respostaBarrada) || !text.trim()}
-              aria-label="Enviar"
+              aria-label={t("Enviar")}
             >
               <PaperPlaneTilt size={16} weight="fill" aria-hidden />
             </Button>
-          ) : (
-            <AudioRecorder conversationId={conversationId} disabled={respostaBarrada} />
-          )}
+          </div>
+          <div className="flex items-center gap-1">
+            {mode === "reply" && (
+              <AttachMenu
+                disabled={respostaBarrada}
+                onPick={setPendingFile}
+                onPickContact={() => setContactPickerOpen(true)}
+              />
+            )}
+            {mode === "reply" && (
+              <DraftReplyButton conversationId={conversationId} disabled={isDisabled} onDraft={applyDraft} />
+            )}
+            {mode === "reply" && (
+              <button
+                type="button"
+                data-testid="quick-replies"
+                className="shrink-0 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => {
+                  setQuickOpen((v) => !v);
+                  setQuickQuery("");
+                  setMenuDismissed(true);
+                }}
+                title="Respostas rápidas — também dá para digitar /"
+              >
+                <span className="sm:hidden">/</span>
+                <span className="hidden sm:inline">Respostas rápidas</span>
+              </button>
+            )}
+            <EmojiButton
+              disabled={isDisabled}
+              onPick={(emoji) => {
+                const ta = taRef.current;
+                if (!ta) {
+                  setText((t) => t + emoji);
+                  return;
+                }
+                const start = ta.selectionStart ?? text.length;
+                const end = ta.selectionEnd ?? text.length;
+                const next = text.slice(0, start) + emoji + text.slice(end);
+                setText(next);
+                requestAnimationFrame(() => {
+                  ta.focus();
+                  ta.selectionStart = ta.selectionEnd = start + emoji.length;
+                  autoresize();
+                });
+              }}
+            />
+            {mode === "reply" && !text.trim() ? (
+              <AudioRecorder conversationId={conversationId} disabled={respostaBarrada} />
+            ) : null}
+          </div>
         </div>
       </div>
       <AttachmentPreviewDialog
