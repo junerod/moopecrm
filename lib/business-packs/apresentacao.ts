@@ -177,6 +177,7 @@ export function resumoDoPack(definition: BusinessPackDefinition) {
     etapas: definition.pipeline.etapas.length,
     colecoes: definition.collections.length,
     automacoes: definition.automations.length,
+    fluxos: definition.followups.length,
     respostas: definition.quick_replies.length,
     campanhas: definition.campaigns.length,
   };
@@ -201,6 +202,11 @@ export function detalhesDoPack(definition: BusinessPackDefinition) {
       key: a.key,
       name: a.name,
       precisaGestao: Boolean(a.requires_gestao),
+    })),
+    fluxos: definition.followups.map((f) => ({
+      key: f.key,
+      name: f.name,
+      description: f.description,
     })),
     respostas: definition.quick_replies.map((q) => q.title),
     campanhas: definition.campaigns.map((c) => c.title),

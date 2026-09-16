@@ -1,10 +1,68 @@
-import type { PackAutomationSeed, PackCampaignSeed, PackQuickReplySeed } from "@/lib/business-packs/tipos";
+import type {
+  PackAutomationSeed,
+  PackCampaignSeed,
+  PackFollowupSeed,
+  PackQuickReplySeed,
+} from "@/lib/business-packs/tipos";
 
-export function automacoesPadraoDoPack(): PackAutomationSeed[] {
+/** Rótulos do funil — o runtime não lê o id do Pack. */
+export type VocabularioDeFluxo = {
+  quem: string;
+  proposta: string;
+  agendamento: string;
+  ganho: string;
+};
+
+export function tituloDoTemplateDoFluxo(key: string): string {
+  return `pack-fluxo:${key}`;
+}
+
+export function fluxosProntosDoPack(v: VocabularioDeFluxo): PackFollowupSeed[] {
+  return [
+    {
+      key: "silencio-2h",
+      name: "Novo contato sem resposta — 2 horas",
+      description: "Se o time não responder, o sistema manda este recado. Se a pessoa responder, para.",
+      kind: "silence",
+      threshold_minutes: 120,
+      message: `Olá. Recebemos sua mensagem ${v.quem}. Em breve uma pessoa do time continua com você.`,
+    },
+    {
+      key: "apos-proposta",
+      name: `Follow-up depois de ${v.proposta}`,
+      description: "Quando o card entra nessa etapa, espera e pergunta se deu para avaliar.",
+      kind: "stage_change",
+      stage_name: v.proposta,
+      wait_minutes: 120,
+      message: "Olá. Conseguiu olhar as condições que enviamos? Qualquer dúvida, respondo por aqui.",
+    },
+    {
+      key: "lembrete-agenda",
+      name: `Confirmação de ${v.agendamento}`,
+      description: "Quando o card entra nessa etapa, confirma o horário com o texto que você editar.",
+      kind: "stage_change",
+      stage_name: v.agendamento,
+      wait_minutes: 30,
+      message: "Olá. Confirmando seu horário. Se precisar remarcar, é só responder esta mensagem.",
+    },
+    {
+      key: "satisfacao",
+      name: `Pesquisa depois de ${v.ganho}`,
+      description: "Quando o negócio fecha, pede um retorno simples. Sem nota, sem diagnóstico.",
+      kind: "stage_change",
+      stage_name: v.ganho,
+      wait_minutes: 120,
+      message: `Olá. Como foi sua experiência ${v.quem}? Sua resposta nos ajuda a melhorar.`,
+    },
+  ];
+}
+
+export function automacoesPadraoDoPack(v?: Partial<VocabularioDeFluxo>): PackAutomationSeed[] {
   return [
     {
       key: "lead-sem-resposta",
       name: "Novo lead sem resposta humana",
+      description: "Marca o contato novo que ainda não teve retorno do time.",
       trigger_event: "message.received",
       followup_minutes: 120,
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
@@ -12,43 +70,55 @@ export function automacoesPadraoDoPack(): PackAutomationSeed[] {
     {
       key: "followup-proposta",
       name: "Follow-up de proposta",
+      description: "Marca quem entrou na etapa de proposta ou orçamento.",
       trigger_event: "lead.stage_changed",
+      stage_name: v?.proposta,
       actions: [{ type: "add_tag", config: { tags: ["proposta_enviada"] } }],
     },
     {
       key: "lembrete",
       name: "Lembrete de retorno",
+      description: "Marca quem entrou na etapa de agenda ou confirmação.",
       trigger_event: "lead.stage_changed",
+      stage_name: v?.agendamento,
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
     },
     {
       key: "documento-pendente",
       name: "Documento pendente",
+      description: "Marca o contato novo para o time pedir o que falta.",
       trigger_event: "lead.created",
       actions: [{ type: "add_tag", config: { tags: ["documentos_pendentes"] } }],
     },
     {
       key: "reativacao",
       name: "Reativação de contato",
+      description: "Marca contato novo que voltou depois de um tempo.",
       trigger_event: "lead.created",
       actions: [{ type: "add_tag", config: { tags: ["reativar"] } }],
     },
     {
       key: "satisfacao",
       name: "Pesquisa de satisfação",
+      description: "Marca quem chegou na etapa de ganho para o time pedir retorno.",
       trigger_event: "lead.stage_changed",
+      stage_name: v?.ganho,
       actions: [{ type: "add_tag", config: { tags: ["cliente"] } }],
     },
     {
       key: "followup-consulta",
       name: "Follow-up após atendimento",
+      description: "Marca quem passou da etapa de atendimento para o retorno.",
       trigger_event: "lead.stage_changed",
+      stage_name: v?.agendamento,
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
     },
     {
       key: "retorno-agendado",
       name: "Retorno agendado",
+      description: "Marca quem ficou de voltar.",
       trigger_event: "lead.stage_changed",
+      stage_name: v?.ganho,
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
     },
   ];

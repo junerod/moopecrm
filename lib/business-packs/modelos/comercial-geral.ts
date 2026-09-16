@@ -1,4 +1,9 @@
-import { automacoesPadraoDoPack, campanhasPadrao, respostasPadrao } from "@/lib/business-packs/sementes";
+import {
+  automacoesPadraoDoPack,
+  campanhasPadrao,
+  fluxosProntosDoPack,
+  respostasPadrao,
+} from "@/lib/business-packs/sementes";
 import type { BusinessPackDefinition } from "@/lib/business-packs/tipos";
 import { DEFINITION_COMERCIAL } from "@/lib/ready-models/modelos/comercial";
 
@@ -96,7 +101,17 @@ export const PACK_COMERCIAL_GERAL: BusinessPackDefinition = {
     { name: "followup", description: "Retorno.", examples: ["conseguiu ver a proposta"], keywords: ["proposta", "faz tempo"], specialty_key: "relacionamento" },
   ],
   quick_replies: respostasPadrao("comercial"),
-  automations: automacoesPadraoDoPack(),
+  automations: automacoesPadraoDoPack({
+    proposta: "Proposta enviada",
+    agendamento: "Aguardando fechamento",
+    ganho: "Fechado",
+  }),
+  followups: fluxosProntosDoPack({
+    quem: "comercial",
+    proposta: "Proposta enviada",
+    agendamento: "Aguardando fechamento",
+    ganho: "Fechado",
+  }),
   campaigns: campanhasPadrao("da loja"),
   capabilities: [
     { key: "clientes", label: "Clientes", tool_id: null, read: false, write: false },

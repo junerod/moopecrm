@@ -70,6 +70,7 @@ export default async function DetalheDoModeloPage({
         assistentes={detalhes.assistentes}
         colecoes={detalhes.colecoes}
         automacoes={detalhes.automacoes}
+        fluxos={detalhes.fluxos}
         respostas={detalhes.respostas}
         campanhas={detalhes.campanhas}
         podeInstalar={user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin}

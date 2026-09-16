@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AppIcon } from "@/components/ds/AppIcon";
 import { StatusBadge } from "@/components/ds/StatusBadge";
 import { ChecklistPosAtivacao } from "@/components/negocio/ChecklistPosAtivacao";
+import { FluxosProntosDoPack, type FluxoProntoNaTela } from "@/components/negocio/FluxosProntosDoPack";
 import { instalarPack, mudarEstadoDoPack } from "@/components/negocio/acoes-do-pack";
 import { Button } from "@/components/ui/button";
 import type { ChecklistDoPack } from "@/lib/business-packs/checklist";
@@ -27,6 +28,8 @@ export function MeuModeloClient(props: {
   packLabel: string;
   checklist: ChecklistDoPack;
   podeInstalar: boolean;
+  podeEscrever: boolean;
+  fluxos: FluxoProntoNaTela[];
   cards: CardOperacao[];
 }) {
   const router = useRouter();
@@ -82,6 +85,10 @@ export function MeuModeloClient(props: {
       </header>
 
       <ChecklistPosAtivacao checklist={props.checklist} />
+
+      {props.fluxos.length > 0 ? (
+        <FluxosProntosDoPack fluxos={props.fluxos} canWrite={props.podeEscrever} />
+      ) : null}
 
       <section>
         <h3 className="text-sm font-semibold">Resumo da operação</h3>

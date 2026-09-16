@@ -9,7 +9,7 @@ const ATALHOS_DO_PACK = [
   { href: "/app/ai/agents", label: "Ver assistentes" },
   { href: "/app/kanban", label: "Abrir funil" },
   { href: "/app/ai/knowledge/sources", label: "Adicionar conhecimento" },
-  { href: "/app/ai/followups", label: "Ver automações" },
+  { href: "/app/meu-modelo#fluxos-prontos", label: "Ver fluxos prontos" },
   { href: "/app/campanhas/nova", label: "Criar campanha" },
 ];
 

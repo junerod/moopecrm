@@ -139,6 +139,17 @@ describe("checklist pós-ativação", () => {
     expect(ok?.itens.find((i) => i.id === "assistentes")?.status).toBe("2 de 2 publicados");
   });
 
+  it("fluxo pronto ligado conta como automação do checklist", () => {
+    const FLUXO = "66666666-6666-4666-8666-666666666666";
+    const c = montarChecklistDoPack({
+      pack: packAtivo(artifacts({ followup_keys: { silencio: FLUXO } })),
+      ...vazio,
+      fluxos: [{ id: FLUXO, status: "active" }],
+    });
+    expect(c?.itens.find((i) => i.id === "automacao")?.feito).toBe(true);
+    expect(c?.itens.find((i) => i.id === "automacao")?.href).toBe("/app/meu-modelo#fluxos-prontos");
+  });
+
   it("automação do Pack desligada não conta; uma ligada conta", () => {
     const nenhuma = montarChecklistDoPack({
       pack: packAtivo(),

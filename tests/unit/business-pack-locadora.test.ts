@@ -58,6 +58,7 @@ function adminDePack(opts?: {
   agentes?: Array<{ id: string; name: string }>;
   templates?: Array<{ id: string; title: string }>;
   regras?: Array<{ id: string; name: string }>;
+  fluxos?: Array<{ id: string; name: string }>;
 }) {
   const inserts: Array<{ tabela: string; row: Record<string, unknown> }> = [];
   const updates: Array<{ tabela: string; row: Record<string, unknown> }> = [];
@@ -65,6 +66,7 @@ function adminDePack(opts?: {
   const agentes = [...(opts?.agentes ?? [])];
   const templates = [...(opts?.templates ?? [])];
   const regras = [...(opts?.regras ?? [])];
+  const fluxos = [...(opts?.fluxos ?? [])];
   let seq = 1;
 
   return {
@@ -89,6 +91,7 @@ function adminDePack(opts?: {
         if (tabela === "ai_agents") return filtravel(agentes);
         if (tabela === "message_templates") return filtravel(templates);
         if (tabela === "automation_rules") return filtravel(regras);
+        if (tabela === "followup_flow_pointers") return filtravel(fluxos);
         return thenable(null);
       },
       update: (row: Record<string, unknown>) => {
@@ -104,6 +107,7 @@ function adminDePack(opts?: {
         if (tabela === "ai_agents") agentes.push({ id, name: String(row.name ?? "") });
         if (tabela === "message_templates") templates.push({ id, title: String(row.title ?? "") });
         if (tabela === "automation_rules") regras.push({ id, name: String(row.name ?? "") });
+        if (tabela === "followup_flow_pointers") fluxos.push({ id, name: String(row.name ?? "") });
         return Object.assign(thenable({ id }), { select: () => thenable({ id }) });
       },
     }),
@@ -317,6 +321,15 @@ describe("instalador", () => {
     );
     expect(regras.length).toBeGreaterThan(0);
     expect(regras.every((r) => r.row.is_active === false)).toBe(true);
+  });
+
+  it("fluxos prontos nascem em rascunho — silêncio não precisa de etapa", async () => {
+    const db = adminDePack();
+    await aplicarBusinessPack(db as never, "org-a", "locadora_veiculos");
+    const fluxos = db.inserts.filter((i) => i.tabela === "followup_flow_pointers");
+    expect(fluxos.length).toBeGreaterThan(0);
+    expect(fluxos.every((f) => f.row.status === "draft")).toBe(true);
+    expect(fluxos.some((f) => String(f.row.name).includes("2 horas"))).toBe(true);
   });
 
   it("não grava automação de boleto sem tool de gestão", async () => {

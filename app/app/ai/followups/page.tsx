@@ -7,6 +7,11 @@ import type { FollowupFlowPointerRow } from "@/hooks/followup/useFollowupFlows";
 import { AppIcon } from "@/components/ds/AppIcon";
 import { PageHeader } from "@/components/ds/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { packEstaAtivo } from "@/lib/business-packs/apresentacao";
+import { resolverPack } from "@/lib/business-packs/catalogo";
+import { lerPackGravado } from "@/lib/business-packs/perfil";
+import { tituloDoTemplateDoFluxo } from "@/lib/business-packs/sementes";
+import { montarFluxosNaTela } from "@/lib/negocio/fluxos-do-pack";
 import {
   ehFollowupDeSilencio,
   horasDoFollowup,
@@ -59,6 +64,41 @@ export default async function FollowupFlowsPage() {
     (silencio as { trigger_config?: unknown } | undefined)?.trigger_config,
   );
 
+  const { data: orgRow } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", activeOrg.orgId)
+    .maybeSingle();
+  const pack = lerPackGravado(orgRow?.settings);
+  const definition = pack && packEstaAtivo(pack) ? resolverPack(pack.id) : null;
+  let fluxosDoPack: ReturnType<typeof montarFluxosNaTela> = [];
+  if (definition && pack) {
+    const fluxoIds = Object.values(pack.artifacts.followup_keys);
+    const titulos = definition.followups.map((f) => tituloDoTemplateDoFluxo(f.key));
+    const [pointersPack, templatesPack] = await Promise.all([
+      fluxoIds.length
+        ? supabase
+            .from("followup_flow_pointers")
+            .select("id, status")
+            .eq("organization_id", activeOrg.orgId)
+            .in("id", fluxoIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; status: string | null }> }),
+      titulos.length
+        ? supabase
+            .from("message_templates")
+            .select("title, body")
+            .eq("organization_id", activeOrg.orgId)
+            .in("title", titulos)
+        : Promise.resolve({ data: [] as Array<{ title: string | null; body: string | null }> }),
+    ]);
+    fluxosDoPack = montarFluxosNaTela(
+      definition,
+      pack.artifacts,
+      pointersPack.data ?? [],
+      templatesPack.data ?? [],
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
       <PageHeader
@@ -79,6 +119,7 @@ export default async function FollowupFlowsPage() {
             canWrite={canWrite}
             mensagemInicial={mensagemInicial}
             horasInicial={horasInicial}
+            fluxosDoPack={fluxosDoPack}
           />
         </TabsContent>
         <TabsContent value="minhas">

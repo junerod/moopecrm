@@ -54,11 +54,30 @@ export interface PackQuickReplySeed {
 export interface PackAutomationSeed {
   key: string;
   name: string;
+  /** Frase para o leigo — o que acontece se ligar. */
+  description?: string;
   /** Se true, só aparece na UI — o motor não tem dado operacional. */
   requires_gestao?: boolean;
   trigger_event?: "lead.created" | "lead.stage_changed" | "message.received";
+  /** Casa com `crm_stages.name` no funil do Pack. Instalador vira `lead.stage_id`. */
+  stage_name?: string;
   actions?: Array<{ type: "add_tag"; config: { tags: string[] } }>;
   followup_minutes?: number;
+}
+
+/** Fluxo de follow-up pronto — mensagem + gatilho. Nasce rascunho. */
+export interface PackFollowupSeed {
+  key: string;
+  name: string;
+  description: string;
+  kind: "silence" | "stage_change";
+  /** Silêncio, em minutos (5–10080). */
+  threshold_minutes?: number;
+  /** `crm_stages.name` do funil do Pack. */
+  stage_name?: string;
+  /** Espera depois da etapa, em minutos. Piso do motor: 5. */
+  wait_minutes?: number;
+  message: string;
 }
 
 export interface PackCampaignSeed {
@@ -91,6 +110,7 @@ export interface BusinessPackDefinition {
   intents: PackIntentSeed[];
   quick_replies: PackQuickReplySeed[];
   automations: PackAutomationSeed[];
+  followups: PackFollowupSeed[];
   campaigns: PackCampaignSeed[];
   capabilities: PackCapabilitySlot[];
   ai_mode_default: Extract<AiMode, "copilot" | "controlled">;
@@ -140,5 +160,6 @@ export type ResultadoDoPack =
         templates: number;
         automacoes: number;
         campanhas: number;
+        fluxos: number;
       };
     };

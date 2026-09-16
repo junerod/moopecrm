@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FluxosProntosDoPack, type FluxoProntoNaTela } from "@/components/negocio/FluxosProntosDoPack";
 import {
   MENSAGEM_FOLLOWUP_24H,
   MINUTOS_FOLLOWUP_24H,
@@ -19,11 +20,13 @@ export function ProntasTab({
   canWrite,
   mensagemInicial,
   horasInicial,
+  fluxosDoPack = [],
 }: {
   jaAtivo: boolean;
   canWrite: boolean;
   mensagemInicial?: string;
   horasInicial?: number;
+  fluxosDoPack?: FluxoProntoNaTela[];
 }) {
   const [ativo, setAtivo] = useState(jaAtivo);
   const [enviando, setEnviando] = useState(false);
@@ -62,9 +65,11 @@ export function ProntasTab({
     }
   }
 
+  const algumPackAtivo = fluxosDoPack.some((f) => f.ativo);
+
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {!ativo && canWrite ? (
+      {!ativo && !algumPackAtivo && canWrite ? (
         <div className="md:col-span-2">
           <ProximoPasso
             titulo="Nenhuma automação ligada"
@@ -122,6 +127,11 @@ export function ProntasTab({
           </Button>
         ) : null}
       </Card>
+      {fluxosDoPack.length > 0 ? (
+        <div className="md:col-span-2">
+          <FluxosProntosDoPack fluxos={fluxosDoPack} canWrite={canWrite} />
+        </div>
+      ) : null}
     </div>
   );
 }

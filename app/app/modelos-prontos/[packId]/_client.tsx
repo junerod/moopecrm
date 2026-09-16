@@ -13,6 +13,7 @@ import { visualDoPack } from "@/lib/business-packs/visual";
 
 type Assistente = { key: string; name: string; oQueFaz: string; principal: boolean };
 type Automacao = { key: string; name: string; precisaGestao: boolean };
+type Fluxo = { key: string; name: string; description: string };
 
 export function DetalheDoModeloClient(props: {
   packId: string;
@@ -23,6 +24,7 @@ export function DetalheDoModeloClient(props: {
   assistentes: Assistente[];
   colecoes: Array<{ slug: string; name: string }>;
   automacoes: Automacao[];
+  fluxos: Fluxo[];
   respostas: string[];
   campanhas: string[];
   podeInstalar: boolean;
@@ -84,6 +86,7 @@ export function DetalheDoModeloClient(props: {
           <li>1 funil — {props.etapas.length} etapas</li>
           <li>{props.colecoes.length} pastas de conhecimento</li>
           <li>{props.automacoes.length} automações</li>
+          <li>{props.fluxos.length} fluxos prontos</li>
           <li>{props.respostas.length} respostas rápidas</li>
           <li>{props.campanhas.length} campanhas</li>
         </ul>
@@ -137,6 +140,20 @@ export function DetalheDoModeloClient(props: {
             <ul className="mt-2 space-y-1 text-sm text-[var(--color-text-muted)]">
               {props.automacoes.map((a) => (
                 <li key={a.key}>{a.name}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Fluxos prontos</p>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+              Atendimento, proposta, agenda e satisfação — com texto para você editar. Ligam só quando você clicar.
+            </p>
+            <ul className="mt-2 space-y-2 text-sm" data-testid="lista-fluxos-do-modelo">
+              {props.fluxos.map((f) => (
+                <li key={f.key}>
+                  <p className="font-medium">{f.name}</p>
+                  <p className="text-[var(--color-text-muted)]">{f.description}</p>
+                </li>
               ))}
             </ul>
           </div>

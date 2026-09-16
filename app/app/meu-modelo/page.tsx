@@ -12,6 +12,8 @@ import { packEstaAtivo, resumoDoPack } from "@/lib/business-packs/apresentacao";
 import { carregarChecklistDoPack } from "@/lib/business-packs/checklist";
 import { resolverPack } from "@/lib/business-packs/catalogo";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
+import { tituloDoTemplateDoFluxo } from "@/lib/business-packs/sementes";
+import { montarFluxosNaTela } from "@/lib/negocio/fluxos-do-pack";
 import { createClient } from "@/lib/supabase/server";
 import { Storefront } from "@/lib/ui/icons";
 
@@ -42,8 +44,10 @@ export default async function MeuModeloPage() {
   const resumo = resumoDoPack(definition);
   const agentIds = Object.values(pack.artifacts.agent_keys);
   const autoIds = Object.values(pack.artifacts.automation_keys);
+  const fluxoIds = Object.values(pack.artifacts.followup_keys);
+  const titulosFluxo = definition.followups.map((f) => tituloDoTemplateDoFluxo(f.key));
 
-  const [agentes, fontes, autos] = await Promise.all([
+  const [agentes, fontes, autos, pointers, templatesFluxo] = await Promise.all([
     agentIds.length
       ? supabase
           .from("ai_agents")
@@ -59,12 +63,34 @@ export default async function MeuModeloPage() {
     autoIds.length
       ? supabase.from("automation_rules").select("id, is_active").eq("organization_id", activeOrg.orgId).in("id", autoIds)
       : Promise.resolve({ data: [] as Array<{ is_active: boolean | null }> }),
+    fluxoIds.length
+      ? supabase
+          .from("followup_flow_pointers")
+          .select("id, status")
+          .eq("organization_id", activeOrg.orgId)
+          .in("id", fluxoIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; status: string | null }> }),
+    titulosFluxo.length
+      ? supabase
+          .from("message_templates")
+          .select("title, body")
+          .eq("organization_id", activeOrg.orgId)
+          .in("title", titulosFluxo)
+      : Promise.resolve({ data: [] as Array<{ title: string | null; body: string | null }> }),
   ]);
 
   const configurados = agentes.data?.length ?? 0;
   const publicados = (agentes.data ?? []).filter((a) => Boolean(a.published_version_id)).length;
   const materiais = (fontes.data ?? []).filter((f) => f.is_active !== false && (f.status ?? "ready") !== "archived").length;
-  const ativas = (autos.data ?? []).filter((a) => a.is_active === true).length;
+  const regrasAtivas = (autos.data ?? []).filter((a) => a.is_active === true).length;
+  const fluxos = montarFluxosNaTela(
+    definition,
+    pack.artifacts,
+    pointers.data ?? [],
+    templatesFluxo.data ?? [],
+  );
+  const fluxosAtivos = fluxos.filter((f) => f.ativo).length;
+  const ativas = regrasAtivas + fluxosAtivos;
 
   return (
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-6 overflow-y-auto p-6">
@@ -92,6 +118,8 @@ export default async function MeuModeloPage() {
         packLabel={definition.label}
         checklist={checklist}
         podeInstalar={user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin}
+        podeEscrever={user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager}
+        fluxos={fluxos}
         cards={[
           {
             titulo: "Assistentes",
@@ -116,9 +144,9 @@ export default async function MeuModeloPage() {
           },
           {
             titulo: "Automações",
-            linhas: [`${ativas} ativas`, `${resumo.automacoes} disponíveis`],
-            href: "/app/ai/followups",
-            cta: "Configurar",
+            linhas: [`${ativas} ativas`, `${resumo.fluxos} fluxos prontos`],
+            href: "#fluxos-prontos",
+            cta: "Ligar fluxos",
             testid: "hub-card-automacoes",
           },
           {

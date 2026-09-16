@@ -1,3 +1,4 @@
+import { fluxosProntosDoPack } from "@/lib/business-packs/sementes";
 import type { BusinessPackDefinition } from "@/lib/business-packs/tipos";
 import { definitionLocacao } from "@/lib/ready-models/modelos/locacao";
 
@@ -309,6 +310,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
     {
       key: "lead-2h",
       name: "Lead sem resposta — 2 horas",
+      description: "Marca o contato novo que ainda não teve retorno.",
       trigger_event: "message.received",
       followup_minutes: 120,
       actions: [{ type: "add_tag", config: { tags: ["follow-up-2h"] } }],
@@ -316,6 +318,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
     {
       key: "lead-24h",
       name: "Lead sem resposta — 24 horas",
+      description: "Marca quem ficou um dia sem resposta.",
       trigger_event: "message.received",
       followup_minutes: 1440,
       actions: [{ type: "add_tag", config: { tags: ["follow-up-24h"] } }],
@@ -323,7 +326,9 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
     {
       key: "proposta-sem-resposta",
       name: "Proposta sem resposta",
+      description: "Marca quem entrou em Cotação / Proposta.",
       trigger_event: "lead.stage_changed",
+      stage_name: "Cotação / Proposta",
       actions: [{ type: "add_tag", config: { tags: ["proposta-aberta"] } }],
     },
     {
@@ -348,6 +353,12 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
       requires_gestao: true,
     },
   ],
+  followups: fluxosProntosDoPack({
+    quem: "da locadora",
+    proposta: "Cotação / Proposta",
+    agendamento: "Reserva / Documentação",
+    ganho: "Fechado — Locação",
+  }),
   campaigns: [
     {
       key: "volte-a-alugar",

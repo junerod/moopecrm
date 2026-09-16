@@ -1,4 +1,9 @@
-import { automacoesPadraoDoPack, campanhasPadrao, respostasPadrao } from "@/lib/business-packs/sementes";
+import {
+  automacoesPadraoDoPack,
+  campanhasPadrao,
+  fluxosProntosDoPack,
+  respostasPadrao,
+} from "@/lib/business-packs/sementes";
 import type { BusinessPackDefinition } from "@/lib/business-packs/tipos";
 import { DEFINITION_SERVICOS } from "@/lib/ready-models/modelos/servicos";
 
@@ -100,7 +105,17 @@ export const PACK_CLINICA_MEDICA: BusinessPackDefinition = {
     { name: "followup", description: "Retorno.", examples: ["preciso remarcar o retorno"], keywords: ["retorno", "remarcar"], specialty_key: "relacionamento" },
   ],
   quick_replies: respostasPadrao("da clínica"),
-  automations: automacoesPadraoDoPack(),
+  automations: automacoesPadraoDoPack({
+    proposta: "Quer agendar",
+    agendamento: "Consulta marcada",
+    ganho: "Retorno",
+  }),
+  followups: fluxosProntosDoPack({
+    quem: "da clínica",
+    proposta: "Quer agendar",
+    agendamento: "Consulta marcada",
+    ganho: "Retorno",
+  }),
   campaigns: campanhasPadrao("da clínica"),
   capabilities: [
     { key: "clientes", label: "Pacientes", tool_id: null, read: false, write: false },

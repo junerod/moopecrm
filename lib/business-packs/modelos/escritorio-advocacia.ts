@@ -1,3 +1,4 @@
+import { fluxosProntosDoPack } from "@/lib/business-packs/sementes";
 import type { BusinessPackDefinition } from "@/lib/business-packs/tipos";
 import { DEFINITION_ADVOCACIA } from "@/lib/ready-models/modelos/advocacia";
 
@@ -252,6 +253,7 @@ export const PACK_ESCRITORIO_ADVOCACIA: BusinessPackDefinition = {
     {
       key: "lead-sem-resposta",
       name: "Novo lead sem resposta humana",
+      description: "Marca o contato novo que ainda não teve retorno.",
       trigger_event: "message.received",
       followup_minutes: 120,
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
@@ -259,19 +261,25 @@ export const PACK_ESCRITORIO_ADVOCACIA: BusinessPackDefinition = {
     {
       key: "followup-consulta",
       name: "Follow-up após consulta",
+      description: "Marca quem entrou em Consulta agendada.",
       trigger_event: "lead.stage_changed",
+      stage_name: "Consulta agendada",
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
     },
     {
       key: "followup-proposta",
       name: "Follow-up de proposta",
+      description: "Marca quem entrou em Proposta enviada.",
       trigger_event: "lead.stage_changed",
+      stage_name: "Proposta enviada",
       actions: [{ type: "add_tag", config: { tags: ["proposta_enviada"] } }],
     },
     {
       key: "lembrete-consulta",
       name: "Lembrete de consulta",
+      description: "Marca quem entrou em Consulta agendada.",
       trigger_event: "lead.stage_changed",
+      stage_name: "Consulta agendada",
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
     },
     {
@@ -283,7 +291,9 @@ export const PACK_ESCRITORIO_ADVOCACIA: BusinessPackDefinition = {
     {
       key: "retorno-agendado",
       name: "Retorno agendado",
+      description: "Marca quem entrou em Consulta agendada para o time confirmar.",
       trigger_event: "lead.stage_changed",
+      stage_name: "Consulta agendada",
       actions: [{ type: "add_tag", config: { tags: ["aguardando_retorno"] } }],
     },
     {
@@ -295,10 +305,18 @@ export const PACK_ESCRITORIO_ADVOCACIA: BusinessPackDefinition = {
     {
       key: "satisfacao",
       name: "Pesquisa de satisfação",
+      description: "Marca quem chegou em Contratado.",
       trigger_event: "lead.stage_changed",
+      stage_name: "Contratado",
       actions: [{ type: "add_tag", config: { tags: ["cliente"] } }],
     },
   ],
+  followups: fluxosProntosDoPack({
+    quem: "do escritório",
+    proposta: "Proposta enviada",
+    agendamento: "Consulta agendada",
+    ganho: "Contratado",
+  }),
   campaigns: [
     {
       key: "novidade-escritorio",

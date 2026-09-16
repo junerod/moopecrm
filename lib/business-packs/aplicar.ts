@@ -22,9 +22,13 @@ import type {
   BusinessPackGravado,
   OpcoesDoPack,
   PackArtifacts,
+  PackFollowupSeed,
   ResultadoDoPack,
 } from "@/lib/business-packs/tipos";
 import { CHAVE_PACK } from "@/lib/business-packs/tipos";
+import { tituloDoTemplateDoFluxo } from "@/lib/business-packs/sementes";
+import { grafoDoFluxoPronto } from "@/lib/negocio/grafos-do-pack";
+import { validateFlowForPublish } from "@/lib/followup/validate-publish";
 import { aplicarReadyModel } from "@/lib/ready-models/aplicar";
 import { resolverDefinition } from "@/lib/ready-models/catalogo";
 
@@ -55,7 +59,23 @@ export async function aplicarBusinessPack(
   const colecoes = await garantirColecoes(admin, orgId, settingsAposReady, definition, artifacts);
   const agentes = await garantirAgentes(admin, orgId, definition, colecoes.ids, artifacts, options.actorUserId ?? null);
   const templates = await garantirTemplates(admin, orgId, definition, artifacts, options.actorUserId ?? null);
-  const automacoes = await garantirAutomacoes(admin, orgId, definition, artifacts, options.actorUserId ?? null);
+  const etapas = await mapaDeEtapas(admin, orgId, quadro.pipelinePadraoId);
+  const automacoes = await garantirAutomacoes(
+    admin,
+    orgId,
+    definition,
+    artifacts,
+    etapas,
+    options.actorUserId ?? null,
+  );
+  const followups = await garantirFollowups(
+    admin,
+    orgId,
+    definition,
+    artifacts,
+    etapas,
+    options.actorUserId ?? null,
+  );
   await semearAiModeSeSeguro(admin, orgId, definition.ai_mode_default);
   await adaptarAgentePadraoDoPack(admin, orgId, definition, agentes.ids.recepcao);
 
@@ -66,7 +86,7 @@ export async function aplicarBusinessPack(
     template_keys: templates.ids,
     automation_keys: automacoes.ids,
     campaign_keys: templates.campaignIds,
-    followup_keys: {},
+    followup_keys: followups.ids,
   };
   const fundidos = fundirArtifacts(artifacts, novos);
   const pack = montarBlocoPack(
@@ -87,6 +107,7 @@ export async function aplicarBusinessPack(
     templates: templates.criou,
     automacoes: automacoes.criou,
     campanhas: templates.criouCampanhas,
+    fluxos: followups.criou,
   };
   const nadaNovo = Object.values(criou).every((n) => n === 0) && mesmoPackAplicadoSimples(gravado, pack);
   if (nadaNovo) return { ok: true, noop: true, pack };
@@ -300,11 +321,44 @@ async function garantirUmTemplate(
   return (criado as { id: string }).id;
 }
 
+async function mapaDeEtapas(
+  admin: SupabaseClient,
+  orgId: string,
+  pipelineId: string | undefined,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!pipelineId) return out;
+  const { data, error } = await admin
+    .from("crm_stages")
+    .select("id, name")
+    .eq("organization_id", orgId)
+    .eq("pipeline_id", pipelineId);
+  if (error) throw new Error(`ler etapas do funil: ${error.message}`);
+  for (const row of data ?? []) {
+    const nome = typeof row.name === "string" ? row.name.trim() : "";
+    const id = typeof row.id === "string" ? row.id : "";
+    if (nome && id) out.set(nome, id);
+  }
+  return out;
+}
+
+function condicoesDaAutomacao(
+  seed: BusinessPackDefinition["automations"][number],
+  etapas: Map<string, string>,
+): Array<{ field: string; op: "eq"; value: string }> {
+  const nome = seed.stage_name?.trim();
+  if (!nome) return [];
+  const stageId = etapas.get(nome);
+  if (!stageId) return [];
+  return [{ field: "lead.stage_id", op: "eq", value: stageId }];
+}
+
 async function garantirAutomacoes(
   admin: SupabaseClient,
   orgId: string,
   definition: BusinessPackDefinition,
   artifacts: PackArtifacts,
+  etapas: Map<string, string>,
   actorUserId: string | null,
 ): Promise<{ ids: Record<string, string>; criou: number }> {
   const ids: Record<string, string> = { ...artifacts.automation_keys };
@@ -338,7 +392,7 @@ async function garantirAutomacoes(
         organization_id: orgId,
         name: seed.name,
         trigger_event: seed.trigger_event,
-        conditions: [],
+        conditions: condicoesDaAutomacao(seed, etapas),
         actions: seed.actions,
         is_active: false,
         created_by_user_id: actorUserId,
@@ -346,6 +400,105 @@ async function garantirAutomacoes(
       .select("id")
       .single();
     if (error || !criado) throw new Error(`criar automação ${seed.key}: ${error?.message ?? "sem id"}`);
+    ids[seed.key] = (criado as { id: string }).id;
+    criou += 1;
+  }
+  return { ids, criou };
+}
+
+function triggerDoFluxo(
+  seed: PackFollowupSeed,
+  etapas: Map<string, string>,
+): { kind: "silence" | "stage_change"; params: Record<string, unknown>; cancel_on_reply: true } | null {
+  if (seed.kind === "silence") {
+    const minutos = seed.threshold_minutes ?? 120;
+    return {
+      kind: "silence",
+      params: { threshold_minutes: minutos },
+      cancel_on_reply: true,
+    };
+  }
+  const stageId = seed.stage_name ? etapas.get(seed.stage_name.trim()) : undefined;
+  if (!stageId) return null;
+  return {
+    kind: "stage_change",
+    params: { stage_id: stageId },
+    cancel_on_reply: true,
+  };
+}
+
+async function garantirFollowups(
+  admin: SupabaseClient,
+  orgId: string,
+  definition: BusinessPackDefinition,
+  artifacts: PackArtifacts,
+  etapas: Map<string, string>,
+  actorUserId: string | null,
+): Promise<{ ids: Record<string, string>; criou: number }> {
+  const ids: Record<string, string> = { ...artifacts.followup_keys };
+  let criou = 0;
+
+  for (const seed of definition.followups) {
+    const trigger = triggerDoFluxo(seed, etapas);
+    if (!trigger) continue;
+    if (ids[seed.key]) {
+      const { data } = await admin
+        .from("followup_flow_pointers")
+        .select("id")
+        .eq("organization_id", orgId)
+        .eq("id", ids[seed.key])
+        .maybeSingle();
+      if (data) continue;
+    }
+    const { data: porNome } = await admin
+      .from("followup_flow_pointers")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("name", seed.name)
+      .maybeSingle();
+    if (porNome) {
+      ids[seed.key] = (porNome as { id: string }).id;
+      continue;
+    }
+
+    const templateId = await garantirUmTemplate(
+      admin,
+      orgId,
+      tituloDoTemplateDoFluxo(seed.key),
+      seed.message,
+      undefined,
+      actorUserId,
+    );
+    const graph = grafoDoFluxoPronto(seed, templateId);
+    const validacao = validateFlowForPublish(graph);
+    if (!validacao.ok) {
+      throw new Error(`grafo do fluxo ${seed.key}: ${validacao.errors.map((e) => e.code).join(",")}`);
+    }
+
+    const { data: criado, error } = await admin
+      .from("followup_flow_pointers")
+      .insert({
+        organization_id: orgId,
+        name: seed.name,
+        status: "draft",
+        draft_graph: graph,
+        handoff_policy: "pause",
+        trigger_config: trigger,
+      } as never)
+      .select("id")
+      .single();
+    if (error?.code === "23505") {
+      const { data: deNovo } = await admin
+        .from("followup_flow_pointers")
+        .select("id")
+        .eq("organization_id", orgId)
+        .eq("name", seed.name)
+        .maybeSingle();
+      if (!deNovo) throw new Error(`criar fluxo ${seed.key}: colidiu e sumiu`);
+      ids[seed.key] = (deNovo as { id: string }).id;
+      continue;
+    }
+    if (error || !criado) throw new Error(`criar fluxo ${seed.key}: ${error?.message ?? "sem id"}`);
     ids[seed.key] = (criado as { id: string }).id;
     criou += 1;
   }

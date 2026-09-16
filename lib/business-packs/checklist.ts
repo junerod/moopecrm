@@ -49,6 +49,11 @@ export type AutomacaoParaChecklist = {
   is_active: boolean | null;
 };
 
+export type FluxoParaChecklist = {
+  id: string;
+  status: string | null;
+};
+
 export type SessaoParaChecklist = {
   id: string;
   status: string | null;
@@ -62,6 +67,7 @@ export function montarChecklistDoPack(input: {
   fontes: FonteParaChecklist[];
   agentes: AgenteParaChecklist[];
   automacoes: AutomacaoParaChecklist[];
+  fluxos?: FluxoParaChecklist[];
 }): ChecklistDoPack | null {
   if (!packEstaAtivo(input.pack) || !input.pack) return null;
 
@@ -83,7 +89,11 @@ export function montarChecklistDoPack(input: {
 
   const autoIds = Object.values(pack.artifacts.automation_keys);
   const autosDoPack = input.automacoes.filter((a) => autoIds.includes(a.id));
-  const ativas = autosDoPack.filter((a) => a.is_active === true).length;
+  const regrasAtivas = autosDoPack.filter((a) => a.is_active === true).length;
+  const fluxoIds = Object.values(pack.artifacts.followup_keys);
+  const fluxosDoPack = (input.fluxos ?? []).filter((f) => fluxoIds.includes(f.id));
+  const fluxosAtivos = fluxosDoPack.filter((f) => f.status === "active").length;
+  const ativas = regrasAtivas + fluxosAtivos;
   const automacaoOk = ativas > 0;
 
   const itens: ItemDoChecklist[] = [
@@ -117,11 +127,11 @@ export function montarChecklistDoPack(input: {
     {
       id: "automacao",
       titulo: "Ative sua primeira automação",
-      descricao: "Escolha uma automação, revise o texto e ligue quando estiver seguro.",
+      descricao: "Escolha um fluxo pronto, revise o texto e ligue quando estiver seguro.",
       feito: automacaoOk,
       status: ativas === 0 ? "Nenhuma ativa" : ativas === 1 ? "1 ativa" : `${ativas} ativas`,
-      href: "/app/ai/followups",
-      cta: "Ver automações",
+      href: "/app/meu-modelo#fluxos-prontos",
+      cta: "Ver fluxos prontos",
     },
   ];
 
@@ -174,8 +184,9 @@ export async function carregarChecklistDoPack(
 
   const agentIds = Object.values(pack.artifacts.agent_keys);
   const autoIds = Object.values(pack.artifacts.automation_keys);
+  const fluxoIds = Object.values(pack.artifacts.followup_keys);
 
-  const [sessoes, fontes, agentes, automacoes] = await Promise.all([
+  const [sessoes, fontes, agentes, automacoes, fluxos] = await Promise.all([
     db
       .from("channel_sessions")
       .select("id, status, phone_number")
@@ -200,6 +211,13 @@ export async function carregarChecklistDoPack(
           .eq("organization_id", organizationId)
           .in("id", autoIds)
       : Promise.resolve({ data: [] as AutomacaoParaChecklist[] }),
+    fluxoIds.length > 0
+      ? db
+          .from("followup_flow_pointers")
+          .select("id, status")
+          .eq("organization_id", organizationId)
+          .in("id", fluxoIds)
+      : Promise.resolve({ data: [] as FluxoParaChecklist[] }),
   ]);
 
   return montarChecklistDoPack({
@@ -209,5 +227,6 @@ export async function carregarChecklistDoPack(
     fontes: (fontes.data ?? []) as FonteParaChecklist[],
     agentes: (agentes.data ?? []) as AgenteParaChecklist[],
     automacoes: (automacoes.data ?? []) as AutomacaoParaChecklist[],
+    fluxos: (fluxos.data ?? []) as FluxoParaChecklist[],
   });
 }

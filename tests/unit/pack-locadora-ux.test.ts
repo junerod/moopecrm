@@ -86,6 +86,8 @@ describe("apresentação do Pack Locadora", () => {
     expect(d.etapas).toHaveLength(8);
     expect(d.colecoes).toHaveLength(4);
     expect(d.automacoes.every((a) => a.name.length > 0)).toBe(true);
+    expect(d.fluxos.length).toBeGreaterThanOrEqual(4);
+    expect(d.fluxos.every((f) => f.description.length > 0)).toBe(true);
     expect(JSON.stringify(d)).not.toMatch(/mcp_/);
   });
 });
