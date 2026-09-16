@@ -13,11 +13,11 @@ import {
   ShieldCheck,
   Palette,
   Pulse,
-  ArrowRight,
 } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
+import { SaidaDaPlataforma } from "./SaidaDaPlataforma";
 
 interface NavItem {
   href: string;
@@ -112,13 +112,7 @@ export function AdminSidebar({ userEmail, variant = "desktop" }: AdminSidebarPro
         })}
       </nav>
       <div className="space-y-2 border-t border-white/10 p-3">
-        <Link
-          href="/app"
-          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white"
-        >
-          <ArrowRight size={14} aria-hidden />
-          <span>Voltar pra app</span>
-        </Link>
+        <SaidaDaPlataforma variante="sidebar" />
         <p className="truncate px-2 text-xs text-white/45" title={userEmail}>
           {userEmail}
         </p>

@@ -12,7 +12,7 @@ export default async function InicioPage() {
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) {
-    if (user.is_platform_admin) redirect("/admin/dashboard");
+    if (user.is_platform_admin) redirect("/admin/sem-empresa");
     redirect("/app");
   }
 

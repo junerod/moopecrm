@@ -13,7 +13,7 @@ export default async function InboxPage({
   if (!user) redirect("/login");
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) {
-    if (user.is_platform_admin) redirect("/admin/dashboard");
+    if (user.is_platform_admin) redirect("/admin/sem-empresa");
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Você não tem nenhuma organização ativa. Aceite um convite ou contate o admin.

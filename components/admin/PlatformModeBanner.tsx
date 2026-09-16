@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { Buildings } from "@/lib/ui/icons";
+
+import { SaidaDaPlataforma } from "./SaidaDaPlataforma";
 
 /**
  * Sticky top banner that signals the user is operating in cross-tenant
@@ -18,12 +19,7 @@ export function PlatformModeBanner() {
         <span className="font-semibold tracking-tight">MODO PLATAFORMA</span>
         <span className="hidden text-amber-800/80 sm:inline">— operação cross-tenant</span>
       </div>
-      <Link
-        href="/app"
-        className="rounded-md px-2 py-1 text-xs font-medium underline-offset-2 hover:underline"
-      >
-        Sair pra app pessoal
-      </Link>
+      <SaidaDaPlataforma variante="banner" />
     </div>
   );
 }
