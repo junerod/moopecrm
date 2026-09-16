@@ -77,7 +77,19 @@ export interface PackFollowupSeed {
   stage_name?: string;
   /** Espera depois da etapa, em minutos. Piso do motor: 5. */
   wait_minutes?: number;
+  /** Segunda espera do modelo operacional, em minutos. */
+  wait2_minutes?: number;
   message: string;
+  /** Segundo recado do modelo (só manda se o card ainda estiver na etapa). */
+  message_2?: string;
+  /** Se true, o grafo checa se o lead ainda está na etapa antes de falar. */
+  com_condicao?: boolean;
+  /** Passos visíveis: como o fluxo trabalha. */
+  passos?: string[];
+  /** Como o leigo usa no dia a dia. */
+  como_usar?: string;
+  /** Card em destaque na tela. */
+  destaque?: boolean;
 }
 
 export interface PackCampaignSeed {

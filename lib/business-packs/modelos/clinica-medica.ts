@@ -115,6 +115,16 @@ export const PACK_CLINICA_MEDICA: BusinessPackDefinition = {
     proposta: "Quer agendar",
     agendamento: "Consulta marcada",
     ganho: "Retorno",
+    modelo: {
+      message:
+        "Olá. Vimos que você quer agendar. Posso confirmar o melhor horário? Se preferir remarcar, é só responder.",
+      message_2:
+        "Olá. Ainda estou com seu horário em aberto. Se quiser manter ou trocar, me avise por aqui.",
+      como_usar:
+        "Use quando a pessoa pediu para marcar. Card em Quer agendar. O recado só confirma horário — sem falar de doença, receita ou exame.",
+      primeiro_passo:
+        "Você move o card para “Quer agendar” quando o paciente pede um horário.",
+    },
   }),
   campaigns: campanhasPadrao("da clínica"),
   capabilities: [

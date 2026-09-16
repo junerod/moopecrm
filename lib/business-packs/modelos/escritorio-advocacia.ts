@@ -316,6 +316,16 @@ export const PACK_ESCRITORIO_ADVOCACIA: BusinessPackDefinition = {
     proposta: "Proposta enviada",
     agendamento: "Consulta agendada",
     ganho: "Contratado",
+    modelo: {
+      message:
+        "Olá. Enviamos a proposta de honorários. Conseguiu avaliar? Qualquer dúvida administrativa, respondo por aqui.",
+      message_2:
+        "Olá. Ainda está em aberto do nosso lado. Se quiser seguir, me diga o próximo passo. Se não for agora, pode responder que encerramos.",
+      como_usar:
+        "Use quando a proposta de honorários sai. Card em Proposta enviada. O recado só cobra retorno — sem parecer, sem cláusula e sem orientação jurídica.",
+      primeiro_passo:
+        "Você move o card para “Proposta enviada” quando a proposta de honorários sai.",
+    },
   }),
   campaigns: [
     {

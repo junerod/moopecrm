@@ -111,6 +111,16 @@ export const PACK_COMERCIAL_GERAL: BusinessPackDefinition = {
     proposta: "Proposta enviada",
     agendamento: "Aguardando fechamento",
     ganho: "Fechado",
+    modelo: {
+      message:
+        "Olá. Enviamos a proposta. Conseguiu avaliar? Se faltar algum detalhe, respondo por aqui.",
+      message_2:
+        "Olá. Ainda está em aberto do nosso lado. Se quiser seguir, me diga o próximo passo. Se não for agora, pode responder que encerramos.",
+      como_usar:
+        "Quando a proposta sai, o card vai para Proposta enviada. O fluxo espera, confere se o card ainda está lá e só então cobra retorno. Revise os dois textos — sem inventar preço.",
+      primeiro_passo:
+        "Você move o card para “Proposta enviada” quando a proposta comercial sai.",
+    },
   }),
   campaigns: campanhasPadrao("da loja"),
   capabilities: [

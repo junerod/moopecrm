@@ -51,4 +51,31 @@ describe("FluxosProntosDoPack", () => {
     expect(screen.getByTestId("fluxo-pronto-apos-proposta-salvar")).toBeEnabled();
     expect(screen.getByTestId("fluxo-pronto-apos-proposta-desligar")).toBeEnabled();
   });
+
+  it("modelo operacional mostra passos e os dois recados", async () => {
+    const user = userEvent.setup({ delay: null });
+    const modelo = {
+      key: "modelo-operacao",
+      name: "Modelo: depois de Proposta",
+      description: "Espera, confere e manda.",
+      quando: "Quando o card entra em “Proposta”, espera 2h",
+      mensagem: "Primeiro recado",
+      mensagem2: "Segundo recado",
+      passos: ["Move o card", "Espera", "Confere"],
+      como_usar: "Revise os dois textos e ligue.",
+      destaque: true,
+      ativo: false,
+    };
+    render(<FluxosProntosDoPack fluxos={[modelo]} canWrite />);
+    expect(screen.getByTestId("fluxo-pronto-modelo-operacao-como-usar")).toHaveTextContent("Revise");
+    expect(screen.getByText("Move o card")).toBeInTheDocument();
+    await user.click(screen.getByTestId("fluxo-pronto-modelo-operacao-ligar"));
+    const init = fetchMock.mock.calls[0]?.[1] as { body?: string };
+    expect(JSON.parse(init.body ?? "{}")).toEqual({
+      key: "modelo-operacao",
+      mensagem: "Primeiro recado",
+      mensagem_2: "Segundo recado",
+      ativo: true,
+    });
+  });
 });

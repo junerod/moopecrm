@@ -358,6 +358,16 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
     proposta: "Cotação / Proposta",
     agendamento: "Reserva / Documentação",
     ganho: "Fechado — Locação",
+    modelo: {
+      message:
+        "Olá. Enviamos a cotação da locação. Conseguiu olhar as condições? Qualquer dúvida administrativa, respondo por aqui.",
+      message_2:
+        "Olá. Passando de novo só para não perder o fio da cotação. Se ainda fizer sentido, me diga o próximo passo. Se não for o momento, pode responder que paramos.",
+      como_usar:
+        "Use quando a cotação sai de verdade. Arraste o card para Cotação / Proposta. Não coloque valor neste texto — o preço fica na cotação que você já enviou. Revise os dois recados e ligue.",
+      primeiro_passo:
+        "Você move o card para “Cotação / Proposta” quando a cotação sai para o cliente.",
+    },
   }),
   campaigns: [
     {

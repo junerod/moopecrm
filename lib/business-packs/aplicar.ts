@@ -469,7 +469,25 @@ async function garantirFollowups(
       undefined,
       actorUserId,
     );
-    const graph = grafoDoFluxoPronto(seed, templateId);
+    const segundoId = seed.message_2
+      ? await garantirUmTemplate(
+          admin,
+          orgId,
+          tituloDoTemplateDoFluxo(seed.key, 2),
+          seed.message_2,
+          undefined,
+          actorUserId,
+        )
+      : undefined;
+    const etapaId =
+      seed.kind === "stage_change" && seed.stage_name
+        ? etapas.get(seed.stage_name.trim())
+        : undefined;
+    const graph = grafoDoFluxoPronto(
+      seed,
+      { primeira: templateId, segunda: segundoId },
+      etapaId,
+    );
     const validacao = validateFlowForPublish(graph);
     if (!validacao.ok) {
       throw new Error(`grafo do fluxo ${seed.key}: ${validacao.errors.map((e) => e.code).join(",")}`);

@@ -146,7 +146,8 @@ export function DetalheDoModeloClient(props: {
           <div>
             <p className="text-sm font-medium">Fluxos prontos</p>
             <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-              Atendimento, proposta, agenda e satisfação — com texto para você editar. Ligam só quando você clicar.
+              O primeiro é o modelo de operação do seu negócio: espera, condição e dois recados.
+              Os outros são atalhos. Ligam só quando você clicar.
             </p>
             <ul className="mt-2 space-y-2 text-sm" data-testid="lista-fluxos-do-modelo">
               {props.fluxos.map((f) => (

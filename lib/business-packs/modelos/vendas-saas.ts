@@ -113,6 +113,16 @@ export const PACK_VENDAS_SAAS: BusinessPackDefinition = {
     proposta: "Proposta",
     agendamento: "Demo / piloto",
     ganho: "Cliente ativo",
+    modelo: {
+      message:
+        "Olá. Enviamos a proposta. Conseguiu avaliar com o time? Se faltar algum detalhe, respondo por aqui.",
+      message_2:
+        "Olá. Ainda está em aberto. Se quiser agendar a demo ou o próximo passo, me diga. Se não for agora, pode responder que encerramos.",
+      como_usar:
+        "Quando a proposta sai, o card vai para Proposta. O fluxo espera, confere e cobra retorno. Sem inventar plano, SLA ou preço no texto.",
+      primeiro_passo:
+        "Você move o card para “Proposta” quando a proposta comercial sai para a empresa.",
+    },
   }),
   campaigns: campanhasPadrao("da empresa"),
   capabilities: [

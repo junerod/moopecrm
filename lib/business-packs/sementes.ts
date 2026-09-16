@@ -11,14 +11,64 @@ export type VocabularioDeFluxo = {
   proposta: string;
   agendamento: string;
   ganho: string;
+  /** Textos do modelo operacional — um jeito de usar por tipo de negócio. */
+  modelo?: {
+    message: string;
+    message_2: string;
+    como_usar: string;
+    primeiro_passo: string;
+  };
 };
 
-export function tituloDoTemplateDoFluxo(key: string): string {
-  return `pack-fluxo:${key}`;
+export function tituloDoTemplateDoFluxo(key: string, parte: 1 | 2 = 1): string {
+  return parte === 1 ? `pack-fluxo:${key}` : `pack-fluxo:${key}:2`;
+}
+
+export function titulosDosTemplatesDoFluxo(
+  seed: Pick<PackFollowupSeed, "key" | "message_2">,
+): string[] {
+  return seed.message_2
+    ? [tituloDoTemplateDoFluxo(seed.key), tituloDoTemplateDoFluxo(seed.key, 2)]
+    : [tituloDoTemplateDoFluxo(seed.key)];
+}
+
+export function fluxoModeloDoPack(v: VocabularioDeFluxo): PackFollowupSeed {
+  const texto = v.modelo ?? {
+    message: `Olá. Enviamos as condições ${v.quem}. Conseguiu olhar? Qualquer dúvida administrativa, respondo por aqui.`,
+    message_2:
+      "Olá. Passando de novo só para não perder o fio. Se ainda fizer sentido, me diga o próximo passo. Se não for o momento, pode responder que paramos.",
+    como_usar:
+      "Revise os dois textos, ligue o fluxo e use o quadro de verdade: proposta enviada = card nessa etapa. Não invente preço nem condição — o recado só cobra retorno.",
+    primeiro_passo: `Você move o card para “${v.proposta}” quando a cotação ou a proposta sai.`,
+  };
+  return {
+    key: "modelo-operacao",
+    name: `Modelo: depois de ${v.proposta}`,
+    description:
+      "Exemplo completo do seu negócio: espera, confere se o card ainda está na etapa e só então manda. Se a pessoa responder ou o card sair, para.",
+    kind: "stage_change",
+    stage_name: v.proposta,
+    wait_minutes: 120,
+    wait2_minutes: 480,
+    com_condicao: true,
+    destaque: true,
+    message: texto.message,
+    message_2: texto.message_2,
+    passos: [
+      texto.primeiro_passo,
+      "O sistema espera 2 horas. Se o cliente já respondeu, não mexe.",
+      `Confere: o card ainda está em “${v.proposta}”? Se já foi para outra coluna, para.`,
+      "Manda o primeiro recado (o texto é seu).",
+      "Espera mais 8 horas e confere de novo.",
+      "Se ainda não houve resposta, manda o segundo recado e encerra.",
+    ],
+    como_usar: texto.como_usar,
+  };
 }
 
 export function fluxosProntosDoPack(v: VocabularioDeFluxo): PackFollowupSeed[] {
   return [
+    fluxoModeloDoPack(v),
     {
       key: "silencio-2h",
       name: "Novo contato sem resposta — 2 horas",

@@ -20,6 +20,7 @@ export const ajusteFluxoDoPackSchema = z
   .object({
     key: z.string().trim().min(1).max(64),
     mensagem: z.string().trim().min(1).max(1000).optional(),
+    mensagem_2: z.string().trim().min(1).max(1000).optional(),
     ativo: z.boolean().optional(),
   })
   .strict();
@@ -32,6 +33,10 @@ export type FluxoProntoCarregado = {
   description: string;
   quando: string;
   mensagem: string;
+  mensagem2?: string;
+  passos?: string[];
+  como_usar?: string;
+  destaque?: boolean;
   ativo: boolean;
 };
 
@@ -56,6 +61,12 @@ export function montarFluxosNaTela(
       description: seed.description,
       quando: quandoDoFluxo(seed),
       mensagem: porTitulo.get(tituloDoTemplateDoFluxo(seed.key)) ?? seed.message,
+      mensagem2: seed.message_2
+        ? porTitulo.get(tituloDoTemplateDoFluxo(seed.key, 2)) ?? seed.message_2
+        : undefined,
+      passos: seed.passos,
+      como_usar: seed.como_usar,
+      destaque: seed.destaque,
       ativo: pointer?.status === "active",
     };
   });
@@ -78,8 +89,9 @@ async function garantirTemplate(
   actorUserId: string,
   key: string,
   mensagem: string,
+  parte: 1 | 2 = 1,
 ): Promise<string> {
-  const title = tituloDoTemplateDoFluxo(key);
+  const title = tituloDoTemplateDoFluxo(key, parte);
   const { data: existente, error: sel } = await admin
     .from("message_templates")
     .select("id")
@@ -137,7 +149,7 @@ export async function ativarFluxoDoPack(
 
   const { data: pointer, error: sel } = await admin
     .from("followup_flow_pointers")
-    .select("id, status")
+    .select("id, status, trigger_config")
     .eq("organization_id", orgId)
     .eq("id", pointerId)
     .maybeSingle();
@@ -150,7 +162,19 @@ export async function ativarFluxoDoPack(
     .eq("organization_id", orgId)
     .eq("title", tituloDoTemplateDoFluxo(opts.key))
     .maybeSingle();
+  const { data: template2 } = seed.message_2
+    ? await admin
+        .from("message_templates")
+        .select("body")
+        .eq("organization_id", orgId)
+        .eq("title", tituloDoTemplateDoFluxo(opts.key, 2))
+        .maybeSingle()
+    : { data: null };
   const mensagem = opts.mensagem?.trim() || (typeof template?.body === "string" ? template.body : seed.message);
+  const mensagem2 = seed.message_2
+    ? opts.mensagem_2?.trim() ||
+      (typeof template2?.body === "string" ? template2.body : seed.message_2)
+    : undefined;
   const ligar = opts.ativo !== false;
 
   if (!ligar) {
@@ -166,7 +190,11 @@ export async function ativarFluxoDoPack(
   }
 
   const templateId = await garantirTemplate(admin, orgId, actorUserId, opts.key, mensagem);
-  const graph = grafoDoFluxoPronto(seed, templateId);
+  const segundoId = mensagem2
+    ? await garantirTemplate(admin, orgId, actorUserId, opts.key, mensagem2, 2)
+    : undefined;
+  const etapaId = etapaDoTrigger(pointer.trigger_config);
+  const graph = grafoDoFluxoPronto(seed, { primeira: templateId, segunda: segundoId }, etapaId);
   const validacao = validateFlowForPublish(graph);
   if (!validacao.ok) {
     throw new Error(`grafo do fluxo inválido: ${validacao.errors.map((e) => e.code).join(",")}`);
@@ -187,4 +215,12 @@ export async function ativarFluxoDoPack(
   });
   if (!pub.ok) throw new Error(`publicar fluxo: ${pub.message}`);
   return { id: pointerId, key: opts.key, ativo: true, mensagem };
+}
+
+function etapaDoTrigger(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  const params = (raw as { params?: unknown }).params;
+  if (!params || typeof params !== "object") return null;
+  const id = (params as { stage_id?: unknown }).stage_id;
+  return typeof id === "string" && id.length > 0 ? id : null;
 }

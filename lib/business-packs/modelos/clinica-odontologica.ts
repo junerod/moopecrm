@@ -114,6 +114,16 @@ export const PACK_CLINICA_ODONTOLOGICA: BusinessPackDefinition = {
     proposta: "Orçamento enviado",
     agendamento: "Tratamento iniciado",
     ganho: "Alta",
+    modelo: {
+      message:
+        "Olá. Enviamos o orçamento do tratamento. Conseguiu olhar? Qualquer dúvida administrativa, respondo por aqui.",
+      message_2:
+        "Olá. Passando de novo sobre o orçamento. Se quiser marcar o início, me diga. Se não for o momento, pode responder que paramos.",
+      como_usar:
+        "Quando o orçamento sai, o card vai para Orçamento enviado. O fluxo cobra retorno duas vezes. Não escreva valor, sessão nem plano clínico no recado — isso fica no orçamento.",
+      primeiro_passo:
+        "Você move o card para “Orçamento enviado” quando o orçamento do tratamento sai.",
+    },
   }),
   campaigns: campanhasPadrao("da clínica"),
   capabilities: [

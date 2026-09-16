@@ -12,7 +12,7 @@ import { packEstaAtivo, resumoDoPack } from "@/lib/business-packs/apresentacao";
 import { carregarChecklistDoPack } from "@/lib/business-packs/checklist";
 import { resolverPack } from "@/lib/business-packs/catalogo";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
-import { tituloDoTemplateDoFluxo } from "@/lib/business-packs/sementes";
+import { titulosDosTemplatesDoFluxo } from "@/lib/business-packs/sementes";
 import { montarFluxosNaTela } from "@/lib/negocio/fluxos-do-pack";
 import { createClient } from "@/lib/supabase/server";
 import { Storefront } from "@/lib/ui/icons";
@@ -45,7 +45,7 @@ export default async function MeuModeloPage() {
   const agentIds = Object.values(pack.artifacts.agent_keys);
   const autoIds = Object.values(pack.artifacts.automation_keys);
   const fluxoIds = Object.values(pack.artifacts.followup_keys);
-  const titulosFluxo = definition.followups.map((f) => tituloDoTemplateDoFluxo(f.key));
+  const titulosFluxo = definition.followups.flatMap((f) => titulosDosTemplatesDoFluxo(f));
 
   const [agentes, fontes, autos, pointers, templatesFluxo] = await Promise.all([
     agentIds.length

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { packEstaAtivo } from "@/lib/business-packs/apresentacao";
 import { resolverPack } from "@/lib/business-packs/catalogo";
 import { lerPackGravado } from "@/lib/business-packs/perfil";
-import { tituloDoTemplateDoFluxo } from "@/lib/business-packs/sementes";
+import { titulosDosTemplatesDoFluxo } from "@/lib/business-packs/sementes";
 import { montarFluxosNaTela } from "@/lib/negocio/fluxos-do-pack";
 import {
   ehFollowupDeSilencio,
@@ -74,7 +74,7 @@ export default async function FollowupFlowsPage() {
   let fluxosDoPack: ReturnType<typeof montarFluxosNaTela> = [];
   if (definition && pack) {
     const fluxoIds = Object.values(pack.artifacts.followup_keys);
-    const titulos = definition.followups.map((f) => tituloDoTemplateDoFluxo(f.key));
+    const titulos = definition.followups.flatMap((f) => titulosDosTemplatesDoFluxo(f));
     const [pointersPack, templatesPack] = await Promise.all([
       fluxoIds.length
         ? supabase
