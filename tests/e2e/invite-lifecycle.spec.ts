@@ -12,6 +12,7 @@
  *   7. Token adulterado (HMAC quebrado) → idem
  *   8. Email não corresponde: logado com OUTRA conta → "Email não corresponde"
  *   9. Não autenticado → CTA "Fazer login", não o formulário de aceite
+ *  13. Sem conta: criar senha com o convite NÃO pede segundo e-mail — cai no aceite
  *
  * Pré-req: npx tsx scripts/seed-e2e-invite.ts (o spec roda sozinho se faltar).
  * Contra o Supabase do env (local recomendado — precisa das migrations de RLS
@@ -392,6 +393,28 @@ test.describe("ciclo de vida do convite (ponta a ponta + adversarial)", () => {
     await expect(page.getByRole("alert").first()).toContainText(/expirou|não é mais válido/i);
     // E cai no signup COMUM só depois do aviso — nunca em silêncio.
     await expect(page.getByLabel("Nome da empresa")).toBeVisible();
+  });
+
+  test("13. signup com convite não pede segundo e-mail — cai no aceite", async ({ page }) => {
+    // O clique no convite já prova o endereço. Mandar o GoTrue confirmar de
+    // novo deixa a pessoa presa quando o correio do Auth não entrega.
+    const email = `convite-sem-confirm.${randomUUID()}@deskcomm.test`;
+    const valid = signInviteToken({
+      invite_id: randomUUID(),
+      email,
+      organization_id: inv.org_id,
+      role: "agent",
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    await page.goto(`/signup?invite=${encodeURIComponent(valid)}`);
+    await page.getByLabel("Senha", { exact: true }).fill("SenhaForte!123");
+    await page.getByLabel("Confirmar senha").fill("SenhaForte!123");
+    await page.getByRole("button", { name: "Criar conta" }).click();
+
+    await expect(page.getByText("Confirme seu e-mail")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/team\/accept-invite\//);
+    await expect(page.getByRole("heading", { name: /aceitar convite/i })).toBeVisible();
   });
 });
 

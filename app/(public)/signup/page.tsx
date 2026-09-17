@@ -12,8 +12,9 @@ export const metadata = { title: "Criar conta" };
  * sem encontrar vínculo nenhum — abria uma organização e a tornava admin dela.
  *
  * O token só é lido aqui para MONTAR a tela (esconder o nome da empresa, travar
- * o e-mail). Quem decide o que ele vale é o servidor, duas vezes: ao criar a
- * conta e ao confirmar o e-mail.
+ * o e-mail). Quem decide o que ele vale é o servidor: com convite válido a
+ * conta já nasce confirmada e vai ao aceite — o clique no convite já prova o
+ * e-mail. Sem convite, o GoTrue ainda manda o e-mail de confirmação.
  */
 export default async function SignupPage({
   searchParams,

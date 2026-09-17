@@ -61,13 +61,15 @@ export function SignupForm({ convite }: { convite?: ConviteDoSignup }) {
         : values;
       const res = await signUp(entrada, convite?.token);
       if (res.ok) {
-        setSentTo(values.email);
+        setSentTo(convite?.email ?? values.email);
         return;
       }
       if (res.error === "rate_limited") {
         setServerError("Muitas tentativas. Aguarde alguns minutos.");
       } else if (res.error === "validation_error") {
         setServerError("Dados inválidos. Confira os campos.");
+      } else if (res.error === "account_exists") {
+        setServerError("Você já tem uma conta neste e-mail. Entre com a senha que já usa.");
       } else {
         setServerError("Não foi possível criar a conta. Tente novamente.");
       }

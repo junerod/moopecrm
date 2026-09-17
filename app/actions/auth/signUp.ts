@@ -1,8 +1,10 @@
 "use server";
 
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   signupSchema,
   signupComConviteSchema,
@@ -10,6 +12,7 @@ import {
   type SignupComConviteInput,
 } from "@/lib/auth/schemas";
 import { verifyInviteToken } from "@/lib/auth/invite-token";
+import { criarOuConfirmarContaConvidada } from "@/lib/auth/criar-conta-convidada";
 import { audit, hashEmail } from "@/lib/audit";
 import { authRateLimited, AUTH_LIMITS } from "@/lib/auth/rate-limit";
 import { env } from "@/lib/env";
@@ -18,7 +21,7 @@ export type SignUpResult =
   | { ok: true }
   | {
       ok: false;
-      error: "validation_error" | "rate_limited" | "signup_failed";
+      error: "validation_error" | "rate_limited" | "signup_failed" | "account_exists";
       details?: Record<string, unknown>;
     };
 
@@ -27,18 +30,24 @@ export type SignUpResult =
  * confirmação. O tenant só é provisionado quando o link é confirmado em
  * /auth/confirm (evita orgs órfãs de cadastros nunca confirmados).
  *
- * Anti-enumeração: e-mail já cadastrado recebe a MESMA resposta de sucesso —
- * o GoTrue devolve um usuário ofuscado (identities vazio) sem erro, e nós não
- * diferenciamos. Rate limit de envio de e-mail é do próprio GoTrue.
+ * Convite: o clique no e-mail do convite já prova o endereço. Esse caminho
+ * NÃO manda o segundo e-mail do GoTrue — cria (ou confirma) a conta com
+ * `email_confirm: true` e entra direto no aceite. Sem isso, instalação sem
+ * correio do Auth deixa a pessoa presa em "Confirme seu e-mail".
+ *
+ * Anti-enumeração no caminho SEM convite: e-mail já cadastrado recebe a MESMA
+ * resposta de sucesso — o GoTrue devolve um usuário ofuscado (identities
+ * vazio) sem erro, e nós não diferenciamos. Rate limit de envio de e-mail é
+ * do próprio GoTrue.
  */
 export async function signUp(
   input: SignupInput | SignupComConviteInput,
   /**
    * Token de convite, quando a conta está sendo criada para ACEITAR um convite.
-   * Viaja até `/auth/confirm` pelo `user_metadata` — o mesmo canal que
-   * `org_name` já usa e que o e2e do signup exercita. Ele não dá acesso a nada
-   * sozinho: quem decide é `decidirConviteDoSignup`, comparando a assinatura do
-   * token com o e-mail que o provedor de auth confirmou.
+   * Quem decide se ele vale é a assinatura HMAC + o e-mail do formulário
+   * (não o campo editável no cliente). Com token válido a conta já nasce
+   * confirmada; o `user_metadata.invite_token` continua existindo para o
+   * caminho velho de `/auth/confirm` não provisionar empresa fantasma.
    */
   inviteToken?: string,
 ): Promise<SignUpResult> {
@@ -81,6 +90,17 @@ export async function signUp(
     convite = inviteToken;
   }
 
+  if (convite) {
+    return entrarPorConvite({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      convite,
+      requestId,
+      ip,
+      userAgent,
+    });
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -90,12 +110,7 @@ export async function signUp(
       // sobrevive ao redirect do GoTrue e é o que distingue este fluxo do de
       // recovery quando a verificação chega via `code` (PKCE), não `token_hash`.
       emailRedirectTo: `${origin}/auth/confirm?type=signup`,
-      // O convite é revalidado no servidor mesmo tendo sido validado ao montar
-      // a tela: o campo de e-mail do formulário é adulterável no cliente, e a
-      // decisão que importa acontece com o e-mail JÁ confirmado pelo provedor.
-      data: convite
-        ? { invite_token: convite }
-        : { org_name: (parsed.data as SignupInput).org_name },
+      data: { org_name: (parsed.data as SignupInput).org_name },
     },
   });
 
@@ -124,4 +139,73 @@ export async function signUp(
   });
 
   return { ok: true };
+}
+
+async function entrarPorConvite(args: {
+  email: string;
+  password: string;
+  convite: string;
+  requestId: string | null;
+  ip: string | null;
+  userAgent: string | null;
+}): Promise<SignUpResult> {
+  // Service role: o convidado ainda não é membro. Autorização = HMAC do
+  // convite (já verificado) + e-mail do token === e-mail do formulário.
+  const criada = await criarOuConfirmarContaConvidada(createAdminClient(), {
+    email: args.email,
+    password: args.password,
+    inviteToken: args.convite,
+  });
+  if (!criada.ok) {
+    await audit({
+      action: "auth.signup_failed",
+      metadata: {
+        email_hash: hashEmail(args.email),
+        reason: criada.motivo,
+        via: "convite",
+      },
+      requestId: args.requestId,
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+    return { ok: false, error: "signup_failed" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: args.email,
+    password: args.password,
+  });
+
+  if (error || !data.user) {
+    // Conta já existia confirmada e a senha digitada não é a dela —
+    // não enumeramos no caminho comum; aqui o convite já identificou o e-mail.
+    await audit({
+      action: "auth.signup_failed",
+      metadata: {
+        email_hash: hashEmail(args.email),
+        reason: "account_exists",
+        via: "convite",
+      },
+      requestId: args.requestId,
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+    return { ok: false, error: "account_exists" };
+  }
+
+  await audit({
+    action: "auth.signup_requested",
+    actorUserId: data.user.id,
+    metadata: {
+      email_hash: hashEmail(args.email),
+      via: "convite",
+      criada_agora: criada.criadaAgora,
+    },
+    requestId: args.requestId,
+    ip: args.ip,
+    userAgent: args.userAgent,
+  });
+
+  redirect(`/team/accept-invite/${args.convite}`);
 }
