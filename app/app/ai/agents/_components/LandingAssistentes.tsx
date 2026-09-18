@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { ProximoPasso } from "@/components/ds/ProximoPasso";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { perguntaDeTeste } from "@/lib/business-packs/apresentacao";
 import { resolverPack } from "@/lib/business-packs/catalogo";
 import { cn } from "@/lib/utils";
+
+import { pauseAgentAction } from "../_actions";
 
 export type CardAssistente = {
   id: string;
@@ -29,6 +31,14 @@ type ResultadoTeste = {
   gestao_necessaria: boolean;
 };
 
+/** Ativos primeiro — quem opera quer ver o que está no ar, não caçar no meio. */
+export function ordenarAssistentes(cards: CardAssistente[]): CardAssistente[] {
+  return [...cards].sort((a, b) => {
+    if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
+    return 0;
+  });
+}
+
 export function LandingAssistentes({
   packAtivo,
   packLabel,
@@ -42,11 +52,36 @@ export function LandingAssistentes({
   cards: CardAssistente[];
   canWrite: boolean;
 }) {
+  const [lista, setLista] = useState(cards);
   const [aberto, setAberto] = useState<string | null>(null);
   const [teste, setTeste] = useState<ResultadoTeste | null>(null);
   const [testando, setTestando] = useState(false);
-  const inativos = cards.filter((c) => !c.ativo);
+  const [pendente, setPendente] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setLista(cards);
+  }, [cards]);
+
+  const ordenados = useMemo(() => ordenarAssistentes(lista), [lista]);
+  const inativos = ordenados.filter((c) => !c.ativo);
   const primeiroInativo = inativos[0];
+
+  async function desativar(card: CardAssistente) {
+    setPendente(card.id);
+    const res = await pauseAgentAction(card.id);
+    setPendente(null);
+    if (!res.ok) {
+      toast.error(res.message ?? "Não consegui desativar.");
+      return;
+    }
+    toast.success(`«${card.name}» desativado.`);
+    startTransition(() => {
+      setLista((prev) =>
+        prev.map((c) => (c.id === card.id ? { ...c, ativo: false } : c)),
+      );
+    });
+  }
 
   async function testar(card: CardAssistente) {
     const definition = packId ? resolverPack(packId) : null;
@@ -123,7 +158,7 @@ export function LandingAssistentes({
           texto={
             inativos.length === 1
               ? "Publique para ele começar a responder."
-              : `${inativos.length} ainda estão em rascunho. Publique para começar a atender.`
+              : `${inativos.length} não estão atendendo. Publique o que quiser ligar.`
           }
           acao="Publicar"
           href={`/app/ai/agents/${primeiroInativo.id}`}
@@ -131,7 +166,7 @@ export function LandingAssistentes({
       ) : null}
 
       <ul className="grid gap-3 md:grid-cols-2" data-testid="meus-assistentes">
-        {cards.map((card) => {
+        {ordenados.map((card) => {
           const papel = card.description;
           return (
             <li
@@ -168,6 +203,28 @@ export function LandingAssistentes({
                 <Button asChild size="sm">
                   <Link href={`/app/ai/agents/${card.id}`}>Configurar</Link>
                 </Button>
+                {canWrite && card.ativo ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-testid={`desativar-assistente-${card.id}`}
+                    disabled={pendente === card.id}
+                    onClick={() => void desativar(card)}
+                  >
+                    {pendente === card.id ? "Desativando…" : "Desativar"}
+                  </Button>
+                ) : null}
+                {canWrite && !card.ativo ? (
+                  <Button asChild size="sm" variant="secondary">
+                    <Link
+                      href={`/app/ai/agents/${card.id}`}
+                      data-testid={`publicar-assistente-${card.id}`}
+                    >
+                      Publicar
+                    </Link>
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"

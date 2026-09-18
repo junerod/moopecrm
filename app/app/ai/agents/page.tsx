@@ -70,12 +70,20 @@ export default async function AgentsListPage() {
     };
   });
 
-  if (definition) {
-    const ordem = new Map(definition.specialties.map((s, i) => [s.key, i]));
+  // Ativos primeiro (quem opera quer ver o que está no ar). Dentro do mesmo
+  // estado, a ordem do pack — senão a Recepção some no meio dos inativos.
+  {
+    const ordem = definition
+      ? new Map(definition.specialties.map((s, i) => [s.key, i]))
+      : null;
     cards.sort((a, b) => {
-      const ia = a.specialtyKey ? (ordem.get(a.specialtyKey) ?? 100) : 200;
-      const ib = b.specialtyKey ? (ordem.get(b.specialtyKey) ?? 100) : 200;
-      return ia - ib;
+      if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
+      if (ordem) {
+        const ia = a.specialtyKey ? (ordem.get(a.specialtyKey) ?? 100) : 200;
+        const ib = b.specialtyKey ? (ordem.get(b.specialtyKey) ?? 100) : 200;
+        return ia - ib;
+      }
+      return a.name.localeCompare(b.name, "pt-BR");
     });
   }
 
