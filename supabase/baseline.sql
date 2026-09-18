@@ -16574,3 +16574,28 @@ $$;
 
 revoke execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) to service_role;
+
+-- ---- purpose do quadro: followup | bot (migration 0211) ----
+-- Default followup: clone antigo não muda. O gatilho inbound é jsonb
+-- (trigger_config.kind), não coluna — o schema só precisa do propósito
+-- para a aba Bots não misturar com lembrete de silêncio.
+alter table public.followup_flow_pointers
+  add column if not exists purpose text not null default 'followup';
+
+update public.followup_flow_pointers
+  set purpose = 'followup'
+  where purpose is null or btrim(purpose) = '';
+
+alter table public.followup_flow_pointers
+  drop constraint if exists followup_flow_pointers_purpose_check;
+
+alter table public.followup_flow_pointers
+  add constraint followup_flow_pointers_purpose_check
+  check (purpose in ('followup', 'bot'));
+
+create index if not exists idx_followup_flow_pointers_org_purpose
+  on public.followup_flow_pointers (organization_id, purpose);
+
+comment on column public.followup_flow_pointers.purpose is
+  'followup = lembrete/silêncio; bot = porta da frente (menu, FAQ, horário). Default followup.';
+

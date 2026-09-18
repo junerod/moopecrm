@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +17,17 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { ApiError } from "@/lib/api/types";
 import type { FlowGraph } from "@/lib/followup/graph-schema";
 import type { PublishValidationError } from "@/lib/followup/validate-publish";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDeleteFollowupFlow } from "@/hooks/followup/useFollowupFlows";
 import {
   useDisableFollowupFlow,
   usePublishFollowupFlow,
@@ -43,11 +56,14 @@ const HANDOFF_LABEL: Record<FollowupFlowDetailRow["handoff_policy"], string> = {
 };
 
 export function PublishBar({ flowId, flow, graph, dirty, onSaved, onPublishErrors, onPublishSuccess }: Props) {
+  const router = useRouter();
+  const [apagarAberto, setApagarAberto] = useState(false);
   const save = useSaveFollowupFlowDraft(flowId);
   const publish = usePublishFollowupFlow(flowId);
   const disable = useDisableFollowupFlow(flowId);
   const rollback = useRollbackFollowupFlow(flowId);
   const handoffPolicy = useUpdateHandoffPolicy(flowId);
+  const apagar = useDeleteFollowupFlow();
 
   const onSave = () => {
     save.mutate(graph, { onSuccess: () => onSaved(graph) });
@@ -91,7 +107,8 @@ export function PublishBar({ flowId, flow, graph, dirty, onSaved, onPublishError
     rollback.mutate(flow.previous_version_id);
   };
 
-  const busy = save.isPending || publish.isPending || disable.isPending || rollback.isPending;
+  const busy =
+    save.isPending || publish.isPending || disable.isPending || rollback.isPending || apagar.isPending;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
@@ -146,7 +163,43 @@ export function PublishBar({ flowId, flow, graph, dirty, onSaved, onPublishError
         >
           Rollback
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          disabled={busy}
+          data-testid="apagar-fluxo"
+          onClick={() => setApagarAberto(true)}
+        >
+          Apagar
+        </Button>
       </div>
+
+      <AlertDialog open={apagarAberto} onOpenChange={setApagarAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar «{flow.name}»?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some da lista e para de falar com o cliente. Isso não volta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="confirmar-apagar-fluxo"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                apagar.mutate(flowId, {
+                  onSuccess: () => router.push("/app/ai/followups"),
+                });
+              }}
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

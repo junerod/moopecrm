@@ -74,7 +74,7 @@ function makeDb(pointers: Row[], versions: Row[], stages: Row[] = []) {
     const filters: Array<[string, unknown]> = [];
     let orderCol: string | null = null;
     let orderAsc = true;
-    let mode: "select" | "insert" | "update" = "select";
+    let mode: "select" | "insert" | "update" | "delete" = "select";
     let payload: Row | undefined;
 
     function matches(row: Row): boolean {
@@ -118,6 +118,13 @@ function makeDb(pointers: Row[], versions: Row[], stages: Row[] = []) {
         tableRows.push(row);
         return { data: [row], error: null };
       }
+      if (mode === "delete") {
+        const matched = tableRows.filter(matches);
+        for (let i = tableRows.length - 1; i >= 0; i -= 1) {
+          if (matches(tableRows[i]!)) tableRows.splice(i, 1);
+        }
+        return { data: matched, error: null };
+      }
       // update
       const matched = tableRows.filter(matches);
       if (
@@ -151,6 +158,10 @@ function makeDb(pointers: Row[], versions: Row[], stages: Row[] = []) {
       update(obj: Row) {
         mode = "update";
         payload = obj;
+        return b;
+      },
+      delete() {
+        mode = "delete";
         return b;
       },
       eq(col: string, val: unknown) {
@@ -424,6 +435,52 @@ describe("PATCH /api/v1/ai/followup-flows/:id", () => {
     const body = (await res.json()) as { data: Row };
     expect(body.data.name).toBe("nome-original");
     expect(vi.mocked(audit)).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/v1/ai/followup-flows/:id", () => {
+  const ID = "33333333-3333-4333-8333-333333333333";
+  function pointerRow(overrides: Row = {}): Row {
+    return {
+      id: ID,
+      organization_id: ORG_ID,
+      name: "teste",
+      status: "disabled",
+      ...overrides,
+    };
+  }
+
+  it("agent (< manager) → 403, o pointer continua", async () => {
+    const db = makeDb([pointerRow()], []);
+    session("agent", db);
+    const { DELETE } = await import("@/app/api/v1/ai/followup-flows/[id]/route");
+    const res = await DELETE(req("DELETE"), ctx(ID));
+    expect(res.status).toBe(403);
+    const ainda = await db.from("followup_flow_pointers").eq("id", ID).maybeSingle();
+    expect(ainda.data).not.toBeNull();
+  });
+
+  it("manager apaga o da própria org e audita", async () => {
+    const db = makeDb([pointerRow()], []);
+    session("manager", db);
+    const { DELETE } = await import("@/app/api/v1/ai/followup-flows/[id]/route");
+    const res = await DELETE(req("DELETE"), ctx(ID));
+    expect(res.status).toBe(200);
+    const sumiu = await db.from("followup_flow_pointers").eq("id", ID).maybeSingle();
+    expect(sumiu.data).toBeNull();
+    expect(vi.mocked(audit)).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "followup_flow.deleted", resourceId: ID }),
+    );
+  });
+
+  it("pointer de outra org → 404, não apaga", async () => {
+    const db = makeDb([pointerRow({ organization_id: OTHER_ORG_ID })], []);
+    session("manager", db);
+    const { DELETE } = await import("@/app/api/v1/ai/followup-flows/[id]/route");
+    const res = await DELETE(req("DELETE"), ctx(ID));
+    expect(res.status).toBe(404);
+    const ainda = await db.from("followup_flow_pointers").eq("id", ID).maybeSingle();
+    expect(ainda.data).not.toBeNull();
   });
 });
 

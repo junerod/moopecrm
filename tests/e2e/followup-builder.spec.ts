@@ -105,8 +105,8 @@ test.describe("followup flows — lista + criação (Task 6.1)", () => {
     await login(page, creds.users.manager!.email);
 
     await page.goto("/app/ai/followups");
-    await expect(page.getByRole("heading", { name: "Automações" })).toBeVisible();
-    await page.getByRole("tab", { name: "Minhas automações" }).click();
+    await expect(page.getByRole("heading", { name: "Bots" })).toBeVisible();
+    await page.getByRole("tab", { name: "Recados" }).click();
     await page.screenshot({ path: "test-results/followup-6.1-01-list.png", fullPage: true });
 
     const flowName = `E2E Follow-up ${Date.now()}`;
@@ -141,8 +141,8 @@ test.describe("followup flows — lista + criação (Task 6.1)", () => {
     // botão "Novo fluxo" não aparece pro viewer.
     await login(page, creds.users.viewer!.email);
     await page.goto("/app/ai/followups");
-    await expect(page.getByRole("heading", { name: "Automações" })).toBeVisible();
-    await page.getByRole("tab", { name: "Minhas automações" }).click();
+    await expect(page.getByRole("heading", { name: "Bots" })).toBeVisible();
+    await page.getByRole("tab", { name: "Recados" }).click();
     await expect(page.getByRole("button", { name: "Novo fluxo" })).toHaveCount(0);
   });
 });
@@ -781,7 +781,7 @@ test.describe("followup flow builder — controle de gatilho na PublishBar (Task
       // coisas — e é o que o operador de fato vê.
       const kindSelect = panel.getByRole("combobox");
       await kindSelect.click();
-      const OFERECIDOS = ["Manual", "Silêncio", "Etapa do funil", "Agente pediu ajuda"];
+      const OFERECIDOS = ["Manual", "Silêncio", "Etapa do funil", "Agente pediu ajuda", "Primeira mensagem"];
       for (const nome of OFERECIDOS) {
         await expect(page.getByRole("option", { name: nome, exact: true })).toBeVisible();
       }

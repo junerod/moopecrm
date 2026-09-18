@@ -5,7 +5,12 @@
  */
 import { NO_REPLY_BRANCH_ID, nodeBranches } from "./graph-schema";
 import type { FlowEdge, FlowNode } from "./graph-schema";
+import { HORARIO_DENTRO_BRANCH_ID, HORARIO_FORA_BRANCH_ID } from "./horario";
+import { casarItemDeFaq, casarOpcaoDoMenu, textoDoMenu } from "./menu-match";
 import { clampEspera, esperaPlanejadaDe, type EsperaAdaptativa } from "./timing-plan";
+
+/** Teto de tentativas do menu antes de cair no `else`. */
+export const MENU_MAX_RETRIES = 2;
 
 export type EnrollmentStatus =
   | "active"
@@ -63,6 +68,7 @@ export interface LeadFacts {
 export interface EnrollmentEventRef {
   node_id: string | null;
   idempotency_key: string | null;
+  event_type?: string | null;
 }
 
 export type NodeResult =
@@ -75,6 +81,8 @@ export type NodeResult =
       kind: "enqueue_turn";
       purpose: "send_message" | "classify" | "plan_timing";
       wake_status: "active" | "waiting_reply";
+      /** Menu/FAQ/humano: corpo fixo, sem LLM. */
+      fixed_body?: string;
     }
   // action recheck: the send turn is already in flight; stay put WITHOUT re-enqueuing (anti-dup-send).
   | { kind: "recheck"; next_eval_at: Date }
@@ -82,7 +90,9 @@ export type NodeResult =
   | { kind: "dead"; reason: string }
   // outcome is nullable for the 'custom' end-node case (cancel_reason carries the note instead).
   | { kind: "complete"; outcome: EnrollmentOutcome | null; cancel_reason?: string }
-  | { kind: "fail"; error: string };
+  | { kind: "fail"; error: string }
+  /** Menu/FAQ: espera resposta do contato sem enfileirar turno de IA. */
+  | { kind: "await_reply"; next_eval_at: Date };
 
 /** Backoff ladder indexed by `attempts - 1` (clamped to the last slot) — 30s..1h. */
 export const BACKOFF_MS = [30_000, 60_000, 300_000, 900_000, 3_600_000] as const;
@@ -289,6 +299,14 @@ export function processNode(input: {
   /** trigger dead-man counter: eventos já acumulados no nó trigger — limita os rechecks para que
    *  um turno de planejamento que nunca volta siga SEM plano em vez de esperar para sempre. */
   planRecheckCount?: number;
+  /** Última inbound do contato — menu/FAQ casam número ou palavra. */
+  lastInboundText?: string;
+  /** Horário: true = dentro da janela do agente publicado. Ausente = dentro (falha aberta). */
+  dentroDoHorario?: boolean;
+  /** Quantos `action_sent` este nó de menu já acumulou (1 = menu inicial). */
+  menuRetryCount?: number;
+  /** Já existe `action_sent` neste nó (FAQ/humano: não reenviar). */
+  actionSent?: boolean;
 }): NodeResult {
   const {
     node,
@@ -303,6 +321,10 @@ export function processNode(input: {
     smartWaits,
     planEnqueued,
     planRecheckCount,
+    lastInboundText,
+    dentroDoHorario,
+    menuRetryCount,
+    actionSent,
   } = input;
 
   switch (node.type) {
@@ -433,6 +455,109 @@ export function processNode(input: {
         return { kind: "complete", outcome: null, cancel_reason: node.config.note };
       }
       return { kind: "complete", outcome: node.config.outcome };
+    }
+
+    case "menu": {
+      const opcoes = node.config.options.map((o) => ({
+        id: o.id,
+        numero: o.number,
+        label: o.label,
+        keywords: o.keywords,
+      }));
+      const inbound = lastInboundText?.trim() ?? "";
+      if (inbound.length > 0 && (wokeEarly || waitElapsed)) {
+        const hit = casarOpcaoDoMenu(inbound, opcoes);
+        if (hit) {
+          const edge = selectEdge(edges, node.id, { type: "branch", branch_id: hit });
+          if (!edge) {
+            return { kind: "fail", error: `menu node "${node.id}" has no edge for option "${hit}"` };
+          }
+          return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
+        }
+        if ((menuRetryCount ?? 0) > MENU_MAX_RETRIES) {
+          const edge = selectEdge(edges, node.id, { type: "always" });
+          if (!edge) return { kind: "fail", error: `menu node "${node.id}" has no else edge after retries` };
+          return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
+        }
+        if (!actionEnqueued) {
+          return {
+            kind: "enqueue_turn",
+            purpose: "send_message",
+            wake_status: "waiting_reply",
+            fixed_body: node.config.retry_text?.trim() || "Não entendi. Responda com o número da opção.",
+          };
+        }
+        return { kind: "await_reply", next_eval_at: new Date(clock().getTime() + 86_400_000) };
+      }
+      if ((menuRetryCount ?? 0) === 0 && !actionEnqueued) {
+        return {
+          kind: "enqueue_turn",
+          purpose: "send_message",
+          wake_status: "waiting_reply",
+          fixed_body: textoDoMenu(node.config.title, opcoes),
+        };
+      }
+      return { kind: "await_reply", next_eval_at: new Date(clock().getTime() + 86_400_000) };
+    }
+
+    case "faq": {
+      const inbound = lastInboundText?.trim() ?? "";
+      if (inbound.length === 0 || !(wokeEarly || waitElapsed)) {
+        return { kind: "await_reply", next_eval_at: new Date(clock().getTime() + 86_400_000) };
+      }
+      const hit = casarItemDeFaq(
+        inbound,
+        node.config.items.map((i) => ({ id: i.id, keywords: i.keywords })),
+      );
+      if (hit) {
+        const edge = selectEdge(edges, node.id, { type: "branch", branch_id: hit });
+        if (!edge) return { kind: "fail", error: `faq node "${node.id}" has no edge for item "${hit}"` };
+        const item = node.config.items.find((i) => i.id === hit);
+        if (!actionSent && !actionEnqueued && item) {
+          return {
+            kind: "enqueue_turn",
+            purpose: "send_message",
+            wake_status: "active",
+            fixed_body: item.answer,
+          };
+        }
+        if (actionSent) {
+          return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
+        }
+        return { kind: "recheck", next_eval_at: new Date(clock().getTime() + ACTION_RECHECK_MS) };
+      }
+      const edge = selectEdge(edges, node.id, { type: "always" });
+      if (!edge) return { kind: "fail", error: `faq node "${node.id}" has no else edge` };
+      return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
+    }
+
+    case "horario": {
+      const ramo = (dentroDoHorario ?? true) ? HORARIO_DENTRO_BRANCH_ID : HORARIO_FORA_BRANCH_ID;
+      const edge = selectEdge(edges, node.id, { type: "branch", branch_id: ramo });
+      if (!edge) {
+        return { kind: "fail", error: `horario node "${node.id}" has no edge for "${ramo}"` };
+      }
+      return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
+    }
+
+    case "humano": {
+      const phrase = node.config.phrase?.trim() ?? "";
+      if (phrase.length > 0 && !actionSent && !actionEnqueued) {
+        return {
+          kind: "enqueue_turn",
+          purpose: "send_message",
+          wake_status: "active",
+          fixed_body: phrase,
+        };
+      }
+      if (phrase.length > 0 && !actionSent) {
+        return { kind: "recheck", next_eval_at: new Date(clock().getTime() + ACTION_RECHECK_MS) };
+      }
+      return { kind: "complete", outcome: "handoff", cancel_reason: "bot_humano" };
+    }
+
+    case "assistente": {
+      return { kind: "complete", outcome: null, cancel_reason: "released_to_assistant" };
     }
   }
 }

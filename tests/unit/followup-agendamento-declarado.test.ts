@@ -66,6 +66,14 @@ const ESCRITORES: Record<string, { agenda: "agora" | "futuro" | "nenhum"; nota: 
     agenda: "agora",
     nota: "mesmo caso do gatilho de etapa: nasce vencido, insert omite a coluna.",
   },
+  "gatilho-inbound.ts": {
+    agenda: "agora",
+    nota: "o enrollment nasce vencido — o insert omite a coluna e o default now() do banco decide (0147).",
+  },
+  "bot-intercept.ts": {
+    agenda: "agora",
+    nota: "mesmo caso do gatilho inbound: insert omite a coluna, default now() do banco.",
+  },
   "gatilho-caso.ts": {
     agenda: "nenhum",
     nota:

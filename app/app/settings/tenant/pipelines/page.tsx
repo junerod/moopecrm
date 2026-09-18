@@ -45,8 +45,8 @@ export default async function PipelinesSettingsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Etapas do funil</h1>
         <p className="text-sm text-muted-foreground">
-          Para onde o agente leva o card em cada passo do atendimento
-          {podeEditarConfig ? ", vocabulário, custom fields e motivos de perda" : ""}.
+          As colunas do quadro: criar, renomear, reordenar e apagar.
+          {podeEditarConfig ? " Também vocabulário, campos extras e motivos de perda." : ""}
         </p>
       </header>
       <PipelinesClient pipelines={pipelines} podeEditarConfig={podeEditarConfig} />

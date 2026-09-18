@@ -15,6 +15,7 @@ export interface FollowupFlowDetailRow {
   draft_graph: FlowGraph | null;
   handoff_policy: "pause" | "cancel" | "allow";
   trigger_config: Record<string, unknown>;
+  purpose?: "followup" | "bot";
   created_at: string;
   updated_at: string;
   versions_count: number;

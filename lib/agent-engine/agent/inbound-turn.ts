@@ -62,6 +62,7 @@ import { decidirEfeitoDaIa } from '@/lib/ai/execucao/modos';
 import { applyLeadStateUpdate, getLeadState, type LeadStage, type LeadStateRow } from './lead-state';
 import { applySaveLeadNote, buildNotesIndexBlock, getLeadNoteBody } from './lead-notes';
 import { applyScheduleFollowup, type FollowupWindowKnobs } from './schedule-followup';
+import { contatoTemBotAtivo, enrollBotsInboundSePreciso } from '@/lib/followup/bot-intercept';
 import {
   avisarLeadDaEscalacao,
   avisarLeadLendoOContato,
@@ -3009,6 +3010,17 @@ async function executarTurnoDoAgente(
 export function createInboundTurnHandler(deps: InboundTurnDeps) {
   return async (job: JobRow, pool: pg.Pool, ctx: { workerId: string }): Promise<void> => {
     const payload = inboundTurnPayloadSchema.parse(job.payload);
+    if (job.contact_id) {
+      await enrollBotsInboundSePreciso(
+        pool,
+        job.organization_id,
+        job.contact_id,
+        payload.conversation_id,
+      );
+      if (await contatoTemBotAtivo(pool, job.organization_id, job.contact_id)) {
+        return;
+      }
+    }
     await runAgentTurn(deps, job, pool, ctx, {
       channelSessionId: payload.channel_session_id,
       conversationId: payload.conversation_id,

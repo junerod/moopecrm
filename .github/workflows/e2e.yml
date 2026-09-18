@@ -208,6 +208,7 @@ jobs:
         qa-agente-usa-as-maos.spec.ts qa-selo-no-funil-usado.spec.ts
         qa-telas-descobertas-w4.spec.ts retorno-anti-morte.spec.ts
         followup-builder.spec.ts followup-queue.spec.ts
+        bot-menu.spec.ts
         distribuicao-atendimento.spec.ts followup-journey.spec.ts
         webhooks.spec.ts
         capacidades-do-agente.spec.ts

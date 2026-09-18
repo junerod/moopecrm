@@ -317,7 +317,8 @@ export function StagesSection({
         <h3 className="text-sm font-semibold">Etapas deste funil</h3>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
           Estas são as colunas do seu quadro, na ordem em que o cliente avança. Você pode
-          renomear, criar, reordenar e arquivar.
+          renomear, criar, reordenar e apagar. Apagar tira a coluna da tela; o histórico
+          de quem passou por ela continua.
         </p>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
           Duas colunas têm papel especial: a <strong>de fechamento</strong> é onde o negócio
@@ -454,7 +455,7 @@ export function StagesSection({
                   }}
                 >
                   <Archive size={16} className="mr-1" aria-hidden />
-                  Arquivar
+                  Apagar
                 </Button>
               </div>
 
@@ -508,9 +509,9 @@ export function StagesSection({
                     </p>
                   ) : arquivandoAqui.negocios === null ? (
                     <p className="text-sm leading-relaxed">
-                      Arquivar «{etapa.name}»? A coluna sai do quadro e para de receber negócios
-                      novos. Nada é apagado — o histórico de quem passou por ela continua
-                      guardado —, mas <strong>não dá para trazer a coluna de volta por aqui</strong>.
+                      Apagar «{etapa.name}» do quadro? A coluna some da tela e para de receber
+                      negócios novos. O histórico de quem passou por ela continua guardado, mas{" "}
+                      <strong>não dá para trazer a coluna de volta por aqui</strong>.
                     </p>
                   ) : destinos.length === 0 ? (
                     // Sem destino possível não há pergunta a fazer — e mandar
@@ -518,7 +519,7 @@ export function StagesSection({
                     <p className="text-sm leading-relaxed" data-testid={`arquivar-sem-destino-${etapa.id}`}>
                       {contagemDeNegocios(arquivandoAqui.negocios)} {arquivandoAqui.negocios === 1 ? "está" : "estão"} nesta
                       etapa e não há outra coluna em aberto para recebê-{arquivandoAqui.negocios === 1 ? "lo" : "los"}. Crie
-                      uma etapa antes de arquivar «{etapa.name}».
+                      uma etapa antes de apagar «{etapa.name}».
                     </p>
                   ) : (
                     <>
@@ -590,8 +591,8 @@ export function StagesSection({
                         onClick={() => pedirArquivamento(etapa, arquivandoAqui.destino)}
                       >
                         {arquivandoAqui.negocios === null
-                          ? "Arquivar"
-                          : "Mover os negócios e arquivar"}
+                          ? "Apagar"
+                          : "Mover os negócios e apagar"}
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => setArquivamento(null)}>

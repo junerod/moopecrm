@@ -15,6 +15,7 @@ import { automationRulesHandler } from "@/lib/automation/engine.handler";
 import { followupReactivityHandler } from "@/lib/followup/reactivity.handler";
 import { followupGatilhoEtapaHandler } from "@/lib/followup/gatilho-etapa.handler";
 import { followupGatilhoCasoHandler } from "@/lib/followup/gatilho-caso.handler";
+import { followupGatilhoInboundHandler } from "@/lib/followup/gatilho-inbound.handler";
 import { mediaPersistHandler } from "@/workers/media-persist-worker.handler";
 import { mediaDeriveHandler } from "@/workers/media-derive-worker.handler";
 import { moopeOutboundHandler } from "@/lib/moope/eventos-outbound.handler";
@@ -34,6 +35,7 @@ export function ensureHandlersRegistered(): void {
   registerHandler(followupReactivityHandler);
   registerHandler(followupGatilhoEtapaHandler);
   registerHandler(followupGatilhoCasoHandler);
+  registerHandler(followupGatilhoInboundHandler);
   registerHandler(mediaPersistHandler);
   registerHandler(mediaDeriveHandler);
   registerHandler(moopeOutboundHandler);

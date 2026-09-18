@@ -9,6 +9,7 @@ import { flowGraphSchema } from "./graph-schema";
 
 export const createFollowupFlowSchema = z.strictObject({
   name: z.string().trim().min(1).max(80),
+  purpose: z.enum(["followup", "bot"]).optional(),
 });
 
 // `cancel_on_reply` (Task 5.2 — reatividade): se true, um enrollment `waiting_reply`
@@ -47,6 +48,11 @@ export const triggerConfigSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("conversation_end"),
     params: z.strictObject({}),
+    ...CANCEL_ON_REPLY,
+  }),
+  z.strictObject({
+    kind: z.literal("inbound"),
+    params: z.strictObject({}).optional(),
     ...CANCEL_ON_REPLY,
   }),
 ]);

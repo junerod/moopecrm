@@ -71,6 +71,8 @@ export interface LiveEnrollmentRef {
   handoff_policy: "pause" | "cancel" | "allow";
   /** jsonb bruto do pointer — parseado defensivamente aqui (safeParse, default false). */
   trigger_config: unknown;
+  /** `followup` (default) | `bot`. Menu não cancela na resposta. Ausente = followup. */
+  purpose?: "followup" | "bot";
 }
 
 /** Interface estreita de DB (mesma doutrina de `AdminClient`/`TurnBridgeAdminClient`
@@ -204,7 +206,7 @@ async function reactToInbound(
   const waitingReply = live.filter((e) => e.status === "waiting_reply");
   let reacted = 0;
   for (const e of waitingReply) {
-    if (parseCancelOnReply(e.trigger_config)) {
+    if (e.purpose !== "bot" && parseCancelOnReply(e.trigger_config)) {
       const key = `reactivity:${row.id}:${e.id}:reactivity_replied`;
       const applied = await applyStep(
         db,
@@ -447,7 +449,7 @@ export function createSupabaseReactivityClient(admin: SupabaseClient): Reactivit
       const pointerIds = [...new Set(enrollments.map((e) => e.pointer_id))];
       const { data: pointers, error: pErr } = await admin
         .from("followup_flow_pointers")
-        .select("id, handoff_policy, trigger_config")
+        .select("id, handoff_policy, trigger_config, purpose")
         .eq("organization_id", orgId)
         .in("id", pointerIds);
       if (pErr) throw new Error(pErr.message);
@@ -463,6 +465,7 @@ export function createSupabaseReactivityClient(admin: SupabaseClient): Reactivit
           pointer_id: e.pointer_id,
           handoff_policy: (p?.handoff_policy as LiveEnrollmentRef["handoff_policy"]) ?? "pause",
           trigger_config: p?.trigger_config ?? null,
+          purpose: p?.purpose === "bot" ? "bot" : "followup",
         };
       });
     },

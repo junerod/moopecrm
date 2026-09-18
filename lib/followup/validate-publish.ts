@@ -305,7 +305,9 @@ export function validateFlowForPublish(graph: FlowGraph): PublishValidationResul
       }
     }
 
-    const endNodes = nodes.filter((n) => n.type === 'end');
+    const endNodes = nodes.filter(
+      (n) => n.type === 'end' || n.type === 'humano' || n.type === 'assistente',
+    );
     const canReachEnd = bfsReachable(endNodes.map((n) => n.id), inEdges);
     for (const node of [...nodes].sort(byId)) {
       if (reachable.has(node.id) && !canReachEnd.has(node.id)) {
@@ -348,6 +350,11 @@ export function validateFlowForPublish(graph: FlowGraph): PublishValidationResul
     const outgoing = outEdges.get(node.id) ?? [];
 
     cobrirRamos(node, outgoing, errors);
+  }
+
+  for (const node of [...nodes].sort(byId)) {
+    if (node.type !== 'menu' && node.type !== 'faq' && node.type !== 'horario') continue;
+    cobrirRamos(node, outEdges.get(node.id) ?? [], errors);
   }
 
   for (const node of [...nodes].sort(byId)) {

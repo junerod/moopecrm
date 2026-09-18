@@ -12,6 +12,7 @@ export interface FollowupFlowPointerRow {
   status: FollowupFlowStatus;
   active_version_id: string | null;
   handoff_policy: string;
+  purpose?: "followup" | "bot";
   updated_at: string;
 }
 
@@ -41,12 +42,33 @@ export function useFollowupFlows(opts?: { initialData?: FollowupFlowPointerRow[]
   });
 }
 
+export function useDeleteFollowupFlow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationKey: ["followup", "flows", "delete"],
+    mutationFn: async (id: string) => {
+      await apiClient.delete<{ data: { id: string } }>(`/api/v1/ai/followup-flows/${id}`);
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.setQueryData<FollowupFlowPointerRow[]>(followupFlowsListQueryKey, (prev) =>
+        prev ? prev.filter((f) => f.id !== id) : prev,
+      );
+      toast.success("Apagado.");
+    },
+    onError: (err) => {
+      showApiError(err);
+    },
+  });
+}
+
 export function useCreateFollowupFlow() {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: ["followup", "flows", "create"],
-    mutationFn: async (name: string) => {
-      const res = await apiClient.post<SingleResponse>("/api/v1/ai/followup-flows", { name });
+    mutationFn: async (input: string | { name: string; purpose?: "followup" | "bot" }) => {
+      const body = typeof input === "string" ? { name: input } : input;
+      const res = await apiClient.post<SingleResponse>("/api/v1/ai/followup-flows", body);
       return res.data;
     },
     onSuccess: (created) => {

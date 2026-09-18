@@ -109,6 +109,18 @@ export async function completeTurnForEnrollment(
   };
 
   if (result.kind === "sent") {
+    if (node.type === "menu") {
+      await applyStep(
+        "action_sent",
+        {},
+        { status: "waiting_reply", next_eval_at: new Date(now.getTime() + 86_400_000).toISOString() },
+      );
+      return;
+    }
+    if (node.type === "faq" || node.type === "humano") {
+      await applyStep("action_sent", {}, { status: "active", next_eval_at: now.toISOString() });
+      return;
+    }
     if (node.type !== "action") {
       throw new Error(`completeTurnForEnrollment: resultado 'sent' mas o nó "${node.id}" não é 'action'`);
     }
@@ -242,10 +254,56 @@ export function createPgAdminClient(pool: pg.Pool): TurnBridgeAdminClient {
     },
     async loadEnrollmentEvents(enrollmentId) {
       const { rows } = await pool.query(
-        `select node_id, idempotency_key from followup_enrollment_events where enrollment_id = $1`,
+        `select node_id, idempotency_key, event_type
+           from followup_enrollment_events
+          where enrollment_id = $1
+          order by created_at asc`,
         [enrollmentId],
       );
       return rows;
+    },
+    async loadLastInboundText(orgId, contactId) {
+      const { rows } = await pool.query<{ body: string | null }>(
+        `select body from messages
+          where organization_id = $1 and contact_id = $2 and direction = 'inbound'
+          order by sent_at desc nulls last limit 1`,
+        [orgId, contactId],
+      );
+      return typeof rows[0]?.body === "string" ? rows[0].body : null;
+    },
+    async loadPublishedAgentHours(orgId) {
+      const { rows: agents } = await pool.query<{ published_version_id: string | null }>(
+        `select published_version_id from ai_agents
+          where organization_id = $1 and is_default = true
+          limit 1`,
+        [orgId],
+      );
+      const versionId = agents[0]?.published_version_id;
+      if (!versionId) return null;
+      const { rows } = await pool.query<{ trigger_config: unknown }>(
+        `select trigger_config from ai_agent_versions
+          where organization_id = $1 and id = $2`,
+        [orgId, versionId],
+      );
+      return rows[0]?.trigger_config ?? null;
+    },
+    async requestBotHandoff(enrollment) {
+      await pool.query(
+        `update contacts set force_human = true
+          where id = $1 and organization_id = $2`,
+        [enrollment.contact_id, enrollment.organization_id],
+      );
+      await pool.query(
+        `insert into agent_inbox_items
+           (organization_id, kind, severity, title, body, ref_kind, ref_id)
+         values ($1, 'handoff', 'critical', $2, $3, 'contact', $4)`,
+        [
+          enrollment.organization_id,
+          "O bot pediu uma pessoa",
+          "O quadro de atendimento passou a conversa para um humano.",
+          enrollment.contact_id,
+        ],
+      );
     },
     async insertEnrollmentEvent(event) {
       try {

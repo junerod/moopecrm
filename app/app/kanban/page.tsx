@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppIcon } from "@/components/ds/AppIcon";
@@ -63,7 +64,14 @@ export default async function KanbanPickerPage() {
               gerou o comentário — é uma delas. Todas atualizadas junto. */}
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">Funis</h1>
           <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
-            Organize seus processos comerciais.
+            Organize seus processos comerciais.{" "}
+            <Link
+              href="/app/settings/tenant/pipelines"
+              className="underline underline-offset-2 hover:text-[var(--color-text)]"
+            >
+              Criar ou apagar colunas
+            </Link>
+            .
           </p>
         </div>
       </header>

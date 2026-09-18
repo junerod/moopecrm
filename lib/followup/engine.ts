@@ -26,6 +26,7 @@ import {
   type LeadFacts,
   type NodeResult,
 } from "./node-handlers";
+import { estaDentroDoHorario } from "./horario";
 import { coletarEsperasAdaptativas, type EsperaAdaptativa, type TimingPlan } from "./timing-plan";
 
 const MAX_STEPS = 30;
@@ -61,6 +62,8 @@ export interface FollowupJobRequest {
     /** action (mode 'template') — envio determinístico, sem LLM. */
     template_id?: string;
     mode?: "template";
+    /** Menu/FAQ/humano: corpo fixo, sem LLM. */
+    fixed_body?: string;
     /** ai_classify — Task 5.1: classes possíveis + dica opcional pro classificador. */
     classes?: string[];
     hint?: string;
@@ -77,6 +80,12 @@ export interface AdminClient {
   loadFlowGraph(orgId: string, versionId: string): Promise<FlowGraph | null>;
   loadLeadFacts(orgId: string, contactId: string): Promise<{ lead_stage: string | null; tags: string[] }>;
   loadEnrollmentEvents(enrollmentId: string): Promise<EnrollmentEventRef[]>;
+  /** Última inbound do contato — menu/FAQ. Ausente nos fakes de teste. */
+  loadLastInboundText?(orgId: string, contactId: string): Promise<string | null>;
+  /** `trigger_config` do agente publicado — nó Horário. Ausente = falha aberta. */
+  loadPublishedAgentHours?(orgId: string): Promise<unknown>;
+  /** Nó Humano: pede pessoa (inbox + force_human). */
+  requestBotHandoff?(enrollment: EnrollmentRow): Promise<void>;
   /** Inserts the step's audit event; `inserted:false` means idempotency_key already existed (23505 replay). */
   insertEnrollmentEvent(event: {
     organization_id: string;
@@ -133,6 +142,8 @@ function eventTypeFor(result: NodeResult): string {
       return "action_recheck";
     case "complete":
       return "flow_completed";
+    case "await_reply":
+      return "await_reply";
     // `dead`/`fail` never reach the event-insert (handled at the top of applyResult) — cases
     // present only for switch exhaustiveness, mirroring how `fail` is already listed here.
     case "dead":
@@ -151,6 +162,7 @@ function eventPayload(result: NodeResult): Record<string, unknown> {
       };
     case "wait":
     case "recheck":
+    case "await_reply":
       return { next_eval_at: result.next_eval_at.toISOString() };
     case "enqueue_turn":
       return { purpose: result.purpose, wake_status: result.wake_status };
@@ -252,7 +264,12 @@ async function applyHandlerFailure(
 function tallyOutcome(result: NodeResult, summary: TickSummary): void {
   if (result.kind === "advance" || result.kind === "complete") {
     summary.advanced++;
-  } else if (result.kind === "wait" || result.kind === "enqueue_turn" || result.kind === "recheck") {
+  } else if (
+    result.kind === "wait" ||
+    result.kind === "enqueue_turn" ||
+    result.kind === "recheck" ||
+    result.kind === "await_reply"
+  ) {
     summary.scheduled++;
   }
 }
@@ -312,6 +329,11 @@ async function applyResult(
       patch.status = "active";
       patch.next_eval_at = result.next_eval_at.toISOString();
       break;
+    case "await_reply":
+      patch.current_node_id = enrollment.current_node_id;
+      patch.status = "waiting_reply";
+      patch.next_eval_at = result.next_eval_at.toISOString();
+      break;
     case "enqueue_turn": {
       patch.current_node_id = enrollment.current_node_id;
       patch.status = result.wake_status;
@@ -342,6 +364,9 @@ async function applyResult(
             node_id: node.id,
             purpose: result.purpose,
             ...turnPayloadExtras(node, smartWaits),
+            ...(result.fixed_body
+              ? { fixed_body: result.fixed_body, mode: "template" as const }
+              : {}),
           },
         });
       }
@@ -358,6 +383,15 @@ async function applyResult(
   }
 
   await db.updateEnrollment(enrollment.id, enrollment.organization_id, patch);
+
+  if (
+    result.kind === "complete" &&
+    result.cancel_reason === "bot_humano" &&
+    db.requestBotHandoff &&
+    !isReplay
+  ) {
+    await db.requestBotHandoff(enrollment);
+  }
 
   if (!isReplay) tallyOutcome(result, summary);
 }
@@ -406,20 +440,28 @@ async function processEnrollment(deps: TickDeps, enrollment: EnrollmentRow, summ
     planRecheckCount = events.filter((e) => e.node_id === node.id).length;
   }
 
-  if (node.type === "wait" || node.type === "ai_classify" || node.type === "action") {
+  let lastInboundText: string | undefined;
+  let dentroDoHorario: boolean | undefined;
+  let menuRetryCount: number | undefined;
+  let actionSent: boolean | undefined;
+
+  const precisaEventosDoBot =
+    node.type === "menu" || node.type === "faq" || node.type === "humano";
+
+  if (node.type === "wait" || node.type === "ai_classify" || node.type === "action" || precisaEventosDoBot) {
     const events = await db.loadEnrollmentEvents(enrollment.id);
     // Same prior-step-event check for all three: "did we already act on this node at this
     // occupancy?" — resolveWaitPhase looks for `${node}:${steps_taken - 1}`. For `action`
     // this is the occupancy guard that makes the send enqueue EXACTLY ONCE (a recheck sees
     // the prior `turn_enqueued` event and skips re-enqueuing).
     waitElapsed = resolveWaitPhase(events, node.id, enrollment.steps_taken);
-    if (node.type === "ai_classify") {
+    const wakeKey = `${node.id}:${enrollment.steps_taken}:wake`;
+    if (node.type === "ai_classify" || node.type === "menu" || node.type === "faq") {
       // Marker próprio de reactivity (Task 5.2, lib/followup/reactivity.ts) —
       // `${node.id}:${steps_taken}:wake`, distinto do idempotency_key de passo
       // (`${node.id}:${steps_taken - 1}`) que waitElapsed checa. Existe ⇒ um
       // inbound chegou nesta ocupação do nó; desempata contra o "no_reply" do
       // fix da Task 5.1 (ambos re-entram via a MESMA waitElapsed=true).
-      const wakeKey = `${node.id}:${enrollment.steps_taken}:wake`;
       wokeEarly = events.some((e) => e.node_id === node.id && e.idempotency_key === wakeKey);
     }
     if (node.type === "action") {
@@ -428,6 +470,25 @@ async function processEnrollment(deps: TickDeps, enrollment: EnrollmentRow, summ
       // reactivity never writes a `:wake` marker for it — this counts turn_enqueued + recheck).
       actionRecheckCount = events.filter((e) => e.node_id === node.id).length;
     }
+    if (precisaEventosDoBot) {
+      const doNo = events.filter((e) => e.node_id === node.id);
+      const last = doNo[doNo.length - 1];
+      actionEnqueued = last?.event_type === "turn_enqueued";
+      const sentCount = doNo.filter((e) => e.event_type === "action_sent").length;
+      actionSent = sentCount > 0;
+      menuRetryCount = sentCount;
+    }
+  }
+
+  if ((node.type === "menu" || node.type === "faq") && db.loadLastInboundText) {
+    lastInboundText = (await db.loadLastInboundText(enrollment.organization_id, enrollment.contact_id)) ?? "";
+  }
+
+  if (node.type === "horario") {
+    const cfg = db.loadPublishedAgentHours
+      ? await db.loadPublishedAgentHours(enrollment.organization_id)
+      : null;
+    dentroDoHorario = estaDentroDoHorario(cfg, clock());
   }
 
   const result = processNode({
@@ -443,6 +504,10 @@ async function processEnrollment(deps: TickDeps, enrollment: EnrollmentRow, summ
     smartWaits,
     planEnqueued,
     planRecheckCount,
+    lastInboundText,
+    dentroDoHorario,
+    menuRetryCount,
+    actionSent,
   });
   await applyResult(deps, enrollment, node, result, summary, smartWaits);
 }
@@ -525,10 +590,62 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
     async loadEnrollmentEvents(enrollmentId) {
       const { data, error } = await admin
         .from("followup_enrollment_events")
-        .select("node_id, idempotency_key")
-        .eq("enrollment_id", enrollmentId);
+        .select("node_id, idempotency_key, event_type")
+        .eq("enrollment_id", enrollmentId)
+        .order("created_at", { ascending: true });
       if (error) throw new Error(error.message);
       return data ?? [];
+    },
+    async loadLastInboundText(orgId, contactId) {
+      const { data, error } = await admin
+        .from("messages")
+        .select("body")
+        .eq("organization_id", orgId)
+        .eq("contact_id", contactId)
+        .eq("direction", "inbound")
+        .order("sent_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return typeof data?.body === "string" ? data.body : null;
+    },
+    async loadPublishedAgentHours(orgId) {
+      const { data: agent, error: aErr } = await admin
+        .from("ai_agents")
+        .select("published_version_id")
+        .eq("organization_id", orgId)
+        .eq("is_default", true)
+        .limit(1)
+        .maybeSingle();
+      if (aErr) throw new Error(aErr.message);
+      const versionId = (agent as { published_version_id?: string | null } | null)?.published_version_id;
+      if (!versionId) return null;
+      const { data: version, error: vErr } = await admin
+        .from("ai_agent_versions")
+        .select("trigger_config")
+        .eq("organization_id", orgId)
+        .eq("id", versionId)
+        .maybeSingle();
+      if (vErr) throw new Error(vErr.message);
+      return version?.trigger_config ?? null;
+    },
+    async requestBotHandoff(enrollment) {
+      const { error: contactErr } = await admin
+        .from("contacts")
+        .update({ force_human: true })
+        .eq("id", enrollment.contact_id)
+        .eq("organization_id", enrollment.organization_id);
+      if (contactErr) throw new Error(contactErr.message);
+      const { error: inboxErr } = await admin.from("agent_inbox_items").insert({
+        organization_id: enrollment.organization_id,
+        kind: "handoff",
+        severity: "critical",
+        title: "O bot pediu uma pessoa",
+        body: "O quadro de atendimento passou a conversa para um humano.",
+        ref_kind: "contact",
+        ref_id: enrollment.contact_id,
+      });
+      if (inboxErr) throw new Error(inboxErr.message);
     },
     async insertEnrollmentEvent(event) {
       const { error } = await admin.from("followup_enrollment_events").insert(event);

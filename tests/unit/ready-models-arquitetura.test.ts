@@ -17,6 +17,8 @@ const CAMINHOS_CRITICOS = [
   "lib/followup/silence-sweep.ts",
   "lib/followup/gatilho-etapa.ts",
   "lib/followup/gatilho-caso.ts",
+  "lib/followup/gatilho-inbound.ts",
+  "lib/followup/bot-intercept.ts",
   "lib/followup/agent-followup-gate.ts",
   "lib/agent-engine/agent/followup-turn.ts",
   "lib/ai/copiloto/gerar.ts",

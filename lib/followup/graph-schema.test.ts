@@ -34,6 +34,11 @@ describe('graph-schema', () => {
         'ai_classify',
         'action',
         'end',
+        'menu',
+        'faq',
+        'horario',
+        'humano',
+        'assistente',
       ]);
     });
 

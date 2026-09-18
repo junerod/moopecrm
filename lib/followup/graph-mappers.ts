@@ -71,6 +71,16 @@ export function toFlowNode(n: RFNode): FlowNode {
       return { ...shared, type, config: n.data.config as ConfigOf<"action"> };
     case "end":
       return { ...shared, type, config: n.data.config as ConfigOf<"end"> };
+    case "menu":
+      return { ...shared, type, config: n.data.config as ConfigOf<"menu"> };
+    case "faq":
+      return { ...shared, type, config: n.data.config as ConfigOf<"faq"> };
+    case "horario":
+      return { ...shared, type, config: n.data.config as ConfigOf<"horario"> };
+    case "humano":
+      return { ...shared, type, config: n.data.config as ConfigOf<"humano"> };
+    case "assistente":
+      return { ...shared, type, config: n.data.config as ConfigOf<"assistente"> };
     default: {
       const exhaustive: never = type;
       throw new Error(`unknown node type: ${String(exhaustive)}`);

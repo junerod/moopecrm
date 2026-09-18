@@ -51,6 +51,7 @@ import { ConditionNode } from "./nodes/ConditionNode";
 import { ClassifyNode } from "./nodes/ClassifyNode";
 import { ActionNode } from "./nodes/ActionNode";
 import { EndNode } from "./nodes/EndNode";
+import { AssistenteNode, FaqNode, HorarioNode, HumanoNode, MenuNode } from "./nodes/BotNodes";
 
 const EMPTY_GRAPH: FlowGraph = { nodes: [], edges: [] };
 const DND_MIME = "application/x-followup-node-type";
@@ -64,6 +65,11 @@ const nodeTypes: NodeTypes = {
   ai_classify: ClassifyNode,
   action: ActionNode,
   end: EndNode,
+  menu: MenuNode,
+  faq: FaqNode,
+  horario: HorarioNode,
+  humano: HumanoNode,
+  assistente: AssistenteNode,
 };
 
 interface Props {

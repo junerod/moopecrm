@@ -465,4 +465,5 @@ export const GATILHOS: Record<TipoDeGatilho, string> = {
   // clínica, não quem escreveu o schema.
   case_opened: "Quando o agente pede ajuda de um humano",
   conversation_end: "Fim da conversa",
+  inbound: "Primeira mensagem",
 };

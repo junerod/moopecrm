@@ -237,6 +237,7 @@ aplica.
 | `20260913180000` | `0208_ai_policy_aceita_docx` | Bucket `ai-policy` passa a aceitar DOCX (`wordprocessingml`). PDF/MD/TXT seguem. Sem coluna nova. |
 | `20260914120000` | `0209_campanhas_premium` | **Campanha premium.** `campaigns.settings` (objetivo, canais, anexos por path, preparing). Destinatário ganha `channel` + `destination`; unique vira `(campaign_id, contact_id, channel)` para WhatsApp + e-mail no mesmo contato. `preparing` não entra no CHECK de status. LGPD zera `destination`. |
 | `20260915120000` | `0210_canal_instagram_vocabulario` | **Quinto canal** (Direct). Coluna `instagram_account_id` (sessionRef = IG user id), CHECKs recriados (quatro → cinco providers), unique parcial nos ativos. Sem isto a DM não tem sessão para gravar. |
+| `20260916200000` | `0211_bot_purpose_e_inbound` | **Propósito do quadro.** `followup_flow_pointers.purpose` (`followup` \| `bot`), default `followup`. Sem isto a aba Bots mistura menu de atendimento com lembrete de silêncio. O gatilho `inbound` vive no jsonb `trigger_config`, não numa coluna. |
 
 ## Reproducibility
 

@@ -288,8 +288,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     // que ele significa.
     href: "/app/settings/tenant/pipelines",
     label: "Etapas do funil",
-    description: "As colunas de cada funil, o vocabulário do negócio e os motivos de perda.",
-    aliases: ["etapas", "colunas", "configurar funil"],
+    description: "Criar, renomear e apagar as colunas de cada funil.",
+    aliases: ["etapas", "colunas", "configurar funil", "apagar etapa"],
     icon: Funnel,
     group: "organizacao",
     section: "Sua empresa",
@@ -300,8 +300,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/ai/agents",
     label: "Assistentes IA",
-    description: "Quem atende por você: instruções, conhecimento e publicação.",
-    aliases: ["bots", "agentes", "assistente", "ia"],
+    description: "O jeito de falar do bot — o que ele sabe. O menu do WhatsApp fica em Bots.",
+    aliases: ["agentes", "assistente", "ia", "cérebro"],
     icon: Robot,
     group: "ia",
     section: "Montar o agente",
@@ -310,12 +310,11 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   },
   {
     href: "/app/ai/followups",
-    // ⚠️ ERA "Voltar a falar". Isso descreve o EFEITO, não o destino: quem
-    // procura "fluxos" ou "automações" no menu não acha, e o verbo parece um
-    // botão de ação, não uma tela. A URL não muda.
-    label: "Automações",
-    description: "Se o cliente para de responder, o sistema manda uma mensagem na hora certa.",
-    aliases: ["follow-up", "followup", "fluxo", "lembrete"],
+    // ⚠️ ERA "Automações". Quem atende no WhatsApp chama isso de bot — automação
+    // e fluxo são jargão. A URL não muda; a aba Recados continua os lembretes.
+    label: "Bots",
+    description: "O menu do WhatsApp e os recados que o sistema manda sozinho.",
+    aliases: ["automação", "automações", "follow-up", "followup", "fluxo", "lembrete", "bot", "menu de atendimento"],
     icon: FlowArrow,
     group: "ia",
     section: "Montar o agente",

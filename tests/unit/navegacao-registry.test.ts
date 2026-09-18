@@ -55,6 +55,8 @@ describe("integridade do registro", () => {
     expect(textoBuscavel(desempenho)).toMatch(/resultados/i);
     expect(textoBuscavel(execucoes)).toMatch(/erro da ia/i);
     expect(textoBuscavel(dest("/app/connections"))).toMatch(/instagram/i);
+    expect(dest("/app/ai/followups").label).toBe("Bots");
+    expect(textoBuscavel(dest("/app/ai/followups"))).toMatch(/automa/i);
     expect(textoBuscavel(inbox).toLowerCase()).toContain("instagram");
   });
 

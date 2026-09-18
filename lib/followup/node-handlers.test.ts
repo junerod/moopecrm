@@ -700,3 +700,170 @@ describe("processNode — ai_classify migrado para ramos nomeados", () => {
     expect(result).toMatchObject({ kind: "advance", next_node_id: "no-sem-resposta" });
   });
 });
+
+describe("nós do bot visual", () => {
+  const menu: FlowNode = {
+    id: "m1",
+    type: "menu",
+    label: "Menu",
+    position: { x: 0, y: 0 },
+    config: {
+      title: "Como posso ajudar?",
+      options: [
+        { id: "opt_1", number: 1, label: "Atendimento", keywords: [] },
+        { id: "opt_2", number: 2, label: "Comercial", keywords: [] },
+      ],
+    },
+  };
+  const menuEdges: FlowEdge[] = [
+    edge({ source: "m1", target: "a", condition: { type: "branch", branch_id: "opt_1" } }),
+    edge({ source: "m1", target: "c", condition: { type: "branch", branch_id: "opt_2" } }),
+    edge({ source: "m1", target: "else", condition: { type: "always" } }),
+  ];
+
+  it("menu na primeira visita envia o texto numerado", () => {
+    const result = processNode({
+      node: menu,
+      edges: menuEdges,
+      enrollment: enrollment(),
+      lead: lead(),
+      clock,
+      menuRetryCount: 0,
+    });
+    expect(result.kind).toBe("enqueue_turn");
+    if (result.kind === "enqueue_turn") {
+      expect(result.fixed_body).toContain("1 Atendimento");
+      expect(result.wake_status).toBe("waiting_reply");
+    }
+  });
+
+  it("menu sem match reenvia até o teto e cai no else", () => {
+    const retry = processNode({
+      node: menu,
+      edges: menuEdges,
+      enrollment: enrollment(),
+      lead: lead(),
+      clock,
+      lastInboundText: "xyz",
+      wokeEarly: true,
+      menuRetryCount: 1,
+    });
+    expect(retry.kind).toBe("enqueue_turn");
+    const elseBranch = processNode({
+      node: menu,
+      edges: menuEdges,
+      enrollment: enrollment(),
+      lead: lead(),
+      clock,
+      lastInboundText: "xyz",
+      wokeEarly: true,
+      menuRetryCount: 3,
+    });
+    expect(elseBranch).toMatchObject({ kind: "advance", next_node_id: "else" });
+  });
+
+  it("menu casa '1' e avança no ramo", () => {
+    const result = processNode({
+      node: menu,
+      edges: menuEdges,
+      enrollment: enrollment(),
+      lead: lead(),
+      clock,
+      lastInboundText: "1",
+      wokeEarly: true,
+      menuRetryCount: 1,
+    });
+    expect(result).toMatchObject({ kind: "advance", next_node_id: "a" });
+  });
+
+  it("horario dentro vs fora", () => {
+    const horario: FlowNode = {
+      id: "h1",
+      type: "horario",
+      label: "Horário",
+      position: { x: 0, y: 0 },
+      config: {},
+    };
+    const edges: FlowEdge[] = [
+      edge({ source: "h1", target: "in", condition: { type: "branch", branch_id: "dentro" } }),
+      edge({ source: "h1", target: "out", condition: { type: "branch", branch_id: "fora" } }),
+    ];
+    expect(
+      processNode({ node: horario, edges, enrollment: enrollment(), lead: lead(), clock, dentroDoHorario: true }),
+    ).toMatchObject({ kind: "advance", next_node_id: "in" });
+    expect(
+      processNode({ node: horario, edges, enrollment: enrollment(), lead: lead(), clock, dentroDoHorario: false }),
+    ).toMatchObject({ kind: "advance", next_node_id: "out" });
+  });
+
+  it("assistente encerra soltando a IA", () => {
+    const node: FlowNode = {
+      id: "ia1",
+      type: "assistente",
+      label: "IA",
+      position: { x: 0, y: 0 },
+      config: {},
+    };
+    expect(processNode({ node, edges: [], enrollment: enrollment(), lead: lead(), clock })).toEqual({
+      kind: "complete",
+      outcome: null,
+      cancel_reason: "released_to_assistant",
+    });
+  });
+
+  it("faq casa palavra-chave e envia texto fixo", () => {
+    const faq: FlowNode = {
+      id: "f1",
+      type: "faq",
+      label: "FAQ",
+      position: { x: 0, y: 0 },
+      config: {
+        items: [{ id: "faq_h", keywords: ["horario"], answer: "Abrimos das 8 às 18." }],
+      },
+    };
+    const edges: FlowEdge[] = [
+      edge({ source: "f1", target: "ia", condition: { type: "branch", branch_id: "faq_h" } }),
+      edge({ source: "f1", target: "else", condition: { type: "always" } }),
+    ];
+    const result = processNode({
+      node: faq,
+      edges,
+      enrollment: enrollment(),
+      lead: lead(),
+      clock,
+      lastInboundText: "qual o horario?",
+      wokeEarly: true,
+    });
+    expect(result.kind).toBe("enqueue_turn");
+    if (result.kind === "enqueue_turn") {
+      expect(result.fixed_body).toBe("Abrimos das 8 às 18.");
+    }
+  });
+
+  it("humano com recado envia e depois encerra em handoff", () => {
+    const node: FlowNode = {
+      id: "hum1",
+      type: "humano",
+      label: "Humano",
+      position: { x: 0, y: 0 },
+      config: { phrase: "Vou te passar." },
+    };
+    expect(
+      processNode({ node, edges: [], enrollment: enrollment(), lead: lead(), clock }),
+    ).toMatchObject({
+      kind: "enqueue_turn",
+      fixed_body: "Vou te passar.",
+    });
+    expect(
+      processNode({
+        node,
+        edges: [],
+        enrollment: enrollment(),
+        lead: lead(),
+        clock,
+        actionSent: true,
+      }),
+    ).toEqual({ kind: "complete", outcome: "handoff", cancel_reason: "bot_humano" });
+  });
+});
+

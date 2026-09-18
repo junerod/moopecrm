@@ -14,7 +14,7 @@ import { createFollowupFlowSchema } from "@/lib/followup/api-schemas";
 
 export const dynamic = "force-dynamic";
 
-const LIST_COLUMNS = "id, name, status, active_version_id, handoff_policy, updated_at";
+const LIST_COLUMNS = "id, name, status, active_version_id, handoff_policy, purpose, updated_at";
 
 export async function GET(): Promise<Response> {
   const requestId = randomUUID();
@@ -56,7 +56,12 @@ export async function POST(req: NextRequest): Promise<Response> {
   const supabase = await createClient();
   const { data: created, error: insErr } = await supabase
     .from("followup_flow_pointers")
-    .insert({ organization_id: activeOrg.orgId, name: parsed.data.name })
+    .insert({
+      organization_id: activeOrg.orgId,
+      name: parsed.data.name,
+      ...(parsed.data.purpose ? { purpose: parsed.data.purpose } : {}),
+      ...(parsed.data.purpose === "bot" ? { trigger_config: { kind: "inbound" } } : {}),
+    })
     .select("*")
     .single();
 

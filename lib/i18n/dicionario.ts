@@ -64,6 +64,8 @@ export const DICIONARIO: Traducoes = {
   "Assistentes IA": { es: "Asistentes IA" },
   Fluxos: { es: "Flujos" },
   Automações: { es: "Automatizaciones" },
+  Bots: { es: "Bots" },
+  Recados: { es: "Recados" },
   Início: { es: "Inicio" },
   "Meu Negócio": { es: "Mi negocio" },
   Roteadores: { es: "Enrutadores" },

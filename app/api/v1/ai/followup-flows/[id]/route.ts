@@ -17,7 +17,7 @@ import { patchFollowupFlowSchema } from "@/lib/followup/api-schemas";
 export const dynamic = "force-dynamic";
 
 const DETAIL_COLUMNS =
-  "id, name, status, active_version_id, draft_graph, handoff_policy, trigger_config, created_at, updated_at";
+  "id, name, status, active_version_id, draft_graph, handoff_policy, trigger_config, purpose, created_at, updated_at";
 
 const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -147,4 +147,53 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx): Promise<Response> 
   });
 
   return ok(updated, { requestId });
+}
+
+/**
+ * Apagar o ponteiro. Enrollment e versões caem no cascade do banco — quem
+ * apaga na tela quer que pare de mandar recado, não que fique um cadáver
+ * desativado ocupando a lista. Autorização: manager+; org do cookie, nunca
+ * do body.
+ */
+export async function DELETE(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
+  const requestId = randomUUID();
+  const { id } = await ctx.params;
+  if (!UUID_RX.test(id)) {
+    return fail("invalid_request", "id inválido.", 400, { requestId });
+  }
+
+  const authz = await requireRole("manager", { requestId, resource: "followup_flows" });
+  if (!authz.ok) return authz.response;
+  const { user, org: activeOrg } = authz;
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from("followup_flow_pointers")
+    .select("id, name")
+    .eq("id", id)
+    .eq("organization_id", activeOrg.orgId)
+    .maybeSingle();
+  if (fetchErr) return fail("internal_error", fetchErr.message, 500, { requestId });
+  if (!existing) return fail("not_found", "Fluxo não encontrado.", 404, { requestId });
+
+  const { error: delErr } = await supabase
+    .from("followup_flow_pointers")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", activeOrg.orgId);
+  if (delErr) {
+    return fail("internal_error", delErr.message, 500, { requestId });
+  }
+
+  void audit({
+    action: "followup_flow.deleted",
+    actorUserId: user.id,
+    organizationId: activeOrg.orgId,
+    resourceType: "followup_flow_pointer",
+    resourceId: id,
+    requestId,
+    metadata: { name: existing.name },
+  });
+
+  return ok({ id }, { requestId });
 }

@@ -72,6 +72,7 @@ export const followupTurnPayloadSchema = z
     purpose: z.enum(['send_message', 'classify', 'plan_timing']).optional(),
     prompt_hint: z.string().optional(),
     template_id: z.string().uuid().optional(),
+    fixed_body: z.string().min(1).max(4000).optional(),
     classes: z.array(z.string()).optional(),
     hint: z.string().optional(),
     // purpose 'plan_timing': as esperas adaptativas do fluxo inteiro, na ordem.
@@ -289,6 +290,7 @@ export function createFollowupTurnHandler(deps: FollowupTurnDeps) {
         purpose: payload.purpose,
         promptHint: payload.prompt_hint,
         templateId: payload.template_id,
+        fixedBody: payload.fixed_body,
         classes: payload.classes,
         hint: payload.hint,
         waits: payload.waits,
@@ -353,6 +355,7 @@ async function runFlowDrivenTurn(
     purpose: 'send_message' | 'classify' | 'plan_timing' | undefined;
     promptHint: string | undefined;
     templateId: string | undefined;
+    fixedBody: string | undefined;
     classes: string[] | undefined;
     hint: string | undefined;
     waits: EsperaParaPlanejar[] | undefined;
@@ -371,6 +374,13 @@ async function runFlowDrivenTurn(
   const runLog = withFields(deps.log, { job_id: job.id, tenant_id: target.tenantId, lead_id: target.leadId, enrollment_id: enrollmentId });
 
   if (input.purpose === 'send_message') {
+    if (input.fixedBody) {
+      const envio = await enviarCorpoDeterministico(deps, job, pool, ctx, clock, target, input.fixedBody);
+      if (envio === 'sent') {
+        await complete(pool, { organizationId: target.tenantId, enrollmentId, nodeId, result: { kind: 'sent' } });
+      }
+      return;
+    }
     if (input.templateId) {
       const envio = await sendFlowTemplateThroughGates(deps, job, pool, ctx, clock, target, input.templateId);
       if (envio === 'sent') {

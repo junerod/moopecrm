@@ -1,6 +1,17 @@
 import type { ComponentType } from "react";
 
-import { Play, Clock, GitBranch, Brain, PaperPlaneTilt, Flag } from "@/lib/ui/icons";
+import {
+  Play,
+  Clock,
+  GitBranch,
+  Brain,
+  PaperPlaneTilt,
+  Flag,
+  ChatCircle,
+  Question,
+  Handshake,
+  Robot,
+} from "@/lib/ui/icons";
 import type { FlowNode, NodeType } from "@/lib/followup/graph-schema";
 import { RESULTADOS_DO_FIM } from "@/lib/followup/vocabulario";
 
@@ -86,6 +97,59 @@ export const NODE_VISUALS: Record<NodeType, NodeVisual> = {
     defaultLabel: "Fim do fluxo",
     defaultConfig: () => ({ outcome: "exhausted" }),
   },
+  menu: {
+    type: "menu",
+    paletteLabel: "Menu",
+    icon: ChatCircle,
+    chipClassName: "bg-accent-soft text-accent",
+    borderClassName: "border-l-accent-500",
+    defaultLabel: "Menu",
+    defaultConfig: () => ({
+      title: "Como posso ajudar?",
+      options: [
+        { id: "opt_1", number: 1, label: "Atendimento", keywords: ["atendimento"] },
+        { id: "opt_2", number: 2, label: "Comercial", keywords: ["comercial"] },
+      ],
+    }),
+  },
+  faq: {
+    type: "faq",
+    paletteLabel: "FAQ",
+    icon: Question,
+    chipClassName: "bg-info-bg text-info-fg",
+    borderClassName: "border-l-info",
+    defaultLabel: "Perguntas frequentes",
+    defaultConfig: () => ({
+      items: [{ id: "faq_1", keywords: ["horario", "funcionamento"], answer: "Nosso horário está no quadro Horário." }],
+    }),
+  },
+  horario: {
+    type: "horario",
+    paletteLabel: "Horário",
+    icon: Clock,
+    chipClassName: "bg-warning-bg text-warning-fg",
+    borderClassName: "border-l-warning",
+    defaultLabel: "Dentro ou fora do horário",
+    defaultConfig: () => ({}),
+  },
+  humano: {
+    type: "humano",
+    paletteLabel: "Humano",
+    icon: Handshake,
+    chipClassName: "bg-success-bg text-success-fg",
+    borderClassName: "border-l-success",
+    defaultLabel: "Chamar pessoa",
+    defaultConfig: () => ({ phrase: "Vou te passar para alguém da equipe." }),
+  },
+  assistente: {
+    type: "assistente",
+    paletteLabel: "Assistente",
+    icon: Robot,
+    chipClassName: "bg-accent text-accent-foreground",
+    borderClassName: "border-l-accent-700",
+    defaultLabel: "Soltar assistente",
+    defaultConfig: () => ({}),
+  },
 };
 
 export const NODE_VISUAL_LIST = Object.values(NODE_VISUALS);
@@ -127,6 +191,22 @@ export function describeNodeConfig(type: NodeType, config: FlowNode["config"]): 
       const c = config as ConfigOf<"end">;
       return RESULTADOS_DO_FIM[c.outcome];
     }
+    case "menu": {
+      const c = config as ConfigOf<"menu">;
+      return `${c.options.length} opções`;
+    }
+    case "faq": {
+      const c = config as ConfigOf<"faq">;
+      return `${c.items.length} respostas`;
+    }
+    case "horario":
+      return "Janela do assistente";
+    case "humano": {
+      const c = config as ConfigOf<"humano">;
+      return c.phrase?.trim() ? "Com recado" : "Sem recado";
+    }
+    case "assistente":
+      return "Próxima mensagem é IA";
     default: {
       const exhaustive: never = type;
       return String(exhaustive);

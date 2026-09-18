@@ -26,7 +26,7 @@ import { QueueTab } from "./_components/QueueTab";
 export const dynamic = "force-dynamic";
 
 const FLOW_COLUMNS =
-  "id, name, status, active_version_id, handoff_policy, trigger_config, updated_at";
+  "id, name, status, active_version_id, handoff_policy, trigger_config, purpose, updated_at";
 
 export default async function FollowupFlowsPage() {
   const user = await requireAuth();
@@ -103,13 +103,14 @@ export default async function FollowupFlowsPage() {
     <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
       <PageHeader
         icon={<AppIcon icon={FlowArrow} tone="cyan" size="lg" />}
-        titulo="Automações"
-        descricao="Recados e tarefas que o sistema faz sozinho. Se o cliente responder ou pedir para parar, o retorno para."
+        titulo="Bots"
+        descricao="O que atende no WhatsApp e os recados que o sistema manda sozinho. Se o cliente responder ou pedir para parar, o retorno para."
       />
       <Tabs defaultValue={silencioAtivo ? "minhas" : "prontas"} className="flex flex-1 flex-col">
         <TabsList>
+          <TabsTrigger value="bots">Bots</TabsTrigger>
           <TabsTrigger value="prontas">Prontas</TabsTrigger>
-          <TabsTrigger value="minhas">Minhas automações</TabsTrigger>
+          <TabsTrigger value="minhas">Recados</TabsTrigger>
           <TabsTrigger value="avancado">Avançado</TabsTrigger>
           <TabsTrigger value="fila">Fila</TabsTrigger>
         </TabsList>
@@ -121,6 +122,14 @@ export default async function FollowupFlowsPage() {
             horasInicial={horasInicial}
             fluxosDoPack={fluxosDoPack}
           />
+        </TabsContent>
+        <TabsContent value="bots">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Porta da frente no WhatsApp: menu numerado, FAQ, horário, humano ou
+            assistente. Publicar não liga sozinho no número de outra pessoa —
+            o rascunho do pack espera você.
+          </p>
+          <FlowsList initialData={flows} canWrite={canWrite} purpose="bot" />
         </TabsContent>
         <TabsContent value="minhas">
           <FlowsList initialData={flows} canWrite={canWrite} />

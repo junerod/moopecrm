@@ -12,6 +12,11 @@ export const NODE_TYPES = [
   'ai_classify',
   'action',
   'end',
+  'menu',
+  'faq',
+  'horario',
+  'humano',
+  'assistente',
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -215,6 +220,60 @@ export const endConfigSchema = z.strictObject({
   note: z.string().max(200).optional(),
 });
 
+/** Uma linha do menu numerado (1 / texto). `id` é o ramo estável. */
+export const menuOptionSchema = z.strictObject({
+  id: declaredBranchIdSchema,
+  number: z.number().int().min(1).max(9),
+  label: z.string().min(1).max(80),
+  keywords: z.array(z.string().min(1).max(40)).max(8).default([]),
+});
+
+export type MenuOption = z.infer<typeof menuOptionSchema>;
+
+export const menuConfigSchema = z
+  .strictObject({
+    title: z.string().max(200).default('Como posso ajudar?'),
+    options: z.array(menuOptionSchema).min(2).max(9),
+    retry_text: z.string().max(200).optional(),
+  })
+  .refine((c) => new Set(c.options.map((o) => o.id)).size === c.options.length, {
+    message: 'options[].id must be unique within the node',
+    path: ['options'],
+  })
+  .refine((c) => new Set(c.options.map((o) => o.number)).size === c.options.length, {
+    message: 'options[].number must be unique within the node',
+    path: ['options'],
+  });
+
+export type MenuConfig = z.infer<typeof menuConfigSchema>;
+
+export const faqItemSchema = z.strictObject({
+  id: declaredBranchIdSchema,
+  keywords: z.array(z.string().min(1).max(40)).min(1).max(8),
+  answer: z.string().min(1).max(1000),
+});
+
+export type FaqItem = z.infer<typeof faqItemSchema>;
+
+export const faqConfigSchema = z
+  .strictObject({
+    items: z.array(faqItemSchema).min(1).max(8),
+  })
+  .refine((c) => new Set(c.items.map((i) => i.id)).size === c.items.length, {
+    message: 'items[].id must be unique within the node',
+    path: ['items'],
+  });
+
+export const horarioConfigSchema = z.strictObject({});
+
+export const humanoConfigSchema = z.strictObject({
+  phrase: z.string().max(500).optional(),
+});
+
+export const assistenteConfigSchema = z.strictObject({
+  specialty: z.string().min(1).max(40).optional(),
+});
+
 /**
  * Flow node schema — discriminated union based on node type.
  * Each node type has its specific config schema.
@@ -285,6 +344,56 @@ export const flowNodeSchema = z.discriminatedUnion('type', [
       y: z.number(),
     }),
     config: endConfigSchema,
+  }),
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('menu'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: menuConfigSchema,
+  }),
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('faq'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: faqConfigSchema,
+  }),
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('horario'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: horarioConfigSchema,
+  }),
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('humano'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: humanoConfigSchema,
+  }),
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('assistente'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: assistenteConfigSchema,
   }),
 ]);
 
@@ -481,6 +590,46 @@ export function nodeBranches(node: BranchableNode): FlowBranch[] {
         fallbackBranch(FALLBACK_ALWAYS_LABEL),
       ];
     }
+
+    case 'menu': {
+      const options: FlowBranch[] = node.config.options.map((opt) => ({
+        id: opt.id,
+        label: `${opt.number} ${opt.label}`,
+        check: null,
+        kind: 'match' as const,
+        condition: { type: 'branch' as const, branch_id: opt.id },
+      }));
+      return [...options, fallbackBranch(FALLBACK_NONE_LABEL)];
+    }
+
+    case 'faq': {
+      const items: FlowBranch[] = node.config.items.map((item) => ({
+        id: item.id,
+        label: item.keywords[0] ?? item.id,
+        check: null,
+        kind: 'match' as const,
+        condition: { type: 'branch' as const, branch_id: item.id },
+      }));
+      return [...items, fallbackBranch(FALLBACK_NONE_LABEL)];
+    }
+
+    case 'horario':
+      return [
+        {
+          id: 'dentro',
+          label: 'Dentro do horário',
+          check: null,
+          kind: 'match',
+          condition: { type: 'branch', branch_id: 'dentro' },
+        },
+        {
+          id: 'fora',
+          label: 'Fora do horário',
+          check: null,
+          kind: 'match',
+          condition: { type: 'branch', branch_id: 'fora' },
+        },
+      ];
 
     default:
       return [fallbackBranch(FALLBACK_ALWAYS_LABEL)];

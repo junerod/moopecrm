@@ -29,6 +29,7 @@ import { CHAVE_PACK } from "@/lib/business-packs/tipos";
 import { tituloDoTemplateDoFluxo } from "@/lib/business-packs/sementes";
 import { grafoDoFluxoPronto } from "@/lib/negocio/grafos-do-pack";
 import { validateFlowForPublish } from "@/lib/followup/validate-publish";
+import { BOT_RECEPCAO_KEY, BOT_RECEPCAO_NOME, grafoBotRecepcao } from "@/lib/business-packs/bot-semente";
 import { aplicarReadyModel } from "@/lib/ready-models/aplicar";
 import { resolverDefinition } from "@/lib/ready-models/catalogo";
 
@@ -76,6 +77,7 @@ export async function aplicarBusinessPack(
     etapas,
     options.actorUserId ?? null,
   );
+  const bot = await garantirBotRecepcao(admin, orgId, followups.ids);
   await semearAiModeSeSeguro(admin, orgId, definition.ai_mode_default);
   await adaptarAgentePadraoDoPack(admin, orgId, definition, agentes.ids.recepcao);
 
@@ -86,7 +88,7 @@ export async function aplicarBusinessPack(
     template_keys: templates.ids,
     automation_keys: automacoes.ids,
     campaign_keys: templates.campaignIds,
-    followup_keys: followups.ids,
+    followup_keys: bot.ids,
   };
   const fundidos = fundirArtifacts(artifacts, novos);
   const pack = montarBlocoPack(
@@ -107,7 +109,7 @@ export async function aplicarBusinessPack(
     templates: templates.criou,
     automacoes: automacoes.criou,
     campanhas: templates.criouCampanhas,
-    fluxos: followups.criou,
+    fluxos: followups.criou + bot.criou,
   };
   const nadaNovo = Object.values(criou).every((n) => n === 0) && mesmoPackAplicadoSimples(gravado, pack);
   if (nadaNovo) return { ok: true, noop: true, pack };
@@ -521,6 +523,68 @@ async function garantirFollowups(
     criou += 1;
   }
   return { ids, criou };
+}
+
+async function garantirBotRecepcao(
+  admin: SupabaseClient,
+  orgId: string,
+  followupIds: Record<string, string>,
+): Promise<{ ids: Record<string, string>; criou: number }> {
+  const ids: Record<string, string> = { ...followupIds };
+  if (ids[BOT_RECEPCAO_KEY]) {
+    const { data } = await admin
+      .from("followup_flow_pointers")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("id", ids[BOT_RECEPCAO_KEY])
+      .maybeSingle();
+    if (data) return { ids, criou: 0 };
+  }
+  const { data: porNome } = await admin
+    .from("followup_flow_pointers")
+    .select("id")
+    .eq("organization_id", orgId)
+    .eq("name", BOT_RECEPCAO_NOME)
+    .eq("purpose", "bot")
+    .maybeSingle();
+  if (porNome) {
+    ids[BOT_RECEPCAO_KEY] = (porNome as { id: string }).id;
+    return { ids, criou: 0 };
+  }
+
+  const graph = grafoBotRecepcao();
+  const validacao = validateFlowForPublish(graph);
+  if (!validacao.ok) {
+    throw new Error(`grafo do bot recepção: ${validacao.errors.map((e) => e.code).join(",")}`);
+  }
+
+  const { data: criado, error } = await admin
+    .from("followup_flow_pointers")
+    .insert({
+      organization_id: orgId,
+      name: BOT_RECEPCAO_NOME,
+      status: "draft",
+      purpose: "bot",
+      draft_graph: graph,
+      handoff_policy: "pause",
+      trigger_config: { kind: "inbound" },
+    } as never)
+    .select("id")
+    .single();
+  if (error?.code === "23505") {
+    const { data: deNovo } = await admin
+      .from("followup_flow_pointers")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("name", BOT_RECEPCAO_NOME)
+      .maybeSingle();
+    if (!deNovo) throw new Error("criar bot recepção: colidiu e sumiu");
+    ids[BOT_RECEPCAO_KEY] = (deNovo as { id: string }).id;
+    return { ids, criou: 0 };
+  }
+  if (error || !criado) throw new Error(`criar bot recepção: ${error?.message ?? "sem id"}`);
+  ids[BOT_RECEPCAO_KEY] = (criado as { id: string }).id;
+  return { ids, criou: 1 };
 }
 
 async function semearAiModeSeSeguro(

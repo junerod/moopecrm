@@ -17,9 +17,10 @@ import { useCreateFollowupFlow } from "@/hooks/followup/useFollowupFlows";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  purpose?: "followup" | "bot";
 }
 
-export function NewFlowDialog({ open, onOpenChange }: Props) {
+export function NewFlowDialog({ open, onOpenChange, purpose = "followup" }: Props) {
   const [name, setName] = useState("");
   const create = useCreateFollowupFlow();
 
@@ -28,7 +29,7 @@ export function NewFlowDialog({ open, onOpenChange }: Props) {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
-    create.mutate(name.trim(), {
+    create.mutate({ name: name.trim(), purpose }, {
       onSuccess: () => {
         setName("");
         setErro(null);
@@ -57,9 +58,11 @@ export function NewFlowDialog({ open, onOpenChange }: Props) {
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo fluxo de follow-up</DialogTitle>
+          <DialogTitle>{purpose === "bot" ? "Novo bot" : "Novo fluxo de follow-up"}</DialogTitle>
           <DialogDescription>
-            Nasce como rascunho. Você monta as etapas no editor visual em seguida.
+            {purpose === "bot"
+              ? "Nasce como rascunho. Arraste Menu, FAQ e Horário no quadro e publique."
+              : "Nasce como rascunho. Você monta as etapas no editor visual em seguida."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -69,7 +72,9 @@ export function NewFlowDialog({ open, onOpenChange }: Props) {
               id="flow-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Recuperação de carrinho abandonado"
+              placeholder={
+                purpose === "bot" ? "Ex: Recepção" : "Ex: Recuperação de carrinho abandonado"
+              }
               maxLength={80}
               required
               autoFocus
@@ -90,7 +95,7 @@ export function NewFlowDialog({ open, onOpenChange }: Props) {
               Cancelar
             </Button>
             <Button type="submit" disabled={create.isPending || name.trim().length === 0}>
-              {create.isPending ? "Criando…" : "Criar fluxo"}
+              {create.isPending ? "Criando…" : purpose === "bot" ? "Criar bot" : "Criar fluxo"}
             </Button>
           </DialogFooter>
         </form>

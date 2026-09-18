@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Bots visuais no quadro de Automações",
+    "subtitle": "menu/FAQ/horário no mesmo motor de follow-up; a IA cala enquanto o enrollment de bot está vivo",
+    "output": "bots-visuais.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    { "id": "humano", "label": "O que o humano vê" },
+    { "id": "borda", "label": "Borda HTTP" },
+    { "id": "regra", "label": "Regras" },
+    { "id": "motor", "label": "Motor" }
+  ],
+  "mainPath": ["aba", "quadro", "inbound", "guarda", "menu"],
+  "nodes": [
+    {
+      "id": "aba",
+      "lane": "humano",
+      "col": 1,
+      "type": "frontend",
+      "label": "Automações › Bots",
+      "sublabel": "app/app/ai/followups · aba nova"
+    },
+    {
+      "id": "quadro",
+      "lane": "humano",
+      "col": 2,
+      "type": "frontend",
+      "label": "FlowCanvas",
+      "sublabel": "nós menu/faq/horario/humano/assistente"
+    },
+    {
+      "id": "inbound",
+      "lane": "borda",
+      "col": 1,
+      "type": "api",
+      "label": "message.received",
+      "sublabel": "gatilho-inbound + event_log"
+    },
+    {
+      "id": "guarda",
+      "lane": "motor",
+      "col": 2,
+      "type": "runtime",
+      "label": "inbound-turn",
+      "sublabel": "contatoTemBotAtivo cala a IA"
+    },
+    {
+      "id": "menu",
+      "lane": "regra",
+      "col": 3,
+      "type": "rule",
+      "label": "processNode menu/faq",
+      "sublabel": "casa 1/2/3 sem LLM"
+    },
+    {
+      "id": "tick",
+      "lane": "motor",
+      "col": 3,
+      "type": "runtime",
+      "label": "followup-flow-worker",
+      "sublabel": "mesmo tick dos lembretes"
+    }
+  ],
+  "edges": [
+    { "id": "e1", "from": "aba", "to": "quadro", "label": "abre rascunho" },
+    { "id": "e2", "from": "quadro", "to": "tick", "label": "publica purpose=bot" },
+    { "id": "e3", "from": "inbound", "to": "guarda", "label": "enroll + cala" },
+    { "id": "e4", "from": "guarda", "to": "tick", "label": "IA muda" },
+    { "id": "e5", "from": "tick", "to": "menu", "label": "casa resposta" },
+    { "id": "e6", "from": "menu", "to": "quadro", "label": "texto que o leigo editou" }
+  ]
+}

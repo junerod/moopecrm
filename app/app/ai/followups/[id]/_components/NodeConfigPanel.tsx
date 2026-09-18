@@ -11,6 +11,10 @@ import { ActionForm } from "./forms/ActionForm";
 import { ClassifyForm } from "./forms/ClassifyForm";
 import { ConditionForm } from "./forms/ConditionForm";
 import { EndForm } from "./forms/EndForm";
+import { FaqForm } from "./forms/FaqForm";
+import { HumanoForm } from "./forms/HumanoForm";
+import { AssistenteForm } from "./forms/AssistenteForm";
+import { MenuForm } from "./forms/MenuForm";
 import { WaitForm } from "./forms/WaitForm";
 import type { ConfigOf } from "./forms/shared";
 import { NODE_VISUALS } from "./nodes/nodeVisuals";
@@ -101,6 +105,29 @@ export function NodeConfigPanel({ node, onChange, ramosLigados }: Props) {
         )}
         {type === "end" && (
           <EndForm config={node.data.config as ConfigOf<"end">} onChange={(config) => onChange({ config })} />
+        )}
+        {type === "menu" && (
+          <MenuForm config={node.data.config as ConfigOf<"menu">} onChange={(config) => onChange({ config })} />
+        )}
+        {type === "faq" && (
+          <FaqForm config={node.data.config as ConfigOf<"faq">} onChange={(config) => onChange({ config })} />
+        )}
+        {type === "horario" && (
+          <p className="text-sm text-text-muted">
+            Usa o horário de funcionamento do assistente publicado. Dois ramos: dentro e fora.
+          </p>
+        )}
+        {type === "humano" && (
+          <HumanoForm
+            config={node.data.config as ConfigOf<"humano">}
+            onChange={(config) => onChange({ config })}
+          />
+        )}
+        {type === "assistente" && (
+          <AssistenteForm
+            config={node.data.config as ConfigOf<"assistente">}
+            onChange={(config) => onChange({ config })}
+          />
         )}
       </div>
     </div>

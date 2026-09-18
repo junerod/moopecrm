@@ -124,6 +124,11 @@ const TIPO_DO_NO: Record<FlowNode["type"], string> = {
   ai_classify: "Interpretação da resposta",
   action: "Mensagem",
   end: "Fim",
+  menu: "Menu",
+  faq: "Perguntas frequentes",
+  horario: "Horário",
+  humano: "Pessoa",
+  assistente: "Assistente",
 };
 
 const DESFECHO: Record<string, string> = {
@@ -170,6 +175,16 @@ export function resumoDoNo(node: FlowNode): NoDoDossie {
       };
     case "end":
       return { ...base, resumo: `encerra — ${DESFECHO[node.config.outcome] ?? node.config.outcome}` };
+    case "menu":
+      return { ...base, resumo: `oferece ${node.config.options.length} opções numeradas` };
+    case "faq":
+      return { ...base, resumo: `responde ${node.config.items.length} perguntas com texto fixo` };
+    case "horario":
+      return { ...base, resumo: "dentro ou fora do horário do assistente" };
+    case "humano":
+      return { ...base, resumo: "chama uma pessoa da equipe" };
+    case "assistente":
+      return { ...base, resumo: "solta o assistente de IA" };
   }
 }
 
@@ -358,6 +373,10 @@ export function descreveEvento(
       return { titulo: "O fluxo parou de tentar", detalhe: texto(p.reason), ...motor };
     case "node_failed":
       return { titulo: "Falhou neste passo", detalhe: texto(p.error), ...motor };
+    case "await_reply":
+      return { titulo: "Esperando a resposta do cliente", detalhe: null, ...motor };
+    case "enrolled_by_inbound":
+      return { titulo: "O bot começou com a mensagem do cliente", detalhe: null, ...motor };
     case "inbound_woke":
       return { titulo: "O cliente respondeu — o fluxo acordou na hora", detalhe: null, ...cliente };
     case "reactivity_replied":

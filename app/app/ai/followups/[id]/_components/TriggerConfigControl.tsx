@@ -50,7 +50,7 @@ import { useEtapasDeGatilho } from "@/hooks/followup/useEtapasDeGatilho";
  * «poucos minutos», não «na hora» — prometer instantâneo seria o controle
  * mentindo sobre a própria função.
  */
-type TriggerKind = "manual" | "silence" | "stage_change" | "case_opened";
+type TriggerKind = "manual" | "silence" | "stage_change" | "case_opened" | "inbound";
 
 interface TriggerFormState {
   kind: TriggerKind;
@@ -68,6 +68,7 @@ const KIND_LABEL: Record<TriggerKind, string> = {
   silence: "Silêncio",
   stage_change: "Etapa do funil",
   case_opened: "Agente pediu ajuda",
+  inbound: "Primeira mensagem",
 };
 
 function parseTriggerConfig(raw: Record<string, unknown>): TriggerFormState {
@@ -84,7 +85,9 @@ function parseTriggerConfig(raw: Record<string, unknown>): TriggerFormState {
         ? "stage_change"
         : raw.kind === "case_opened"
           ? "case_opened"
-          : "manual";
+          : raw.kind === "inbound"
+            ? "inbound"
+            : "manual";
   const params =
     (raw.params as { threshold_minutes?: number; segments?: string[]; stage_id?: string } | undefined) ?? {};
   return {
@@ -110,6 +113,7 @@ function toTriggerConfig(form: TriggerFormState): Record<string, unknown> {
   // Sem `params`: não há o que casar. Todo caso aberto da organização dispara
   // todo fluxo armado assim.
   if (form.kind === "case_opened") return { kind: "case_opened", ...cancelOnReply };
+  if (form.kind === "inbound") return { kind: "inbound", ...cancelOnReply };
 
   const segments = form.segments
     .split(",")
@@ -138,6 +142,7 @@ function summaryLabel(
     return etapa ? `Gatilho: entrou em «${etapa.stageName}» em ${etapa.pipelineName}` : "Gatilho: Etapa do funil";
   }
   if (cfg.kind === "case_opened") return "Gatilho: quando o agente pede ajuda";
+  if (cfg.kind === "inbound") return "Gatilho: primeira mensagem";
   if (cfg.kind === "manual" || cfg.kind === undefined) return "Gatilho: Manual";
   // conversation_end de dados antigos (API crua) — sem UI própria, mas mostrado
   // com transparência em vez de mentir "Manual".
@@ -224,6 +229,7 @@ export function TriggerConfigControl({ flowId, triggerConfig }: Props) {
                 <SelectItem value="silence">{KIND_LABEL.silence}</SelectItem>
                 <SelectItem value="stage_change">{KIND_LABEL.stage_change}</SelectItem>
                 <SelectItem value="case_opened">{KIND_LABEL.case_opened}</SelectItem>
+                <SelectItem value="inbound">{KIND_LABEL.inbound}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -289,6 +295,13 @@ export function TriggerConfigControl({ flowId, triggerConfig }: Props) {
                 Se o caso for resolvido antes, o follow-up é cancelado sozinho.
               </p>
             </div>
+          )}
+
+          {form.kind === "inbound" && (
+            <p className="text-xs text-muted-foreground">
+              O bot começa quando o cliente manda a primeira mensagem. Enquanto o quadro
+              estiver ativo, o assistente de IA não fala.
+            </p>
           )}
 
           {form.kind === "silence" && (
