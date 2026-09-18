@@ -17,21 +17,21 @@ const ATALHOS: Atalho[] = [
   {
     id: "escritorio",
     nome: "Jurídico",
-    explica: "Advogado, horário, agendar, dúvida e o outro WhatsApp. A resposta continua neste número.",
+    explica: "Advogado e agendar chamam alguém. A dúvida segue para o assistente.",
     nomeDoBot: "Recepção",
     classe: "border-amber-500/40 bg-amber-500/10",
   },
   {
     id: "locadora",
     nome: "Locadora",
-    explica: "Locatário, carro, boleto ou outro WhatsApp. Cada um chama alguém e deixa o pedido.",
+    explica: "Locatário, carro e boleto vão para o assistente da locadora. Socorro chama uma pessoa.",
     nomeDoBot: "Recepção da locadora",
     classe: "border-orange-500/40 bg-orange-500/10",
   },
   {
     id: "loja",
     nome: "Primeiro atendimento da loja",
-    explica: "Vendas, horário, dúvida e outro assunto. Já desenhado.",
+    explica: "Vendas chama alguém. A dúvida segue para o assistente. Horário já vem escrito.",
     nomeDoBot: "Recepção da loja",
     classe: "border-sky-500/40 bg-sky-500/10",
   },
@@ -86,10 +86,9 @@ export function AtalhosDeBot({ canWrite }: { canWrite: boolean }) {
       <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-relaxed text-[var(--color-text)]">
         <p className="font-medium">Locadora e o Moope</p>
         <p className="mt-1 text-[var(--color-text-muted)]">
-          Locatário, investidor, carro e boleto chamam uma pessoa e deixam o pedido no comentário.
-          Quem atende confere no Moope e responde nesta conversa — o bot não inventa link nem preço.
-          Outro WhatsApp, em todo menu, avisa o cliente para escrever no número que você colocar
-          e abre o aviso na Central. A conversa não pula de número. O resumo é o que já está escrito aqui.
+          Locatário, investidor, carro e boleto soltam o assistente publicado. Na locadora esse
+          assistente consulta o Moope: contrato, placa, boleto, carros. Socorro, equipe e outro
+          WhatsApp chamam uma pessoa e deixam o pedido. A conversa não pula de número.
         </p>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">

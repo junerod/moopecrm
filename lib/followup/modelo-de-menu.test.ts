@@ -42,13 +42,23 @@ describe("montarModeloDeMenu", () => {
     });
     const menu = locadora.nodes.find((n) => n.type === "menu");
     expect(menu?.type === "menu" ? menu.config.options.map((o) => o.label) : []).toContain("Outro WhatsApp");
-    expect(locadora.nodes.some((n) => n.type === "assistente")).toBe(false);
+    const ia = locadora.nodes.filter((n) => n.type === "assistente").map((n) => n.label);
+    expect(ia).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Sou locatário"),
+        expect.stringContaining("Sou investidor"),
+        expect.stringContaining("Quero um carro"),
+        expect.stringContaining("Boleto ou contrato"),
+      ]),
+    );
+    expect(locadora.nodes.some((n) => n.type === "humano" && n.label.includes("Socorro"))).toBe(true);
     for (const id of ["escritorio", "loja", "locadora"] as const) {
       const g = montarModeloPronto(id, { origem: { x: 0, y: 0 }, sufixo: id, incluirGatilho: true });
       const outro = g.nodes.find((n) => n.label.includes("Outro WhatsApp"));
       expect(outro?.type, id).toBe("humano");
       expect(outro?.type === "humano" ? outro.config.team_note : "").toContain("não muda de WhatsApp");
-      expect(g.nodes.some((n) => n.type === "assistente")).toBe(false);
+      expect(g.nodes.some((n) => n.type === "assistente"), id).toBe(true);
+      expect(g.nodes.some((n) => n.type === "humano"), id).toBe(true);
     }
     const desenhado = toReactFlow(locadora);
     const saidas = desenhado.edges

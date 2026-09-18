@@ -239,19 +239,19 @@ export const MODELOS_PRONTOS: {
   {
     id: "escritorio",
     nome: "Jurídico",
-    explica: "Advogado, horário, agendar, dúvida e outro WhatsApp. A equipe vê o comentário. A conversa não muda de número.",
+    explica: "Advogado e agendar chamam alguém. A dúvida segue para o assistente. Outro WhatsApp avisa sem mudar o número.",
     classe: "border-amber-500/40 bg-amber-500/10",
   },
   {
     id: "locadora",
     nome: "Locadora",
-    explica: "Locatário, investidor, carro, boleto, socorro e outro WhatsApp. Cada um chama uma pessoa e deixa o pedido no comentário.",
+    explica: "Locatário, investidor, carro e boleto seguem para o assistente da locadora, que consulta o Moope. Socorro, equipe e outro WhatsApp chamam uma pessoa.",
     classe: "border-orange-500/40 bg-orange-500/10",
   },
   {
     id: "loja",
     nome: "Loja",
-    explica: "Vendas, horário, uma dúvida e outro assunto. Já vem com o texto para você só ajustar.",
+    explica: "Vendas e outro assunto chamam alguém. A dúvida segue para o assistente. Horário já vem escrito.",
     classe: "border-sky-500/40 bg-sky-500/10",
   },
   {
@@ -298,9 +298,8 @@ function opcoesDoEscritorio(): OpcaoDoModelo[] {
     {
       numero: 4,
       rotulo: "Tirar uma dúvida",
-      destino: "humano",
-      texto: "Vou te passar para alguém do escritório.",
-      comentario: "Cliente tem uma dúvida. Responda nesta conversa.",
+      destino: "assistente",
+      texto: "",
     },
     opcaoOutroWhatsapp(5),
   ];
@@ -311,30 +310,26 @@ function opcoesDaLocadora(): OpcaoDoModelo[] {
     {
       numero: 1,
       rotulo: "Sou locatário",
-      destino: "humano",
-      texto: "Vou chamar quem cuida do seu contrato.",
-      comentario: "Disse que é locatário. Confira no Moope pelo telefone desta conversa: contrato, placa, boleto.",
+      destino: "assistente",
+      texto: "",
     },
     {
       numero: 2,
       rotulo: "Sou investidor",
-      destino: "humano",
-      texto: "Vou chamar quem cuida dos investidores.",
-      comentario: "Disse que é investidor. Confira no Moope pelo telefone. O resumo é esta conversa.",
+      destino: "assistente",
+      texto: "",
     },
     {
       numero: 3,
       rotulo: "Quero um carro",
-      destino: "humano",
-      texto: "Vou chamar quem mostra os carros disponíveis.",
-      comentario: "Quer um carro. Veja a frota no Moope e responda nesta conversa. Não invente preço.",
+      destino: "assistente",
+      texto: "",
     },
     {
       numero: 4,
       rotulo: "Boleto ou contrato",
-      destino: "humano",
-      texto: "Vou chamar quem envia o boleto ou o contrato.",
-      comentario: "Pediu boleto ou contrato. Busque no Moope e responda nesta conversa. Sem link, não invente.",
+      destino: "assistente",
+      texto: "",
     },
     {
       numero: 5,
@@ -372,9 +367,8 @@ function opcoesDaLoja(): OpcaoDoModelo[] {
     {
       numero: 3,
       rotulo: "Tirar uma dúvida",
-      destino: "humano",
-      texto: "Vou te passar para alguém da loja.",
-      comentario: "Cliente tem uma dúvida. Responda nesta conversa.",
+      destino: "assistente",
+      texto: "",
     },
     {
       numero: 4,
