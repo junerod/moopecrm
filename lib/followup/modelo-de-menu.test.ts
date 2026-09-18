@@ -24,7 +24,7 @@ describe("montarModeloDeMenu", () => {
   });
 
   it("escritório, loja e aviso nascem publicáveis", () => {
-    for (const id of ["escritorio", "loja", "aviso"] as const) {
+    for (const id of ["escritorio", "locadora", "loja", "aviso"] as const) {
       const grafo = montarModeloPronto(id, {
         origem: { x: 0, y: 0 },
         sufixo: id,
@@ -34,13 +34,21 @@ describe("montarModeloDeMenu", () => {
       const publicado = validateFlowForPublish(grafo);
       expect(publicado.ok, publicado.ok ? id : publicado.errors.map((e) => e.message).join("\n")).toBe(true);
     }
-    const escritorio = montarModeloPronto("escritorio", {
+    const locadora = montarModeloPronto("locadora", {
       origem: { x: 0, y: 0 },
-      sufixo: "esc",
+      sufixo: "loc",
       incluirGatilho: true,
     });
-    const agendar = escritorio.nodes.find((n) => n.label.includes("Agendar"));
-    expect(agendar?.type === "humano" ? agendar.config.team_note : "").toContain("dia e hora");
+    const menu = locadora.nodes.find((n) => n.type === "menu");
+    expect(menu?.type === "menu" ? menu.config.options.map((o) => o.label) : []).toEqual([
+      "Sou locatário",
+      "Sou investidor",
+      "Quero um carro",
+      "Boleto ou contrato",
+      "Socorro",
+      "Falar com a equipe",
+    ]);
+    expect(locadora.nodes.filter((n) => n.type === "assistente")).toHaveLength(4);
   });
 
   it("sem gatilho ainda liga o senão e a resposta no fim", () => {

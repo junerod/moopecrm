@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-import { Button } from "@/components/ui/button";
 import { useCreateFollowupFlow } from "@/hooks/followup/useFollowupFlows";
 import type { IdDeModeloPronto } from "@/lib/followup/modelo-de-menu";
 
@@ -18,10 +16,17 @@ type Atalho = {
 const ATALHOS: Atalho[] = [
   {
     id: "escritorio",
-    nome: "Primeiro atendimento",
-    explica: "A primeira mensagem vira um menu: advogado, horário, agendar e dúvida.",
+    nome: "Jurídico",
+    explica: "Advogado, horário, agendar, dúvida e o outro WhatsApp. A resposta continua neste número.",
     nomeDoBot: "Recepção",
     classe: "border-amber-500/40 bg-amber-500/10",
+  },
+  {
+    id: "locadora",
+    nome: "Locadora",
+    explica: "Locatário, investidor, carro ou boleto. Os dados vêm do Moope, pelo assistente.",
+    nomeDoBot: "Recepção da locadora",
+    classe: "border-orange-500/40 bg-orange-500/10",
   },
   {
     id: "loja",
@@ -73,12 +78,21 @@ export function AtalhosDeBot({ canWrite }: { canWrite: boolean }) {
     <section className="space-y-3" data-testid="atalhos-de-bot">
       <div>
         <h2 className="text-sm font-semibold text-[var(--color-text)]">Como começar</h2>
-        <p className="mt-0.5 max-w-2xl text-sm text-[var(--color-text-muted)]">
-          O bot de primeiro atendimento responde a primeira mensagem neste WhatsApp.
-          Escolha um atalho. O desenho entra pronto. Você só muda o texto, salva e publica.
+        <p className="mt-0.5 max-w-3xl text-sm text-[var(--color-text-muted)]">
+          Escolha um atalho. O desenho entra pronto. Publique só um bot de primeira mensagem —
+          dois publicados respondem juntos.
         </p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-relaxed text-[var(--color-text)]">
+        <p className="font-medium">Locadora e o Moope</p>
+        <p className="mt-1 text-[var(--color-text-muted)]">
+          Locatário, investidor, carro disponível e boleto não são texto fixo. Essas opções
+          soltam o assistente, que consulta o Moope e só fala o que encontrar. Socorro e
+          equipe chamam uma pessoa nesta mesma conversa. Troque o texto do horário e do
+          outro WhatsApp no jurídico antes de publicar — a pessoa continua no número em que escreveu.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {ATALHOS.map((atalho) => (
           <button
             key={atalho.id}

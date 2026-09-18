@@ -84,6 +84,8 @@ const FAIXA: Record<string, string> = {
   escritorio:
     "Este é o bot de primeiro atendimento. Mude o texto se quiser. Depois Salvar e Publicar — ele responde a primeira mensagem neste WhatsApp.",
   loja: "Recepção da loja já desenhada. Ajuste o texto, Salvar e Publicar.",
+  locadora:
+    "Locatário, investidor, carro e boleto vão para o assistente, que lê o Moope. Socorro chama uma pessoa neste número. Salvar e Publicar. Publique só um bot de primeira mensagem.",
   aviso: "Quando a pessoa escrever, a equipe é avisada. Salvar e Publicar para ligar.",
   meu: "Responda o passo a passo. No fim o menu entra no quadro. Depois Salvar e Publicar.",
 };

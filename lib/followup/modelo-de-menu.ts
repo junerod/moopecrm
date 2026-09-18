@@ -227,7 +227,7 @@ export function montarModeloDeMenu(input: {
   return { nodes, edges };
 }
 
-export const ID_DE_MODELO_PRONTO = ["escritorio", "loja", "aviso"] as const;
+export const ID_DE_MODELO_PRONTO = ["escritorio", "locadora", "loja", "aviso"] as const;
 export type IdDeModeloPronto = (typeof ID_DE_MODELO_PRONTO)[number];
 
 export const MODELOS_PRONTOS: {
@@ -238,9 +238,15 @@ export const MODELOS_PRONTOS: {
 }[] = [
   {
     id: "escritorio",
-    nome: "Escritório",
-    explica: "Advogado, horário, agendar e dúvida. Agendar avisa a equipe — quem marca o dia é uma pessoa.",
+    nome: "Jurídico",
+    explica: "Advogado, horário, agendar, dúvida e o texto do outro WhatsApp. A conversa não muda de número sozinha.",
     classe: "border-amber-500/40 bg-amber-500/10",
+  },
+  {
+    id: "locadora",
+    nome: "Locadora",
+    explica: "Locatário, investidor, carro, boleto ou socorro. Boleto e frota vêm do Moope, pelo assistente.",
+    classe: "border-orange-500/40 bg-orange-500/10",
   },
   {
     id: "loja",
@@ -284,6 +290,55 @@ function opcoesDoEscritorio(): OpcaoDoModelo[] {
       destino: "assistente",
       texto: "",
     },
+    {
+      numero: 5,
+      rotulo: "Outro WhatsApp",
+      destino: "texto",
+      texto: "Se preferir, escreva no outro WhatsApp. Coloque o número aqui antes de publicar.",
+    },
+  ];
+}
+
+function opcoesDaLocadora(): OpcaoDoModelo[] {
+  return [
+    {
+      numero: 1,
+      rotulo: "Sou locatário",
+      destino: "assistente",
+      texto: "",
+    },
+    {
+      numero: 2,
+      rotulo: "Sou investidor",
+      destino: "assistente",
+      texto: "",
+    },
+    {
+      numero: 3,
+      rotulo: "Quero um carro",
+      destino: "assistente",
+      texto: "",
+    },
+    {
+      numero: 4,
+      rotulo: "Boleto ou contrato",
+      destino: "assistente",
+      texto: "",
+    },
+    {
+      numero: 5,
+      rotulo: "Socorro",
+      destino: "humano",
+      texto: "Vou chamar alguém da equipe agora.",
+      comentario: "Socorro. Atenda nesta conversa, no número em que a pessoa escreveu.",
+    },
+    {
+      numero: 6,
+      rotulo: "Falar com a equipe",
+      destino: "humano",
+      texto: "Vou te passar para uma pessoa da locadora.",
+      comentario: "Cliente pediu a equipe.",
+    },
   ];
 }
 
@@ -323,11 +378,15 @@ export function montarModeloPronto(
   entrada: { origem: { x: number; y: number }; sufixo: string; incluirGatilho: boolean },
 ): FlowGraph {
   if (id === "aviso") return montarAviso(entrada);
-  return montarModeloDeMenu({
-    titulo: id === "escritorio" ? "Como posso ajudar?" : "Olá, como posso ajudar?",
-    opcoes: id === "escritorio" ? opcoesDoEscritorio() : opcoesDaLoja(),
-    ...entrada,
-  });
+  const titulo =
+    id === "locadora"
+      ? "Olá. Você é locatário, investidor ou quer um carro?"
+      : id === "escritorio"
+        ? "Como posso ajudar?"
+        : "Olá, como posso ajudar?";
+  const opcoes =
+    id === "locadora" ? opcoesDaLocadora() : id === "escritorio" ? opcoesDoEscritorio() : opcoesDaLoja();
+  return montarModeloDeMenu({ titulo, opcoes, ...entrada });
 }
 
 function montarAviso(entrada: {
