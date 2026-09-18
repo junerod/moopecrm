@@ -41,20 +41,20 @@ describe("montarModeloDeMenu", () => {
       incluirGatilho: true,
     });
     const menu = locadora.nodes.find((n) => n.type === "menu");
-    expect(menu?.type === "menu" ? menu.config.options.map((o) => o.label) : []).toEqual([
-      "Sou locatário",
-      "Sou investidor",
-      "Quero um carro",
-      "Boleto ou contrato",
-      "Socorro",
-      "Falar com a equipe",
-    ]);
-    expect(locadora.nodes.filter((n) => n.type === "assistente")).toHaveLength(4);
+    expect(menu?.type === "menu" ? menu.config.options.map((o) => o.label) : []).toContain("Outro WhatsApp");
+    expect(locadora.nodes.some((n) => n.type === "assistente")).toBe(false);
+    for (const id of ["escritorio", "loja", "locadora"] as const) {
+      const g = montarModeloPronto(id, { origem: { x: 0, y: 0 }, sufixo: id, incluirGatilho: true });
+      const outro = g.nodes.find((n) => n.label.includes("Outro WhatsApp"));
+      expect(outro?.type, id).toBe("humano");
+      expect(outro?.type === "humano" ? outro.config.team_note : "").toContain("não muda de WhatsApp");
+      expect(g.nodes.some((n) => n.type === "assistente")).toBe(false);
+    }
     const desenhado = toReactFlow(locadora);
     const saidas = desenhado.edges
       .filter((e) => e.source.endsWith("-menu"))
       .map((e) => e.sourceHandle);
-    expect(saidas.sort()).toEqual(["else", "o1", "o2", "o3", "o4", "o5", "o6"]);
+    expect(saidas.sort()).toEqual(["else", "o1", "o2", "o3", "o4", "o5", "o6", "o7"]);
   });
 
   it("sem gatilho ainda liga o senão e a resposta no fim", () => {

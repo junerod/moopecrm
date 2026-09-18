@@ -239,13 +239,13 @@ export const MODELOS_PRONTOS: {
   {
     id: "escritorio",
     nome: "Jurídico",
-    explica: "Advogado, horário, agendar, dúvida e o texto do outro WhatsApp. A conversa não muda de número sozinha.",
+    explica: "Advogado, horário, agendar, dúvida e outro WhatsApp. A equipe vê o comentário. A conversa não muda de número.",
     classe: "border-amber-500/40 bg-amber-500/10",
   },
   {
     id: "locadora",
     nome: "Locadora",
-    explica: "Locatário, investidor, carro, boleto ou socorro. Boleto e frota vêm do Moope, pelo assistente.",
+    explica: "Locatário, investidor, carro, boleto, socorro e outro WhatsApp. Cada um chama uma pessoa e deixa o pedido no comentário.",
     classe: "border-orange-500/40 bg-orange-500/10",
   },
   {
@@ -261,6 +261,17 @@ export const MODELOS_PRONTOS: {
     classe: "border-emerald-500/40 bg-emerald-500/10",
   },
 ];
+
+function opcaoOutroWhatsapp(numero: number): OpcaoDoModelo {
+  return {
+    numero,
+    rotulo: "Outro WhatsApp",
+    destino: "humano",
+    texto: "Para continuar, escreva no outro WhatsApp. Coloque o número aqui antes de publicar.",
+    comentario:
+      "Cliente pediu o outro número. A conversa não muda de WhatsApp. O resumo é esta conversa: leia e responda no número certo.",
+  };
+}
 
 function opcoesDoEscritorio(): OpcaoDoModelo[] {
   return [
@@ -287,15 +298,11 @@ function opcoesDoEscritorio(): OpcaoDoModelo[] {
     {
       numero: 4,
       rotulo: "Tirar uma dúvida",
-      destino: "assistente",
-      texto: "",
+      destino: "humano",
+      texto: "Vou te passar para alguém do escritório.",
+      comentario: "Cliente tem uma dúvida. Responda nesta conversa.",
     },
-    {
-      numero: 5,
-      rotulo: "Outro WhatsApp",
-      destino: "texto",
-      texto: "Se preferir, escreva no outro WhatsApp. Coloque o número aqui antes de publicar.",
-    },
+    opcaoOutroWhatsapp(5),
   ];
 }
 
@@ -304,26 +311,30 @@ function opcoesDaLocadora(): OpcaoDoModelo[] {
     {
       numero: 1,
       rotulo: "Sou locatário",
-      destino: "assistente",
-      texto: "",
+      destino: "humano",
+      texto: "Vou chamar quem cuida do seu contrato.",
+      comentario: "Disse que é locatário. Confira no Moope pelo telefone desta conversa: contrato, placa, boleto.",
     },
     {
       numero: 2,
       rotulo: "Sou investidor",
-      destino: "assistente",
-      texto: "",
+      destino: "humano",
+      texto: "Vou chamar quem cuida dos investidores.",
+      comentario: "Disse que é investidor. Confira no Moope pelo telefone. O resumo é esta conversa.",
     },
     {
       numero: 3,
       rotulo: "Quero um carro",
-      destino: "assistente",
-      texto: "",
+      destino: "humano",
+      texto: "Vou chamar quem mostra os carros disponíveis.",
+      comentario: "Quer um carro. Veja a frota no Moope e responda nesta conversa. Não invente preço.",
     },
     {
       numero: 4,
       rotulo: "Boleto ou contrato",
-      destino: "assistente",
-      texto: "",
+      destino: "humano",
+      texto: "Vou chamar quem envia o boleto ou o contrato.",
+      comentario: "Pediu boleto ou contrato. Busque no Moope e responda nesta conversa. Sem link, não invente.",
     },
     {
       numero: 5,
@@ -339,6 +350,7 @@ function opcoesDaLocadora(): OpcaoDoModelo[] {
       texto: "Vou te passar para uma pessoa da locadora.",
       comentario: "Cliente pediu a equipe.",
     },
+    opcaoOutroWhatsapp(7),
   ];
 }
 
@@ -360,8 +372,9 @@ function opcoesDaLoja(): OpcaoDoModelo[] {
     {
       numero: 3,
       rotulo: "Tirar uma dúvida",
-      destino: "assistente",
-      texto: "",
+      destino: "humano",
+      texto: "Vou te passar para alguém da loja.",
+      comentario: "Cliente tem uma dúvida. Responda nesta conversa.",
     },
     {
       numero: 4,
@@ -370,6 +383,7 @@ function opcoesDaLoja(): OpcaoDoModelo[] {
       texto: "Vou te passar para uma pessoa da equipe.",
       comentario: "Cliente escolheu outro assunto.",
     },
+    opcaoOutroWhatsapp(5),
   ];
 }
 

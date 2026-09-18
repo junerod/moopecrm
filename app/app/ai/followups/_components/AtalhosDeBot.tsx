@@ -24,7 +24,7 @@ const ATALHOS: Atalho[] = [
   {
     id: "locadora",
     nome: "Locadora",
-    explica: "Locatário, investidor, carro ou boleto. Os dados vêm do Moope, pelo assistente.",
+    explica: "Locatário, carro, boleto ou outro WhatsApp. Cada um chama alguém e deixa o pedido.",
     nomeDoBot: "Recepção da locadora",
     classe: "border-orange-500/40 bg-orange-500/10",
   },
@@ -86,10 +86,10 @@ export function AtalhosDeBot({ canWrite }: { canWrite: boolean }) {
       <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-relaxed text-[var(--color-text)]">
         <p className="font-medium">Locadora e o Moope</p>
         <p className="mt-1 text-[var(--color-text-muted)]">
-          Locatário, investidor, carro disponível e boleto não são texto fixo. Essas opções
-          soltam o assistente, que consulta o Moope e só fala o que encontrar. Socorro e
-          equipe chamam uma pessoa nesta mesma conversa. Troque o texto do horário e do
-          outro WhatsApp no jurídico antes de publicar — a pessoa continua no número em que escreveu.
+          Locatário, investidor, carro e boleto chamam uma pessoa e deixam o pedido no comentário.
+          Quem atende confere no Moope e responde nesta conversa — o bot não inventa link nem preço.
+          Outro WhatsApp, em todo menu, avisa o cliente para escrever no número que você colocar
+          e abre o aviso na Central. A conversa não pula de número. O resumo é o que já está escrito aqui.
         </p>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">

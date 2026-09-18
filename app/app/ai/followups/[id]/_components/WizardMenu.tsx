@@ -39,7 +39,7 @@ const DESTINOS: { id: DestinoDaOpcao; titulo: string; explica: string; classe: s
   {
     id: "assistente",
     titulo: "Deixar o assistente",
-    explica: "A conversa segue com o assistente de inteligência artificial.",
+    explica: "A próxima frase da pessoa vai para o assistente. Esta escolha, sozinha, não responde.",
     classe: "border-violet-500/40 bg-violet-500/10",
   },
 ];
