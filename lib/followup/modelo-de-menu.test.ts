@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { flowGraphSchema } from "@/lib/followup/graph-schema";
+import { toReactFlow } from "@/lib/followup/graph-mappers";
 import { montarModeloDeMenu, montarModeloPronto, opcoesPadrao } from "@/lib/followup/modelo-de-menu";
 import { validateFlowForPublish } from "@/lib/followup/validate-publish";
 
@@ -49,6 +50,11 @@ describe("montarModeloDeMenu", () => {
       "Falar com a equipe",
     ]);
     expect(locadora.nodes.filter((n) => n.type === "assistente")).toHaveLength(4);
+    const desenhado = toReactFlow(locadora);
+    const saidas = desenhado.edges
+      .filter((e) => e.source.endsWith("-menu"))
+      .map((e) => e.sourceHandle);
+    expect(saidas.sort()).toEqual(["else", "o1", "o2", "o3", "o4", "o5", "o6"]);
   });
 
   it("sem gatilho ainda liga o senão e a resposta no fim", () => {
