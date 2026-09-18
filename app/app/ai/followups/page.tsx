@@ -4,8 +4,6 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import type { FollowupFlowPointerRow } from "@/hooks/followup/useFollowupFlows";
-import { AppIcon } from "@/components/ds/AppIcon";
-import { PageHeader } from "@/components/ds/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { packEstaAtivo } from "@/lib/business-packs/apresentacao";
 import { resolverPack } from "@/lib/business-packs/catalogo";
@@ -17,9 +15,9 @@ import {
   horasDoFollowup,
   TITULO_TEMPLATE_FOLLOWUP_24H,
 } from "@/lib/negocio/followup-24h";
-import { FlowArrow } from "@/lib/ui/icons";
 
 import { FlowsList } from "./_components/FlowsList";
+import { BotsHero } from "./_components/BotsHero";
 import { ProntasTab } from "./_components/ProntasTab";
 import { QueueTab } from "./_components/QueueTab";
 
@@ -101,20 +99,18 @@ export default async function FollowupFlowsPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
-      <PageHeader
-        icon={<AppIcon icon={FlowArrow} tone="cyan" size="lg" />}
-        titulo="Bots"
-        descricao="O que atende no WhatsApp e os recados que o sistema manda sozinho. Se o cliente responder ou pedir para parar, o retorno para."
-      />
-      <Tabs defaultValue={silencioAtivo ? "minhas" : "prontas"} className="flex flex-1 flex-col">
-        <TabsList>
-          <TabsTrigger value="bots">Bots</TabsTrigger>
+      <BotsHero />
+      <Tabs defaultValue={silencioAtivo ? "minhas" : "bots"} className="flex flex-1 flex-col">
+        <TabsList className="h-auto flex-wrap gap-1 p-1">
+          <TabsTrigger value="bots" className="gap-1.5">
+            Bots
+          </TabsTrigger>
           <TabsTrigger value="prontas">Prontas</TabsTrigger>
           <TabsTrigger value="minhas">Recados</TabsTrigger>
           <TabsTrigger value="avancado">Avançado</TabsTrigger>
           <TabsTrigger value="fila">Fila</TabsTrigger>
         </TabsList>
-        <TabsContent value="prontas">
+        <TabsContent value="prontas" className="mt-4">
           <ProntasTab
             jaAtivo={silencioAtivo}
             canWrite={canWrite}
@@ -123,25 +119,30 @@ export default async function FollowupFlowsPage() {
             fluxosDoPack={fluxosDoPack}
           />
         </TabsContent>
-        <TabsContent value="bots">
-          <p className="mb-3 text-sm text-muted-foreground">
-            Porta da frente no WhatsApp: menu numerado, FAQ, horário, humano ou
-            assistente. Publicar não liga sozinho no número de outra pessoa —
-            o rascunho do pack espera você.
-          </p>
+        <TabsContent value="bots" className="mt-4">
+          <div className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-4 py-3 text-sm leading-relaxed text-[var(--color-text)]">
+            <span className="font-medium text-cyan-800 dark:text-cyan-300">Bot = o menu do WhatsApp.</span>{" "}
+            Desenhe 1, 2, 3, FAQ ou humano. Publicar liga neste número — não no
+            de outra pessoa.
+          </div>
           <FlowsList initialData={flows} canWrite={canWrite} purpose="bot" />
         </TabsContent>
-        <TabsContent value="minhas">
+        <TabsContent value="minhas" className="mt-4">
+          <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm leading-relaxed text-[var(--color-text)]">
+            <span className="font-medium text-amber-800 dark:text-amber-300">Recados = lembretes sozinhos.</span>{" "}
+            Se o cliente sumir ou mudar de etapa, o sistema manda a mensagem na
+            hora certa.
+          </div>
           <FlowsList initialData={flows} canWrite={canWrite} />
         </TabsContent>
-        <TabsContent value="avancado">
+        <TabsContent value="avancado" className="mt-4">
           <p className="mb-3 text-sm text-muted-foreground">
-            Editor visual e publicação — o construtor que já existia. Abrir um
-            fluxo na lista leva ao quadro de etapas.
+            Editor visual completo — o quadro de etapas. Abrir um item na lista
+            leva ao construtor.
           </p>
           <FlowsList initialData={flows} canWrite={canWrite} />
         </TabsContent>
-        <TabsContent value="fila">
+        <TabsContent value="fila" className="mt-4">
           <QueueTab canWrite={canWrite} />
         </TabsContent>
       </Tabs>

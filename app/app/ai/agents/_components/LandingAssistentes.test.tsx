@@ -106,4 +106,35 @@ describe("LandingAssistentes", () => {
     expect(await screen.findByTestId("publicar-assistente-ativo-1")).toBeTruthy();
     expect(screen.queryByTestId("desativar-assistente-ativo-1")).toBeNull();
   });
+
+  it("alerta e link para credenciais quando não há chave de IA", () => {
+    render(
+      <LandingAssistentes
+        packAtivo={false}
+        packLabel={null}
+        cards={[]}
+        canWrite
+        semCredencialIa
+      />,
+    );
+    expect(screen.getByTestId("aviso-sem-credencial-ia")).toBeTruthy();
+    expect(screen.getByTestId("ir-credenciais-ia")).toHaveAttribute(
+      "href",
+      "/app/ai/credentials",
+    );
+    expect(screen.getByText(/Falta a chave da inteligência artificial/i)).toBeTruthy();
+  });
+
+  it("não mostra o alerta quando já existe credencial", () => {
+    render(
+      <LandingAssistentes
+        packAtivo={false}
+        packLabel={null}
+        cards={[]}
+        canWrite
+        semCredencialIa={false}
+      />,
+    );
+    expect(screen.queryByTestId("aviso-sem-credencial-ia")).toBeNull();
+  });
 });

@@ -48,11 +48,18 @@ export default async function AgentsListPage() {
 
   const agents = (data ?? []) as unknown as AgentRow[];
   const canWrite = ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin;
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("settings")
-    .eq("id", activeOrg.orgId)
-    .maybeSingle();
+  const [{ data: org }, { count: credenciaisCount }] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("settings")
+      .eq("id", activeOrg.orgId)
+      .maybeSingle(),
+    supabase
+      .from("ai_provider_credentials_safe")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", activeOrg.orgId),
+  ]);
+  const semCredencialIa = (credenciaisCount ?? 0) === 0;
   const pack = lerPackGravado(org?.settings);
   const definition = pack ? resolverPack(pack.id) : null;
 
@@ -95,6 +102,7 @@ export default async function AgentsListPage() {
         packId={definition?.id ?? null}
         cards={cards}
         canWrite={canWrite}
+        semCredencialIa={semCredencialIa}
       />
 
       <details className="rounded-lg border border-border p-4">

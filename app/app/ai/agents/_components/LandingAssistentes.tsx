@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { AppIcon } from "@/components/ds/AppIcon";
 import { ProximoPasso } from "@/components/ds/ProximoPasso";
 import { TestDriveDoPack } from "@/components/negocio/TestDriveDoPack";
 import { Button } from "@/components/ui/button";
 import { perguntaDeTeste } from "@/lib/business-packs/apresentacao";
 import { resolverPack } from "@/lib/business-packs/catalogo";
+import { Key, Robot, Warning } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
 import { pauseAgentAction } from "../_actions";
@@ -45,12 +47,15 @@ export function LandingAssistentes({
   packId,
   cards,
   canWrite,
+  semCredencialIa = false,
 }: {
   packAtivo: boolean;
   packLabel: string | null;
   packId?: string | null;
   cards: CardAssistente[];
   canWrite: boolean;
+  /** Nenhuma chave em Credenciais — o assistente não pensa sem isso. */
+  semCredencialIa?: boolean;
 }) {
   const [lista, setLista] = useState(cards);
   const [aberto, setAberto] = useState<string | null>(null);
@@ -110,39 +115,89 @@ export function LandingAssistentes({
 
   return (
     <div className="space-y-6" data-testid="landing-assistentes">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Assistentes</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure quem atende, vende e ajuda sua equipe.
-          </p>
-          {packAtivo && packLabel ? (
-            <p className="mt-2 text-sm font-medium" data-testid="pack-locadora-banner">
-              Pack ativo: {packLabel}
-            </p>
-          ) : null}
-          {packAtivo ? (
-            <p className="text-sm text-muted-foreground">
-              Seu pack {packLabel} possui {cards.filter((c) => c.specialtyKey).length} assistentes
-              prontos.
-            </p>
-          ) : null}
+      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="relative px-5 py-5 sm:px-6">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 60% 90% at 0% 0%, color-mix(in oklab, var(--color-ai-fg) 14%, transparent), transparent 55%)",
+            }}
+          />
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <AppIcon icon={Robot} tone="violet" size="lg" />
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-tight">Assistentes</h1>
+                <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                  Quem fala com o cliente: o jeito de responder, o que sabe e se
+                  está ligado. O menu 1, 2, 3 do WhatsApp fica em{" "}
+                  <Link href="/app/ai/followups" className="font-medium text-foreground underline underline-offset-2">
+                    Bots
+                  </Link>
+                  .
+                </p>
+                {packAtivo && packLabel ? (
+                  <p
+                    className="mt-3 inline-flex rounded-full bg-[var(--color-ai-bg)] px-2.5 py-1 text-xs font-medium text-[var(--color-ai-fg)]"
+                    data-testid="pack-locadora-banner"
+                  >
+                    Pack ativo: {packLabel}
+                    {cards.filter((c) => c.specialtyKey).length
+                      ? ` · ${cards.filter((c) => c.specialtyKey).length} prontos`
+                      : ""}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canWrite ? (
+                <Button asChild>
+                  <Link href="/app/ai/agents/simples" data-testid="criar-assistente">
+                    + Criar assistente
+                  </Link>
+                </Button>
+              ) : null}
+              <Button asChild variant="outline">
+                <Link href="/app/modelos-prontos" data-testid="ir-modelos-prontos">
+                  Modelos prontos
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {canWrite ? (
-            <Button asChild>
-              <Link href="/app/ai/agents/simples" data-testid="criar-assistente">
-                + Criar assistente
-              </Link>
-            </Button>
-          ) : null}
-          <Button asChild variant="outline">
-            <Link href="/app/modelos-prontos" data-testid="ir-modelos-prontos">
-              Modelos prontos
+      </div>
+
+      {semCredencialIa ? (
+        <div
+          role="alert"
+          data-testid="aviso-sem-credencial-ia"
+          className="flex flex-col gap-3 rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-transparent p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-300">
+              <Warning size={22} weight="duotone" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                Falta a chave da inteligência artificial
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-amber-900/80 dark:text-amber-100/75">
+                Sem uma chave (OpenAI, Anthropic ou Google), o assistente não
+                consegue pensar nem responder no WhatsApp. Cadastre em um
+                minuto — é só colar a API key.
+              </p>
+            </div>
+          </div>
+          <Button asChild className="shrink-0 bg-amber-700 text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500">
+            <Link href="/app/ai/credentials" data-testid="ir-credenciais-ia">
+              <Key size={16} aria-hidden className="mr-1.5" />
+              Cadastrar chave de IA
             </Link>
           </Button>
         </div>
-      </div>
+      ) : null}
 
       {cards.length === 0 && canWrite ? (
         <ProximoPasso
@@ -172,7 +227,12 @@ export function LandingAssistentes({
             <li
               key={card.id}
               data-testid={`card-assistente-${card.specialtyKey ?? card.id}`}
-              className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+              className={cn(
+                "rounded-2xl border bg-[var(--color-surface)] p-4 transition-shadow hover:shadow-sm",
+                card.ativo
+                  ? "border-emerald-500/30 shadow-[inset_0_0_0_1px_color-mix(in_oklab,theme(colors.emerald.500)_12%,transparent)]"
+                  : "border-[var(--color-border)]",
+              )}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -181,7 +241,7 @@ export function LandingAssistentes({
                 </div>
                 <span
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wide",
+                    "rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
                     card.ativo
                       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                       : "bg-muted text-muted-foreground",
@@ -192,7 +252,7 @@ export function LandingAssistentes({
                 </span>
               </div>
               {card.principal ? (
-                <p className="mt-2 text-xs font-medium" data-testid="assistente-principal">
+                <p className="mt-2 text-xs font-medium text-[var(--color-ai-fg)]" data-testid="assistente-principal">
                   Principal — recebe primeiro o atendimento
                 </p>
               ) : null}

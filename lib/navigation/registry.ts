@@ -313,8 +313,20 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     // ⚠️ ERA "Automações". Quem atende no WhatsApp chama isso de bot — automação
     // e fluxo são jargão. A URL não muda; a aba Recados continua os lembretes.
     label: "Bots",
-    description: "O menu do WhatsApp e os recados que o sistema manda sozinho.",
-    aliases: ["automação", "automações", "follow-up", "followup", "fluxo", "lembrete", "bot", "menu de atendimento"],
+    description:
+      "Bots / Fluxo WhatsApp — o menu 1, 2, 3 e os recados que o sistema manda sozinho.",
+    aliases: [
+      "automação",
+      "automações",
+      "follow-up",
+      "followup",
+      "fluxo",
+      "fluxo whatsapp",
+      "lembrete",
+      "bot",
+      "bots",
+      "menu de atendimento",
+    ],
     icon: FlowArrow,
     group: "ia",
     section: "Montar o agente",
