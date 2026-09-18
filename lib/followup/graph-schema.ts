@@ -268,6 +268,10 @@ export const horarioConfigSchema = z.strictObject({});
 
 export const humanoConfigSchema = z.strictObject({
   phrase: z.string().max(500).optional(),
+  /** Membro agent+ que recebe a conversa. Ausente = fica na Central, sem dono. */
+  notify_user_id: z.string().uuid().optional(),
+  /** Comentário interno. O cliente não recebe este texto. */
+  team_note: z.string().max(500).optional(),
 });
 
 export const assistenteConfigSchema = z.strictObject({

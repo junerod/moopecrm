@@ -15,6 +15,7 @@
 import type pg from "pg";
 
 import type { AdminClient, EnrollmentPatch } from "./engine";
+import { gravarAvisoDePessoa } from "./aviso-de-pessoa";
 import { flowGraphSchema } from "./graph-schema";
 import { classEdgeMatch, selectEdge, type EnrollmentRow } from "./node-handlers";
 import { coletarEsperasAdaptativas, montarTimingPlan, type PropostaDeEspera } from "./timing-plan";
@@ -287,22 +288,34 @@ export function createPgAdminClient(pool: pg.Pool): TurnBridgeAdminClient {
       );
       return rows[0]?.trigger_config ?? null;
     },
-    async requestBotHandoff(enrollment) {
-      await pool.query(
-        `update contacts set force_human = true
-          where id = $1 and organization_id = $2`,
-        [enrollment.contact_id, enrollment.organization_id],
-      );
-      await pool.query(
-        `insert into agent_inbox_items
-           (organization_id, kind, severity, title, body, ref_kind, ref_id)
-         values ($1, 'handoff', 'critical', $2, $3, 'contact', $4)`,
-        [
-          enrollment.organization_id,
-          "O bot pediu uma pessoa",
-          "O quadro de atendimento passou a conversa para um humano.",
-          enrollment.contact_id,
-        ],
+    async requestBotHandoff(enrollment, pedido) {
+      await gravarAvisoDePessoa(
+        {
+          marcarHumano: async (orgId, contactId) => {
+            await pool.query(
+              `update contacts set force_human = true
+                where id = $1 and organization_id = $2`,
+              [contactId, orgId],
+            );
+          },
+          atribuir: async (orgId, conversationId, userId) => {
+            const res = await pool.query(
+              `select * from public.fn_conversation_assign($1, $2, $3, 'handoff', null, false)`,
+              [orgId, conversationId, userId],
+            );
+            if (res.rowCount === 0) throw new Error("conversation_not_found");
+          },
+          abrirCentral: async (item) => {
+            await pool.query(
+              `insert into agent_inbox_items
+                 (organization_id, kind, severity, title, body, ref_kind, ref_id)
+               values ($1, 'handoff', 'critical', $2, $3, 'contact', $4)`,
+              [item.organization_id, item.title, item.body, item.ref_id],
+            );
+          },
+        },
+        enrollment,
+        pedido,
       );
     },
     async insertEnrollmentEvent(event) {

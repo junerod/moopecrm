@@ -43,9 +43,9 @@ export function BotsHero() {
             <li className="flex gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)]/80 p-3.5 backdrop-blur-sm">
               <AppIcon icon={Robot} tone="cyan" size="md" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-[var(--color-text)]">Bot</p>
+                <p className="text-sm font-semibold text-[var(--color-text)]">Primeiro atendimento</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-text-muted)]">
-                  Menu da porta: opções, FAQ, horário ou passar para humano.
+                  O menu da primeira mensagem. Os atalhos abaixo criam esse bot já desenhado.
                 </p>
               </div>
             </li>

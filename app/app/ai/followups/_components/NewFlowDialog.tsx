@@ -61,7 +61,7 @@ export function NewFlowDialog({ open, onOpenChange, purpose = "followup" }: Prop
           <DialogTitle>{purpose === "bot" ? "Novo bot" : "Novo fluxo de follow-up"}</DialogTitle>
           <DialogDescription>
             {purpose === "bot"
-              ? "Nasce como rascunho. Arraste Menu, FAQ e Horário no quadro e publique."
+              ? "Nasce como rascunho do primeiro atendimento. No quadro, Modelos prontos desenha o menu. Salvar e Publicar ligam neste WhatsApp."
               : "Nasce como rascunho. Você monta as etapas no editor visual em seguida."}
           </DialogDescription>
         </DialogHeader>

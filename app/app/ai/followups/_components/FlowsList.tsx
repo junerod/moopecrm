@@ -62,7 +62,7 @@ export function FlowsList({ initialData, canWrite, purpose = "followup" }: Props
           <h2 className="font-medium">{ehBot ? "Nenhum bot ainda" : "Nenhuma automação ainda"}</h2>
           <p className="max-w-sm text-sm text-text-muted">
             {ehBot
-              ? "Desenhe o menu da porta da frente: 1, 2, 3, horário, FAQ ou humano."
+              ? "Use um atalho acima, ou crie um bot vazio e escolha Modelos prontos no quadro."
               : "Monte um fluxo para o sistema voltar a falar sozinho quando o cliente sumir, mudar de etapa ou encerrar a conversa — sem depender de alguém lembrar de mandar mensagem."}
           </p>
           {canWrite && <div className="mt-1">{newFlowButton}</div>}

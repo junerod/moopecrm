@@ -14,6 +14,8 @@ export type OpcaoDoModelo = {
   destino: DestinoDaOpcao;
   /** Frase enviada no texto ou ao chamar uma pessoa. Vazio no assistente. */
   texto: string;
+  /** Só a equipe lê. Vale quando o destino é uma pessoa. */
+  comentario?: string;
 };
 
 const BASE: OpcaoDoModelo[] = [
@@ -140,6 +142,9 @@ export function montarModeloDeMenu(input: {
         position: { x: menuX + 340, y },
         config: {
           phrase: corta(o.texto, 500) || "Vou te passar para uma pessoa da equipe.",
+          ...(corta(o.comentario ?? "", 500)
+            ? { team_note: corta(o.comentario ?? "", 500) }
+            : {}),
         },
       });
     } else if (o.destino === "assistente") {
@@ -219,5 +224,148 @@ export function montarModeloDeMenu(input: {
     });
   }
 
+  return { nodes, edges };
+}
+
+export const ID_DE_MODELO_PRONTO = ["escritorio", "loja", "aviso"] as const;
+export type IdDeModeloPronto = (typeof ID_DE_MODELO_PRONTO)[number];
+
+export const MODELOS_PRONTOS: {
+  id: IdDeModeloPronto;
+  nome: string;
+  explica: string;
+  classe: string;
+}[] = [
+  {
+    id: "escritorio",
+    nome: "Escritório",
+    explica: "Advogado, horário, agendar e dúvida. Agendar avisa a equipe — quem marca o dia é uma pessoa.",
+    classe: "border-amber-500/40 bg-amber-500/10",
+  },
+  {
+    id: "loja",
+    nome: "Loja",
+    explica: "Vendas, horário, uma dúvida e outro assunto. Já vem com o texto para você só ajustar.",
+    classe: "border-sky-500/40 bg-sky-500/10",
+  },
+  {
+    id: "aviso",
+    nome: "Só avisar a equipe",
+    explica: "Sem menu. O cliente ouve um recado e a equipe lê um comentário na Central.",
+    classe: "border-emerald-500/40 bg-emerald-500/10",
+  },
+];
+
+function opcoesDoEscritorio(): OpcaoDoModelo[] {
+  return [
+    {
+      numero: 1,
+      rotulo: "Falar com o advogado",
+      destino: "humano",
+      texto: "Certo. Vou chamar alguém do escritório.",
+      comentario: "Cliente pediu para falar com o advogado.",
+    },
+    {
+      numero: 2,
+      rotulo: "Horário",
+      destino: "texto",
+      texto: "Atendemos em horário comercial, de segunda a sexta. Se for urgente, escolha falar com o advogado.",
+    },
+    {
+      numero: 3,
+      rotulo: "Agendar",
+      destino: "humano",
+      texto: "Vou te passar para quem confirma o dia e a hora.",
+      comentario: "Cliente quer marcar um horário. Confirme dia e hora com ele.",
+    },
+    {
+      numero: 4,
+      rotulo: "Tirar uma dúvida",
+      destino: "assistente",
+      texto: "",
+    },
+  ];
+}
+
+function opcoesDaLoja(): OpcaoDoModelo[] {
+  return [
+    {
+      numero: 1,
+      rotulo: "Falar com vendas",
+      destino: "humano",
+      texto: "Vou te passar para alguém de vendas.",
+      comentario: "Cliente quer falar com vendas.",
+    },
+    {
+      numero: 2,
+      rotulo: "Horário",
+      destino: "texto",
+      texto: "Atendemos de segunda a sexta, das 8h às 18h, e sábado das 8h às 12h.",
+    },
+    {
+      numero: 3,
+      rotulo: "Tirar uma dúvida",
+      destino: "assistente",
+      texto: "",
+    },
+    {
+      numero: 4,
+      rotulo: "Outro assunto",
+      destino: "humano",
+      texto: "Vou te passar para uma pessoa da equipe.",
+      comentario: "Cliente escolheu outro assunto.",
+    },
+  ];
+}
+
+export function montarModeloPronto(
+  id: IdDeModeloPronto,
+  entrada: { origem: { x: number; y: number }; sufixo: string; incluirGatilho: boolean },
+): FlowGraph {
+  if (id === "aviso") return montarAviso(entrada);
+  return montarModeloDeMenu({
+    titulo: id === "escritorio" ? "Como posso ajudar?" : "Olá, como posso ajudar?",
+    opcoes: id === "escritorio" ? opcoesDoEscritorio() : opcoesDaLoja(),
+    ...entrada,
+  });
+}
+
+function montarAviso(entrada: {
+  origem: { x: number; y: number };
+  sufixo: string;
+  incluirGatilho: boolean;
+}): FlowGraph {
+  const s = entrada.sufixo.replace(/[^a-z0-9]/gi, "").slice(0, 12) || "aviso";
+  const humanoId = `${s}-pessoa`;
+  const nodes: FlowNode[] = [
+    {
+      id: humanoId,
+      type: "humano",
+      label: "Avisar a equipe",
+      position: { x: entrada.origem.x + (entrada.incluirGatilho ? 280 : 0), y: entrada.origem.y },
+      config: {
+        phrase: "Vou te passar para uma pessoa da equipe.",
+        team_note: "O bot avisou a equipe. Leia a conversa e responda.",
+      },
+    },
+  ];
+  const edges: FlowEdge[] = [];
+  if (entrada.incluirGatilho) {
+    const gatilhoId = `${s}-inicio`;
+    nodes.unshift({
+      id: gatilhoId,
+      type: "trigger",
+      label: "Primeira mensagem",
+      position: { x: entrada.origem.x, y: entrada.origem.y + 40 },
+      config: {},
+    });
+    edges.push({
+      id: `${s}-e-inicio`,
+      source: gatilhoId,
+      target: humanoId,
+      priority: 0,
+      condition: { type: "always" },
+    });
+  }
   return { nodes, edges };
 }

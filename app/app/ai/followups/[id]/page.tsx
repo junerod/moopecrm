@@ -13,10 +13,13 @@ const DETAIL_COLUMNS =
 
 export default async function FollowupFlowBuilderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ modelo?: string }>;
 }) {
   const { id } = await params;
+  const { modelo } = await searchParams;
 
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
@@ -51,7 +54,7 @@ export default async function FollowupFlowBuilderPage({
 
   return (
     <div className="flex h-full flex-col">
-      <FlowBuilder flowId={id} initialData={flow} />
+      <FlowBuilder flowId={id} initialData={flow} modeloInicial={modelo} />
     </div>
   );
 }

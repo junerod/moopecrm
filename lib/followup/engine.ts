@@ -12,6 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@/lib/logger";
+import { gravarAvisoDePessoa, type PedidoDePessoa } from "@/lib/followup/aviso-de-pessoa";
 
 import { flowGraphSchema, type FlowGraph, type FlowNode } from "./graph-schema";
 import {
@@ -84,8 +85,8 @@ export interface AdminClient {
   loadLastInboundText?(orgId: string, contactId: string): Promise<string | null>;
   /** `trigger_config` do agente publicado — nó Horário. Ausente = falha aberta. */
   loadPublishedAgentHours?(orgId: string): Promise<unknown>;
-  /** Nó Humano: pede pessoa (inbox + force_human). */
-  requestBotHandoff?(enrollment: EnrollmentRow): Promise<void>;
+  /** Nó Humano: pede pessoa (inbox + force_human). O segundo argumento é quem recebe. */
+  requestBotHandoff?(enrollment: EnrollmentRow, pedido?: PedidoDePessoa): Promise<void>;
   /** Inserts the step's audit event; `inserted:false` means idempotency_key already existed (23505 replay). */
   insertEnrollmentEvent(event: {
     organization_id: string;
@@ -390,7 +391,12 @@ async function applyResult(
     db.requestBotHandoff &&
     !isReplay
   ) {
-    await db.requestBotHandoff(enrollment);
+    await db.requestBotHandoff(
+      enrollment,
+      node.type === "humano"
+        ? { userId: node.config.notify_user_id, note: node.config.team_note }
+        : undefined,
+    );
   }
 
   if (!isReplay) tallyOutcome(result, summary);
@@ -629,23 +635,49 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
       if (vErr) throw new Error(vErr.message);
       return version?.trigger_config ?? null;
     },
-    async requestBotHandoff(enrollment) {
-      const { error: contactErr } = await admin
-        .from("contacts")
-        .update({ force_human: true })
-        .eq("id", enrollment.contact_id)
-        .eq("organization_id", enrollment.organization_id);
-      if (contactErr) throw new Error(contactErr.message);
-      const { error: inboxErr } = await admin.from("agent_inbox_items").insert({
-        organization_id: enrollment.organization_id,
-        kind: "handoff",
-        severity: "critical",
-        title: "O bot pediu uma pessoa",
-        body: "O quadro de atendimento passou a conversa para um humano.",
-        ref_kind: "contact",
-        ref_id: enrollment.contact_id,
-      });
-      if (inboxErr) throw new Error(inboxErr.message);
+    async requestBotHandoff(enrollment, pedido) {
+      await gravarAvisoDePessoa(
+        {
+          marcarHumano: async (orgId, contactId) => {
+            const { error } = await admin
+              .from("contacts")
+              .update({ force_human: true })
+              .eq("id", contactId)
+              .eq("organization_id", orgId);
+            if (error) throw new Error(error.message);
+          },
+          atribuir: async (orgId, conversationId, userId) => {
+            const { data, error } = await admin.rpc("fn_conversation_assign", {
+              p_organization_id: orgId,
+              p_conversation_id: conversationId,
+              p_to_user_id: userId,
+              p_reason: "handoff",
+              p_enforce_expected: false,
+            });
+            if (error || (Array.isArray(data) && data.length === 0)) {
+              logger.warn("bot.handoff.assign_failed", {
+                organization_id: orgId,
+                error: error?.message ?? "conversation_not_found",
+              });
+              throw new Error(error?.message ?? "conversation_not_found");
+            }
+          },
+          abrirCentral: async (item) => {
+            const { error } = await admin.from("agent_inbox_items").insert({
+              organization_id: item.organization_id,
+              kind: "handoff",
+              severity: "critical",
+              title: item.title,
+              body: item.body,
+              ref_kind: "contact",
+              ref_id: item.ref_id,
+            });
+            if (error) throw new Error(error.message);
+          },
+        },
+        enrollment,
+        pedido,
+      );
     },
     async insertEnrollmentEvent(event) {
       const { error } = await admin.from("followup_enrollment_events").insert(event);

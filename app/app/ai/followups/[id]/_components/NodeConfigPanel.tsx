@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FlowNode } from "@/lib/followup/graph-schema";
 import type { RFNode, RFNodeData } from "@/lib/followup/graph-mappers";
+import { Trash } from "@/lib/ui/icons";
 
 import { ActionForm } from "./forms/ActionForm";
 import { ClassifyForm } from "./forms/ClassifyForm";
@@ -24,6 +26,7 @@ interface Props {
   onChange: (patch: Partial<RFNodeData>) => void;
   /** Ramos deste nó que já têm aresta — quem sabe isso é o canvas, que é dono do grafo. */
   ramosLigados?: string[];
+  onRemove?: (id: string) => void;
 }
 
 /**
@@ -35,12 +38,13 @@ interface Props {
  * quando o candidato passa no schema — senão mostra erro inline e o canvas
  * mantém a última config válida (nunca um valor pela metade rio acima).
  */
-export function NodeConfigPanel({ node, onChange, ramosLigados }: Props) {
+export function NodeConfigPanel({ node, onChange, ramosLigados, onRemove }: Props) {
   const type = node.type as FlowNode["type"];
   const visual = NODE_VISUALS[type];
   const Icon = visual.icon;
   const [label, setLabel] = useState(node.data.label);
   const [labelError, setLabelError] = useState<string | null>(null);
+  const [confirmar, setConfirmar] = useState(false);
 
   const commitLabel = (value: string) => {
     setLabel(value);
@@ -130,6 +134,42 @@ export function NodeConfigPanel({ node, onChange, ramosLigados }: Props) {
           />
         )}
       </div>
+
+      {onRemove ? (
+        <div className="mt-auto border-t border-border pt-4">
+          {confirmar ? (
+            <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+              <p className="text-sm">Tirar este item do quadro? As linhas ligadas a ele saem junto.</p>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setConfirmar(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={() => onRemove(node.id)}
+                  data-testid="confirmar-tirar-no"
+                >
+                  Tirar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2 text-red-600 hover:text-red-700"
+              onClick={() => setConfirmar(true)}
+              data-testid="tirar-no"
+            >
+              <Trash size={14} aria-hidden />
+              Tirar este item
+            </Button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

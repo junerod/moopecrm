@@ -18,6 +18,7 @@ import {
 
 import { FlowsList } from "./_components/FlowsList";
 import { BotsHero } from "./_components/BotsHero";
+import { AtalhosDeBot } from "./_components/AtalhosDeBot";
 import { ProntasTab } from "./_components/ProntasTab";
 import { QueueTab } from "./_components/QueueTab";
 
@@ -100,6 +101,7 @@ export default async function FollowupFlowsPage() {
   return (
     <div className="flex h-full flex-col gap-6 bg-[var(--color-bg)] p-6">
       <BotsHero />
+      <AtalhosDeBot canWrite={canWrite} />
       <Tabs defaultValue={silencioAtivo ? "minhas" : "bots"} className="flex flex-1 flex-col">
         <TabsList className="h-auto flex-wrap gap-1 p-1">
           <TabsTrigger value="bots" className="gap-1.5">
@@ -121,9 +123,10 @@ export default async function FollowupFlowsPage() {
         </TabsContent>
         <TabsContent value="bots" className="mt-4">
           <div className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-4 py-3 text-sm leading-relaxed text-[var(--color-text)]">
-            <span className="font-medium text-cyan-800 dark:text-cyan-300">Bot = o menu do WhatsApp.</span>{" "}
-            Desenhe 1, 2, 3, FAQ ou humano. Publicar liga neste número — não no
-            de outra pessoa.
+            <span className="font-medium text-cyan-800 dark:text-cyan-300">Onde fica o menu.</span>{" "}
+            Os atalhos acima criam o bot de primeiro atendimento. Aqui embaixo
+            estão os que você já tem. Abrir um deles leva ao quadro — lá também
+            tem Modelos prontos.
           </div>
           <FlowsList initialData={flows} canWrite={canWrite} purpose="bot" />
         </TabsContent>

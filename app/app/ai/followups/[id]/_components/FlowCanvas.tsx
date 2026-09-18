@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -36,7 +36,7 @@ import {
   type NodeType,
 } from "@/lib/followup/graph-schema";
 import { rotuloDoRamo } from "@/lib/followup/rotulo-do-ramo";
-import { montarModeloDeMenu, type OpcaoDoModelo } from "@/lib/followup/modelo-de-menu";
+import { montarModeloDeMenu, montarModeloPronto, ID_DE_MODELO_PRONTO, type IdDeModeloPronto, type OpcaoDoModelo } from "@/lib/followup/modelo-de-menu";
 import { useFollowupFlow, type FollowupFlowDetailRow } from "@/hooks/followup/useFollowupFlow";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -77,9 +77,18 @@ const nodeTypes: NodeTypes = {
 interface Props {
   flowId: string;
   initialData: FollowupFlowDetailRow;
+  modeloInicial?: string;
 }
 
-function FlowCanvasInner({ flowId, initialData }: Props) {
+const FAIXA: Record<string, string> = {
+  escritorio:
+    "Este é o bot de primeiro atendimento. Mude o texto se quiser. Depois Salvar e Publicar — ele responde a primeira mensagem neste WhatsApp.",
+  loja: "Recepção da loja já desenhada. Ajuste o texto, Salvar e Publicar.",
+  aviso: "Quando a pessoa escrever, a equipe é avisada. Salvar e Publicar para ligar.",
+  meu: "Responda o passo a passo. No fim o menu entra no quadro. Depois Salvar e Publicar.",
+};
+
+function FlowCanvasInner({ flowId, initialData, modeloInicial }: Props) {
   const { data: flow } = useFollowupFlow(flowId, { initialData });
   // `initial` seeds React Flow state ONCE on mount — it must NOT react to
   // `flow` changing on every refetch (that would clobber in-progress edits).
@@ -98,6 +107,8 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [wizardAberto, setWizardAberto] = useState(false);
+  const [faixa, setFaixa] = useState<string | null>(null);
+  const jaAplicouAtalho = useRef(false);
 
   const liveGraph = useMemo(() => fromReactFlow(nodes, edges), [nodes, edges]);
   const dirty = useMemo(() => !graphsEqual(liveGraph, savedGraph), [liveGraph, savedGraph]);
@@ -245,29 +256,23 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
     [screenToFlowPosition, addNodeAt],
   );
 
-  const aplicarModelo = useCallback(
-    (entrada: { titulo: string; opcoes: OpcaoDoModelo[] }) => {
+  const colocarNoQuadro = useCallback(
+    (pedaco: FlowGraph) => {
       const temGatilho = nodes.some((n) => n.type === "trigger");
-      const maxX = nodes.reduce((maior, n) => Math.max(maior, n.position.x), 0);
-      const pedaco = montarModeloDeMenu({
-        titulo: entrada.titulo,
-        opcoes: entrada.opcoes,
-        origem: nodes.length === 0 ? { x: 40, y: 40 } : { x: maxX + 360, y: 40 },
-        sufixo: Date.now().toString(36),
-        incluirGatilho: !temGatilho,
-      });
       const desenhado = toReactFlow(pedaco);
-      const menu = desenhado.nodes.find((n) => n.type === "menu");
+      const alvo =
+        desenhado.nodes.find((n) => n.type === "menu") ??
+        desenhado.nodes.find((n) => n.type !== "trigger");
       const gatilhoSolto = temGatilho
         ? nodes.find((n) => n.type === "trigger" && !edges.some((e) => e.source === n.id))
         : undefined;
       const extra: RFEdge[] =
-        gatilhoSolto && menu
+        gatilhoSolto && alvo
           ? [
               {
-                id: `edge-menu-${Date.now()}`,
+                id: `edge-modelo-${Date.now()}`,
                 source: gatilhoSolto.id,
-                target: menu.id,
+                target: alvo.id,
                 data: { priority: 0, condition: { type: "always" } },
               },
             ]
@@ -276,6 +281,60 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
       setEdges((atual) => atual.concat(desenhado.edges, extra));
     },
     [nodes, edges, setNodes, setEdges],
+  );
+
+  const aplicarModelo = useCallback(
+    (entrada: { titulo: string; opcoes: OpcaoDoModelo[] }) => {
+      const temGatilho = nodes.some((n) => n.type === "trigger");
+      const maxX = nodes.reduce((maior, n) => Math.max(maior, n.position.x), 0);
+      colocarNoQuadro(
+        montarModeloDeMenu({
+          titulo: entrada.titulo,
+          opcoes: entrada.opcoes,
+          origem: nodes.length === 0 ? { x: 40, y: 40 } : { x: maxX + 360, y: 40 },
+          sufixo: Date.now().toString(36),
+          incluirGatilho: !temGatilho,
+        }),
+      );
+    },
+    [nodes, colocarNoQuadro],
+  );
+
+  const aplicarPronto = useCallback(
+    (id: IdDeModeloPronto) => {
+      const temGatilho = nodes.some((n) => n.type === "trigger");
+      const maxX = nodes.reduce((maior, n) => Math.max(maior, n.position.x), 0);
+      colocarNoQuadro(
+        montarModeloPronto(id, {
+          origem: nodes.length === 0 ? { x: 40, y: 40 } : { x: maxX + 360, y: 40 },
+          sufixo: Date.now().toString(36),
+          incluirGatilho: !temGatilho,
+        }),
+      );
+    },
+    [nodes, colocarNoQuadro],
+  );
+
+  useEffect(() => {
+    if (jaAplicouAtalho.current || !modeloInicial || nodes.length > 0) return;
+    jaAplicouAtalho.current = true;
+    setFaixa(FAIXA[modeloInicial] ?? null);
+    if (modeloInicial === "meu") {
+      setWizardAberto(true);
+      return;
+    }
+    if ((ID_DE_MODELO_PRONTO as readonly string[]).includes(modeloInicial)) {
+      aplicarPronto(modeloInicial as IdDeModeloPronto);
+    }
+  }, [modeloInicial, nodes.length, aplicarPronto]);
+
+  const tirarNo = useCallback(
+    (id: string) => {
+      setNodes((atual) => atual.filter((n) => n.id !== id));
+      setEdges((atual) => atual.filter((e) => e.source !== id && e.target !== id));
+      setSelectedNodeId((atual) => (atual === id ? null : atual));
+    },
+    [setNodes, setEdges],
   );
 
   return (
@@ -291,6 +350,11 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
           onPublishSuccess={clearNodeErrors}
         />
       )}
+      {faixa ? (
+        <p className="border-b border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm text-[var(--color-text)]" data-testid="faixa-atalho">
+          {faixa}
+        </p>
+      ) : null}
       <div className="flex flex-1 overflow-hidden">
         <NodePalette onAdd={onPaletteAdd} onCriarMenu={() => setWizardAberto(true)} />
         {/* Abaixo de `lg` a paleta fixa de 224px não cabe do lado do canvas —
@@ -323,6 +387,10 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
             onNodeClick={onNodeClick}
             onEdgeClick={onEdgeClick}
             onPaneClick={onPaneClick}
+            onNodesDelete={(apagados) => {
+              const ids = new Set(apagados.map((n) => n.id));
+              setEdges((atual) => atual.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
+            }}
             fitView
           >
             <Background />
@@ -331,12 +399,12 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
           {nodes.length === 0 ? (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
               <div className="pointer-events-auto max-w-sm rounded-2xl border border-sky-500/30 bg-background/95 p-5 text-center shadow-lg backdrop-blur-sm">
-                <p className="text-base font-semibold">Comece pelo menu</p>
+                <p className="text-base font-semibold">Comece por um modelo</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Um passo a passo monta as opções 1, 2, 3 já ligadas. Depois você só muda o texto.
+                  Escritório, loja ou um menu seu. O desenho entra pronto. Depois você só muda o texto.
                 </p>
                 <Button type="button" className="mt-4" onClick={() => setWizardAberto(true)} data-testid="canvas-criar-menu">
-                  Criar menu 1, 2, 3
+                  Ver modelos prontos
                 </Button>
               </div>
             </div>
@@ -386,6 +454,7 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
                 node={selectedNode}
                 onChange={(patch) => updateNodeData(selectedNode.id, patch)}
                 ramosLigados={ramosLigadosDoSelecionado}
+                onRemove={tirarNo}
               />
             </div>
           </aside>
@@ -419,7 +488,12 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
           </aside>
         )}
       </div>
-      <WizardMenu open={wizardAberto} onOpenChange={setWizardAberto} onCriar={aplicarModelo} />
+      <WizardMenu
+        open={wizardAberto}
+        onOpenChange={setWizardAberto}
+        onCriar={aplicarModelo}
+        onUsarPronto={aplicarPronto}
+      />
     </div>
   );
 }

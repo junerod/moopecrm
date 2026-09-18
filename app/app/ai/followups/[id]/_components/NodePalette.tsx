@@ -61,7 +61,7 @@ export function NodePalette({ onAdd, onCriarMenu, variant = "desktop" }: Props) 
                 onClick={onCriarMenu}
                 data-testid="criar-modelo-menu"
               >
-                Criar menu 1, 2, 3
+                Modelos prontos
               </Button>
             ) : null}
           </span>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { flowGraphSchema } from "@/lib/followup/graph-schema";
-import { montarModeloDeMenu, opcoesPadrao } from "@/lib/followup/modelo-de-menu";
+import { montarModeloDeMenu, montarModeloPronto, opcoesPadrao } from "@/lib/followup/modelo-de-menu";
 import { validateFlowForPublish } from "@/lib/followup/validate-publish";
 
 describe("montarModeloDeMenu", () => {
@@ -21,6 +21,26 @@ describe("montarModeloDeMenu", () => {
     expect(grafo.nodes.some((n) => n.type === "faq" && n.label.startsWith("Resposta"))).toBe(true);
     expect(grafo.nodes.some((n) => n.type === "humano")).toBe(true);
     expect(grafo.nodes.some((n) => n.type === "assistente")).toBe(true);
+  });
+
+  it("escritório, loja e aviso nascem publicáveis", () => {
+    for (const id of ["escritorio", "loja", "aviso"] as const) {
+      const grafo = montarModeloPronto(id, {
+        origem: { x: 0, y: 0 },
+        sufixo: id,
+        incluirGatilho: true,
+      });
+      expect(flowGraphSchema.safeParse(grafo).success, id).toBe(true);
+      const publicado = validateFlowForPublish(grafo);
+      expect(publicado.ok, publicado.ok ? id : publicado.errors.map((e) => e.message).join("\n")).toBe(true);
+    }
+    const escritorio = montarModeloPronto("escritorio", {
+      origem: { x: 0, y: 0 },
+      sufixo: "esc",
+      incluirGatilho: true,
+    });
+    const agendar = escritorio.nodes.find((n) => n.label.includes("Agendar"));
+    expect(agendar?.type === "humano" ? agendar.config.team_note : "").toContain("dia e hora");
   });
 
   it("sem gatilho ainda liga o senão e a resposta no fim", () => {

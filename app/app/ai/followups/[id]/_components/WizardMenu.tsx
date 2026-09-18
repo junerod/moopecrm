@@ -15,8 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  MODELOS_PRONTOS,
   opcoesPadrao,
   type DestinoDaOpcao,
+  type IdDeModeloPronto,
   type OpcaoDoModelo,
 } from "@/lib/followup/modelo-de-menu";
 import { cn } from "@/lib/utils";
@@ -46,10 +48,12 @@ export function WizardMenu({
   open,
   onOpenChange,
   onCriar,
+  onUsarPronto,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCriar: (entrada: { titulo: string; opcoes: OpcaoDoModelo[] }) => void;
+  onUsarPronto?: (id: IdDeModeloPronto) => void;
 }) {
   const [passo, setPasso] = useState(0);
   const [titulo, setTitulo] = useState("Como posso ajudar?");
@@ -130,7 +134,7 @@ export function WizardMenu({
               Passo {passo + 1} de {total}
             </p>
             <DialogTitle>
-              {passo === 0 && "Montar o menu 1, 2, 3"}
+              {passo === 0 && "Escolha um modelo"}
               {passo === 1 && "Como o menu se chama?"}
               {passo === 2 && "Quantas opções?"}
               {opcaoAtual && `Opção ${opcaoAtual.numero}`}
@@ -138,7 +142,7 @@ export function WizardMenu({
             </DialogTitle>
             <DialogDescription>
               {passo === 0 &&
-                "A gente desenha o menu e liga cada número. Depois você só muda o texto — bem mais fácil do que começar do zero."}
+                "Um clique coloca o desenho no quadro. Se preferir, monte o seu, opção por opção."}
               {passo === 1 && "Essa frase é a primeira coisa que a pessoa vê no WhatsApp."}
               {passo === 2 && "O número entra sozinho: 1, 2, 3. Você escolhe só a quantidade."}
               {opcaoAtual && "O que a pessoa lê, e o que acontece quando ela escolhe."}
@@ -147,13 +151,23 @@ export function WizardMenu({
           </DialogHeader>
 
           {passo === 0 ? (
-            <ol className="space-y-2 text-sm">
-              <li className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2">1. Nome do menu</li>
-              <li className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">2. Quantas opções</li>
-              <li className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2">
-                3. Cada opção: texto, pessoa ou assistente
-              </li>
-            </ol>
+            <div className="space-y-2">
+              {MODELOS_PRONTOS.map((modelo) => (
+                <button
+                  key={modelo.id}
+                  type="button"
+                  data-testid={`modelo-pronto-${modelo.id}`}
+                  onClick={() => {
+                    onUsarPronto?.(modelo.id);
+                    fechar(false);
+                  }}
+                  className={cn("w-full rounded-xl border px-3 py-3 text-left", modelo.classe)}
+                >
+                  <span className="block text-sm font-semibold">{modelo.nome}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{modelo.explica}</span>
+                </button>
+              ))}
+            </div>
           ) : null}
 
           {passo === 1 ? (
@@ -237,6 +251,19 @@ export function WizardMenu({
                   />
                 </div>
               ) : null}
+              {opcaoAtual.destino === "humano" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="wizard-comentario">Comentário para a equipe</Label>
+                  <Textarea
+                    id="wizard-comentario"
+                    value={opcaoAtual.comentario ?? ""}
+                    maxLength={500}
+                    placeholder="O cliente não vê. Exemplo: quer falar com o advogado."
+                    onChange={(e) => mudarOpcao({ comentario: e.target.value })}
+                    data-testid="wizard-comentario"
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -266,7 +293,7 @@ export function WizardMenu({
               </Button>
             ) : null}
             <Button type="button" onClick={avancar} data-testid="wizard-avancar">
-              {passo === 0 ? "Começar" : revisao ? "Criar no quadro" : "Continuar"}
+              {passo === 0 ? "Montar o meu" : revisao ? "Criar no quadro" : "Continuar"}
             </Button>
           </DialogFooter>
         </div>
