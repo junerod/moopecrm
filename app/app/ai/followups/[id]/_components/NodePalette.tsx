@@ -7,13 +7,14 @@ import { NODE_VISUAL_LIST } from "./nodes/nodeVisuals";
 
 interface Props {
   onAdd: (type: NodeType) => void;
+  onCriarMenu?: () => void;
   /** "mobile" = mesmo conteúdo dentro do Sheet que `FlowCanvas` abre abaixo de
    * `lg` — a barra fixa de 224px não cabia perto do canvas num celular. */
   variant?: "desktop" | "mobile";
 }
 
 /** Sidebar palette — click to add. Native HTML5 drag-and-drop wired in FlowCanvas (increment 3). */
-export function NodePalette({ onAdd, variant = "desktop" }: Props) {
+export function NodePalette({ onAdd, onCriarMenu, variant = "desktop" }: Props) {
   const isMobile = variant === "mobile";
   return (
     <aside
@@ -31,27 +32,39 @@ export function NodePalette({ onAdd, variant = "desktop" }: Props) {
       {NODE_VISUAL_LIST.map((visual) => {
         const Icon = visual.icon;
         return (
-          <Button
-            key={visual.type}
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="justify-start gap-2"
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData("application/x-followup-node-type", visual.type);
-              e.dataTransfer.effectAllowed = "move";
-            }}
-            onClick={() => onAdd(visual.type)}
-            data-testid={`palette-add-${visual.type}`}
-          >
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${visual.chipClassName}`}
+          <span key={visual.type} className="contents">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="justify-start gap-2"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("application/x-followup-node-type", visual.type);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onClick={() => onAdd(visual.type)}
+              data-testid={`palette-add-${visual.type}`}
             >
-              <Icon size={14} aria-hidden />
-            </span>
-            {visual.paletteLabel}
-          </Button>
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${visual.chipClassName}`}
+              >
+                <Icon size={14} aria-hidden />
+              </span>
+              {visual.paletteLabel}
+            </Button>
+            {visual.type === "menu" && onCriarMenu ? (
+              <Button
+                type="button"
+                size="sm"
+                className="justify-start bg-gradient-to-r from-sky-600 to-emerald-600 text-white hover:from-sky-700 hover:to-emerald-700"
+                onClick={onCriarMenu}
+                data-testid="criar-modelo-menu"
+              >
+                Criar menu 1, 2, 3
+              </Button>
+            ) : null}
+          </span>
         );
       })}
     </aside>

@@ -36,6 +36,7 @@ import {
   type NodeType,
 } from "@/lib/followup/graph-schema";
 import { rotuloDoRamo } from "@/lib/followup/rotulo-do-ramo";
+import { montarModeloDeMenu, type OpcaoDoModelo } from "@/lib/followup/modelo-de-menu";
 import { useFollowupFlow, type FollowupFlowDetailRow } from "@/hooks/followup/useFollowupFlow";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -45,6 +46,7 @@ import { EdgeConfigPanel } from "./EdgeConfigPanel";
 import { NodePalette } from "./NodePalette";
 import { PublishBar } from "./PublishBar";
 import { NODE_VISUALS } from "./nodes/nodeVisuals";
+import { WizardMenu } from "./WizardMenu";
 import { TriggerNode } from "./nodes/TriggerNode";
 import { WaitNode } from "./nodes/WaitNode";
 import { ConditionNode } from "./nodes/ConditionNode";
@@ -95,6 +97,7 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [wizardAberto, setWizardAberto] = useState(false);
 
   const liveGraph = useMemo(() => fromReactFlow(nodes, edges), [nodes, edges]);
   const dirty = useMemo(() => !graphsEqual(liveGraph, savedGraph), [liveGraph, savedGraph]);
@@ -242,6 +245,39 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
     [screenToFlowPosition, addNodeAt],
   );
 
+  const aplicarModelo = useCallback(
+    (entrada: { titulo: string; opcoes: OpcaoDoModelo[] }) => {
+      const temGatilho = nodes.some((n) => n.type === "trigger");
+      const maxX = nodes.reduce((maior, n) => Math.max(maior, n.position.x), 0);
+      const pedaco = montarModeloDeMenu({
+        titulo: entrada.titulo,
+        opcoes: entrada.opcoes,
+        origem: nodes.length === 0 ? { x: 40, y: 40 } : { x: maxX + 360, y: 40 },
+        sufixo: Date.now().toString(36),
+        incluirGatilho: !temGatilho,
+      });
+      const desenhado = toReactFlow(pedaco);
+      const menu = desenhado.nodes.find((n) => n.type === "menu");
+      const gatilhoSolto = temGatilho
+        ? nodes.find((n) => n.type === "trigger" && !edges.some((e) => e.source === n.id))
+        : undefined;
+      const extra: RFEdge[] =
+        gatilhoSolto && menu
+          ? [
+              {
+                id: `edge-menu-${Date.now()}`,
+                source: gatilhoSolto.id,
+                target: menu.id,
+                data: { priority: 0, condition: { type: "always" } },
+              },
+            ]
+          : [];
+      setNodes((atual) => atual.concat(desenhado.nodes));
+      setEdges((atual) => atual.concat(desenhado.edges, extra));
+    },
+    [nodes, edges, setNodes, setEdges],
+  );
+
   return (
     <div className="flex h-full min-h-[600px] w-full flex-col">
       {flow && (
@@ -256,7 +292,7 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
         />
       )}
       <div className="flex flex-1 overflow-hidden">
-        <NodePalette onAdd={onPaletteAdd} />
+        <NodePalette onAdd={onPaletteAdd} onCriarMenu={() => setWizardAberto(true)} />
         {/* Abaixo de `lg` a paleta fixa de 224px não cabe do lado do canvas —
             vira um drawer, disparado por este botão flutuante. */}
         <Sheet open={paletteOpen} onOpenChange={setPaletteOpen}>
@@ -264,6 +300,10 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
             <SheetTitle className="sr-only">Adicionar nó</SheetTitle>
             <NodePalette
               variant="mobile"
+              onCriarMenu={() => {
+                setWizardAberto(true);
+                setPaletteOpen(false);
+              }}
               onAdd={(type) => {
                 onPaletteAdd(type);
                 setPaletteOpen(false);
@@ -288,6 +328,19 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
             <Background />
             <Controls />
           </ReactFlow>
+          {nodes.length === 0 ? (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
+              <div className="pointer-events-auto max-w-sm rounded-2xl border border-sky-500/30 bg-background/95 p-5 text-center shadow-lg backdrop-blur-sm">
+                <p className="text-base font-semibold">Comece pelo menu</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Um passo a passo monta as opções 1, 2, 3 já ligadas. Depois você só muda o texto.
+                </p>
+                <Button type="button" className="mt-4" onClick={() => setWizardAberto(true)} data-testid="canvas-criar-menu">
+                  Criar menu 1, 2, 3
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <Button
             type="button"
             variant="secondary"
@@ -366,6 +419,7 @@ function FlowCanvasInner({ flowId, initialData }: Props) {
           </aside>
         )}
       </div>
+      <WizardMenu open={wizardAberto} onOpenChange={setWizardAberto} onCriar={aplicarModelo} />
     </div>
   );
 }
