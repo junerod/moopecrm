@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { flowGraphSchema } from "@/lib/followup/graph-schema";
 import { toReactFlow } from "@/lib/followup/graph-mappers";
+import { casarOpcaoDoMenu } from "@/lib/followup/menu-match";
 import { montarModeloDeMenu, montarModeloPronto, opcoesPadrao } from "@/lib/followup/modelo-de-menu";
 import { validateFlowForPublish } from "@/lib/followup/validate-publish";
 
@@ -65,6 +66,19 @@ describe("montarModeloDeMenu", () => {
       .filter((e) => e.source.endsWith("-menu"))
       .map((e) => e.sourceHandle);
     expect(saidas.sort()).toEqual(["else", "o1", "o2", "o3", "o4", "o5", "o6", "o7"]);
+    const opcoes =
+      menu?.type === "menu"
+        ? menu.config.options.map((o) => ({
+            id: o.id,
+            numero: o.number,
+            label: o.label,
+            keywords: o.keywords,
+          }))
+        : [];
+    expect(casarOpcaoDoMenu("boleto", opcoes)).toBe("o4");
+    expect(casarOpcaoDoMenu("quero um carro", opcoes)).toBe("o3");
+    expect(casarOpcaoDoMenu("locatario", opcoes)).toBe("o1");
+    expect(casarOpcaoDoMenu("equipe", opcoes)).toBe("o6");
   });
 
   it("sem gatilho ainda liga o senão e a resposta no fim", () => {

@@ -81,8 +81,10 @@ export function casarOpcaoDoMenu(texto: string, opcoes: OpcaoDeMenu[]): string |
     if (hit) return hit.id;
   }
 
+  const ARTIGO = new Set(["um", "uma"]);
   const toks = tokens(texto);
   for (const tok of toks) {
+    if (ARTIGO.has(tok)) continue;
     const num = casarNumero(tok);
     if (num === null) continue;
     const hit = opcoes.find((o) => o.numero === num);

@@ -13,6 +13,15 @@ describe("casarOpcaoDoMenu", () => {
     expect(casarOpcaoDoMenu("2", opcoes)).toBe("financeiro");
   });
 
+  it("artigo um não vira a opção 1", () => {
+    const menu = [
+      { id: "o1", numero: 1, label: "Sou locatário", keywords: ["locatario"] },
+      { id: "o3", numero: 3, label: "Quero um carro", keywords: ["carro"] },
+    ];
+    expect(casarOpcaoDoMenu("quero um carro", menu)).toBe("o3");
+    expect(casarOpcaoDoMenu("um", menu)).toBe("o1");
+  });
+
   it("casa palavra-número", () => {
     expect(casarOpcaoDoMenu("um", opcoes)).toBe("atendimento");
     expect(casarOpcaoDoMenu("quero o dois", opcoes)).toBe("financeiro");

@@ -16,6 +16,8 @@ export type OpcaoDoModelo = {
   texto: string;
   /** Só a equipe lê. Vale quando o destino é uma pessoa. */
   comentario?: string;
+  /** Palavras curtas que a pessoa escreve no lugar do número. */
+  palavras?: string[];
 };
 
 const BASE: OpcaoDoModelo[] = [
@@ -67,10 +69,14 @@ function corta(texto: string, max: number): string {
   return t.length <= max ? t : t.slice(0, max);
 }
 
-function chaves(numero: number, rotulo: string): string[] {
+function chaves(numero: number, rotulo: string, extras: string[] = []): string[] {
   const lista = [String(numero)];
   const palavra = corta(rotulo, 40);
   if (palavra && palavra !== String(numero)) lista.push(palavra);
+  for (const extra of extras) {
+    const p = corta(extra, 40);
+    if (p && !lista.includes(p) && lista.length < 8) lista.push(p);
+  }
   return lista;
 }
 
@@ -122,7 +128,7 @@ export function montarModeloDeMenu(input: {
         id: `o${o.numero}`,
         number: o.numero,
         label: corta(o.rotulo, 80) || `Opção ${o.numero}`,
-        keywords: chaves(o.numero, o.rotulo),
+        keywords: chaves(o.numero, o.rotulo, o.palavras ?? []),
       })),
     },
   });
@@ -166,7 +172,7 @@ export function montarModeloDeMenu(input: {
           items: [
             {
               id: `r${o.numero}`,
-              keywords: chaves(o.numero, o.rotulo),
+              keywords: chaves(o.numero, o.rotulo, o.palavras ?? []),
               answer: corta(o.texto, 1000) || `Anotei a opção ${o.numero}.`,
             },
           ],
@@ -270,6 +276,7 @@ function opcaoOutroWhatsapp(numero: number): OpcaoDoModelo {
     texto: "Para continuar, escreva no outro WhatsApp. Coloque o número aqui antes de publicar.",
     comentario:
       "Cliente pediu o outro número. A conversa não muda de WhatsApp. O resumo é esta conversa: leia e responda no número certo.",
+    palavras: ["whatsapp", "outro numero"],
   };
 }
 
@@ -281,12 +288,14 @@ function opcoesDoEscritorio(): OpcaoDoModelo[] {
       destino: "humano",
       texto: "Certo. Vou chamar alguém do escritório.",
       comentario: "Cliente pediu para falar com o advogado.",
+      palavras: ["advogado"],
     },
     {
       numero: 2,
       rotulo: "Horário",
       destino: "texto",
       texto: "Atendemos em horário comercial, de segunda a sexta. Se for urgente, escolha falar com o advogado.",
+      palavras: ["horario"],
     },
     {
       numero: 3,
@@ -294,12 +303,14 @@ function opcoesDoEscritorio(): OpcaoDoModelo[] {
       destino: "humano",
       texto: "Vou te passar para quem confirma o dia e a hora.",
       comentario: "Cliente quer marcar um horário. Confirme dia e hora com ele.",
+      palavras: ["marcar"],
     },
     {
       numero: 4,
       rotulo: "Tirar uma dúvida",
       destino: "assistente",
       texto: "",
+      palavras: ["duvida"],
     },
     opcaoOutroWhatsapp(5),
   ];
@@ -312,24 +323,28 @@ function opcoesDaLocadora(): OpcaoDoModelo[] {
       rotulo: "Sou locatário",
       destino: "assistente",
       texto: "",
+      palavras: ["locatario"],
     },
     {
       numero: 2,
       rotulo: "Sou investidor",
       destino: "assistente",
       texto: "",
+      palavras: ["investidor"],
     },
     {
       numero: 3,
       rotulo: "Quero um carro",
       destino: "assistente",
       texto: "",
+      palavras: ["carro", "alugar"],
     },
     {
       numero: 4,
       rotulo: "Boleto ou contrato",
       destino: "assistente",
       texto: "",
+      palavras: ["boleto", "contrato"],
     },
     {
       numero: 5,
@@ -337,6 +352,7 @@ function opcoesDaLocadora(): OpcaoDoModelo[] {
       destino: "humano",
       texto: "Vou chamar alguém da equipe agora.",
       comentario: "Socorro. Atenda nesta conversa, no número em que a pessoa escreveu.",
+      palavras: ["socorro", "ajuda"],
     },
     {
       numero: 6,
@@ -344,6 +360,7 @@ function opcoesDaLocadora(): OpcaoDoModelo[] {
       destino: "humano",
       texto: "Vou te passar para uma pessoa da locadora.",
       comentario: "Cliente pediu a equipe.",
+      palavras: ["equipe"],
     },
     opcaoOutroWhatsapp(7),
   ];
@@ -357,6 +374,7 @@ function opcoesDaLoja(): OpcaoDoModelo[] {
       destino: "humano",
       texto: "Vou te passar para alguém de vendas.",
       comentario: "Cliente quer falar com vendas.",
+      palavras: ["vendas"],
     },
     {
       numero: 2,
@@ -369,6 +387,7 @@ function opcoesDaLoja(): OpcaoDoModelo[] {
       rotulo: "Tirar uma dúvida",
       destino: "assistente",
       texto: "",
+      palavras: ["duvida"],
     },
     {
       numero: 4,
