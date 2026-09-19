@@ -63,8 +63,9 @@ export type SeloDaPessoa =
   | { kind: "lead"; texto: string };
 
 /**
- * O que cabe no header e na linha da lista — um selo, não o seletor.
- * Ordem: Equipe / Ignorar > não salvo > Cliente > Lead (+ temperatura se houver).
+ * O que cabe no header e na linha da lista — o papel primeiro.
+ * Cliente / Lead / Equipe / Ignorar não somem atrás de “nome não salvo”:
+ * o aviso de cadastro é outro chip (`precisaAvisarNomeNaoSalvo`).
  */
 export function seloDaPessoa(entrada: {
   papel?: string | null;
@@ -73,9 +74,6 @@ export function seloDaPessoa(entrada: {
 }): SeloDaPessoa | null {
   if (entrada.papel === "equipe") return { kind: "equipe", texto: "Equipe" };
   if (entrada.papel === "ignorado") return { kind: "ignorado", texto: "Ignorar" };
-  if (entrada.naoSalvo) {
-    return { kind: "nao_salvo", texto: "Nome do WhatsApp · não salvo" };
-  }
   if (entrada.papel === "cliente") return { kind: "cliente", texto: "Cliente" };
   if (entrada.papel === "lead") {
     const temp = ehTemperaturaDoLead(entrada.temperatura)
@@ -83,7 +81,18 @@ export function seloDaPessoa(entrada: {
       : "Lead";
     return { kind: "lead", texto: temp };
   }
+  if (entrada.naoSalvo) {
+    return { kind: "nao_salvo", texto: "Nome do WhatsApp · não salvo" };
+  }
   return null;
+}
+
+/** Nome do WhatsApp ainda não foi gravado — e o papel já tem chip próprio. */
+export function precisaAvisarNomeNaoSalvo(entrada: {
+  papel?: string | null;
+  naoSalvo: boolean;
+}): boolean {
+  return entrada.naoSalvo && ehPapelDoContato(entrada.papel);
 }
 
 export function temperaturaDoLeadAberto(

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { contatoNaoSalvo } from "@/lib/contacts/rotulo-do-contato";
 import {
+  precisaAvisarNomeNaoSalvo,
   seloDaPessoa,
   temperaturaDoLeadAberto,
 } from "@/lib/crm/papel-e-temperatura";
@@ -36,6 +37,17 @@ describe("seloDaPessoa", () => {
     expect(
       contatoNaoSalvo({ display_name: "Paulo", name: "TEC Paulo" }),
     ).toBe(false);
+  });
+
+  it("Cliente e Lead não somem atrás de nome não salvo", () => {
+    expect(
+      seloDaPessoa({ papel: "cliente", naoSalvo: true, temperatura: null }),
+    ).toEqual({ kind: "cliente", texto: "Cliente" });
+    expect(
+      seloDaPessoa({ papel: "lead", naoSalvo: true, temperatura: "morno" }),
+    ).toEqual({ kind: "lead", texto: "Lead morno" });
+    expect(precisaAvisarNomeNaoSalvo({ papel: "cliente", naoSalvo: true })).toBe(true);
+    expect(precisaAvisarNomeNaoSalvo({ papel: null, naoSalvo: true })).toBe(false);
   });
 
   it("Lead quente quando há temperatura", () => {
@@ -108,7 +120,8 @@ describe("o envio não morre no claim", () => {
 
   it("filtro comercial não usa neq equipe — NULL sumiria", () => {
     const fonte = readFileSync("app/api/v1/conversations/_handler.ts", "utf8");
-    expect(fonte).toMatch(/contacts\.papel\.is\.null/);
+    expect(fonte).toMatch(/papel\.is\.null/);
+    expect(fonte).toMatch(/referencedTable:\s*"contacts"/);
     expect(fonte).not.toMatch(/neq\(["']contacts\.papel["']/);
   });
 });

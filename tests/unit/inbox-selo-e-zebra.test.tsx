@@ -33,22 +33,48 @@ const conversa = {
 } as unknown as ConversationWithContact;
 
 describe("SeloDaPessoa colorido", () => {
-  it("não salvo continua com o texto e o data-selo que o e2e lê", () => {
-    render(<SeloDaPessoa contact={contato} />);
+  it("sem papel, não salvo continua com o texto e o data-selo que o e2e lê", () => {
+    render(<SeloDaPessoa contact={{ ...contato, papel: null }} />);
     const selo = screen.getByTestId("selo-da-pessoa");
     expect(selo).toHaveAttribute("data-selo", "nao_salvo");
     expect(selo).toHaveTextContent("Nome do WhatsApp · não salvo");
   });
 
-  it("cliente salvo pinta o chip de cliente, não o de não-salvo", () => {
+  it("cliente sem nome no cadastro mostra o chip Cliente e o aviso à parte", () => {
+    render(<SeloDaPessoa contact={contato} />);
+    expect(screen.getByTestId("selo-da-pessoa")).toHaveAttribute("data-selo", "cliente");
+    expect(screen.getByText("Cliente")).toBeInTheDocument();
+    expect(screen.getByTestId("selo-nome-nao-salvo")).toHaveTextContent(
+      "Nome do WhatsApp · não salvo",
+    );
+  });
+
+  it("cliente salvo pinta o chip de cliente, sem o aviso de não-salvo", () => {
     render(<SeloDaPessoa contact={{ ...contato, name: "Ricardo Salvador" }} />);
     expect(screen.getByTestId("selo-da-pessoa")).toHaveAttribute("data-selo", "cliente");
     expect(screen.getByText("Cliente")).toBeInTheDocument();
+    expect(screen.queryByTestId("selo-nome-nao-salvo")).not.toBeInTheDocument();
   });
 });
 
 describe("lista do inbox — zebra e tags reutilizadas", () => {
-  it("linha ímpar recebe o fundo alternado", () => {
+  it("linha ímpar recebe o fundo alternado só sem papel", () => {
+    const semPapel = {
+      ...conversa,
+      contacts: { ...contato, papel: null },
+    } as unknown as ConversationWithContact;
+    const { container } = render(
+      <ConversationListItem
+        conversation={semPapel}
+        isSelected={false}
+        onSelect={() => {}}
+        zebraImpar
+      />,
+    );
+    expect(container.querySelector("button")?.className).toMatch(/inbox-row-alt/);
+  });
+
+  it("cliente pinta a linha de cliente — não some na zebra", () => {
     const { container } = render(
       <ConversationListItem
         conversation={conversa}
@@ -57,7 +83,9 @@ describe("lista do inbox — zebra e tags reutilizadas", () => {
         zebraImpar
       />,
     );
-    expect(container.querySelector("button")?.className).toMatch(/inbox-row-alt/);
+    const botao = container.querySelector("button");
+    expect(botao?.className).toMatch(/inbox-row-cliente/);
+    expect(botao).toHaveAttribute("data-papel", "cliente");
   });
 
   it("mostra tags do contato e da conversa, sem repetir", () => {
