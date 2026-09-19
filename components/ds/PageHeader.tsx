@@ -22,11 +22,11 @@ export function PageHeader({
       <div className="flex min-w-0 items-start gap-3">
         {icon}
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight text-[var(--color-text)] md:text-2xl">
             {titulo}
           </h1>
           {descricao ? (
-            <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">{descricao}</p>
+            <p className="mt-0.5 text-[13px] leading-snug text-[var(--color-text-muted)] md:text-sm">{descricao}</p>
           ) : null}
         </div>
       </div>

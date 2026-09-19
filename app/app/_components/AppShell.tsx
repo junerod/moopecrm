@@ -43,7 +43,15 @@ export function AppShell({ sidebarCollapsed, children }: AppShellProps) {
       */}
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        {/*
+          No celular o respiro é `--shell-pad` (12px). No desktop continua 24px.
+          A inbox cancela esse respiro e ocupa a tela; as outras páginas herdam
+          o padding. A conta da altura da inbox usa o mesmo token — se os dois
+          divergirem, o composer nasce fora da tela de novo.
+        */}
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-[var(--shell-pad)]">
+          {children}
+        </main>
         <Suspense fallback={null}>
           <PortaDoManual collapsed={sidebarCollapsed} />
         </Suspense>

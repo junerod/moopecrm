@@ -62,7 +62,7 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
   return (
     <div
       className={cn(
-        "group flex w-full items-center gap-1 px-4 py-1",
+        "group flex w-full items-center gap-1 px-3 py-0.5 sm:px-4 sm:py-1",
         isOutbound ? "justify-end" : "justify-start",
       )}
     >
@@ -103,7 +103,7 @@ export function MessageBubble({ message, debugCitations, onResponder, citada }: 
       )}
       <div
         className={cn(
-          "max-w-[75%] text-sm",
+          "max-w-[88%] text-[15px] leading-snug sm:max-w-[75%] sm:text-sm",
           isBareSticker
             ? "px-0 py-0"
             : cn(

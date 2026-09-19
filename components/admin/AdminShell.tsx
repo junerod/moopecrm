@@ -98,7 +98,7 @@ export function AdminShell({ userEmail, children }: AdminShellProps) {
                 `AppShell` (ver comentário lá): se algo estourar a largura, a
                 PÁGINA não rola de lado; quem precisa de scroll horizontal é
                 o componente específico, contido nele mesmo. */}
-            <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">{children}</main>
+            <main className="flex-1 overflow-x-hidden overflow-y-auto p-[var(--shell-pad)]">{children}</main>
           </div>
         </div>
       </div>

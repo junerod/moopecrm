@@ -30,6 +30,8 @@ import { ReassignDialog } from "@/components/inbox/ReassignDialog";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { especieDoProvider, rotuloDaEspecie } from "@/lib/channels/especie";
+import { cn } from "@/lib/utils";
+import { classeFundoDoHeader } from "@/lib/inbox/fundo-da-linha";
 import { MarcarPessoa } from "./MarcarPessoa";
 import { SeloDaPessoa } from "./SeloDaPessoa";
 
@@ -97,16 +99,20 @@ export function ConversationHeader({ conversation }: Props) {
     // No mobile a barra visível é nome + ⋯; Assumir só entra se for o gesto.
     <div
       data-testid="conversation-header"
-      className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 md:px-4 md:py-2.5"
+      data-papel={c?.papel ?? ""}
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] px-3 py-2 md:px-4 md:py-2.5",
+        classeFundoDoHeader(c?.papel),
+      )}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <h2 className="truncate text-base font-semibold md:text-lg">{displayName}</h2>
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+          <h2 className="min-w-0 truncate text-[15px] font-semibold leading-tight md:text-lg">{displayName}</h2>
           <SeloDaPessoa contact={c} />
           {especie ? (
             <Badge
               variant="outline"
-              className="h-5 px-1.5 text-[11px]"
+              className="hidden h-5 px-1.5 text-[11px] md:inline-flex"
               data-testid="canal-da-conversa"
             >
               {rotuloDaEspecie(especie)}
@@ -122,7 +128,7 @@ export function ConversationHeader({ conversation }: Props) {
           {motivo !== null && (
             <Badge
               variant="outline"
-              className="h-5 px-1.5 text-[11px]"
+              className="hidden h-5 px-1.5 text-[11px] md:inline-flex"
               data-testid="badge-atendimento-humano"
             >
               {t(ROTULO_DO_MOTIVO[motivo])}

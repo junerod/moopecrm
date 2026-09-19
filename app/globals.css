@@ -107,6 +107,10 @@
   /* Inbox — thread, lista e balões (só tokens; dark redefine) */
   --inbox-thread-bg: color-mix(in srgb, var(--moope-cyan) 9%, var(--color-bg));
   --inbox-row-alt: color-mix(in srgb, var(--moope-primary) 5%, transparent);
+  --inbox-row-cliente: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+  --inbox-row-lead: color-mix(in srgb, var(--moope-primary) 12%, var(--color-surface));
+  --inbox-row-equipe: color-mix(in srgb, var(--color-indigo) 14%, var(--color-surface));
+  --inbox-row-ignorado: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface));
   --inbox-bubble-in-bg: var(--color-surface);
   --inbox-bubble-in-fg: var(--color-text);
   --inbox-bubble-out-bg: var(--moope-primary);
@@ -122,6 +126,8 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  /* Respiro da casca. 12px no celular, 24px a partir do tablet. A inbox lê o mesmo token. */
+  --shell-pad: 12px;
   --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
@@ -437,6 +443,10 @@
   --funnel-5: color-mix(in srgb, var(--color-success) 20%, var(--color-surface));
   --inbox-thread-bg: color-mix(in srgb, var(--moope-cyan) 10%, var(--color-bg));
   --inbox-row-alt: color-mix(in srgb, var(--moope-primary) 8%, transparent);
+  --inbox-row-cliente: color-mix(in srgb, var(--color-success) 22%, var(--color-surface));
+  --inbox-row-lead: color-mix(in srgb, var(--moope-primary) 16%, var(--color-surface));
+  --inbox-row-equipe: color-mix(in srgb, var(--color-indigo) 18%, var(--color-surface));
+  --inbox-row-ignorado: color-mix(in srgb, var(--color-warning) 18%, var(--color-surface));
   --inbox-bubble-in-bg: var(--color-surface-elevated);
   --inbox-bubble-in-fg: var(--color-text);
   --inbox-bubble-out-bg: var(--moope-primary);
@@ -784,6 +794,11 @@
 .ds-funnel-seg:only-child {
   clip-path: none;
 }
+@media (min-width: 768px) {
+  :root {
+    --shell-pad: var(--space-6);
+  }
+}
 @media (max-width: 767px) {
   .ds-funnel {
     flex-direction: column;
@@ -800,5 +815,20 @@
     padding: 0.7rem 0.9rem;
     clip-path: none;
     border-radius: var(--radius-md);
+  }
+
+  /* Títulos e páginas que ainda nascem no tamanho do desktop. */
+  main > .p-6 {
+    padding: var(--space-3);
+  }
+  main h1.text-2xl,
+  main h1.text-3xl,
+  main h1.text-4xl {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+  main .text-3xl {
+    font-size: 1.65rem;
+    line-height: 1.15;
   }
 }

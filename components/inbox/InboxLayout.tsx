@@ -283,46 +283,15 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       ? "Contato anonimizado — não é possível enviar mensagens."
       : null;
 
-  // Altura da grade: a conta desconta TUDO que fica acima e abaixo dela.
-  //   3.5rem            TopBar (`h-14`, em components/shell/TopBar.tsx)
-  //   2 * --space-6     padding do <main> do AppShell (`p-6`, em cima e embaixo)
+  // Altura da grade: a conta desconta a barra de cima e o respiro da casca.
+  //   3.5rem           TopBar (`h-14`)
+  //   2 * --shell-pad  padding do <main> (12px no celular, 24px no desktop)
   //
-  // Com `100vh-3.5rem` o padding ficava de fora e a grade media 48px a MAIS que a
-  // tela. Quem pagava a diferença era o composer, que fica no rodapé: nascia
-  // parcialmente abaixo da borda, atrapalhando justo na hora de escrever.
-  //
-  // As duas parcelas NÃO estão na mesma unidade, e por isso o padding entra pelo
-  // token e não como `3rem`: o `tailwind.config.ts` remapeia a escala de spacing
-  // para `var(--space-N)` — `--space-6` é `24px` LITERAL (app/globals.css) —, mas
-  // não remapeia o `14`, que segue sendo `3.5rem` de verdade. Escrever a soma como
-  // `6.5rem` só acerta enquanto a raiz for 16px; com acessibilidade de fonte maior
-  // ou menor o composer sai da tela de novo. Pelo token, a conta se auto-corrige
-  // se a escala de espaçamento mudar.
-  //
-  // `dvh` em vez de `vh` porque no celular a `vh` ignora a barra do navegador — o
-  // mesmo corte, só que pior e mudando conforme se rola a página.
-
-  // TRÊS COLUNAS QUE CABEM — medido, não estimado.
-  //
-  // O `xl` do Tailwind dispara em 1280px, e era ali que a terceira coluna
-  // nascia: no ponto exato em que não havia espaço para ela. Com a barra de
-  // navegação (240px) sobram 1040px, e o grid pedia 300 + 707 + 320 = 1327 —
-  // o painel de CRM ficava 311px FORA da viewport, alcançável só rolando o
-  // `main` de lado, que ninguém faz. Em 1280 o atendente simplesmente não via
-  // contexto nenhum do cliente.
-  //
-  // Os 707px eram o `min-content` do `ConversationHeader` (a barra de ações
-  // era `shrink-0`), e `1fr` é `minmax(auto, 1fr)`: não encolhe abaixo disso.
-  // Consertado o header, o `1fr` volta a encolher sozinho — `minmax(0,1fr)`
-  // foi medido aqui e não mudou um pixel, então não entrou.
-  //
-  // Duas faixas em vez de uma: compacta onde aperta, generosa onde há espaço.
-  // Em 1280 isso dá 424px de conversa em vez de 372 — 54px de folga sobre o
-  // piso do composer (370px), em vez dos 2px que a versão de uma faixa só
-  // deixava. Margem de 2px não é margem, é sorte.
+  // No celular a grade cancela o respiro e a altura volta a ser só a barra.
+  // `dvh` porque no celular `vh` ignora a barra do navegador.
   return (
     <div
-      className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 md:grid-cols-[280px_1fr] xl:grid-cols-[280px_minmax(0,1fr)_280px] 2xl:grid-cols-[320px_minmax(0,1fr)_320px]"
+      className="grid h-[calc(100dvh-3.5rem)] w-full grid-cols-1 max-md:-m-[var(--shell-pad)] md:h-[calc(100dvh-3.5rem-2*var(--shell-pad))] md:grid-cols-[280px_1fr] xl:grid-cols-[280px_minmax(0,1fr)_280px] 2xl:grid-cols-[320px_minmax(0,1fr)_320px]"
       /*
        * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
        * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,

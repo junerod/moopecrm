@@ -21,9 +21,11 @@ export function TenantSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" disabled={isPending} className="gap-2">
+        <Button variant="ghost" size="sm" disabled={isPending} className="h-9 gap-1 px-1.5 md:gap-2 md:px-3">
           <Storefront size={16} weight="duotone" aria-hidden />
-          <span className="max-w-[160px] truncate">{active?.name ?? "Selecionar org"}</span>
+          <span className="max-w-[4.5rem] truncate text-[13px] sm:max-w-[8rem] md:max-w-[160px] md:text-sm">
+            {active?.name ?? "Selecionar org"}
+          </span>
           <CaretDown size={12} aria-hidden />
         </Button>
       </DropdownMenuTrigger>

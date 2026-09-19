@@ -243,7 +243,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     <>
       <div
         className={cn(
-          "relative border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5",
+          "relative border-t border-[var(--color-border)] bg-[var(--color-surface)] px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-3 md:pt-2.5",
           mode === "note" && "border-[var(--color-warning)]/35 bg-[var(--color-warning-bg)]",
         )}
       >

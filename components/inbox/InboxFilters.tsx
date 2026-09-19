@@ -208,7 +208,7 @@ export function InboxFilters({ value, onChange }: Props) {
         value={value.tab}
         onValueChange={(v) => onChange({ ...value, tab: v as InboxTab })}
       >
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 bg-transparent p-0">
+        <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto bg-transparent p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map((tab) => {
             const meta = INBOX_TABS.find((t) => t.value === tab)!;
             const count = countFor[tab];
@@ -219,7 +219,7 @@ export function InboxFilters({ value, onChange }: Props) {
                 key={tab}
                 value={tab}
                 data-testid={`inbox-tab-${tab}`}
-                className="h-7 gap-1 rounded-full border px-2.5 text-[11px] font-medium shadow-none data-[state=active]:shadow-none"
+                className="h-7 shrink-0 gap-1 rounded-full border px-2.5 text-[11px] font-medium shadow-none data-[state=active]:shadow-none"
                 style={
                   ativo
                     ? { background: cor.bg, color: cor.fg, borderColor: "transparent" }

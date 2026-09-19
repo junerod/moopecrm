@@ -14,6 +14,7 @@ import { ehTemperaturaDoLead } from "@/lib/crm/papel-e-temperatura";
 import { CLASSE_DOT_TEMPERATURA } from "@/lib/crm/temperatura-visual";
 import { metaDaLinha } from "@/lib/inbox/meta-da-linha";
 import { especieDoProvider, rotuloDaEspecie } from "@/lib/channels/especie";
+import { classeFundoDaLinha } from "@/lib/inbox/fundo-da-linha";
 import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
@@ -156,11 +157,15 @@ export function ConversationListItem({
     <button
       type="button"
       data-conversation-id={conversation.id}
+      data-papel={c?.papel ?? ""}
       onClick={() => onSelect(conversation.id)}
       className={cn(
         "group flex w-full items-start gap-2.5 border-b border-border/60 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-[var(--color-surface-elevated)]",
-        zebraImpar && !isSelected && "bg-[var(--inbox-row-alt)]",
-        isSelected && "bg-[var(--moope-primary-bg)]",
+        classeFundoDaLinha({
+          papel: c?.papel,
+          selecionada: isSelected,
+          zebraImpar,
+        }),
         unread > 0 && !isSelected && "font-medium",
       )}
       aria-current={isSelected ? "true" : undefined}
@@ -208,7 +213,7 @@ export function ConversationListItem({
         <div className="flex items-baseline justify-between gap-2">
           <span
             className={cn(
-              "truncate text-base font-semibold leading-tight",
+              "truncate text-[15px] font-semibold leading-tight",
               unread > 0 && "text-foreground",
               c?.is_anonymized && "italic text-muted-foreground",
             )}
@@ -220,7 +225,7 @@ export function ConversationListItem({
           </span>
         </div>
 
-        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+        <p className="mt-0.5 truncate text-[13px] leading-snug text-muted-foreground">
           {isAi ? <Robot size={12} weight="duotone" className="mr-1 inline" aria-hidden /> : null}
           {truncated}
         </p>
@@ -247,7 +252,7 @@ export function ConversationListItem({
           </p>
         ) : null}
 
-        <div className="mt-1 flex flex-wrap items-center gap-1">
+        <div className="mt-1 flex flex-nowrap items-center gap-1 overflow-hidden">
           <SeloDaPessoa contact={c} />
           {visibleTags.map((t) => (
             <TagChip key={t} label={t} />
