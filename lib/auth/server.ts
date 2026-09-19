@@ -113,19 +113,23 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
   // ⚠️ O erro é capturado de propósito: aqui `data: null` é AMBÍGUO — significa tanto
   // "não é platform admin" (RLS filtrou, estado normal) quanto "a query falhou".
   // Sem separar os dois, um banco instável rebaixa silenciosamente um super-admin.
-  const { data: paRow, error: paErro } = await supabase
-    .from("platform_admins")
-    .select("user_id, revoked_at")
-    .eq("user_id", user.id)
-    .is("revoked_at", null)
-    .maybeSingle();
-
-  // Org memberships (only active = not revoked, accepted)
-  const { data: rawMemberships, error: membErro } = await supabase
-    .from("user_organizations")
-    .select("organization_id, role, organizations(display_name)")
-    .eq("user_id", user.id)
-    .is("revoked_at", null);
+  //
+  // As duas leituras não dependem uma da outra. Em sequência, o clique no menu
+  // pagava as duas esperas; juntas, pagam uma.
+  const [{ data: paRow, error: paErro }, { data: rawMemberships, error: membErro }] =
+    await Promise.all([
+      supabase
+        .from("platform_admins")
+        .select("user_id, revoked_at")
+        .eq("user_id", user.id)
+        .is("revoked_at", null)
+        .maybeSingle(),
+      supabase
+        .from("user_organizations")
+        .select("organization_id, role, organizations(display_name)")
+        .eq("user_id", user.id)
+        .is("revoked_at", null),
+    ]);
 
   /**
    * FALHA ALTO, não baixo.

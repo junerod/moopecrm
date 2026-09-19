@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { isMfaEnrolled, loadAuthUser, requiresMfa, resolveActiveOrg } from "@/lib/auth/server";
+import { empresaExigeMfa, exigeCadastroDeMfa } from "@/lib/auth/politica-mfa";
+import { isMfaEnrolled, loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { logger } from "@/lib/logger";
 import { DEFAULT_VISIBILITY_MODE, type VisibilityMode } from "@/lib/auth/types";
 import { AuthProvider } from "@/hooks/auth/AuthProvider";
 import { AppShell } from "./_components/AppShell";
@@ -29,25 +31,44 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   let activeOrg = await resolveActiveOrg(user);
 
+  const admin = createAdminClient();
+
   /**
-   * A cor desta organização, serializada, ou `null` quando ela não tem uma.
+   * Estas leituras não dependem uma da outra. Em sequência, o clique no menu
+   * esperava cada uma antes de pintar a tela. Juntas, pagam uma espera.
    *
-   * Resolvida no MESMO `settings` que o gate de onboarding logo abaixo já lê —
-   * zero consulta nova. A ordem das camadas (organização acima, instalação no
-   * meio, arquivo de instalação embaixo) mora em `lib/branding/organizacao.ts`,
-   * e não aqui: a precedência é regra do produto, não detalhe deste layout.
+   * A cor da organização sai do MESMO `settings` do gate de onboarding — zero
+   * consulta nova. A ordem das camadas mora em `lib/branding/organizacao.ts`.
    */
+  const [orgRes, marcaInst, conexoesCaidas, store, plataformaMfa] = await Promise.all([
+    activeOrg
+      ? admin
+          .from("organizations")
+          .select("onboarded_at, status, settings")
+          .eq("id", activeOrg.orgId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    marcaDaInstalacao(),
+    activeOrg
+      ? listarConexoesCaidas(admin, activeOrg.orgId)
+      : Promise.resolve([] as ConexaoCaida[]),
+    cookies(),
+    user.is_platform_admin
+      ? admin
+          .from("platform_admins")
+          .select("mfa_required")
+          .eq("user_id", user.id)
+          .is("revoked_at", null)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
   let cssDaOrganizacao: string | null = null;
+  const orgRow = orgRes.data;
 
   // EPIC-02: gate /app/* on completed onboarding.
   // EPIC-11: gate /app/* on org not being suspended (S-11.08).
   if (activeOrg) {
-    const admin = createAdminClient();
-    const { data: orgRow } = await admin
-      .from("organizations")
-      .select("onboarded_at, status, settings")
-      .eq("id", activeOrg.orgId)
-      .maybeSingle();
     if (orgRow && !orgRow.onboarded_at) redirect("/onboarding");
     if (orgRow?.status === "suspended") redirect("/account-suspended");
     // G4-02: expõe visibility_mode ao client (inbox decide visões visíveis).
@@ -60,11 +81,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // instalacao.ts`), e a derivação da cor é cacheada por régua+semente em
     // `resolve.ts` — a marca custa uma consulta a cada 30s e um lookup de Map
     // por render, não uma derivação de rampa por requisição.
-    const marca = resolverMarcaDaOrganizacao(
-      orgRow?.settings ?? null,
-      await marcaDaInstalacao(),
-      env,
-    );
+    const marca = resolverMarcaDaOrganizacao(orgRow?.settings ?? null, marcaInst, env);
 
     // SÓ quando a cor veio mesmo da organização. Se ela não configurou nada, a
     // resolução devolve a cor da instalação — e reemiti-la aqui, escopada no
@@ -108,17 +125,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
-  // A conexão caiu? A consulta mora no seam (`lib/channels/health`), não aqui:
-  // tela que monta o select de `channel_sessions` à mão foi o que deixou três
-  // seletores oferecendo canal arquivado, e o invariante `canais-selecionaveis`
-  // existe por causa disso. De quebra, o filtro de estados fica LITERALMENTE o
-  // mesmo que decide o aviso da Central — duas listas divergiriam com o tempo.
-  const conexoesCaidas: ConexaoCaida[] = activeOrg
-    ? await listarConexoesCaidas(createAdminClient(), activeOrg.orgId)
-    : [];
-
-  // Read sidebar collapsed state SSR to avoid flash.
-  const store = await cookies();
+  // A lista de conexões caiu no mesmo lote acima. O filtro mora no seam
+  // (`lib/channels/health`): tela que monta o select de `channel_sessions` à
+  // mão foi o que deixou três seletores oferecendo canal arquivado.
   const collapsed = store.get("sidebar_collapsed")?.value === "1";
 
   // Impersonate (S-11.07): verify cookie server-side and resolve tenant name.
@@ -129,7 +138,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (impCookie) {
     const result = verifyImpersonateCookie(impCookie);
     if (result.valid && result.payload) {
-      const admin = createAdminClient();
       const { data: org } = await admin
         .from("organizations")
         .select("display_name")
@@ -145,15 +153,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
-  const enrolled = await isMfaEnrolled();
-  // A decisão deixou de ser uma constante de papel: ela lê a política de quem
-  // pode exigir (a plataforma e a empresa). Ver `lib/auth/politica-mfa.ts`.
-  const needsMfaGate = await requiresMfa(
-    activeOrg?.role,
-    user.is_platform_admin,
-    user.id,
-    activeOrg?.orgId,
-  );
+  if (plataformaMfa.error) {
+    logger.error("[auth] leitura de mfa_required da plataforma falhou", {
+      code: plataformaMfa.error.code,
+      message: plataformaMfa.error.message,
+    });
+  }
+  // A decisão é a de `lib/auth/politica-mfa.ts`. O padrão é NÃO exigir, e aí
+  // não se pergunta ao login se a pessoa já cadastrou fator — essa pergunta
+  // era uma ida extra a cada clique, para um resultado que a tela nem usa.
+  const needsMfaGate = exigeCadastroDeMfa({
+    role: activeOrg?.role,
+    isPlatformAdmin: user.is_platform_admin,
+    plataformaExige: plataformaMfa.data?.mfa_required ?? null,
+    empresaExige: empresaExigeMfa(orgRow?.settings),
+  });
+  const enrolled = needsMfaGate ? await isMfaEnrolled() : false;
   const shell = <AppShell sidebarCollapsed={collapsed}>{children}</AppShell>;
 
   return (

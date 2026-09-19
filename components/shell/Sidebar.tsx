@@ -148,6 +148,8 @@ export function SidebarContent({
           </span>
         )}
       </div>
+      {/* prefetch desligado: cada item visível pedia a página inteira antes do
+          clique, e o clique esperava essa fila num processo só. */}
       <nav className="flex-1 space-y-3 overflow-y-auto p-2" aria-label="Navegação principal">
         {grupos.map(({ group, items }) => {
           const tituloId = `nav-grupo-${group.id}`;
@@ -171,7 +173,7 @@ export function SidebarContent({
                   const Icon = item.icon;
                   return (
                     <li key={item.href}>
-                      <Link
+                      <Link prefetch={false}
                         href={item.href}
                         title={collapsed ? t(item.label) : undefined}
                         aria-current={isActive ? "page" : undefined}
@@ -195,7 +197,7 @@ export function SidebarContent({
                 })}
                 {group.hub && (
                   <li>
-                    <Link
+                    <Link prefetch={false}
                       href={group.hub.href}
                       title={collapsed ? t(group.hub.label) : undefined}
                       aria-current={pathname === group.hub.href ? "page" : undefined}
@@ -221,7 +223,7 @@ export function SidebarContent({
       </nav>
       <div className="border-t border-white/10 p-2">
         {mostraMeuNegocio && meuNegocio ? (
-          <Link
+          <Link prefetch={false}
             href={meuNegocio.href}
             title={collapsed ? t(meuNegocio.label) : undefined}
             aria-current={pathname.startsWith(meuNegocio.href) ? "page" : undefined}
@@ -241,7 +243,7 @@ export function SidebarContent({
           </Link>
         ) : null}
         {mostraModelosProntos && modelosProntos ? (
-          <Link
+          <Link prefetch={false}
             href={modelosProntos.href}
             title={collapsed ? t(modelosProntos.label) : undefined}
             aria-current={pathname.startsWith(modelosProntos.href) ? "page" : undefined}
@@ -262,7 +264,7 @@ export function SidebarContent({
           </Link>
         ) : null}
         {rodape && (
-          <Link
+          <Link prefetch={false}
             href={rodape.href}
             title={collapsed ? t(rodape.label) : undefined}
             aria-current={
@@ -293,7 +295,7 @@ export function SidebarContent({
           </Link>
         )}
         {mostraAjuda && ajuda ? (
-          <Link
+          <Link prefetch={false}
             href={hrefComAjuda(pathname, search.toString(), capituloSugerido(pathname))}
             scroll={false}
             title={collapsed ? t("Ajuda") : undefined}
@@ -314,7 +316,7 @@ export function SidebarContent({
           </Link>
         ) : null}
         {user.is_platform_admin && (
-          <Link
+          <Link prefetch={false}
             href={PORTA_DA_PLATAFORMA.href}
             title={collapsed ? t(PORTA_DA_PLATAFORMA.label) : undefined}
             aria-current={pathname.startsWith(PORTA_DA_PLATAFORMA.href) ? "page" : undefined}
