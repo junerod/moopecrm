@@ -60,7 +60,7 @@ export function PipelinePageClient({
 
   return (
     <div
-      className="flex h-full flex-col gap-3 bg-[var(--color-bg)]"
+      className="flex h-[calc(100dvh-3.5rem)] max-md:-m-[var(--shell-pad)] max-md:h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-3.5rem-2*var(--shell-pad))] flex-col gap-3 overflow-hidden bg-[var(--color-bg)] max-md:p-[var(--shell-pad)]"
       // OBSERVÁVEL de propósito, e é a razão de existir desta linha: "a
       // assinatura morreu" e "nada aconteceu" produzem o MESMO silêncio na
       // tela, e sem este valor nem o produto nem o teste conseguem separar as
@@ -84,7 +84,7 @@ export function PipelinePageClient({
           limite curto) + botão na mesma linha sem quebra empurrava o botão pra
           fora da viewport em telas estreitas. De `sm:` pra cima volta a ser
           uma linha só, como sempre foi. */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-2">
           {funis.length > 1 ? (
             <label className="block text-sm font-medium">
@@ -128,14 +128,16 @@ export function PipelinePageClient({
           stages={data.stages}
         />
       )}
-      <FilterBar filters={filters} onChange={setFilters} leads={data?.leads ?? []} />
+      <div className="shrink-0">
+        <FilterBar filters={filters} onChange={setFilters} leads={data?.leads ?? []} />
+      </div>
       {error ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm">
           Não consegui carregar este funil:{" "}
           {formatError(error)}
         </div>
       ) : isLoading || !data ? (
-        <div className="flex flex-1 animate-pulse items-center justify-center text-muted-foreground">
+        <div className="flex min-h-0 flex-1 animate-pulse items-center justify-center text-muted-foreground">
           Carregando…
         </div>
       ) : (
@@ -148,6 +150,7 @@ export function PipelinePageClient({
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
           leadInicial={searchParams.get("lead")}
+          funis={funis.map((f) => ({ id: f.id, name: f.name }))}
         />
       )}
       <BulkActionBar

@@ -39,12 +39,20 @@ interface KanbanCardActionsProps {
   lead: Lead;
   pipelineId: string;
   stages?: Stage[];
+  /** Outros funis da org — para «Enviar para funil…» (P-01 clone). */
+  funis?: Array<{ id: string; name: string }>;
 }
 
-export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardActionsProps) {
+export function KanbanCardActions({
+  lead,
+  pipelineId,
+  stages = [],
+  funis = [],
+}: KanbanCardActionsProps) {
   const [loseOpen, setLoseOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [acaoOpen, setAcaoOpen] = useState(false);
+  const [transferindo, setTransferindo] = useState(false);
   const winMutation = useWinLead(pipelineId);
   const editMutation = useEditLead(pipelineId);
   const moveMutation = useMoveCard(pipelineId);
@@ -87,6 +95,32 @@ export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardA
       positionInStage: 1_000_000,
       expectedUpdatedAt: lead.updated_at,
     });
+  };
+
+  const outrosFunis = funis.filter((f) => f.id !== pipelineId);
+
+  const enviarParaFunil = (targetPipelineId: string, nome: string) => {
+    if (transferindo || lead.status !== "open") return;
+    const ok = window.confirm(
+      `Enviar «${lead.title}» para o funil «${nome}»?\n\nO card sai deste funil (marca como perdido: enviado) e abre um novo no destino, no mesmo contato.`,
+    );
+    if (!ok) return;
+    setTransferindo(true);
+    void apiClient
+      .post<{
+        data: { new_lead_id: string; target_pipeline_id: string };
+      }>(`/api/v1/leads/${lead.id}/transfer-pipeline`, {
+        target_pipeline_id: targetPipelineId,
+      })
+      .then((r) => {
+        toast.success(`Enviado para «${nome}».`);
+        void queryClient.invalidateQueries({ queryKey: ["board", pipelineId] });
+        void queryClient.invalidateQueries({
+          queryKey: ["board", r.data.target_pipeline_id],
+        });
+      })
+      .catch(() => toast.error("Não consegui enviar para o outro funil."))
+      .finally(() => setTransferindo(false));
   };
 
   return (
@@ -164,6 +198,24 @@ export function KanbanCardActions({ lead, pipelineId, stages = [] }: KanbanCardA
                       {s.name}
                     </DropdownMenuItem>
                   ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          {lead.status === "open" && outrosFunis.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger data-testid="enviar-para-funil">
+                Enviar para funil…
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {outrosFunis.map((f) => (
+                  <DropdownMenuItem
+                    key={f.id}
+                    disabled={transferindo}
+                    onSelect={() => enviarParaFunil(f.id, f.name)}
+                  >
+                    {f.name}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}

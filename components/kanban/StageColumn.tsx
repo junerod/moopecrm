@@ -8,6 +8,7 @@ import { buildCardInput } from "@/lib/kanban/card-state";
 import { KanbanCard } from "./KanbanCard";
 import { ESTILO_DO_TOM } from "@/lib/design-system/tones";
 import { tomDaEtapa } from "@/lib/kanban/tom-da-etapa";
+import { ArrowsOutSimple } from "@/lib/ui/icons";
 
 interface StageColumnProps {
   stage: Stage;
@@ -30,6 +31,9 @@ interface StageColumnProps {
   onSelect?: (leadId: string, additive: boolean) => void;
   /** Abrir o dossiê — atravessa o board até o card, como `pulses`. */
   onOpen?: (leadId: string) => void;
+  /** Clique no título: abre a etapa em tela cheia. */
+  onFocusStage?: (stageId: string) => void;
+  funis?: Array<{ id: string; name: string }>;
 }
 
 function formatBRL(cents: number): string {
@@ -58,6 +62,8 @@ export function StageColumn({
   pulses,
   onSelect,
   onOpen,
+  onFocusStage,
+  funis,
 }: StageColumnProps) {
   const totalCents = leads.reduce((sum, l) => sum + (l.value_cents ?? 0), 0);
   const tom = tomDaEtapa(stage, stageIndex);
@@ -68,25 +74,45 @@ export function StageColumn({
 
   return (
     <div
-      className="flex w-80 shrink-0 flex-col rounded-[12px] ring-1 ring-[var(--color-border)]"
+      data-stage-column={stage.id}
+      className="flex h-full w-80 shrink-0 flex-col overflow-hidden rounded-[12px] ring-1 ring-[var(--color-border)]"
       style={{ background: cor.bg }}
     >
-      <div className="flex items-center gap-2 border-b border-[var(--color-border)]/70 px-3 py-2.5">
+      <div className="sticky top-0 z-[1] flex shrink-0 items-center gap-2 border-b border-[var(--color-border)]/70 px-3 py-2.5">
         <span
-          className="h-2 w-2 rounded-full"
+          className="h-2 w-2 shrink-0 rounded-full"
           style={accentStyle}
           aria-hidden
         />
-        <h2 className="flex-1 truncate text-sm font-semibold text-text">
-          {stage.name}
-        </h2>
-        <span className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[var(--color-text-muted)]">
+        <button
+          type="button"
+          className="group flex min-w-0 flex-1 items-center gap-1.5 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)]"
+          onClick={() => onFocusStage?.(stage.id)}
+          data-testid={`stage-title-${stage.id}`}
+          title="Abrir etapa em tela cheia"
+        >
+          <h2 className="truncate text-sm font-semibold text-text group-hover:underline">
+            {stage.name}
+          </h2>
+          <ArrowsOutSimple
+            size={12}
+            className="shrink-0 text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100"
+            aria-hidden
+          />
+        </button>
+        <button
+          type="button"
+          className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium tabular-nums text-[var(--color-text-muted)] outline-none hover:bg-[var(--color-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)]"
+          onClick={() => onFocusStage?.(stage.id)}
+          aria-label={`Abrir ${stage.name}: ${leads.length} cards`}
+          data-testid={`stage-count-${stage.id}`}
+        >
           {leads.length}
-        </span>
+        </button>
       </div>
 
       {totalCents > 0 && (
-        <div className="border-b border-[var(--color-border)]/70 px-3 py-1.5 text-[11px] tabular-nums text-[var(--color-text-muted)]">
+        <div className="shrink-0 border-b border-[var(--color-border)]/70 px-3 py-1.5 text-[11px] tabular-nums text-[var(--color-text-muted)]">
           {formatBRL(totalCents)}
         </div>
       )}
@@ -97,8 +123,9 @@ export function StageColumn({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex flex-1 flex-col gap-2 p-2 transition-colors",
-              snapshot.isDraggingOver && "bg-[var(--moope-primary-bg)] ring-1 ring-inset ring-[var(--moope-primary)]/30",
+              "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 transition-colors",
+              snapshot.isDraggingOver &&
+                "bg-[var(--moope-primary-bg)] ring-1 ring-inset ring-[var(--moope-primary)]/30",
             )}
           >
             {leads.map((lead, idx) => (
@@ -119,6 +146,7 @@ export function StageColumn({
                 pulseCount={pulses?.get(lead.id) ?? 0}
                 onSelect={onSelect}
                 onOpen={onOpen}
+                funis={funis}
               />
             ))}
             {provided.placeholder}

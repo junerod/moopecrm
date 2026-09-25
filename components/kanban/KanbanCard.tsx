@@ -41,6 +41,13 @@ interface KanbanCardProps {
   onSelect?: (leadId: string, additive: boolean) => void;
   /** Abrir o dossiê. Separado de `onSelect`: são gestos e intenções diferentes. */
   onOpen?: (leadId: string) => void;
+  /**
+   * Lista fora do DragDropContext (etapa em tela cheia). Sem isto o
+   * `@hello-pangea/dnd` exige Draggable dentro de Droppable e a tela quebra.
+   */
+  disableDrag?: boolean;
+  /** Outros funis da org — menu «Enviar para funil…». */
+  funis?: Array<{ id: string; name: string }>;
 }
 
 function formatBRL(cents: number | null, currency: string | null): string | null {
@@ -78,6 +85,8 @@ export function KanbanCard({
   pulseCount = 0,
   onSelect,
   onOpen,
+  disableDrag = false,
+  funis,
 }: KanbanCardProps) {
   const value = formatBRL(card.valueCents, card.currency);
   const state = resolveCardState(card);
@@ -95,6 +104,193 @@ export function KanbanCard({
     onOpen?.(card.id);
   };
 
+  const body = (dragging: boolean) => (
+    <div
+      // O dnd marca o handle como role="button"; com o menu de ações dentro,
+      // isso vira nested-interactive no axe. "group" mantém o foco e o
+      // teclado do dnd (tabIndex e handlers continuam vindo do spread) sem
+      // aninhar dois controles — nada de aria-hidden nem de suprimir regra.
+      role="group"
+      aria-label={`Lead: ${card.title}`}
+      onClick={handleClick}
+      // Tags saem do card (Lei A): ficam a um hover, sem ocupar altura.
+      title={card.tags.length > 0 ? `Tags: ${card.tags.join(", ")}` : undefined}
+      className={cn(
+        "group relative overflow-hidden rounded-[12px] bg-[var(--color-surface)]",
+        "py-2.5 pl-3 pr-3 shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]",
+        "transition-[box-shadow,opacity] duration-150",
+        "hover:shadow-[var(--shadow-md)]",
+        dragging && "opacity-90 shadow-[var(--shadow-lg)] ring-2 ring-[var(--moope-primary)]",
+        isSelected && "ring-2 ring-[var(--moope-primary)]",
+      )}
+    >
+      {/* key = contador: cada evento remoto monta um overlay NOVO, e é isso
+          que reinicia a animação. Fica no elemento interno — pôr no wrapper
+          remontaria o draggable e quebraria o arrasto. */}
+      {pulseCount > 0 && (
+        <span
+          key={pulseCount}
+          aria-hidden
+          // Observável de propósito: é assim que o teste prova que o
+          // overlay REMONTOU (contador novo) em vez de ter sobrado do
+          // evento anterior — e "sobrou" era exatamente o defeito.
+          data-pulse={pulseCount}
+          className="card-pulse pointer-events-none absolute inset-0"
+        />
+      )}
+      {/* Borda de estado — 2px, a única cor do card. */}
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-y-0 left-0 w-0.5",
+          state.border === "accent" && "bg-accent",
+          state.border === "warning" && "bg-warning",
+          state.border === "neutral" && "bg-transparent",
+        )}
+      />
+
+      {/* ① identidade — altura FIXA de 2 linhas, com ou sem texto longo. */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-start gap-1.5">
+          {card.canonicalTag && (
+            <span
+              className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+              title={card.canonicalTag}
+              // role="img": um span nu não aceita aria-label (aria-prohibited-attr).
+              role="img"
+              aria-label={`Tag: ${card.canonicalTag}`}
+            />
+          )}
+          {/* O TÍTULO é o elemento ativável, não o card inteiro.
+              `role="group"` no card foi decisão da wave 2 (o dnd marca o
+              handle como button, e com o menu de ações dentro isso vira
+              nested-interactive no axe). Voltar o card para `button`
+              reintroduziria aquele defeito com cara de melhoria de
+              acessibilidade; deixar só onKeyDown daria uma ação que existe
+              e NÃO É DESCOBERTA por leitor de tela. O título como button
+              atende mouse, teclado e leitor sem desfazer a decisão antiga. */}
+          <div className="min-w-0">
+            <h3 className="line-clamp-2 text-sm font-medium leading-5 text-text">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen?.(card.id);
+                }}
+                className="text-left hover:underline"
+              >
+                {card.title}
+              </button>
+            </h3>
+            {formatarTelefone(card.phone) ? (
+              <p
+                className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--color-text-muted)]"
+                data-testid="kanban-telefone"
+              >
+                {formatarTelefone(card.phone)}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {ehPapelDoContato(card.papel) ? (
+            <StatusBadge
+              tone={TOM_DO_PAPEL[card.papel]}
+              className="h-5 px-1.5 text-[10px]"
+              data-testid="kanban-papel"
+              title={ROTULO_DO_PAPEL[card.papel]}
+            >
+              {ROTULO_DO_PAPEL[card.papel]}
+            </StatusBadge>
+          ) : null}
+          {ehTemperaturaDoLead(card.temperatura) && tomDaTemperatura(card.temperatura) ? (
+            <StatusBadge
+              tone={tomDaTemperatura(card.temperatura)!}
+              className="h-5 px-1.5 text-[10px]"
+              data-testid="kanban-temperatura"
+              title={ROTULO_DA_TEMPERATURA[card.temperatura]}
+            >
+              {ROTULO_DA_TEMPERATURA[card.temperatura].replace("Lead ", "")}
+            </StatusBadge>
+          ) : null}
+          <KanbanCardActions lead={lead} pipelineId={pipelineId} stages={stages} funis={funis} />
+        </div>
+      </div>
+
+      {/* ② valor — altura reservada mesmo sem valor, senão o card encolhe. */}
+      <p
+        className={cn(
+          "mt-1 h-5 text-xs font-medium leading-5 tabular-nums",
+          value ? "text-text" : "text-text-muted",
+        )}
+      >
+        {value ?? "—"}
+      </p>
+
+      <LinhaProximaAcao status={lead.status} acao={card.proximaAcao} />
+
+      {/* ③ a linha do agente — um slot, três estados, nunca três blocos. */}
+      <div className="mt-1.5 flex h-6 items-center gap-2 text-xs">
+        {state.slot.type === "awaiting" && (
+          // A proposta do agente é a ÚNICA linha do card com ação: é o
+          // ponto onde a decisão do humano entra. Sem os botões aqui, o
+          // texto seria só mais um aviso — e a wave existe porque avisar
+          // sem poder decidir é o que já acontecia (o dado ficava no banco).
+          <NextActionSlot
+            label={state.slot.label}
+            leadId={card.id}
+            approvedSeq={lead.next_action?.seq ?? -1}
+            pipelineId={pipelineId}
+          />
+        )}
+        {state.slot.type === "reactivation" && (
+          // O negócio parou E aqui está o que fazer. Mesma faixa, mesma
+          // altura: o card não cresce quando o sistema tem algo a propor.
+          <ReactivationSlot
+            leadId={card.id}
+            proposalId={state.slot.proposalId}
+            expiresAt={state.slot.expiresAt}
+            pipelineId={pipelineId}
+          />
+        )}
+        {state.slot.type === "cooling" && (
+          // -fg é a variante de TEXTO do token (o -warning puro dá 3.7:1 em
+          // 12px); a cor cheia fica na borda de estado, que é gráfica.
+          <span className="truncate text-warning-fg">{state.slot.label}</span>
+        )}
+        {state.slot.type === "meter" && (
+          <ScoreSlot
+            probability={state.slot.probability}
+            band={state.slot.band}
+            reason={state.slot.reason}
+            factors={state.slot.factors}
+          />
+        )}
+      </div>
+
+      {/* A última mensagem, com atalho para o inbox. Fica ANTES do rodapé
+          de dono/tempo porque é conteúdo do negócio, não metadado do card —
+          e some por inteiro quando não há conversa. */}
+      <ConversaSlot conversa={lead.conversa} />
+
+      {/* ④ dono · ⑤ tempo no estágio */}
+      <div className="mt-1 flex h-6 items-center justify-between gap-2">
+        <OwnerBadge
+          ownerKind={card.owner.kind}
+          ownerName={card.owner.name}
+          agentVersion={card.owner.agentVersion}
+        />
+        <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-text-muted">
+          {state.showStageAge && age ? `${age} em ${card.stageName}` : `em ${card.stageName}`}
+        </span>
+      </div>
+    </div>
+  );
+
+  if (disableDrag) {
+    return body(false);
+  }
+
   return (
     <Draggable draggableId={card.id} index={index}>
       {(provided, snapshot) => (
@@ -102,188 +298,8 @@ export function KanbanCard({
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          // O dnd marca o handle como role="button"; com o menu de ações dentro,
-          // isso vira nested-interactive no axe. "group" mantém o foco e o
-          // teclado do dnd (tabIndex e handlers continuam vindo do spread) sem
-          // aninhar dois controles — nada de aria-hidden nem de suprimir regra.
-          role="group"
-          aria-label={`Lead: ${card.title}`}
-          onClick={handleClick}
-          // Tags saem do card (Lei A): ficam a um hover, sem ocupar altura.
-          title={card.tags.length > 0 ? `Tags: ${card.tags.join(", ")}` : undefined}
-          className={cn(
-            "group relative overflow-hidden rounded-[12px] bg-[var(--color-surface)]",
-            "py-2.5 pl-3 pr-3 shadow-[var(--shadow-sm)] ring-1 ring-[var(--color-border)]",
-            "transition-[box-shadow,opacity] duration-150",
-            "hover:shadow-[var(--shadow-md)]",
-            snapshot.isDragging &&
-              "opacity-90 shadow-[var(--shadow-lg)] ring-2 ring-[var(--moope-primary)]",
-            isSelected && "ring-2 ring-[var(--moope-primary)]",
-          )}
         >
-          {/* key = contador: cada evento remoto monta um overlay NOVO, e é isso
-              que reinicia a animação. Fica no elemento interno — pôr no wrapper
-              remontaria o draggable e quebraria o arrasto. */}
-          {pulseCount > 0 && (
-            <span
-              key={pulseCount}
-              aria-hidden
-              // Observável de propósito: é assim que o teste prova que o
-              // overlay REMONTOU (contador novo) em vez de ter sobrado do
-              // evento anterior — e "sobrou" era exatamente o defeito.
-              data-pulse={pulseCount}
-              className="card-pulse pointer-events-none absolute inset-0"
-            />
-          )}
-          {/* Borda de estado — 2px, a única cor do card. */}
-          <span
-            aria-hidden
-            className={cn(
-              "absolute inset-y-0 left-0 w-0.5",
-              state.border === "accent" && "bg-accent",
-              state.border === "warning" && "bg-warning",
-              state.border === "neutral" && "bg-transparent",
-            )}
-          />
-
-          {/* ① identidade — altura FIXA de 2 linhas, com ou sem texto longo. */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 flex-1 items-start gap-1.5">
-              {card.canonicalTag && (
-                <span
-                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-                  title={card.canonicalTag}
-                  // role="img": um span nu não aceita aria-label (aria-prohibited-attr).
-                  role="img"
-                  aria-label={`Tag: ${card.canonicalTag}`}
-                />
-              )}
-              {/* O TÍTULO é o elemento ativável, não o card inteiro.
-                  `role="group"` no card foi decisão da wave 2 (o dnd marca o
-                  handle como button, e com o menu de ações dentro isso vira
-                  nested-interactive no axe). Voltar o card para `button`
-                  reintroduziria aquele defeito com cara de melhoria de
-                  acessibilidade; deixar só onKeyDown daria uma ação que existe
-                  e NÃO É DESCOBERTA por leitor de tela. O título como button
-                  atende mouse, teclado e leitor sem desfazer a decisão antiga. */}
-              <div className="min-w-0">
-                <h3 className="line-clamp-2 text-sm font-medium leading-5 text-text">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpen?.(card.id);
-                    }}
-                    className="text-left hover:underline"
-                  >
-                    {card.title}
-                  </button>
-                </h3>
-                {formatarTelefone(card.phone) ? (
-                  <p
-                    className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--color-text-muted)]"
-                    data-testid="kanban-telefone"
-                  >
-                    {formatarTelefone(card.phone)}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {ehPapelDoContato(card.papel) ? (
-                <StatusBadge
-                  tone={TOM_DO_PAPEL[card.papel]}
-                  className="h-5 px-1.5 text-[10px]"
-                  data-testid="kanban-papel"
-                  title={ROTULO_DO_PAPEL[card.papel]}
-                >
-                  {ROTULO_DO_PAPEL[card.papel]}
-                </StatusBadge>
-              ) : null}
-              {ehTemperaturaDoLead(card.temperatura) && tomDaTemperatura(card.temperatura) ? (
-                <StatusBadge
-                  tone={tomDaTemperatura(card.temperatura)!}
-                  className="h-5 px-1.5 text-[10px]"
-                  data-testid="kanban-temperatura"
-                  title={ROTULO_DA_TEMPERATURA[card.temperatura]}
-                >
-                  {ROTULO_DA_TEMPERATURA[card.temperatura].replace("Lead ", "")}
-                </StatusBadge>
-              ) : null}
-              <KanbanCardActions lead={lead} pipelineId={pipelineId} stages={stages} />
-            </div>
-          </div>
-
-          {/* ② valor — altura reservada mesmo sem valor, senão o card encolhe. */}
-          <p
-            className={cn(
-              "mt-1 h-5 text-xs font-medium leading-5 tabular-nums",
-              value ? "text-text" : "text-text-muted",
-            )}
-          >
-            {value ?? "—"}
-          </p>
-
-          <LinhaProximaAcao
-            status={lead.status}
-            acao={card.proximaAcao}
-          />
-
-          {/* ③ a linha do agente — um slot, três estados, nunca três blocos. */}
-          <div className="mt-1.5 flex h-6 items-center gap-2 text-xs">
-            {state.slot.type === "awaiting" && (
-              // A proposta do agente é a ÚNICA linha do card com ação: é o
-              // ponto onde a decisão do humano entra. Sem os botões aqui, o
-              // texto seria só mais um aviso — e a wave existe porque avisar
-              // sem poder decidir é o que já acontecia (o dado ficava no banco).
-              <NextActionSlot
-                label={state.slot.label}
-                leadId={card.id}
-                approvedSeq={lead.next_action?.seq ?? -1}
-                pipelineId={pipelineId}
-              />
-            )}
-            {state.slot.type === "reactivation" && (
-              // O negócio parou E aqui está o que fazer. Mesma faixa, mesma
-              // altura: o card não cresce quando o sistema tem algo a propor.
-              <ReactivationSlot
-                leadId={card.id}
-                proposalId={state.slot.proposalId}
-                expiresAt={state.slot.expiresAt}
-                pipelineId={pipelineId}
-              />
-            )}
-            {state.slot.type === "cooling" && (
-              // -fg é a variante de TEXTO do token (o -warning puro dá 3.7:1 em
-              // 12px); a cor cheia fica na borda de estado, que é gráfica.
-              <span className="truncate text-warning-fg">{state.slot.label}</span>
-            )}
-            {state.slot.type === "meter" && (
-              <ScoreSlot
-                probability={state.slot.probability}
-                band={state.slot.band}
-                reason={state.slot.reason}
-                factors={state.slot.factors}
-              />
-            )}
-          </div>
-
-          {/* A última mensagem, com atalho para o inbox. Fica ANTES do rodapé
-              de dono/tempo porque é conteúdo do negócio, não metadado do card —
-              e some por inteiro quando não há conversa. */}
-          <ConversaSlot conversa={lead.conversa} />
-
-          {/* ④ dono · ⑤ tempo no estágio */}
-          <div className="mt-1 flex h-6 items-center justify-between gap-2">
-            <OwnerBadge
-              ownerKind={card.owner.kind}
-              ownerName={card.owner.name}
-              agentVersion={card.owner.agentVersion}
-            />
-            <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-text-muted">
-              {state.showStageAge && age ? `${age} em ${card.stageName}` : `em ${card.stageName}`}
-            </span>
-          </div>
+          {body(snapshot.isDragging)}
         </div>
       )}
     </Draggable>

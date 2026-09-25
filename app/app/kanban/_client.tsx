@@ -9,7 +9,7 @@ import { EmptyPipeline } from "@/components/empty";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/types";
-import { Archive, CaretDown, CaretUp, Check, DotsThree, Kanban, PencilSimple, Plus } from "@/lib/ui/icons";
+import { Archive, CaretDown, CaretUp, Check, DotsThree, Headset, Kanban, PencilSimple, Plus } from "@/lib/ui/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,9 +20,12 @@ import {
   useArquivarFunil,
   useCriarFunil,
   useEditarFunil,
+  useGarantirFunilSuporte,
   useGravarFunilDeNovosLeads,
 } from "@/hooks/pipelines/usePipelines";
 import { idEfetivoDeNovosLeads } from "@/lib/leads/funil-de-nascimento";
+import { NOME_FUNIL_SUPORTE } from "@/lib/pipelines/funil-suporte";
+import { toast } from "sonner";
 
 export interface FunilDaLista {
   id: string;
@@ -105,13 +108,23 @@ export function FunisClient({
   const editar = useEditarFunil();
   const arquivar = useArquivarFunil();
   const gravarInbound = useGravarFunilDeNovosLeads();
+  const garantirSuporte = useGarantirFunilSuporte();
 
   const [novo, setNovo] = useState<string | null>(null);
   const [renomeando, setRenomeando] = useState<{ id: string; nome: string } | null>(null);
   const [arquivando, setArquivando] = useState<{ id: string; erro: string | null } | null>(null);
   const [erro, setErro] = useState<{ id: string | null; texto: string } | null>(null);
 
-  const ocupado = criar.isPending || editar.isPending || arquivar.isPending || gravarInbound.isPending;
+  const ocupado =
+    criar.isPending ||
+    editar.isPending ||
+    arquivar.isPending ||
+    gravarInbound.isPending ||
+    garantirSuporte.isPending;
+
+  const jaTemSuporte = funis.some(
+    (f) => f.name.trim().toLowerCase() === NOME_FUNIL_SUPORTE.toLowerCase(),
+  );
 
   const efetivoDeNovos = idEfetivoDeNovosLeads(funis, inboundPipelineId);
 
@@ -225,11 +238,36 @@ export function FunisClient({
   return (
     <div className="flex flex-col gap-4">
       {podeGerenciar && (
-        <div className="flex sm:justify-end">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           {novo === null ? (
-            <Button onClick={() => setNovo("")} disabled={ocupado} data-testid="novo-funil" className="w-full sm:w-auto">
-              <Plus size={16} className="mr-2" aria-hidden /> Novo funil
-            </Button>
+            <>
+              {!jaTemSuporte ? (
+                <Button
+                  variant="outline"
+                  disabled={ocupado}
+                  data-testid="criar-funil-suporte"
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setErro(null);
+                    garantirSuporte.mutate(undefined, {
+                      onSuccess: (r) => {
+                        toast.success(
+                          r.data.created
+                            ? "Funil Suporte criado."
+                            : "Funil Suporte já existia.",
+                        );
+                      },
+                      onError: (e) => setErro({ id: null, texto: textoDoErro(e) }),
+                    });
+                  }}
+                >
+                  <Headset size={16} className="mr-2" aria-hidden /> Criar funil de Suporte
+                </Button>
+              ) : null}
+              <Button onClick={() => setNovo("")} disabled={ocupado} data-testid="novo-funil" className="w-full sm:w-auto">
+                <Plus size={16} className="mr-2" aria-hidden /> Novo funil
+              </Button>
+            </>
           ) : null}
         </div>
       )}

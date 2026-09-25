@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoard } from "@/hooks/kanban/useBoard";
 import { useMoveCard } from "@/hooks/kanban/useMoveCard";
+import { useBoardScroll } from "@/hooks/kanban/useBoardScroll";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAtRiskLeads } from "@/hooks/leads/useAtRiskLeads";
 import { useReactivations } from "@/hooks/leads/useReactivations";
@@ -21,7 +23,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { CaretLeft, CaretRight } from "@/lib/ui/icons";
+import { cn } from "@/lib/utils";
 import { StageColumn } from "./StageColumn";
+import { StageFocusView } from "./StageFocusView";
 import { LeadDossier } from "./LeadDossier";
 
 interface KanbanBoardProps {
@@ -43,6 +48,8 @@ interface KanbanBoardProps {
   onSelectionChange?: (ids: string[]) => void;
   /** Lead a abrir já na montagem (deep link `?lead=` — ver o dossiê abaixo). */
   leadInicial?: string | null;
+  /** Funis irmãos da org — «Enviar para funil…» no card. */
+  funis?: Array<{ id: string; name: string }>;
 }
 
 function groupLeadsByStage(stages: Stage[], leads: Lead[]): Map<string, Lead[]> {
@@ -52,7 +59,6 @@ function groupLeadsByStage(stages: Stage[], leads: Lead[]): Map<string, Lead[]> 
     const bucket = map.get(lead.stage_id);
     if (bucket) bucket.push(lead);
   }
-  // Already ordered by position_in_stage at fetch time, but be defensive.
   for (const list of map.values()) {
     list.sort((a, b) => a.position_in_stage - b.position_in_stage);
   }
@@ -61,7 +67,7 @@ function groupLeadsByStage(stages: Stage[], leads: Lead[]): Map<string, Lead[]> 
 
 function BoardSkeleton() {
   return (
-    <div className="flex gap-3 overflow-x-auto p-4">
+    <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto p-4">
       {[0, 1, 2].map((c) => (
         <div
           key={c}
@@ -86,21 +92,20 @@ export function KanbanBoard({
   pulses: pulsesProp,
   onSelectionChange,
   leadInicial,
+  funis = [],
 }: KanbanBoardProps) {
   const useExternal = stagesProp !== undefined && leadsProp !== undefined;
   const queryResult = useBoard(useExternal ? null : pipelineId);
   const moveCard = useMoveCard(pipelineId);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: members } = useAssignableMembers(true);
   const ownerNames = useMemo(
     () => new Map((members ?? []).map((m) => [m.user_id, m.full_name])),
     [members],
   );
-  // Esfriando vem do MESMO radar que alimenta /app/radar — o board não
-  // reclassifica nada (contrato §3.3). `em_voo` fica de fora: a IA já prometeu
-  // voltar, então não há decisão pendente para o humano.
   const { data: atRisk } = useAtRiskLeads();
-  // As propostas vivas vêm da MESMA forma que o risco: uma lista por org, que o
-  // card consome sem saber de onde veio. Ver o cabeçalho da rota.
   const { data: propostasVivas } = useReactivations();
   const reactivations = useMemo(() => {
     const m = new Map<string, { proposalId: string; expiresAt: string }>();
@@ -117,20 +122,11 @@ export function KanbanBoard({
     }
     return ids;
   }, [atRisk, pipelineId]);
-  // A tag canônica do pipeline é a ÚNICA que fica no card (como ponto de 6px);
-  // as outras saem para o hover. Já existe em settings — não inventa campo.
   const canonicalTags = useMemo(() => {
     const raw = (pipelineProp ?? queryResult.data?.pipeline)?.settings?.canonical_tags;
     return Array.isArray(raw) ? raw.filter((t): t is string => typeof t === "string") : [];
   }, [pipelineProp, queryResult.data?.pipeline]);
 
-  // O dossiê é do BOARD e não da página: ele precisa do lead inteiro e do nome
-  // do estágio, que só existem aqui depois do agrupamento.
-  //
-  // `leadInicial` é o deep link: até aqui o dossiê SÓ abria por clique, então
-  // nenhuma outra tela do produto conseguia apontar para um lead específico —
-  // o histórico de captação tinha o id e nenhum lugar para levá-lo. Uma vez
-  // aberto, o estado local manda (fechar não reabre pela URL).
   const [dossieId, setDossieId] = useState<string | null>(leadInicial ?? null);
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [promptLead, setPromptLead] = useState<Lead | null>(null);
@@ -139,16 +135,24 @@ export function KanbanBoard({
     [selectedIds, internalSelected],
   );
 
-  const data = useExternal
-    ? {
+  const data = useMemo(() => {
+    if (useExternal) {
+      return {
         pipeline: pipelineProp ?? ({} as Pipeline),
-        stages: stagesProp,
-        leads: leadsProp,
-      }
-    : queryResult.data;
+        stages: stagesProp!,
+        leads: leadsProp!,
+      };
+    }
+    return queryResult.data;
+  }, [useExternal, pipelineProp, stagesProp, leadsProp, queryResult.data]);
+
   const isLoading = useExternal ? false : queryResult.isLoading;
   const isError = useExternal ? false : queryResult.isError;
   const error = useExternal ? null : queryResult.error;
+
+  const stageIds = useMemo(() => (data?.stages ?? []).map((s) => s.id), [data?.stages]);
+  const { scrollerRef, state: scrollState, scrollByColumns, scrollToStage } =
+    useBoardScroll(stageIds);
 
   const leadDoDossie = dossieId
     ? (data?.leads.find((l) => l.id === dossieId) ?? null)
@@ -159,6 +163,38 @@ export function KanbanBoard({
     return groupLeadsByStage(data.stages, data.leads);
   }, [data]);
 
+  // Deep link `?stage=` é a fonte — sem espelho em state que dispare effect.
+  const focusStageId = searchParams.get("stage");
+  const focusStage =
+    focusStageId && data?.stages
+      ? (data.stages.find((s) => s.id === focusStageId) ?? null)
+      : null;
+
+  const setStageNaUrl = useCallback(
+    (stageId: string | null) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (stageId) next.set("stage", stageId);
+      else next.delete("stage");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
+
+  const abrirFoco = useCallback(
+    (stageId: string) => {
+      setStageNaUrl(stageId);
+    },
+    [setStageNaUrl],
+  );
+
+  const fecharFoco = useCallback(
+    (open: boolean) => {
+      if (open) return;
+      setStageNaUrl(null);
+    },
+    [setStageNaUrl],
+  );
   const handleSelect = useCallback(
     (leadId: string, additive: boolean) => {
       const apply = (prev: Set<string>): Set<string> => {
@@ -210,7 +246,6 @@ export function KanbanBoard({
       );
 
       if (Number.isNaN(newPosition)) {
-        // Collision — Wave 8 will handle global rebalance. For now, abort silently.
         return;
       }
 
@@ -264,28 +299,125 @@ export function KanbanBoard({
     );
   }
 
+  const pulses = pulsesProp ?? queryResult.pulses;
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex h-full gap-3 overflow-x-auto bg-[var(--color-bg)] p-4">
-        {data.stages.map((stage, i) => (
-          <StageColumn
-            key={stage.id}
-            stage={stage}
-            stageIndex={i}
-            leads={grouped.get(stage.id) ?? []}
-            pipelineId={pipelineId}
-            stages={data.stages}
-            ownerNames={ownerNames}
-            coolingIds={coolingIds}
-            reactivations={reactivations}
-            pulses={pulsesProp ?? queryResult.pulses}
-            canonicalTags={canonicalTags}
-            selectedLeadIds={selectedLeadIds}
-            onSelect={handleSelect}
-            onOpen={setDossieId}
-          />
-        ))}
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-2"
+        data-testid="kanban-board-shell"
+      >
+        {/* Trilho de etapas — orientação espacial quando há muitas colunas. */}
+        <div
+          className="flex shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5"
+          data-testid="kanban-stage-rail"
+          role="tablist"
+          aria-label="Etapas do funil"
+        >
+          {data.stages.map((stage) => {
+            const count = grouped.get(stage.id)?.length ?? 0;
+            const active = scrollState.activeStageId === stage.id;
+            return (
+              <button
+                key={stage.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-testid={`stage-chip-${stage.id}`}
+                onClick={() => scrollToStage(stage.id)}
+                onDoubleClick={() => abrirFoco(stage.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors",
+                  "ring-1 ring-[var(--color-border)]",
+                  active
+                    ? "bg-[var(--moope-primary)] text-white ring-[var(--moope-primary)]"
+                    : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]",
+                )}
+                title="Clique para ir · duplo clique para tela cheia"
+              >
+                {stage.name}
+                <span className="ml-1 opacity-80">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative min-h-0 flex-1">
+          {scrollState.canScrollLeft ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="absolute left-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full bg-[var(--color-surface)] shadow-md"
+              onClick={() => scrollByColumns(-1)}
+              aria-label="Ver etapas à esquerda"
+              data-testid="kanban-scroll-left"
+            >
+              <CaretLeft size={16} weight="bold" />
+            </Button>
+          ) : null}
+          {scrollState.canScrollRight ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="absolute right-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full bg-[var(--color-surface)] shadow-md"
+              onClick={() => scrollByColumns(1)}
+              aria-label="Ver etapas à direita"
+              data-testid="kanban-scroll-right"
+            >
+              <CaretRight size={16} weight="bold" />
+            </Button>
+          ) : null}
+
+          <div
+            ref={scrollerRef}
+            tabIndex={0}
+            className="flex h-full min-h-0 gap-3 overflow-x-auto overflow-y-hidden scroll-smooth bg-[var(--color-bg)] px-1 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)]"
+            data-testid="kanban-board-scroller"
+          >
+            {data.stages.map((stage, i) => (
+              <StageColumn
+                key={stage.id}
+                stage={stage}
+                stageIndex={i}
+                leads={grouped.get(stage.id) ?? []}
+                pipelineId={pipelineId}
+                stages={data.stages}
+                ownerNames={ownerNames}
+                coolingIds={coolingIds}
+                reactivations={reactivations}
+                pulses={pulses}
+                canonicalTags={canonicalTags}
+                selectedLeadIds={selectedLeadIds}
+                onSelect={handleSelect}
+                onOpen={setDossieId}
+                onFocusStage={abrirFoco}
+                funis={funis}
+              />
+            ))}
+          </div>
+        </div>
       </div>
+
+      <StageFocusView
+        open={!!focusStage}
+        onOpenChange={fecharFoco}
+        stage={focusStage}
+        leads={focusStage ? (grouped.get(focusStage.id) ?? []) : []}
+        pipelineId={pipelineId}
+        stages={data.stages}
+        ownerNames={ownerNames}
+        coolingIds={coolingIds}
+        reactivations={reactivations}
+        canonicalTags={canonicalTags}
+        selectedLeadIds={selectedLeadIds}
+        pulses={pulses}
+        onSelect={handleSelect}
+        onOpenLead={setDossieId}
+        funis={funis}
+      />
+
       {leadDoDossie && (
         <LeadDossier
           open

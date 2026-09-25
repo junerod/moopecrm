@@ -96,3 +96,16 @@ export function useArquivarFunil() {
     onSettled: reler,
   });
 }
+
+/** Garante o funil modelo «Suporte» (idempotente). */
+export function useGarantirFunilSuporte() {
+  const reler = useReler();
+  return useMutation({
+    mutationFn: () =>
+      apiClient.post<{ data: { pipeline_id: string; created: boolean } }>(
+        "/api/v1/pipelines/ensure-support",
+        {},
+      ),
+    onSettled: reler,
+  });
+}
