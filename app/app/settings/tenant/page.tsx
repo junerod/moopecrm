@@ -4,6 +4,7 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { TenantForm } from "./_form";
+import { ReinicioDaOperacao } from "./reinicio";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,7 @@ export default async function TenantSettingsPage() {
           }}
         />
       )}
+      <ReinicioDaOperacao />
     </div>
   );
 }

@@ -567,7 +567,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/settings/tenant",
     label: "Organização",
-    description: "Dados da empresa, retenção de dados e encarregado de LGPD.",
+    description: "Dados da empresa, retenção de dados, encarregado de LGPD e zerar a fila.",
+    aliases: ["zerar fila", "limpar fila", "encerrar fila", "empresa"],
     icon: Buildings,
     group: "organizacao",
     section: "Sua empresa",
