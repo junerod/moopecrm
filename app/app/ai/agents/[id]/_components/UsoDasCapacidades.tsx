@@ -108,6 +108,15 @@ export function UsoDasCapacidades({ agentId, active }: Props) {
 
   return (
     <div className="flex flex-col gap-4" data-testid="uso-das-capacidades">
+      <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm leading-relaxed">
+        <p className="font-medium">Capacidade é o que o assistente tem permissão de fazer.</p>
+        <p className="mt-1 text-muted-foreground">
+          Ligar fica na aba Configuração, no passo «O que faz». Aqui você vê se isso foi
+          usado de verdade: consulta que falha, permissão parada, ou algo saudável. Um
+          número sem recomendação não muda o atendimento — por isso cada linha diz o que
+          fazer.
+        </p>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <p className="text-sm">

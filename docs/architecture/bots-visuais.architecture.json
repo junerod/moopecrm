@@ -56,6 +56,14 @@
       "sublabel": "casa 1/2/3 sem LLM"
     },
     {
+      "id": "consulta",
+      "lane": "regra",
+      "col": 4,
+      "type": "rule",
+      "label": "Consultar gestão",
+      "sublabel": "texto só do que a Moope devolveu"
+    },
+    {
       "id": "tick",
       "lane": "motor",
       "col": 3,
@@ -70,6 +78,8 @@
     { "id": "e3", "from": "inbound", "to": "guarda", "label": "enroll + cala" },
     { "id": "e4", "from": "guarda", "to": "tick", "label": "IA muda" },
     { "id": "e5", "from": "tick", "to": "menu", "label": "casa resposta" },
-    { "id": "e6", "from": "menu", "to": "quadro", "label": "texto que o leigo editou" }
+    { "id": "e6", "from": "menu", "to": "quadro", "label": "texto que o leigo editou" },
+    { "id": "e7", "from": "menu", "to": "consulta", "label": "opção pede dado" },
+    { "id": "e8", "from": "consulta", "to": "tick", "label": "encontrou ou não" }
   ]
 }

@@ -15,7 +15,8 @@ import { ConditionForm } from "./forms/ConditionForm";
 import { EndForm } from "./forms/EndForm";
 import { FaqForm } from "./forms/FaqForm";
 import { HumanoForm } from "./forms/HumanoForm";
-import { AssistenteForm } from "./forms/AssistenteForm";
+import { AssistenteForm, type AssistenteDoFluxo } from "./forms/AssistenteForm";
+import { ConsultaForm } from "./forms/ConsultaForm";
 import { MenuForm } from "./forms/MenuForm";
 import { WaitForm } from "./forms/WaitForm";
 import type { ConfigOf } from "./forms/shared";
@@ -27,6 +28,7 @@ interface Props {
   /** Ramos deste nó que já têm aresta — quem sabe isso é o canvas, que é dono do grafo. */
   ramosLigados?: string[];
   onRemove?: (id: string) => void;
+  assistentes?: AssistenteDoFluxo[];
 }
 
 /**
@@ -38,7 +40,7 @@ interface Props {
  * quando o candidato passa no schema — senão mostra erro inline e o canvas
  * mantém a última config válida (nunca um valor pela metade rio acima).
  */
-export function NodeConfigPanel({ node, onChange, ramosLigados, onRemove }: Props) {
+export function NodeConfigPanel({ node, onChange, ramosLigados, onRemove, assistentes }: Props) {
   const type = node.type as FlowNode["type"];
   const visual = NODE_VISUALS[type];
   const Icon = visual.icon;
@@ -130,6 +132,13 @@ export function NodeConfigPanel({ node, onChange, ramosLigados, onRemove }: Prop
         {type === "assistente" && (
           <AssistenteForm
             config={node.data.config as ConfigOf<"assistente">}
+            onChange={(config) => onChange({ config })}
+            assistentes={assistentes}
+          />
+        )}
+        {type === "consulta" && (
+          <ConsultaForm
+            config={node.data.config as ConfigOf<"consulta">}
             onChange={(config) => onChange({ config })}
           />
         )}

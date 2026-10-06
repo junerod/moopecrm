@@ -42,6 +42,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Plus, X } from "@/lib/ui/icons";
 import { NodeConfigPanel } from "./NodeConfigPanel";
+import type { AssistenteDoFluxo } from "./forms/AssistenteForm";
 import { EdgeConfigPanel } from "./EdgeConfigPanel";
 import { NodePalette } from "./NodePalette";
 import { PublishBar } from "./PublishBar";
@@ -53,7 +54,7 @@ import { ConditionNode } from "./nodes/ConditionNode";
 import { ClassifyNode } from "./nodes/ClassifyNode";
 import { ActionNode } from "./nodes/ActionNode";
 import { EndNode } from "./nodes/EndNode";
-import { AssistenteNode, FaqNode, HorarioNode, HumanoNode, MenuNode } from "./nodes/BotNodes";
+import { AssistenteNode, ConsultaNode, FaqNode, HorarioNode, HumanoNode, MenuNode } from "./nodes/BotNodes";
 
 const EMPTY_GRAPH: FlowGraph = { nodes: [], edges: [] };
 const DND_MIME = "application/x-followup-node-type";
@@ -72,12 +73,14 @@ const nodeTypes: NodeTypes = {
   horario: HorarioNode,
   humano: HumanoNode,
   assistente: AssistenteNode,
+  consulta: ConsultaNode,
 };
 
 interface Props {
   flowId: string;
   initialData: FollowupFlowDetailRow;
   modeloInicial?: string;
+  assistentes?: AssistenteDoFluxo[];
 }
 
 const FAIXA: Record<string, string> = {
@@ -90,7 +93,7 @@ const FAIXA: Record<string, string> = {
   meu: "Responda o passo a passo. No fim o menu entra no quadro. Depois Salvar e Publicar.",
 };
 
-function FlowCanvasInner({ flowId, initialData, modeloInicial }: Props) {
+function FlowCanvasInner({ flowId, initialData, modeloInicial, assistentes = [] }: Props) {
   const { data: flow } = useFollowupFlow(flowId, { initialData });
   // `initial` seeds React Flow state ONCE on mount — it must NOT react to
   // `flow` changing on every refetch (that would clobber in-progress edits).
@@ -457,6 +460,7 @@ function FlowCanvasInner({ flowId, initialData, modeloInicial }: Props) {
                 onChange={(patch) => updateNodeData(selectedNode.id, patch)}
                 ramosLigados={ramosLigadosDoSelecionado}
                 onRemove={tirarNo}
+                assistentes={assistentes}
               />
             </div>
           </aside>

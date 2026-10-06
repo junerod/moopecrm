@@ -98,6 +98,28 @@ describe('resolveTurnAgent', () => {
     expect(classifyIntent).not.toHaveBeenCalled();
   });
 
+  it('1b. sem router e com agente fixado na conversa → usa esse publicado', async () => {
+    const loadActiveRouter = vi.fn().mockResolvedValue(null);
+    const loadPublishedAgentConfigById = idAwareLoader();
+    const loadPublishedAgentConfig = vi.fn().mockResolvedValue(fakeConfig('agent-sessao'));
+    const out = await resolveTurnAgent({} as never, {} as never,
+      { ...baseInput, signal: 'oi', stickyAgentId: 'agent-financeiro', stickyIntent: null },
+      makeDeps({ loadActiveRouter, loadPublishedAgentConfigById, loadPublishedAgentConfig }));
+    expect(out.outcome).toBe('no_router');
+    expect(out.config?.agentId).toBe('agent-financeiro');
+    expect(loadPublishedAgentConfig).not.toHaveBeenCalled();
+  });
+
+  it('1c. agente fixado sem versão publicada cai no da sessão', async () => {
+    const loadActiveRouter = vi.fn().mockResolvedValue(null);
+    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(null);
+    const loadPublishedAgentConfig = vi.fn().mockResolvedValue(fakeConfig('agent-sessao'));
+    const out = await resolveTurnAgent({} as never, {} as never,
+      { ...baseInput, signal: 'oi', stickyAgentId: 'sumiu', stickyIntent: null },
+      makeDeps({ loadActiveRouter, loadPublishedAgentConfigById, loadPublishedAgentConfig }));
+    expect(out.config?.agentId).toBe('agent-sessao');
+  });
+
   it('2. router + classificação alta confiança → classified, config do agente da intenção', async () => {
     const r = router({ sticky: false });
     const loadActiveRouter = vi.fn().mockResolvedValue(r);

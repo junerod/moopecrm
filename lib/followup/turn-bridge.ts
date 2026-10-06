@@ -118,7 +118,7 @@ export async function completeTurnForEnrollment(
       );
       return;
     }
-    if (node.type === "faq" || node.type === "humano") {
+    if (node.type === "faq" || node.type === "humano" || node.type === "consulta") {
       await applyStep("action_sent", {}, { status: "active", next_eval_at: now.toISOString() });
       return;
     }

@@ -40,7 +40,17 @@ export function AgentTabs(props: Props) {
   const [tab, setTab] = React.useState<
     "configuration" | "test" | "capacidades" | "runs" | "history" | "proposals"
   >("configuration");
-  const hasVersion = !!(props.draft || props.published);
+  const ajuda: Record<typeof tab, string> = {
+    configuration:
+      "O passo a passo de quem ele é, qual inteligência usa e o que pode fazer. Salvar grava o rascunho; Publicar coloca no ar.",
+    test: "Uma conversa de ensaio. Nada sai no WhatsApp. Salve um rascunho antes — o teste usa essa versão, não a que está no ar.",
+    capacidades:
+      "O que ele realmente usou nos atendimentos: o que funciona, o que falha e o que está ligado sem nunca ter sido chamado.",
+    runs: "Cada vez que ele atendeu de verdade ou em teste, com o que aconteceu.",
+    history: "As versões já salvas. Publicar não apaga a anterior.",
+    proposals:
+      "Melhorias que o sistema sugere a partir das conversas. Nada entra sozinho: você lê e decide se aplica.",
+  };
 
   return (
     <Tabs
@@ -48,16 +58,17 @@ export function AgentTabs(props: Props) {
       onValueChange={(v) => setTab(v as typeof tab)}
       className="flex flex-col gap-4"
     >
-      <TabsList>
+      <TabsList className="h-auto flex-wrap justify-start">
         <TabsTrigger value="configuration">Configuração</TabsTrigger>
-        <TabsTrigger value="test" disabled={!hasVersion}>
-          Teste
-        </TabsTrigger>
+        <TabsTrigger value="test">Teste</TabsTrigger>
         <TabsTrigger value="capacidades">Capacidades</TabsTrigger>
         <TabsTrigger value="runs">Execuções</TabsTrigger>
         <TabsTrigger value="history">Histórico</TabsTrigger>
         <TabsTrigger value="proposals">Propostas</TabsTrigger>
       </TabsList>
+      <p className="text-sm text-muted-foreground" data-testid="ajuda-da-aba">
+        {ajuda[tab]}
+      </p>
 
       <TabsContent value="configuration" className="m-0">
         <AgentForm

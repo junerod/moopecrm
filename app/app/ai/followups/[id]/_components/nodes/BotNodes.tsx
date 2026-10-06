@@ -13,6 +13,7 @@ function ramosDoNo(type: NodeType, config: RFNode["data"]["config"]) {
   if (type === "menu") return nodeBranches({ type, config: config as ConfigOf<"menu"> });
   if (type === "faq") return nodeBranches({ type, config: config as ConfigOf<"faq"> });
   if (type === "horario") return nodeBranches({ type, config: config as ConfigOf<"horario"> });
+  if (type === "consulta") return nodeBranches({ type, config: config as ConfigOf<"consulta"> });
   return undefined;
 }
 
@@ -44,4 +45,7 @@ export function HumanoNode(props: NodeProps<RFNode>) {
 }
 export function AssistenteNode(props: NodeProps<RFNode>) {
   return <BotNode {...props} type="assistente" />;
+}
+export function ConsultaNode(props: NodeProps<RFNode>) {
+  return <BotNode {...props} type="consulta" />;
 }

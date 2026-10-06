@@ -129,6 +129,7 @@ const TIPO_DO_NO: Record<FlowNode["type"], string> = {
   horario: "Horário",
   humano: "Pessoa",
   assistente: "Assistente",
+  consulta: "Consulta à gestão",
 };
 
 const DESFECHO: Record<string, string> = {
@@ -185,6 +186,8 @@ export function resumoDoNo(node: FlowNode): NoDoDossie {
       return { ...base, resumo: "chama uma pessoa da equipe" };
     case "assistente":
       return { ...base, resumo: "solta o assistente de IA" };
+    case "consulta":
+      return { ...base, resumo: "responde com o dado que a gestão devolver" };
   }
 }
 

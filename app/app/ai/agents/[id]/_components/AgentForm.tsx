@@ -38,6 +38,7 @@ import { TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
 import { PROVEDORES } from "@/lib/ai/pontos/provedores";
 
 import { ModelPicker, useModelMeta } from "./ModelPicker";
+import { escolherCredencialPadrao } from "@/lib/ai/agents/credencial-padrao";
 import { CHAVE_DA_INSTALACAO, CredentialPicker, findCredential } from "./CredentialPicker";
 import { rotuloDoEstadoDoCanal } from "@/lib/channels/estado";
 import { ToolPicker } from "./ToolPicker";
@@ -153,6 +154,29 @@ interface FollowupValue {
 
 const DEFAULT_FOLLOWUP: FollowupValue = { enabled: false, flow_pointer_ids: [] };
 
+const PASSO_DO_CAMPO: Record<string, "quem" | "inteligencia" | "fala" | "faz" | "quando" | "ajustes"> = {
+  name: "quem",
+  description: "quem",
+  channel_session_id: "quem",
+  provider: "inteligencia",
+  model: "inteligencia",
+  credential_id: "inteligencia",
+  system_prompt: "fala",
+  split_max_chars: "fala",
+  tool_ids: "faz",
+};
+
+const AJUDA_DO_PASSO = {
+  quem: "Nome e o número de WhatsApp por onde ele atende.",
+  inteligencia:
+    "A empresa de IA e a chave. Se a instalação já tem uma chave, ela entra sozinha — você só troca se quiser outra.",
+  fala: "O texto que ensina o tom. Escreva como você explicaria para um atendente novo.",
+  faz: "O que ele pode consultar e quando passa para uma pessoa. O que estiver desligado, ele não faz.",
+  quando: "Em que mensagem ele entra, e se retoma quem parou de responder.",
+  ajustes: "Limites de custo e o tamanho das mensagens. O padrão já serve para começar.",
+  tudo: "A configuração inteira numa tela. Os passos acima separam a mesma coisa.",
+} as const;
+
 const DEFAULT_TRIGGER: TriggerValue = {
   events: ["message"],
   filters: {
@@ -209,6 +233,21 @@ function buildState(args: {
   };
 }
 
+function aplicarChavePadrao(
+  estado: FormState,
+  credenciais: CredentialRow[],
+  provedoresDaInstalacao: string[],
+): FormState {
+  if (estado.credential_id) return estado;
+  const escolhida = escolherCredencialPadrao({
+    provider: estado.provider,
+    instalacaoTemChave: provedoresDaInstalacao.includes(estado.provider),
+    credenciais,
+    tokenDaInstalacao: CHAVE_DA_INSTALACAO,
+  });
+  return escolhida ? { ...estado, credential_id: escolhida } : estado;
+}
+
 function toVersionPayload(s: FormState) {
   return {
     system_prompt: s.system_prompt,
@@ -251,9 +290,17 @@ export function AgentForm(props: Props) {
       // O fallback existe para chamadores que ainda não a passam; sem ele, um
       // agente pausado abriria no texto padrão e o prompt "sumiria".
       const ref = props.base ?? props.draft ?? props.published;
-      return buildState({ agent: props.agent, version: ref });
+      return aplicarChavePadrao(
+        buildState({ agent: props.agent, version: ref }),
+        props.credentials,
+        props.provedoresDaInstalacao ?? [],
+      );
     }
-    return buildState({ version: null });
+    return aplicarChavePadrao(
+      buildState({ version: null }),
+      props.credentials,
+      props.provedoresDaInstalacao ?? [],
+    );
   }, [isEdit, props]);
 
   const [form, setForm] = React.useState<FormState>(baseline);
@@ -266,6 +313,10 @@ export function AgentForm(props: Props) {
    * que salvou um e não o outro.
    */
   const [papel, setPapel] = React.useState<"conversa" | "operacao" | "seguranca">("conversa");
+  const [passo, setPasso] = React.useState<
+    "quem" | "inteligencia" | "fala" | "faz" | "quando" | "ajustes" | "tudo"
+  >("quem");
+  const ver = (alvo: typeof passo) => (passo === "tudo" || passo === alvo ? "" : "hidden");
 
   const dirty = JSON.stringify(form) !== JSON.stringify(baseline);
 
@@ -275,7 +326,13 @@ export function AgentForm(props: Props) {
 
   // Quando provider muda, limpa credential e modelo (eles dependem do provider).
   function changeProvider(p: Provider) {
-    patch({ provider: p, credential_id: "", model: "" });
+    const credential_id = escolherCredencialPadrao({
+      provider: p,
+      instalacaoTemChave: (props.provedoresDaInstalacao ?? []).includes(p),
+      credenciais: props.credentials,
+      tokenDaInstalacao: CHAVE_DA_INSTALACAO,
+    });
+    patch({ provider: p, credential_id, model: "" });
   }
 
   const cred = findCredential(props.credentials, form.credential_id);
@@ -354,6 +411,9 @@ export function AgentForm(props: Props) {
 
   async function handleSave() {
     if (!isValid) {
+      const chave = Object.keys(validation)[0];
+      const destino = chave ? PASSO_DO_CAMPO[chave] : undefined;
+      if (destino) setPasso(destino);
       const first = Object.values(validation)[0];
       toast.error(first ?? "Formulário inválido.");
       return;
@@ -536,6 +596,40 @@ export function AgentForm(props: Props) {
         ))}
       </div>
 
+      {papel === "conversa" ? (
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Passos da configuração">
+          {(
+            [
+              ["quem", "1. Quem é"],
+              ["inteligencia", "2. Inteligência"],
+              ["fala", "3. Como fala"],
+              ["faz", "4. O que faz"],
+              ["quando", "5. Quando entra"],
+              ["ajustes", "6. Ajustes"],
+              ["tudo", "Ver tudo"],
+            ] as const
+          ).map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              data-testid={`passo-${id}`}
+              aria-selected={passo === id}
+              onClick={() => setPasso(id)}
+              className={
+                passo === id
+                  ? "rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background"
+                  : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+              }
+            >
+              {rotulo}
+            </button>
+          ))}
+          <p className="w-full text-xs text-muted-foreground">
+            {AJUDA_DO_PASSO[passo]} Salvar grava o assistente inteiro, não só este passo.
+          </p>
+        </div>
+      ) : null}
+
       {papel === "seguranca" ? <PainelDeSeguranca /> : null}
 
       {papel === "operacao" ? (
@@ -566,11 +660,17 @@ export function AgentForm(props: Props) {
       ) : null}
 
       {/* Two-column grid */}
-      <div className={papel === "conversa" ? "grid grid-cols-1 gap-4 lg:grid-cols-2" : "hidden"}>
+      <div
+        className={
+          papel === "conversa"
+            ? `grid grid-cols-1 gap-4 ${passo === "tudo" ? "lg:grid-cols-2" : "mx-auto w-full max-w-3xl"}`
+            : "hidden"
+        }
+      >
         {/* COLUMN 1 */}
         <div className="space-y-4">
           {/* Identification */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("quem")}`}>
             <h3 className="text-sm font-medium">Quem é este agente</h3>
             <div className="space-y-1">
               <Label htmlFor="name">Nome</Label>
@@ -617,7 +717,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Provider + credential + model */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("inteligencia")}`}>
             <h3 className="text-sm font-medium">A inteligência que ele usa</h3>
             <div className="space-y-1">
               <Label htmlFor="provider">Empresa de inteligência artificial</Label>
@@ -669,7 +769,12 @@ export function AgentForm(props: Props) {
             />
             {validation.credential_id ? (
               <p className="text-xs text-destructive">{validation.credential_id}</p>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                A chave padrão entra sozinha: a desta instalação, ou a única chave validada
+                desta empresa. Com mais de uma, você escolhe qual este assistente usa.
+              </p>
+            )}
             {cred && credSt !== "validated" ? (
               <p className="text-xs text-amber-600 dark:text-amber-400">
                 Credencial selecionada está com status {credSt}. Publish bloqueado até validar.
@@ -678,7 +783,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* WhatsApp session */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("quem")}`}>
             <h3 className="text-sm font-medium">Por qual número ele atende</h3>
             {props.routerMembership && (
               <div className="flex items-start gap-2 rounded-md bg-accent-soft p-3 text-xs text-text-muted">
@@ -734,7 +839,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Limits */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("ajustes")}`}>
             <h3 className="text-sm font-medium">Freios de segurança</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -810,7 +915,7 @@ export function AgentForm(props: Props) {
         {/* COLUMN 2 */}
         <div className="space-y-4">
           {/* Prompt */}
-          <Card className="space-y-2 p-4">
+          <Card className={`space-y-2 p-4 ${ver("fala")}`}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">As instruções dele</h3>
               <div className="flex items-center gap-2">
@@ -863,7 +968,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Estilo de resposta (split de mensagens — Onda 4) */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("fala")}`}>
             <h3 className="text-sm font-medium">Estilo de resposta</h3>
             <div className="flex items-center gap-2">
               <Switch
@@ -903,7 +1008,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Capacidades */}
-          <Card className="space-y-2 p-4">
+          <Card className={`space-y-2 p-4 ${ver("faz")}`}>
             <h3 className="text-sm font-medium">O que o agente pode fazer</h3>
             <p className="text-xs text-muted-foreground">
               Ligue por jornada de trabalho. O agente só consegue fazer o que estiver
@@ -920,7 +1025,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Triggers */}
-          <Card className="space-y-2 p-4">
+          <Card className={`space-y-2 p-4 ${ver("quando")}`}>
             <h3 className="text-sm font-medium">Quando ele entra em ação</h3>
             <TriggerEditor
               value={form.trigger_config}
@@ -930,7 +1035,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Handoff */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("faz")}`}>
             <h3 className="text-sm font-medium">Passar para uma pessoa</h3>
             <div className="flex items-center gap-2">
               <Switch
@@ -951,7 +1056,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Casos humanos */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("faz")}`}>
             <h3 className="text-sm font-medium">Pedir ajuda sem sair da conversa</h3>
             <div className="flex items-center gap-2">
               <Switch
@@ -972,7 +1077,7 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Follow-up */}
-          <Card className="space-y-3 p-4">
+          <Card className={`space-y-3 p-4 ${ver("quando")}`}>
             <h3 className="text-sm font-medium">Follow-up</h3>
             <p className="text-xs text-muted-foreground">
               Retomar sozinho quem parou de responder, para o interessado não sumir

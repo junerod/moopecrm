@@ -57,8 +57,19 @@ export function ProposalsPanel({
   }
 
   const items = data?.items ?? [];
+  const explicacao = (
+    <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm leading-relaxed">
+      <p className="font-medium">Proposta é uma sugestão, não uma mudança.</p>
+      <p className="mt-1 text-muted-foreground">
+        Depois de atender, o sistema pode sugerir uma regra, um exemplo ou uma memória.
+        Você lê e aplica se fizer sentido. Sem o seu clique, o assistente continua igual.
+      </p>
+    </div>
+  );
   if (items.length === 0) {
     return (
+      <div className="flex flex-col gap-4">
+        {explicacao}
       <div className="flex flex-col items-center gap-2 rounded-lg border border-border py-16 text-center">
         <Brain size={28} className="text-muted-foreground/60" aria-hidden />
         <p className="text-sm font-medium">Nenhuma proposta ainda</p>
@@ -67,10 +78,13 @@ export function ProposalsPanel({
           que entra — nada é aplicado sozinho.
         </p>
       </div>
+      </div>
     );
   }
 
   return (
+    <div className="flex flex-col gap-4">
+      {explicacao}
     <ul className="divide-y divide-border rounded-lg border border-border">
       {items.map((p) => {
         const when = formatDistanceToNowStrict(new Date(p.proposed_at), {
@@ -102,5 +116,6 @@ export function ProposalsPanel({
         );
       })}
     </ul>
+    </div>
   );
 }

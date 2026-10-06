@@ -5,7 +5,8 @@
  * `loadPublishedAgentConfig` por channel_session.
  *
  * Regra de decisão (spec 2026-07-23, decisões do Rafael 2026-07-26):
- *   1. sem router ativo pra sessão ⇒ fluxo atual intacto (config por sessão).
+ *   1. sem router ativo pra sessão ⇒ se a conversa tem agente fixado (bloco
+ *      Assistente do bot), usa esse publicado; senão, config por sessão.
  *   2. sticky ativo (router.sticky + stickyAgentId ainda membro do router):
  *      classifica MESMO ASSIM (barato, é o que detecta troca de assunto) —
  *      só troca se a intenção vier DIFERENTE da sticky E confiança >= min;
@@ -101,6 +102,22 @@ export async function resolveTurnAgent(
   try {
     const router = await _loadActiveRouter(db, input.tenantId, input.channelSessionId);
     if (router === null) {
+      // O bloco Assistente do bot grava o agente escolhido na conversa. Sem
+      // router, esse é o único jeito de a próxima mensagem cair nele — e não
+      // no agente genérico do número. Se o id não tem versão publicada, segue
+      // o da sessão, como antes.
+      if (input.stickyAgentId) {
+        const fixado = await _loadAgentById(db, input.tenantId, input.stickyAgentId);
+        if (fixado) {
+          return {
+            config: fixado,
+            routerId: null,
+            intentName: null,
+            confidence: null,
+            outcome: 'no_router',
+          };
+        }
+      }
       return {
         config: await _loadAgentBySession(db, input.tenantId, input.channelSessionId),
         routerId: null,

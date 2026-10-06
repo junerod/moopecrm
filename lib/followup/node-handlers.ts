@@ -307,6 +307,11 @@ export function processNode(input: {
   menuRetryCount?: number;
   /** Já existe `action_sent` neste nó (FAQ/humano: não reenviar). */
   actionSent?: boolean;
+  /**
+   * Consulta à gestão, já resolvida pelo engine. Ausente = não encontrou.
+   * `actionSent` no segundo tick significa que o texto de "encontrou" já saiu.
+   */
+  consulta?: { achou: boolean; texto: string };
 }): NodeResult {
   const {
     node,
@@ -325,6 +330,7 @@ export function processNode(input: {
     dentroDoHorario,
     menuRetryCount,
     actionSent,
+    consulta,
   } = input;
 
   switch (node.type) {
@@ -558,6 +564,28 @@ export function processNode(input: {
 
     case "assistente": {
       return { kind: "complete", outcome: null, cancel_reason: "released_to_assistant" };
+    }
+
+    case "consulta": {
+      const texto = consulta?.texto?.trim() ?? "";
+      const achou = consulta?.achou === true && texto.length > 0;
+      if (achou && !actionSent && !actionEnqueued) {
+        return {
+          kind: "enqueue_turn",
+          purpose: "send_message",
+          wake_status: "active",
+          fixed_body: texto,
+        };
+      }
+      if (achou && !actionSent) {
+        return { kind: "recheck", next_eval_at: new Date(clock().getTime() + ACTION_RECHECK_MS) };
+      }
+      const ramo = actionSent || achou ? "achou" : "nao_achou";
+      const edge = selectEdge(edges, node.id, { type: "branch", branch_id: ramo });
+      if (!edge) {
+        return { kind: "fail", error: `consulta node "${node.id}" has no edge for "${ramo}"` };
+      }
+      return { kind: "advance", next_node_id: edge.target, next_eval_at: clock() };
     }
   }
 }

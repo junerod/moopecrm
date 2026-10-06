@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { gravarAvisoDePessoa, type PedidoDePessoa } from "@/lib/followup/aviso-de-pessoa";
 
-import { flowGraphSchema, type FlowGraph, type FlowNode } from "./graph-schema";
+import { flowGraphSchema, type FlowGraph, type FlowNode, type FonteDeConsulta } from "./graph-schema";
 import {
   ACTION_RECHECK_MS,
   BACKOFF_MS,
@@ -27,6 +27,7 @@ import {
   type LeadFacts,
   type NodeResult,
 } from "./node-handlers";
+import { executarConsultaDoBot, type ResultadoDaConsulta } from "./consulta-gestao";
 import { estaDentroDoHorario } from "./horario";
 import { coletarEsperasAdaptativas, type EsperaAdaptativa, type TimingPlan } from "./timing-plan";
 
@@ -85,8 +86,19 @@ export interface AdminClient {
   loadLastInboundText?(orgId: string, contactId: string): Promise<string | null>;
   /** `trigger_config` do agente publicado — nó Horário. Ausente = falha aberta. */
   loadPublishedAgentHours?(orgId: string): Promise<unknown>;
+  /**
+   * Nó Consultar gestão. Ausente (harness sem Moope) = o bloco segue por
+   * «Não encontrou», em vez de inventar texto.
+   */
+  consultarGestao?(
+    orgId: string,
+    contactId: string,
+    fonte: FonteDeConsulta,
+  ): Promise<ResultadoDaConsulta>;
   /** Nó Humano: pede pessoa (inbox + force_human). O segundo argumento é quem recebe. */
   requestBotHandoff?(enrollment: EnrollmentRow, pedido?: PedidoDePessoa): Promise<void>;
+  /** Nó Assistente: a próxima mensagem desta conversa cai neste agente publicado. */
+  fixarAssistente?(orgId: string, conversationId: string, agentId: string): Promise<void>;
   /** Inserts the step's audit event; `inserted:false` means idempotency_key already existed (23505 replay). */
   insertEnrollmentEvent(event: {
     organization_id: string;
@@ -399,6 +411,29 @@ async function applyResult(
     );
   }
 
+  if (
+    result.kind === "complete" &&
+    result.cancel_reason === "released_to_assistant" &&
+    node.type === "assistente" &&
+    node.config.agent_id &&
+    enrollment.conversation_id &&
+    db.fixarAssistente &&
+    !isReplay
+  ) {
+    try {
+      await db.fixarAssistente(
+        enrollment.organization_id,
+        enrollment.conversation_id,
+        node.config.agent_id,
+      );
+    } catch (err) {
+      logger.warn("não fixei o assistente do bot; a conversa segue com o do número", {
+        organization_id: enrollment.organization_id,
+        err: err instanceof Error ? err.name : "unknown",
+      });
+    }
+  }
+
   if (!isReplay) tallyOutcome(result, summary);
 }
 
@@ -452,7 +487,10 @@ async function processEnrollment(deps: TickDeps, enrollment: EnrollmentRow, summ
   let actionSent: boolean | undefined;
 
   const precisaEventosDoBot =
-    node.type === "menu" || node.type === "faq" || node.type === "humano";
+    node.type === "menu" ||
+    node.type === "faq" ||
+    node.type === "humano" ||
+    node.type === "consulta";
 
   if (node.type === "wait" || node.type === "ai_classify" || node.type === "action" || precisaEventosDoBot) {
     const events = await db.loadEnrollmentEvents(enrollment.id);
@@ -497,6 +535,28 @@ async function processEnrollment(deps: TickDeps, enrollment: EnrollmentRow, summ
     dentroDoHorario = estaDentroDoHorario(cfg, clock());
   }
 
+  let consulta: ResultadoDaConsulta | undefined;
+  if (node.type === "consulta" && !actionSent && !actionEnqueued) {
+    if (!db.consultarGestao) {
+      consulta = { achou: false, texto: "" };
+    } else {
+      try {
+        consulta = await db.consultarGestao(
+          enrollment.organization_id,
+          enrollment.contact_id,
+          node.config.fonte,
+        );
+      } catch (err) {
+        logger.warn("consulta da gestão falhou; o bot segue por não encontrou", {
+          organization_id: enrollment.organization_id,
+          fonte: node.config.fonte,
+          err: err instanceof Error ? err.name : "unknown",
+        });
+        consulta = { achou: false, texto: "" };
+      }
+    }
+  }
+
   const result = processNode({
     node,
     edges: graph.edges,
@@ -514,6 +574,7 @@ async function processEnrollment(deps: TickDeps, enrollment: EnrollmentRow, summ
     dentroDoHorario,
     menuRetryCount,
     actionSent,
+    consulta,
   });
   await applyResult(deps, enrollment, node, result, summary, smartWaits);
 }
@@ -634,6 +695,38 @@ export function createSupabaseAdminClient(admin: SupabaseClient): AdminClient {
         .maybeSingle();
       if (vErr) throw new Error(vErr.message);
       return version?.trigger_config ?? null;
+    },
+    async consultarGestao(orgId, contactId, fonte) {
+      const { data, error } = await admin
+        .from("contacts")
+        .select("phone_number")
+        .eq("organization_id", orgId)
+        .eq("id", contactId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const phone = typeof data?.phone_number === "string" ? data.phone_number : null;
+      return executarConsultaDoBot(admin, orgId, phone, fonte);
+    },
+    async fixarAssistente(orgId, conversationId, agentId) {
+      const { data: agente, error: aErr } = await admin
+        .from("ai_agents")
+        .select("id, published_version_id")
+        .eq("organization_id", orgId)
+        .eq("id", agentId)
+        .is("archived_at", null)
+        .maybeSingle();
+      if (aErr) throw new Error(aErr.message);
+      const publicado = (agente as { published_version_id?: string | null } | null)?.published_version_id;
+      if (!publicado) return;
+      const { error } = await admin
+        .from("conversations")
+        .update({
+          active_ai_agent_id: agentId,
+          active_agent_set_at: new Date().toISOString(),
+        })
+        .eq("organization_id", orgId)
+        .eq("id", conversationId);
+      if (error) throw new Error(error.message);
     },
     async requestBotHandoff(enrollment, pedido) {
       await gravarAvisoDePessoa(

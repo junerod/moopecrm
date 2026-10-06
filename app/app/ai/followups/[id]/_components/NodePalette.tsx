@@ -27,8 +27,11 @@ export function NodePalette({ onAdd, onCriarMenu, variant = "desktop" }: Props) 
       data-testid="node-palette"
     >
       <h2 className="px-1 pb-1 text-xs font-medium uppercase tracking-wide text-text-muted">
-        Adicionar nó
+        Componentes
       </h2>
+      <p className="px-1 pb-2 text-[11px] leading-snug text-text-muted">
+        Cada cor é um tipo. O violeta chama um assistente de IA. O índigo consulta a gestão.
+      </p>
       {NODE_VISUAL_LIST.map((visual) => {
         const Icon = visual.icon;
         return (
@@ -37,7 +40,7 @@ export function NodePalette({ onAdd, onCriarMenu, variant = "desktop" }: Props) 
               type="button"
               variant="secondary"
               size="sm"
-              className="justify-start gap-2"
+              className={cn("justify-start gap-2 border-l-4 bg-white/80 dark:bg-transparent", visual.borderClassName, visual.washClassName)}
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.setData("application/x-followup-node-type", visual.type);

@@ -135,9 +135,13 @@ export function TestPanel({ agent, draft, published, readOnly }: Props) {
 
   if (!target) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Configure e salve uma versão antes de testar.
-      </p>
+      <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm leading-relaxed">
+        <p className="font-medium">O teste abre depois do primeiro salvamento.</p>
+        <p className="mt-1 text-muted-foreground">
+          Na aba Configuração, salve o rascunho. Aí você escreve como se fosse o cliente
+          e vê a resposta aqui — sem enviar nada no WhatsApp.
+        </p>
+      </div>
     );
   }
 

@@ -17,6 +17,7 @@ export const NODE_TYPES = [
   'horario',
   'humano',
   'assistente',
+  'consulta',
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -276,6 +277,23 @@ export const humanoConfigSchema = z.strictObject({
 
 export const assistenteConfigSchema = z.strictObject({
   specialty: z.string().min(1).max(40).optional(),
+  /** Assistente publicado em Assistentes de IA. Ausente = o deste WhatsApp. */
+  agent_id: z.string().uuid().optional(),
+});
+
+/** O que o bloco pede à gestão. O texto que sai é montado só com o que voltou. */
+export const FONTES_DE_CONSULTA = ['cliente', 'oferta', 'financeiro', 'situacao'] as const;
+export type FonteDeConsulta = (typeof FONTES_DE_CONSULTA)[number];
+
+export const ROTULO_DA_FONTE: Record<FonteDeConsulta, string> = {
+  cliente: 'Quem é o cliente',
+  oferta: 'Veículos e valores',
+  financeiro: 'Financeiro e boleto',
+  situacao: 'Contrato e situação',
+};
+
+export const consultaConfigSchema = z.strictObject({
+  fonte: z.enum(FONTES_DE_CONSULTA),
 });
 
 /**
@@ -398,6 +416,16 @@ export const flowNodeSchema = z.discriminatedUnion('type', [
       y: z.number(),
     }),
     config: assistenteConfigSchema,
+  }),
+  z.strictObject({
+    id: z.string().min(1),
+    type: z.literal('consulta'),
+    label: z.string().min(1).max(60),
+    position: z.strictObject({
+      x: z.number(),
+      y: z.number(),
+    }),
+    config: consultaConfigSchema,
   }),
 ]);
 
@@ -632,6 +660,24 @@ export function nodeBranches(node: BranchableNode): FlowBranch[] {
           check: null,
           kind: 'match',
           condition: { type: 'branch', branch_id: 'fora' },
+        },
+      ];
+
+    case 'consulta':
+      return [
+        {
+          id: 'achou',
+          label: 'Encontrou',
+          check: null,
+          kind: 'match',
+          condition: { type: 'branch', branch_id: 'achou' },
+        },
+        {
+          id: 'nao_achou',
+          label: 'Não encontrou',
+          check: null,
+          kind: 'match',
+          condition: { type: 'branch', branch_id: 'nao_achou' },
         },
       ];
 

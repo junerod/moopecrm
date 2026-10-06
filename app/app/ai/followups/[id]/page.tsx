@@ -46,6 +46,18 @@ export default async function FollowupFlowBuilderPage({
 
   if (!pointer) notFound();
 
+  const { data: agentes } = await supabase
+    .from("ai_agents")
+    .select("id, name, published_version_id")
+    .eq("organization_id", activeOrg.orgId)
+    .is("archived_at", null)
+    .order("name");
+  const assistentes = (agentes ?? []).map((a) => ({
+    id: a.id as string,
+    name: a.name as string,
+    publicado: Boolean(a.published_version_id),
+  }));
+
   const flow: FollowupFlowDetailRow = {
     ...(pointer as unknown as Omit<FollowupFlowDetailRow, "versions_count" | "previous_version_id">),
     versions_count: versionRows?.length ?? 0,
@@ -54,7 +66,7 @@ export default async function FollowupFlowBuilderPage({
 
   return (
     <div className="flex h-full flex-col">
-      <FlowBuilder flowId={id} initialData={flow} modeloInicial={modelo} />
+      <FlowBuilder flowId={id} initialData={flow} modeloInicial={modelo} assistentes={assistentes} />
     </div>
   );
 }

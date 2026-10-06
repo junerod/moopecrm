@@ -840,6 +840,34 @@ describe("nós do bot visual", () => {
     }
   });
 
+  it("consulta envia só o texto oficial e depois segue por encontrou", () => {
+    const node: FlowNode = {
+      id: "c1",
+      type: "consulta",
+      label: "Valores",
+      position: { x: 0, y: 0 },
+      config: { fonte: "oferta" },
+    };
+    const edges: FlowEdge[] = [
+      edge({ source: "c1", target: "ok", condition: { type: "branch", branch_id: "achou" } }),
+      edge({ source: "c1", target: "vazio", condition: { type: "branch", branch_id: "nao_achou" } }),
+    ];
+    const base = { node, edges, enrollment: enrollment(), lead: lead(), clock };
+    expect(processNode({ ...base, consulta: { achou: true, texto: "Onix — disponível" } })).toMatchObject({
+      kind: "enqueue_turn",
+      fixed_body: "Onix — disponível",
+    });
+    expect(processNode({ ...base, consulta: { achou: true, texto: "Onix — disponível" }, actionSent: true })).toMatchObject({
+      kind: "advance",
+      next_node_id: "ok",
+    });
+    expect(processNode({ ...base, consulta: { achou: false, texto: "" } })).toMatchObject({
+      kind: "advance",
+      next_node_id: "vazio",
+    });
+    expect(processNode(base)).toMatchObject({ kind: "advance", next_node_id: "vazio" });
+  });
+
   it("humano com recado envia e depois encerra em handoff", () => {
     const node: FlowNode = {
       id: "hum1",

@@ -63,7 +63,8 @@ export function BotsHero() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[var(--color-text)]">Assistente</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-text-muted)]">
-                  O jeito de falar — isso se configura em Assistentes IA.
+                  No quadro, o bloco violeta chama um assistente publicado. O índigo
+                  consulta cliente, valores, boleto ou contrato na Moope.
                 </p>
               </div>
             </li>

@@ -39,6 +39,7 @@ describe('graph-schema', () => {
         'horario',
         'humano',
         'assistente',
+        'consulta',
       ]);
     });
 

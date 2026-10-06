@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FollowupFlowDetailRow } from "@/hooks/followup/useFollowupFlow";
+import type { AssistenteDoFluxo } from "./forms/AssistenteForm";
 
 /**
  * @xyflow/react is a large dependency — this is the ONLY route that loads it.
@@ -23,12 +24,18 @@ interface Props {
   flowId: string;
   initialData: FollowupFlowDetailRow;
   modeloInicial?: string;
+  assistentes?: AssistenteDoFluxo[];
 }
 
-export function FlowBuilder({ flowId, initialData, modeloInicial }: Props) {
+export function FlowBuilder({ flowId, initialData, modeloInicial, assistentes }: Props) {
   return (
     <div className="flex h-full min-h-[600px] flex-1 flex-col" data-testid="flow-builder-shell">
-      <FlowCanvas flowId={flowId} initialData={initialData} modeloInicial={modeloInicial} />
+      <FlowCanvas
+        flowId={flowId}
+        initialData={initialData}
+        modeloInicial={modeloInicial}
+        assistentes={assistentes}
+      />
     </div>
   );
 }
