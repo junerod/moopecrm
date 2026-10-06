@@ -12,8 +12,17 @@ import { escolherModeloDoProvedor } from "@/lib/ai/agents/escolher-modelo";
 import { chaveDePlataforma } from "@/lib/ai/runtime/agent";
 import { catalogoComHandler } from "@/lib/ai/agents/capacidades-padrao";
 import { ligarPacote, TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
-import { TOOLS_IDS_OPERADOR_LOCADORA } from "@/lib/mcp/tools/locadora";
 import { carregarConexaoLocadora } from "@/lib/moope/cliente-locadora";
+import {
+  DESCRICAO_EXEMPLO_LOCADORA,
+  FERRAMENTAS_EXEMPLO_LOCADORA,
+  FERRAMENTAS_OPERADOR_EXEMPLO_LOCADORA,
+  HANDOFF_EXEMPLO_LOCADORA,
+  PROMPT_EXEMPLO_LOCADORA,
+  ehNomeDoExemploLocadora,
+  ferramentasDoExemploEstaoPeladas,
+  promptDoExemploEstaPelado,
+} from "@/lib/moope/exemplo-assistente-locadora";
 
 export const NOME_AGENTE_ATENDIMENTO_LOCADORA = "Atendimento locadora";
 
@@ -219,18 +228,32 @@ function camposDaVersao(base: {
     organization_id: base.orgId,
     agent_id: base.agentId,
     version_number: base.versionNumber,
-    system_prompt: VOZ_ATENDIMENTO_LOCADORA,
+    system_prompt: PROMPT_EXEMPLO_LOCADORA,
     provider: base.pub.provider,
     model: base.pub.modelId,
     credential_id: base.pub.credentialId,
-    tool_ids: toolIdsDoConversadorLocadora(),
+    tool_ids: [...FERRAMENTAS_EXEMPLO_LOCADORA],
     operator_enabled: true,
     operator_model: null,
-    operator_tool_ids: [...TOOLS_IDS_OPERADOR_LOCADORA],
+    operator_tool_ids: [...FERRAMENTAS_OPERADOR_EXEMPLO_LOCADORA],
+    handoff_keywords: [...HANDOFF_EXEMPLO_LOCADORA],
+    handoff_tool_enabled: true,
+    split_messages: true,
+    split_max_chars: 480,
+    cases_enabled: false,
+    trigger_config: {
+      events: ["message"],
+      filters: {
+        ignore_groups: true,
+        ignore_self: true,
+        keyword_regex: null,
+        business_hours: null,
+      },
+      concurrency: "one_per_conversation",
+    },
     pipeline_ids: base.pipelineIds,
     channel_session_id: base.pub.canalId,
     followup: { enabled: false, flow_pointer_ids: [] },
-    handoff_tool_enabled: true,
     status: base.pub.publicar ? "published" : "draft",
     published_at: base.pub.publicar ? new Date().toISOString() : null,
     created_by: base.userId,
@@ -309,7 +332,8 @@ async function adaptarDefault(
     .from("ai_agents")
     .update({
       name: NOME_AGENTE_ATENDIMENTO_LOCADORA,
-      system_prompt: VOZ_ATENDIMENTO_LOCADORA,
+      description: DESCRICAO_EXEMPLO_LOCADORA,
+      system_prompt: PROMPT_EXEMPLO_LOCADORA,
       kind: "mcp_agent",
     })
     .eq("id", agentId)
@@ -338,7 +362,8 @@ async function criarNovo(
     .insert({
       organization_id: orgId,
       name: NOME_AGENTE_ATENDIMENTO_LOCADORA,
-      system_prompt: VOZ_ATENDIMENTO_LOCADORA,
+      description: DESCRICAO_EXEMPLO_LOCADORA,
+      system_prompt: PROMPT_EXEMPLO_LOCADORA,
       kind: "mcp_agent",
       is_default: viraDefault,
       is_active: true,
@@ -381,6 +406,15 @@ async function gravarVersao(
     return { ok: true, agent_id: agentId, status: "draft", origem, motivo: pub.motivo ?? "no_channel" };
   }
 
+  await admin
+    .from("ai_agents")
+    .update({
+      system_prompt: PROMPT_EXEMPLO_LOCADORA,
+      description: DESCRICAO_EXEMPLO_LOCADORA,
+    })
+    .eq("id", agentId)
+    .eq("organization_id", orgId);
+
   if (pub.publicar) {
     await admin
       .from("ai_agents")
@@ -391,4 +425,46 @@ async function gravarVersao(
   }
 
   return { ok: true, agent_id: agentId, status: "draft", origem, motivo: pub.motivo };
+}
+
+/**
+ * Abriu a ficha e ela ainda está no texto genérico, ou sem consulta nenhuma.
+ * Grava o exemplo uma vez. Versão que o dono já escreveu não é tocada.
+ */
+export async function preencherExemploSePelado(
+  admin: SupabaseClient,
+  orgId: string,
+  userId: string,
+  agentId: string,
+): Promise<boolean> {
+  const { data: agent } = await admin
+    .from("ai_agents")
+    .select("id, name")
+    .eq("organization_id", orgId)
+    .eq("id", agentId)
+    .is("archived_at", null)
+    .maybeSingle();
+  const nome = (agent as { name?: string } | null)?.name;
+  if (!ehNomeDoExemploLocadora(nome)) return false;
+
+  const { data: ver } = await admin
+    .from("ai_agent_versions")
+    .select("system_prompt, tool_ids, version_number")
+    .eq("organization_id", orgId)
+    .eq("agent_id", agentId)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const linha = ver as { system_prompt?: string; tool_ids?: string[]; version_number?: number } | null;
+  const pelado =
+    !linha ||
+    promptDoExemploEstaPelado(linha.system_prompt) ||
+    ferramentasDoExemploEstaoPeladas(linha.tool_ids);
+  if (!pelado) return false;
+
+  const next = (linha?.version_number ?? 0) + 1;
+  const r = await gravarVersao(admin, orgId, userId, agentId, next, "existente");
+  // Sem canal ou sem modelo a versão não entra. `ok` continua verdadeiro
+  // para não derrubar a ficha; aqui só conta o que de fato foi gravado.
+  return r.ok && r.motivo !== "no_channel" && r.motivo !== "no_model";
 }

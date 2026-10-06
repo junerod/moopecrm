@@ -17,7 +17,7 @@ import type { AgentVersionRow } from "@/hooks/ai/useAgentVersions";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  draft: AgentVersionRow;
+  draft: AgentVersionRow | null;
   published: AgentVersionRow | null;
   onConfirm: () => void;
   isPending: boolean;
@@ -37,23 +37,27 @@ export function PublishConfirmDialog({
   onConfirm,
   isPending,
 }: Props) {
-  const toolsDiff = diffArr(published?.tool_ids ?? [], draft.tool_ids);
-  const promptDeltaChars =
-    draft.system_prompt.length - (published?.system_prompt.length ?? 0);
-  const modelChanged = !published || draft.model !== published.model;
-  const providerChanged = !published || draft.provider !== published.provider;
+  const toolsDiff = diffArr(published?.tool_ids ?? [], draft?.tool_ids ?? []);
+  const promptDeltaChars = draft
+    ? draft.system_prompt.length - (published?.system_prompt.length ?? 0)
+    : 0;
+  const modelChanged = draft != null && (!published || draft.model !== published.model);
+  const providerChanged = draft != null && (!published || draft.provider !== published.provider);
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-lg">
         <AlertDialogHeader>
-          <AlertDialogTitle>Publicar v{draft.version_number}?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {draft ? `Publicar v${draft.version_number}?` : "Colocar no ar o que está nesta tela?"}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Esta versão se tornará a ativa no atendimento. A versão atual ({" "}
-            {published ? `v${published.version_number}` : "nenhuma"}) será marcada como superseded.
+            Esta versão passa a responder neste WhatsApp.
+            {published ? ` A que está no ar agora (v${published.version_number}) sai de cena.` : ""}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
+        {draft ? (
         <div className="space-y-2 rounded-md border border-border/60 p-3 text-xs">
           {providerChanged ? (
             <p>
@@ -86,11 +90,16 @@ export function PublishConfirmDialog({
                 : "sem alteração"}
           </p>
         </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            O que está nesta tela substitui a versão que já responde neste WhatsApp.
+          </p>
+        )}
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={isPending}>
-            {isPending ? "Publicando…" : `Publicar v${draft.version_number}`}
+            {isPending ? "Publicando…" : draft ? `Publicar v${draft.version_number}` : "Publicar"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

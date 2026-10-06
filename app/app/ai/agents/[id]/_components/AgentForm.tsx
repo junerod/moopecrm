@@ -39,6 +39,17 @@ import { PROVEDORES } from "@/lib/ai/pontos/provedores";
 
 import { ModelPicker, useModelMeta } from "./ModelPicker";
 import { escolherCredencialPadrao } from "@/lib/ai/agents/credencial-padrao";
+import {
+  DESCRICAO_EXEMPLO_LOCADORA,
+  FERRAMENTAS_EXEMPLO_LOCADORA,
+  FERRAMENTAS_OPERADOR_EXEMPLO_LOCADORA,
+  HANDOFF_EXEMPLO_LOCADORA,
+  MODELO_EXEMPLO_LOCADORA,
+  PROMPT_EXEMPLO_LOCADORA,
+  ehNomeDoExemploLocadora,
+  ferramentasDoExemploEstaoPeladas,
+  promptDoExemploEstaPelado,
+} from "@/lib/moope/exemplo-assistente-locadora";
 import { CHAVE_DA_INSTALACAO, CredentialPicker, findCredential } from "./CredentialPicker";
 import { rotuloDoEstadoDoCanal } from "@/lib/channels/estado";
 import { ToolPicker } from "./ToolPicker";
@@ -248,6 +259,35 @@ function aplicarChavePadrao(
   return escolhida ? { ...estado, credential_id: escolhida } : estado;
 }
 
+function comExemploLocadora(
+  estado: FormState,
+  nome: string | undefined,
+  canais: { id: string; status: string }[],
+): FormState {
+  if (!ehNomeDoExemploLocadora(nome)) return estado;
+  const peladoTexto = promptDoExemploEstaPelado(estado.system_prompt);
+  const peladoTools = ferramentasDoExemploEstaoPeladas(estado.tool_ids);
+  if (!peladoTexto && !peladoTools) return estado;
+  const canalPronto =
+    canais.find((c) => c.status === "working" || c.status === "WORKING") ?? canais[0];
+  return {
+    ...estado,
+    description: estado.description.trim() ? estado.description : DESCRICAO_EXEMPLO_LOCADORA,
+    system_prompt: peladoTexto ? PROMPT_EXEMPLO_LOCADORA : estado.system_prompt,
+    tool_ids: peladoTools ? [...FERRAMENTAS_EXEMPLO_LOCADORA] : estado.tool_ids,
+    handoff_keywords: peladoTexto ? [...HANDOFF_EXEMPLO_LOCADORA] : estado.handoff_keywords,
+    handoff_tool_enabled: true,
+    split_messages: true,
+    split_max_chars: 480,
+    operator_enabled: true,
+    operator_tool_ids: peladoTools
+      ? [...FERRAMENTAS_OPERADOR_EXEMPLO_LOCADORA]
+      : estado.operator_tool_ids,
+    model: estado.model || MODELO_EXEMPLO_LOCADORA,
+    channel_session_id: estado.channel_session_id || canalPronto?.id || "",
+  };
+}
+
 function toVersionPayload(s: FormState) {
   return {
     system_prompt: s.system_prompt,
@@ -290,10 +330,14 @@ export function AgentForm(props: Props) {
       // O fallback existe para chamadores que ainda não a passam; sem ele, um
       // agente pausado abriria no texto padrão e o prompt "sumiria".
       const ref = props.base ?? props.draft ?? props.published;
-      return aplicarChavePadrao(
-        buildState({ agent: props.agent, version: ref }),
-        props.credentials,
-        props.provedoresDaInstalacao ?? [],
+      return comExemploLocadora(
+        aplicarChavePadrao(
+          buildState({ agent: props.agent, version: ref }),
+          props.credentials,
+          props.provedoresDaInstalacao ?? [],
+        ),
+        props.agent.name,
+        props.channelSessions,
       );
     }
     return aplicarChavePadrao(
@@ -392,30 +436,31 @@ export function AgentForm(props: Props) {
   const isValid = Object.keys(validation).length === 0;
 
   const publishBlockReason = React.useMemo(() => {
-    if (!isEdit) return "Salve o agent antes de publicar.";
-    if (!props.draft) return "Sem rascunho para publicar.";
-    if (!isValid) return "Resolva os erros do formulário.";
-    if (dirty) return "Salve o rascunho antes de publicar.";
-    if (!cred) return "Escolha a chave de acesso da empresa de inteligência artificial.";
-    if (credSt !== "validated")
-      return `Credencial ${form.provider} ${credSt === "invalid" ? "inválida" : "ainda não validada"}.`;
-    if (!channelSession) return "Escolha por qual número de WhatsApp ele atende.";
-    if (channelSession.status !== "working" && channelSession.status !== "WORKING")
-      return `Número WhatsApp não está conectado (status: ${channelSession.status}).`;
+    if (!isEdit) return null;
+    if (form.credential_id && form.credential_id !== CHAVE_DA_INSTALACAO) {
+      if (!cred) return "Escolha a chave de acesso da empresa de inteligência artificial.";
+      if (credSt !== "validated")
+        return `A chave de ${form.provider} ${credSt === "invalid" ? "é inválida" : "ainda não foi validada"}.`;
+    }
+    if (channelSession && channelSession.status !== "working" && channelSession.status !== "WORKING")
+      return `O WhatsApp não está conectado (status: ${channelSession.status}).`;
     return null;
-  }, [isEdit, props, isValid, dirty, cred, credSt, form.provider, channelSession]);
+  }, [isEdit, form.credential_id, form.provider, cred, credSt, channelSession]);
 
   // ---------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------
 
+  function apontarOQueFalta() {
+    const chave = Object.keys(validation)[0];
+    const destino = chave ? PASSO_DO_CAMPO[chave] : undefined;
+    if (destino) setPasso(destino);
+    toast.error(Object.values(validation)[0] ?? "Formulário inválido.");
+  }
+
   async function handleSave() {
     if (!isValid) {
-      const chave = Object.keys(validation)[0];
-      const destino = chave ? PASSO_DO_CAMPO[chave] : undefined;
-      if (destino) setPasso(destino);
-      const first = Object.values(validation)[0];
-      toast.error(first ?? "Formulário inválido.");
+      apontarOQueFalta();
       return;
     }
     setSaving(true);
@@ -453,16 +498,45 @@ export function AgentForm(props: Props) {
     }
   }
 
-  async function handlePublish() {
-    if (!isEdit || !props.draft) return;
+  function pedirPublicacao() {
+    if (!isEdit) return;
+    if (!isValid) {
+      apontarOQueFalta();
+      return;
+    }
+    if (publishBlockReason) {
+      toast.error(publishBlockReason);
+      if (publishBlockReason.startsWith("O WhatsApp")) setPasso("quem");
+      if (publishBlockReason.startsWith("A chave") || publishBlockReason.startsWith("Escolha a chave"))
+        setPasso("inteligencia");
+      return;
+    }
+    if (props.published) {
+      setConfirmOpen(true);
+      return;
+    }
+    void executarPublicacao();
+  }
+
+  async function executarPublicacao() {
+    if (!isEdit) return;
     setPublishing(true);
     try {
-      const res = await publishAgentAction(props.agent.id, props.draft.id);
+      let versionId = !dirty && props.draft ? props.draft.id : null;
+      if (!versionId) {
+        const salvo = await saveAgentDraftAction(props.agent.id, toVersionPayload(form));
+        if (!salvo.ok || !salvo.data) {
+          toast.error(!salvo.ok ? (salvo.message ?? `Erro: ${salvo.error}`) : "Não consegui gravar.");
+          return;
+        }
+        versionId = salvo.data.version_id;
+      }
+      const res = await publishAgentAction(props.agent.id, versionId);
       if (!res.ok) {
         toast.error(`Falha ao publicar: ${res.error}`);
         return;
       }
-      toast.success(`v${props.draft.version_number} publicada e ativa.`);
+      toast.success("Publicado. Este assistente passa a responder neste WhatsApp.");
       setConfirmOpen(false);
       router.refresh();
     } finally {
@@ -540,21 +614,20 @@ export function AgentForm(props: Props) {
             {saving ? "Salvando…" : isEdit ? "Salvar rascunho" : "Criar agente"}
           </Button>
           {isEdit ? (
-            <span title={publishBlockReason ?? undefined}>
-              <Button
-                variant="default"
-                onClick={() => setConfirmOpen(true)}
-                disabled={disabled || publishBlockReason !== null}
-              >
-                {publishing
-                  ? "Publicando…"
-                  : props.draft
-                    ? `Publicar v${props.draft.version_number}`
-                    : "Publicar"}
-              </Button>
-            </span>
+            <Button variant="default" onClick={pedirPublicacao} disabled={disabled}>
+              {publishing ? "Publicando…" : "Publicar"}
+            </Button>
           ) : null}
         </div>
+        {isEdit ? (
+          <p className="w-full text-xs text-muted-foreground">
+            Publicar coloca este assistente no ar neste WhatsApp — ele passa a responder as
+            mensagens desse número. No fluxo do bot, o bloco Assistente só lista quem já está
+            publicado, para você escolher em qual caminho ele entra.
+            {publishBlockReason ? ` ${publishBlockReason}` : ""}
+            {!isValid ? ` ${Object.values(validation)[0] ?? ""} O Publicar leva você até esse campo.` : ""}
+          </p>
+        ) : null}
       </div>
 
       {/*
@@ -671,6 +744,19 @@ export function AgentForm(props: Props) {
         <div className="space-y-4">
           {/* Identification */}
           <Card className={`space-y-3 p-4 ${ver("quem")}`}>
+            {isEdit &&
+            ehNomeDoExemploLocadora(props.agent.name) &&
+            (promptDoExemploEstaPelado(
+              (props.base ?? props.draft ?? props.published)?.system_prompt,
+            ) ||
+              ferramentasDoExemploEstaoPeladas(
+                (props.base ?? props.draft ?? props.published)?.tool_ids,
+              )) ? (
+              <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+                Este é o exemplo da locadora, já preenchido. Salve para ele valer nas conversas.
+                Pode editar o texto antes.
+              </p>
+            ) : null}
             <h3 className="text-sm font-medium">Quem é este agente</h3>
             <div className="space-y-1">
               <Label htmlFor="name">Nome</Label>
@@ -1112,13 +1198,13 @@ export function AgentForm(props: Props) {
       </div>
 
       {/* Publish dialog */}
-      {isEdit && props.draft ? (
+      {isEdit && props.published ? (
         <PublishConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          draft={props.draft}
+          draft={dirty ? null : props.draft}
           published={props.published}
-          onConfirm={handlePublish}
+          onConfirm={() => void executarPublicacao()}
           isPending={publishing}
         />
       ) : null}

@@ -6,7 +6,12 @@ import { ROLE_RANK } from "@/lib/auth/types";
 import {
   garantirAgenteAtendimentoLocadora,
   NOME_AGENTE_ATENDIMENTO_LOCADORA,
+  preencherExemploSePelado,
 } from "@/lib/moope/agente-atendimento-locadora";
+import {
+  ferramentasDoExemploEstaoPeladas,
+  promptDoExemploEstaPelado,
+} from "@/lib/moope/exemplo-assistente-locadora";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type AssistenteLocadoraCriado = {
@@ -42,15 +47,52 @@ export async function garantirAssistenteLocadoraAction(): Promise<
     .maybeSingle();
 
   if (ja?.id) {
-    const publicado = Boolean(ja.published_version_id);
+    const { data: ver } = await admin
+      .from("ai_agent_versions")
+      .select("system_prompt, tool_ids")
+      .eq("organization_id", org.orgId)
+      .eq("agent_id", ja.id)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const linha = ver as { system_prompt?: string; tool_ids?: string[] } | null;
+    const pelado =
+      !linha ||
+      promptDoExemploEstaPelado(linha.system_prompt) ||
+      ferramentasDoExemploEstaoPeladas(linha.tool_ids);
+    const gravou = pelado
+      ? await preencherExemploSePelado(admin, org.orgId, user.id, ja.id)
+      : false;
+    if (gravou) {
+      await audit({
+        action: "ai_agent.version_created",
+        actorUserId: user.id,
+        organizationId: org.orgId,
+        resourceType: "ai_agent",
+        resourceId: ja.id,
+        metadata: { origem: "exemplo_locadora" },
+        bypassedRls: true,
+      });
+    }
+    const { data: deNovo } = await admin
+      .from("ai_agents")
+      .select("id, published_version_id")
+      .eq("organization_id", org.orgId)
+      .eq("id", ja.id)
+      .maybeSingle();
+    const publicado = Boolean(deNovo?.published_version_id ?? ja.published_version_id);
     return {
       ok: true,
       agent_id: ja.id,
       name: NOME_AGENTE_ATENDIMENTO_LOCADORA,
       publicado,
-      message: publicado
-        ? "Este assistente já existe e está publicado. Pode usar neste bloco."
-        : "Este assistente existe, mas ainda não está publicado. Abra Assistentes de IA e publique.",
+      message: gravou
+        ? "Preenchi o exemplo da locadora: tom, boleto, contrato, ofertas e quando chamar uma pessoa. Revise e publique se ainda estiver em rascunho."
+        : pelado
+          ? "O exemplo está na ficha. Falta canal ou modelo para gravar a versão — abra Assistentes de IA e salve."
+          : publicado
+          ? "Este assistente já existe e está publicado. Pode usar neste bloco."
+          : "Este assistente existe, mas ainda não está publicado. Abra Assistentes de IA e publique.",
     };
   }
 
@@ -79,7 +121,7 @@ export async function garantirAssistenteLocadoraAction(): Promise<
     name: NOME_AGENTE_ATENDIMENTO_LOCADORA,
     publicado,
     message: publicado
-      ? "Atendimento da locadora criado e publicado. A próxima mensagem deste bloco cai nele."
-      : "Criei o rascunho, mas faltou canal, modelo ou chave para publicar. Abra Assistentes de IA.",
+      ? "Atendimento da locadora criado, preenchido (boleto, contrato, ofertas e quando chamar uma pessoa) e publicado."
+      : "Criei o exemplo preenchido, mas faltou canal, modelo ou chave para publicar. Abra Assistentes de IA — o texto já está na ficha.",
   };
 }

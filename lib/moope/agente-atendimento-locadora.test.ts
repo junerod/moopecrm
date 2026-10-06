@@ -231,5 +231,11 @@ describe("garantirAgenteAtendimentoLocadora", () => {
     expect(r.status).toBe("draft");
     expect(r.motivo).toBe("canal_ocupado");
     expect(estado.agentes.some((a) => a.name === NOME_AGENTE_ATENDIMENTO_LOCADORA)).toBe(true);
+    const gravada = estado.versoes.at(-1);
+    expect(String(gravada?.system_prompt)).toMatch(/boleto/);
+    expect(String(gravada?.system_prompt)).toMatch(/NUNCA invente/);
+    expect(gravada?.tool_ids).toEqual(expect.arrayContaining(["moope_obter_segunda_via", "moope_listar_oferta"]));
+    expect(gravada?.handoff_keywords).toEqual(expect.arrayContaining(["socorro", "pane"]));
+    expect(gravada?.split_messages).toBe(true);
   });
 });

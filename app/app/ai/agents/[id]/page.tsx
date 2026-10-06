@@ -22,6 +22,9 @@ import { coberturaDoFunil, type EtapaDoMapa } from "@/lib/leads/agent-mapping";
 import type { CoberturaPorFunil } from "./_components/FunisDoAgente";
 import { lerAmbiente } from "@/lib/instalacao/ambiente";
 import { escolherVersoesDaTela } from "@/lib/ai/agents/versoes-da-tela";
+import { audit } from "@/lib/audit";
+import { preencherExemploSePelado } from "@/lib/moope/agente-atendimento-locadora";
+import { ehNomeDoExemploLocadora } from "@/lib/moope/exemplo-assistente-locadora";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +76,39 @@ export default async function AgentEditorPage({
 
   if (!agentRow) notFound();
 
-  const agent = agentRow as unknown as AgentRow;
+  let agent = agentRow as unknown as AgentRow;
   const readOnly = ROLE_RANK[activeOrg.role] < ROLE_RANK.admin;
+
+  if (ehNomeDoExemploLocadora(agent.name) && !readOnly) {
+    try {
+      const gravou = await preencherExemploSePelado(
+        createAdminClient(),
+        activeOrg.orgId,
+        user.id,
+        agent.id,
+      );
+      if (gravou) {
+        await audit({
+          action: "ai_agent.version_created",
+          actorUserId: user.id,
+          organizationId: activeOrg.orgId,
+          resourceType: "ai_agent",
+          resourceId: agent.id,
+          metadata: { origem: "exemplo_locadora" },
+          bypassedRls: true,
+        });
+        const { data: fresco } = await supabase
+          .from("ai_agents")
+          .select(AGENT_COLUMNS)
+          .eq("id", agent.id)
+          .eq("organization_id", activeOrg.orgId)
+          .maybeSingle();
+        if (fresco) agent = fresco as unknown as AgentRow;
+      }
+    } catch {
+      // A ficha abre mesmo se o exemplo não gravar. O formulário ainda mostra o texto.
+    }
+  }
 
   // Caminho legado: rag_bot continua usando o editor pré-EPIC-13.
   if ((agent.kind ?? "rag_bot") !== "mcp_agent") {
