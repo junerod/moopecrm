@@ -4,9 +4,9 @@
  * pessoa encerra o bot, assistente solta a IA. O "se não escolher" também
  * nasce ligado — senão o Publicar recusa o menu.
  */
-import type { FlowEdge, FlowGraph, FlowNode } from "@/lib/followup/graph-schema";
+import type { FlowEdge, FlowGraph, FlowNode, FonteDeConsulta } from "@/lib/followup/graph-schema";
 
-export type DestinoDaOpcao = "texto" | "humano" | "assistente";
+export type DestinoDaOpcao = "texto" | "humano" | "assistente" | "consulta";
 
 export type OpcaoDoModelo = {
   numero: number;
@@ -18,6 +18,8 @@ export type OpcaoDoModelo = {
   comentario?: string;
   /** Palavras curtas que a pessoa escreve no lugar do número. */
   palavras?: string[];
+  /** Só quando o destino é consulta. O texto que sai é o da gestão. */
+  fonte?: FonteDeConsulta;
 };
 
 const BASE: OpcaoDoModelo[] = [
@@ -161,6 +163,46 @@ export function montarModeloDeMenu(input: {
         position: { x: menuX + 340, y },
         config: {},
       });
+    } else if (o.destino === "consulta" && o.fonte) {
+      nodes.push({
+        id: alvoId,
+        type: "consulta",
+        label: corta(rotulo, 60),
+        position: { x: menuX + 340, y },
+        config: { fonte: o.fonte },
+      });
+      const segueId = `${s}-ia${o.numero}`;
+      nodes.push({
+        id: segueId,
+        type: "assistente",
+        label: corta(`Assistente · ${rotulo}`, 60),
+        position: { x: menuX + 680, y },
+        config: {},
+      });
+      const faltaId = `${s}-falta${o.numero}`;
+      nodes.push({
+        id: faltaId,
+        type: "humano",
+        label: corta(`Não achei · ${rotulo}`, 60),
+        position: { x: menuX + 680, y: y + 90 },
+        config: {
+          phrase: "Não achei isso na gestão. Vou te passar para uma pessoa da equipe.",
+        },
+      });
+      edges.push({
+        id: `${s}-e-achou${o.numero}`,
+        source: alvoId,
+        target: segueId,
+        priority: 0,
+        condition: { type: "branch", branch_id: "achou" },
+      });
+      edges.push({
+        id: `${s}-e-falta${o.numero}`,
+        source: alvoId,
+        target: faltaId,
+        priority: 1,
+        condition: { type: "branch", branch_id: "nao_achou" },
+      });
     } else {
       precisaFim = true;
       nodes.push({
@@ -251,7 +293,7 @@ export const MODELOS_PRONTOS: {
   {
     id: "locadora",
     nome: "Locadora",
-    explica: "Locatário, investidor, carro e boleto seguem para o assistente da locadora, que consulta o Moope. Socorro, equipe e outro WhatsApp chamam uma pessoa.",
+    explica: "Locatário, investidor, carro e boleto consultam a Moope e, se achar, passam ao assistente. Socorro, equipe e outro WhatsApp chamam uma pessoa.",
     classe: "border-orange-500/40 bg-orange-500/10",
   },
   {
@@ -321,28 +363,32 @@ function opcoesDaLocadora(): OpcaoDoModelo[] {
     {
       numero: 1,
       rotulo: "Sou locatário",
-      destino: "assistente",
+      destino: "consulta",
+      fonte: "cliente",
       texto: "",
       palavras: ["locatario"],
     },
     {
       numero: 2,
       rotulo: "Sou investidor",
-      destino: "assistente",
+      destino: "consulta",
+      fonte: "investidor",
       texto: "",
       palavras: ["investidor"],
     },
     {
       numero: 3,
       rotulo: "Quero um carro",
-      destino: "assistente",
+      destino: "consulta",
+      fonte: "oferta",
       texto: "",
       palavras: ["carro", "alugar"],
     },
     {
       numero: 4,
       rotulo: "Boleto ou contrato",
-      destino: "assistente",
+      destino: "consulta",
+      fonte: "situacao",
       texto: "",
       palavras: ["boleto", "contrato"],
     },
@@ -398,6 +444,18 @@ function opcoesDaLoja(): OpcaoDoModelo[] {
     },
     opcaoOutroWhatsapp(5),
   ];
+}
+
+/** Grava o assistente publicado nos blocos que ainda não escolheram um. */
+export function carimbarAssistente(grafo: FlowGraph, agentId: string): FlowGraph {
+  return {
+    ...grafo,
+    nodes: grafo.nodes.map((n) =>
+      n.type === "assistente" && !n.config.agent_id
+        ? { ...n, config: { ...n.config, agent_id: agentId } }
+        : n,
+    ),
+  };
 }
 
 export function montarModeloPronto(

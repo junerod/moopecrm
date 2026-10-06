@@ -63,8 +63,8 @@ export function BotsHero() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[var(--color-text)]">Assistente</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-text-muted)]">
-                  No quadro, o bloco violeta chama um assistente publicado. O índigo
-                  consulta cliente, valores, boleto ou contrato na Moope.
+                  No quadro, o bloco violeta escolhe um assistente publicado. Os blocos
+                  da Moope trazem cliente, valores, boleto, contrato ou investidor.
                 </p>
               </div>
             </li>

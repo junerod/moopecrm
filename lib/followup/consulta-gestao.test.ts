@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   textoDaOferta,
   textoDaSituacao,
+  textoDoBoleto,
   textoDoCliente,
   textoDoFinanceiro,
+  textoDoInvestidor,
 } from "./consulta-gestao";
 import type { OfertaItem, RetratoLocatario } from "@/lib/moope/cliente-locadora";
 
@@ -123,5 +125,30 @@ describe("texto da consulta à gestão", () => {
     expect(r.texto).toContain("R$ 890,50");
     expect(r.texto).toContain("https://boleto.exemplo/1");
     expect(r.texto).not.toContain("atraso");
+  });
+
+  it("boleto só sai com link https", () => {
+    expect(
+      textoDoBoleto({
+        boleto_url: "http://inseguro",
+        pix_url: null,
+        portal_url: "https://portal.exemplo/p",
+      }).texto,
+    ).toContain("https://portal.exemplo/p");
+    expect(
+      textoDoBoleto({ boleto_url: "https://boleto.exemplo/2", pix_url: null, portal_url: null }).texto,
+    ).toContain("Segunda via do boleto");
+    expect(textoDoBoleto({ boleto_url: null, pix_url: null, portal_url: null })).toEqual({
+      achou: false,
+      texto: "",
+    });
+  });
+
+  it("investidor usa nome e portal https, e cala sem nome", () => {
+    const r = textoDoInvestidor("Carlos", "set/2026", "http://nao");
+    expect(r.texto).toContain("Carlos");
+    expect(r.texto).toContain("set/2026");
+    expect(r.texto).not.toContain("http://nao");
+    expect(textoDoInvestidor("  ", null, null)).toEqual({ achou: false, texto: "" });
   });
 });

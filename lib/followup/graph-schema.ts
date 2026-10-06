@@ -282,14 +282,23 @@ export const assistenteConfigSchema = z.strictObject({
 });
 
 /** O que o bloco pede à gestão. O texto que sai é montado só com o que voltou. */
-export const FONTES_DE_CONSULTA = ['cliente', 'oferta', 'financeiro', 'situacao'] as const;
+export const FONTES_DE_CONSULTA = [
+  'cliente',
+  'oferta',
+  'financeiro',
+  'situacao',
+  'boleto',
+  'investidor',
+] as const;
 export type FonteDeConsulta = (typeof FONTES_DE_CONSULTA)[number];
 
 export const ROTULO_DA_FONTE: Record<FonteDeConsulta, string> = {
   cliente: 'Quem é o cliente',
   oferta: 'Veículos e valores',
-  financeiro: 'Financeiro e boleto',
-  situacao: 'Contrato e situação',
+  financeiro: 'Parcelas e atraso',
+  situacao: 'Contrato do cliente',
+  boleto: 'Segunda via do boleto',
+  investidor: 'Quem é o investidor',
 };
 
 export const consultaConfigSchema = z.strictObject({

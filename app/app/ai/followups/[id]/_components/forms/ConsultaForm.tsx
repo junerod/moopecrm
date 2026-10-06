@@ -54,8 +54,12 @@ function explica(fonte: FonteDeConsulta): string {
     case "oferta":
       return "Lista veículos e o preço que a página de ofertas tiver. Sem valor, não inventa.";
     case "financeiro":
-      return "Parcelas, atraso e o link de boleto ou PIX que a gestão já gerou.";
+      return "Parcelas e atraso. O link de boleto entra se a gestão já tiver gerado.";
     case "situacao":
-      return "Veículo, placa, contrato e boleto do cadastro deste telefone.";
+      return "Veículo, placa, contrato e o boleto do cadastro deste telefone.";
+    case "boleto":
+      return "Só a segunda via: boleto ou PIX com link https. Sem link, segue por Não encontrou.";
+    case "investidor":
+      return "Confere se este telefone é investidor. Nome, último período e portal, se vierem.";
   }
 }

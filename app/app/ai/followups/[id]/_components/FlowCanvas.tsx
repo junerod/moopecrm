@@ -30,13 +30,16 @@ import { conditionLabel } from "@/lib/followup/edge-condition-options";
 import {
   branchIdForCondition,
   conditionForBranch,
+  FONTES_DE_CONSULTA,
   nodeBranches,
+  ROTULO_DA_FONTE,
   type FlowEdge,
   type FlowGraph,
+  type FonteDeConsulta,
   type NodeType,
 } from "@/lib/followup/graph-schema";
 import { rotuloDoRamo } from "@/lib/followup/rotulo-do-ramo";
-import { montarModeloDeMenu, montarModeloPronto, ID_DE_MODELO_PRONTO, type IdDeModeloPronto, type OpcaoDoModelo } from "@/lib/followup/modelo-de-menu";
+import { carimbarAssistente, montarModeloDeMenu, montarModeloPronto, ID_DE_MODELO_PRONTO, type IdDeModeloPronto, type OpcaoDoModelo } from "@/lib/followup/modelo-de-menu";
 import { useFollowupFlow, type FollowupFlowDetailRow } from "@/hooks/followup/useFollowupFlow";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -44,7 +47,7 @@ import { Plus, X } from "@/lib/ui/icons";
 import { NodeConfigPanel } from "./NodeConfigPanel";
 import type { AssistenteDoFluxo } from "./forms/AssistenteForm";
 import { EdgeConfigPanel } from "./EdgeConfigPanel";
-import { NodePalette } from "./NodePalette";
+import { MIME_FONTE, NodePalette } from "./NodePalette";
 import { PublishBar } from "./PublishBar";
 import { NODE_VISUALS } from "./nodes/nodeVisuals";
 import { WizardMenu } from "./WizardMenu";
@@ -88,7 +91,7 @@ const FAIXA: Record<string, string> = {
     "Este é o bot de primeiro atendimento. Mude o texto se quiser. Depois Salvar e Publicar — ele responde a primeira mensagem neste WhatsApp.",
   loja: "Recepção da loja já desenhada. Ajuste o texto, Salvar e Publicar.",
   locadora:
-    "Locatário, investidor, carro e boleto soltam o assistente publicado — na locadora ele consulta o Moope. Socorro, equipe e outro WhatsApp chamam uma pessoa. A conversa não muda de número. Salvar e Publicar.",
+    "Locatário, investidor, carro e boleto consultam a Moope. Se achar, o assistente publicado continua a conversa. Socorro e equipe chamam uma pessoa. Salvar e Publicar.",
   aviso: "Quando a pessoa escrever, a equipe é avisada. Salvar e Publicar para ligar.",
   meu: "Responda o passo a passo. No fim o menu entra no quadro. Depois Salvar e Publicar.",
 };
@@ -222,27 +225,61 @@ function FlowCanvasInner({ flowId, initialData, modeloInicial, assistentes = [] 
     [setEdges, nodes],
   );
 
+  const posicaoNova = useCallback(() => {
+    const index = nodes.length;
+    return { x: 80 + (index % 4) * 240, y: 80 + Math.floor(index / 4) * 160 };
+  }, [nodes.length]);
+
   const addNodeAt = useCallback(
     (type: NodeType, position: { x: number; y: number }) => {
       const visual = NODE_VISUALS[type];
       const id = `${type}-${nextId.current++}`;
+      const config = visual.defaultConfig();
+      if (type === "assistente" && !("agent_id" in config && config.agent_id)) {
+        const locadora = assistentes.find((a) => a.publicado && a.name === "Atendimento locadora");
+        const unico = assistentes.filter((a) => a.publicado);
+        const escolhido = locadora ?? (unico.length === 1 ? unico[0] : undefined);
+        if (escolhido) Object.assign(config, { agent_id: escolhido.id });
+      }
       const newNode: RFNode = {
         id,
         type,
         position,
-        data: { label: visual.defaultLabel, config: visual.defaultConfig() },
+        data: { label: visual.defaultLabel, config },
       };
       setNodes((nds) => nds.concat(newNode));
+      setSelectedNodeId(id);
+    },
+    [setNodes, assistentes],
+  );
+
+  const addConsultaAt = useCallback(
+    (fonte: FonteDeConsulta, position: { x: number; y: number }) => {
+      const id = `consulta-${nextId.current++}`;
+      const newNode: RFNode = {
+        id,
+        type: "consulta",
+        position,
+        data: { label: ROTULO_DA_FONTE[fonte], config: { fonte } },
+      };
+      setNodes((nds) => nds.concat(newNode));
+      setSelectedNodeId(id);
     },
     [setNodes],
   );
 
   const onPaletteAdd = useCallback(
     (type: NodeType) => {
-      const index = nodes.length;
-      addNodeAt(type, { x: 80 + (index % 4) * 220, y: 80 + Math.floor(index / 4) * 150 });
+      addNodeAt(type, posicaoNova());
     },
-    [nodes.length, addNodeAt],
+    [addNodeAt, posicaoNova],
+  );
+
+  const onPaletteConsulta = useCallback(
+    (fonte: FonteDeConsulta) => {
+      addConsultaAt(fonte, posicaoNova());
+    },
+    [addConsultaAt, posicaoNova],
   );
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -253,12 +290,17 @@ function FlowCanvasInner({ flowId, initialData, modeloInicial, assistentes = [] 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const fonte = e.dataTransfer.getData(MIME_FONTE);
+      if ((FONTES_DE_CONSULTA as readonly string[]).includes(fonte)) {
+        addConsultaAt(fonte as FonteDeConsulta, position);
+        return;
+      }
       const type = e.dataTransfer.getData(DND_MIME) as NodeType | "";
       if (!type) return;
-      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       addNodeAt(type, position);
     },
-    [screenToFlowPosition, addNodeAt],
+    [screenToFlowPosition, addNodeAt, addConsultaAt],
   );
 
   const colocarNoQuadro = useCallback(
@@ -309,15 +351,18 @@ function FlowCanvasInner({ flowId, initialData, modeloInicial, assistentes = [] 
     (id: IdDeModeloPronto) => {
       const temGatilho = nodes.some((n) => n.type === "trigger");
       const maxX = nodes.reduce((maior, n) => Math.max(maior, n.position.x), 0);
-      colocarNoQuadro(
-        montarModeloPronto(id, {
-          origem: nodes.length === 0 ? { x: 40, y: 40 } : { x: maxX + 360, y: 40 },
-          sufixo: Date.now().toString(36),
-          incluirGatilho: !temGatilho,
-        }),
-      );
+      let pronto = montarModeloPronto(id, {
+        origem: nodes.length === 0 ? { x: 40, y: 40 } : { x: maxX + 360, y: 40 },
+        sufixo: Date.now().toString(36),
+        incluirGatilho: !temGatilho,
+      });
+      if (id === "locadora") {
+        const locadora = assistentes.find((a) => a.publicado && a.name === "Atendimento locadora");
+        if (locadora) pronto = carimbarAssistente(pronto, locadora.id);
+      }
+      colocarNoQuadro(pronto);
     },
-    [nodes, colocarNoQuadro],
+    [nodes, colocarNoQuadro, assistentes],
   );
 
   useEffect(() => {
@@ -361,7 +406,11 @@ function FlowCanvasInner({ flowId, initialData, modeloInicial, assistentes = [] 
         </p>
       ) : null}
       <div className="flex flex-1 overflow-hidden">
-        <NodePalette onAdd={onPaletteAdd} onCriarMenu={() => setWizardAberto(true)} />
+        <NodePalette
+          onAdd={onPaletteAdd}
+          onAddConsulta={onPaletteConsulta}
+          onCriarMenu={() => setWizardAberto(true)}
+        />
         {/* Abaixo de `lg` a paleta fixa de 224px não cabe do lado do canvas —
             vira um drawer, disparado por este botão flutuante. */}
         <Sheet open={paletteOpen} onOpenChange={setPaletteOpen}>
@@ -375,6 +424,10 @@ function FlowCanvasInner({ flowId, initialData, modeloInicial, assistentes = [] 
               }}
               onAdd={(type) => {
                 onPaletteAdd(type);
+                setPaletteOpen(false);
+              }}
+              onAddConsulta={(fonte) => {
+                onPaletteConsulta(fonte);
                 setPaletteOpen(false);
               }}
             />

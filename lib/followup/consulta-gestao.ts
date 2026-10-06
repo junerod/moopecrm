@@ -10,9 +10,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   consultarFinanceiro,
+  getRetratoInvestidor,
   getRetratoLocatario,
   listarOferta,
+  lookupInvestidor,
   lookupLocatario,
+  obterSegundaVia,
   type OfertaItem,
   type ParcelaResumo,
   type RetratoLocatario,
@@ -139,6 +142,37 @@ export function textoDoFinanceiro(entrada: {
   return pronto(linhas);
 }
 
+export function textoDoBoleto(entrada: {
+  boleto_url: string | null;
+  pix_url: string | null;
+  portal_url: string | null;
+}): ResultadoDaConsulta {
+  const linhas: string[] = [];
+  const boleto = linkOficial(entrada.boleto_url);
+  const pix = linkOficial(entrada.pix_url);
+  if (boleto) linhas.push(`Segunda via do boleto: ${boleto}`);
+  if (pix) linhas.push(`PIX: ${pix}`);
+  if (!boleto && !pix) {
+    const portal = linkOficial(entrada.portal_url);
+    if (portal) linhas.push(`Portal: ${portal}`);
+  }
+  return pronto(linhas);
+}
+
+export function textoDoInvestidor(
+  nome: string,
+  ultimoPeriodo: string | null,
+  portalUrl: string | null,
+): ResultadoDaConsulta {
+  const quem = nome.trim();
+  if (!quem) return VAZIO;
+  const linhas = [`Encontrei o investidor ${quem}.`];
+  if (ultimoPeriodo?.trim()) linhas.push(`Último período: ${ultimoPeriodo.trim()}.`);
+  const portal = linkOficial(portalUrl);
+  if (portal) linhas.push(`Portal: ${portal}`);
+  return pronto(linhas);
+}
+
 export async function executarConsultaDoBot(
   admin: SupabaseClient,
   orgId: string,
@@ -153,6 +187,19 @@ export async function executarConsultaDoBot(
 
   const numero = phone?.trim() ?? "";
   if (!numero) return VAZIO;
+
+  if (fonte === "investidor") {
+    const inv = await lookupInvestidor(admin, orgId, { phone: numero });
+    if (!inv.ok) return VAZIO;
+    const retrato = await getRetratoInvestidor(admin, orgId, inv.investidor_id);
+    if (!retrato.ok) return textoDoInvestidor(inv.nome, null, null);
+    return textoDoInvestidor(
+      retrato.nome.trim() || inv.nome,
+      retrato.ultimo_periodo,
+      retrato.portal_url,
+    );
+  }
+
   const quem = await lookupLocatario(admin, orgId, { phone: numero });
   if (!quem.ok) return VAZIO;
 
@@ -162,6 +209,12 @@ export async function executarConsultaDoBot(
     const retrato = await getRetratoLocatario(admin, orgId, quem.locatario_id);
     if (!retrato.ok) return VAZIO;
     return textoDaSituacao(retrato);
+  }
+
+  if (fonte === "boleto") {
+    const via = await obterSegundaVia(admin, orgId, quem.locatario_id);
+    if (!via.ok) return VAZIO;
+    return textoDoBoleto(via);
   }
 
   const financeiro = await consultarFinanceiro(admin, orgId, quem.locatario_id);

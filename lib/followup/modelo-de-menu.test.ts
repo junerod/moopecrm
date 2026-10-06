@@ -43,6 +43,15 @@ describe("montarModeloDeMenu", () => {
     });
     const menu = locadora.nodes.find((n) => n.type === "menu");
     expect(menu?.type === "menu" ? menu.config.options.map((o) => o.label) : []).toContain("Outro WhatsApp");
+    const consultas = locadora.nodes.filter((n) => n.type === "consulta").map((n) => n.label);
+    expect(consultas).toEqual(
+      expect.arrayContaining([
+        "Sou locatário",
+        "Sou investidor",
+        "Quero um carro",
+        "Boleto ou contrato",
+      ]),
+    );
     const ia = locadora.nodes.filter((n) => n.type === "assistente").map((n) => n.label);
     expect(ia).toEqual(
       expect.arrayContaining([

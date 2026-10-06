@@ -61,7 +61,7 @@
       "col": 4,
       "type": "rule",
       "label": "Consultar gestão",
-      "sublabel": "texto só do que a Moope devolveu"
+      "sublabel": "cliente, oferta, boleto, contrato, investidor"
     },
     {
       "id": "tick",

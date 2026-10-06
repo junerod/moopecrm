@@ -231,7 +231,7 @@ export function describeNodeConfig(type: NodeType, config: FlowNode["config"]): 
     }
     case "assistente": {
       const c = config as ConfigOf<"assistente">;
-      return c.agent_id ? "Assistente escolhido" : "O deste WhatsApp";
+      return c.agent_id ? "Assistente escolhido" : "Escolha qual assistente";
     }
     case "consulta": {
       const c = config as ConfigOf<"consulta">;
