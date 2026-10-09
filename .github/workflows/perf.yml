@@ -23,7 +23,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v6
         with:
           # 22 como o job `ci` e o `.nvmrc`. Buildar numa versão que o
           # `engines` (>=22) não suporta esconde quebra ou inventa falha.
