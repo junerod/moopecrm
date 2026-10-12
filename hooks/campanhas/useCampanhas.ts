@@ -250,11 +250,25 @@ export async function uploadMidiaCampanha(file: File, campaignId?: string) {
       mime: string;
       size_bytes: number;
       filename: string;
-      kind: "image" | "video" | "document";
+      kind: "image" | "video" | "audio" | "document";
       preview_url?: string | null;
     };
     error?: { message: string };
   };
   if (!res.ok || !json.data) throw new Error(json.error?.message ?? "Falha no upload");
   return json.data;
+}
+
+export async function enviarTesteCampanha(body: {
+  phone: string;
+  body: string;
+  storage_path?: string;
+  mime?: string;
+  kind?: "image" | "video" | "audio" | "document";
+  filename?: string;
+}) {
+  const res = await apiClient.post<{ data: { sent: boolean } }>("/api/v1/campanhas/teste", body, {
+    timeoutMs: 60_000,
+  });
+  return res.data;
 }

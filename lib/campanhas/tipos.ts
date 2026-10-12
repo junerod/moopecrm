@@ -81,7 +81,7 @@ export interface AnexoDaCampanha {
   mime: string;
   size_bytes: number;
   filename: string;
-  kind: "image" | "video" | "document";
+  kind: "image" | "video" | "audio" | "document";
   preview_url?: string | null;
 }
 

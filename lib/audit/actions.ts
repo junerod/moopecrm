@@ -219,6 +219,7 @@ export const AUDIT_ACTIONS = [
   "campaign.updated",
   "campaign.cancelled",
   "campaign.dispatch_tick",
+  "campaign.test_send",
   "routing.worker_run",
   "attendant.heartbeat_swept",
   "webhook.source_created",
@@ -416,6 +417,7 @@ export const AUDIT_ACTIONS = [
   "moope.reconcile",
   "moope.tenant_provisioned",
   "moope.ai_credential_from_locadora",
+  "assessor.phone_saved",
   // Perfil do negócio trocado em Configurações (locadora, SaaS, advocacia…).
   "org.perfil_aplicado",
   "ai_mode.config_changed",

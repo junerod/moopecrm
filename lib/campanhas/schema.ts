@@ -20,7 +20,7 @@ export const anexoSchema = z.object({
   mime: z.string().min(1).max(80),
   size_bytes: z.number().int().nonnegative(),
   filename: z.string().min(1).max(160),
-  kind: z.enum(["image", "video", "document"]),
+  kind: z.enum(["image", "video", "audio", "document"]),
 });
 
 export const settingsSchema = z

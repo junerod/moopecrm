@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validarMidiaDaCampanha, caminhoDeMidiaCampanha } from "@/lib/campanhas/midia";
+import { validarMidiaDaCampanha, caminhoDeMidiaCampanha, pathDeMidiaDaOrg } from "@/lib/campanhas/midia";
 
 describe("mídia da campanha", () => {
   it("aceita jpeg/png/webp/mp4/pdf", () => {
@@ -9,6 +9,8 @@ describe("mídia da campanha", () => {
     expect(validarMidiaDaCampanha("image/webp", 1000).ok).toBe(true);
     expect(validarMidiaDaCampanha("video/mp4", 1000).ok).toBe(true);
     expect(validarMidiaDaCampanha("application/pdf", 1000).ok).toBe(true);
+    expect(validarMidiaDaCampanha("audio/ogg", 1000).ok).toBe(true);
+    expect(validarMidiaDaCampanha("audio/mpeg", 1000).ok).toBe(true);
   });
 
   it("recusa tipo e tamanho", () => {
@@ -20,5 +22,11 @@ describe("mídia da campanha", () => {
     const p = caminhoDeMidiaCampanha("org-1", "camp-1", "foto.png");
     expect(p.startsWith("org-1/campaigns/camp-1/")).toBe(true);
     expect(p.includes("base64")).toBe(false);
+  });
+
+  it("só assina arquivo da própria organização", () => {
+    expect(pathDeMidiaDaOrg("org-1/campaigns/c/foto.jpg", "org-1")).toBe(true);
+    expect(pathDeMidiaDaOrg("org-2/campaigns/c/foto.jpg", "org-1")).toBe(false);
+    expect(pathDeMidiaDaOrg("../org-1/foto.jpg", "org-1")).toBe(false);
   });
 });

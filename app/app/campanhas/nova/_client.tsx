@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  enviarTesteCampanha,
   uploadMidiaCampanha,
   useAtualizarCampanha,
   useCriarCampanha,
@@ -85,6 +86,9 @@ export function NovaCampanhaClient() {
   const [quando, setQuando] = useState<"agora" | "agendar">("agora");
   const [agendado, setAgendado] = useState("");
   const [anexos, setAnexos] = useState<AnexoDaCampanha[]>([]);
+  const [telefoneTeste, setTelefoneTeste] = useState("");
+  const [testeEstado, setTesteEstado] = useState<string | null>(null);
+  const [testando, setTestando] = useState(false);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [ctaUrl, setCtaUrl] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
@@ -592,7 +596,7 @@ export function NovaCampanhaClient() {
               <Input
                 id="camp-midia"
                 type="file"
-                accept="image/jpeg,image/png,image/webp,video/mp4,application/pdf"
+                accept="image/jpeg,image/png,image/webp,video/mp4,audio/ogg,audio/mpeg,audio/mp4,audio/webm,audio/aac,application/pdf"
                 data-testid="campanha-anexar-midia"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -627,7 +631,7 @@ export function NovaCampanhaClient() {
                         <img src={url} alt={a.filename} className="h-28 w-full object-cover" />
                       ) : (
                         <div className="flex h-20 items-center justify-center bg-[var(--color-bg)] text-xs">
-                          {a.kind === "video" ? "Vídeo" : "PDF"} · {a.filename}
+                          {a.kind === "video" ? "Vídeo" : a.kind === "audio" ? "Áudio" : "PDF"} · {a.filename}
                         </div>
                       )}
                       <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
@@ -667,15 +671,42 @@ export function NovaCampanhaClient() {
               </div>
             </div>
           </div>
-          <PreviewMensagem
-            texto={preview.texto}
-            aba={previewAba}
-            onAba={setPreviewAba}
-            ok={preview.ok}
-            anexos={anexos}
-            previews={previews}
-            ctaLabel={ctaLabel}
-          />
+          <div className="space-y-3">
+            <PreviewMensagem
+              texto={preview.texto}
+              aba={previewAba}
+              onAba={setPreviewAba}
+              ok={preview.ok}
+              anexos={anexos}
+              previews={previews}
+              ctaLabel={ctaLabel}
+            />
+            <TesteNoCelular
+              telefone={telefoneTeste}
+              onTelefone={setTelefoneTeste}
+              estado={testeEstado}
+              enviando={testando}
+              desabilitado={!body.trim() && anexos.length === 0}
+              onEnviar={() => {
+                const anexo = anexos[0];
+                setTestando(true);
+                setTesteEstado(null);
+                void enviarTesteCampanha({
+                  phone: telefoneTeste,
+                  body: preview.texto,
+                  storage_path: anexo?.storage_path,
+                  mime: anexo?.mime,
+                  kind: anexo?.kind,
+                  filename: anexo?.filename,
+                })
+                  .then(() => setTesteEstado("Enviado. Confira o WhatsApp desse número."))
+                  .catch((err: unknown) =>
+                    setTesteEstado(err instanceof Error ? err.message : "O teste não saiu."),
+                  )
+                  .finally(() => setTestando(false));
+              }}
+            />
+          </div>
         </div>
       ) : null}
 
@@ -865,15 +896,42 @@ export function NovaCampanhaClient() {
               </label>
             ) : null}
           </div>
-          <PreviewMensagem
-            texto={preview.texto}
-            aba={previewAba}
-            onAba={setPreviewAba}
-            ok={preview.ok}
-            anexos={anexos}
-            previews={previews}
-            ctaLabel={ctaLabel}
-          />
+          <div className="space-y-3">
+            <PreviewMensagem
+              texto={preview.texto}
+              aba={previewAba}
+              onAba={setPreviewAba}
+              ok={preview.ok}
+              anexos={anexos}
+              previews={previews}
+              ctaLabel={ctaLabel}
+            />
+            <TesteNoCelular
+              telefone={telefoneTeste}
+              onTelefone={setTelefoneTeste}
+              estado={testeEstado}
+              enviando={testando}
+              desabilitado={!body.trim() && anexos.length === 0}
+              onEnviar={() => {
+                const anexo = anexos[0];
+                setTestando(true);
+                setTesteEstado(null);
+                void enviarTesteCampanha({
+                  phone: telefoneTeste,
+                  body: preview.texto,
+                  storage_path: anexo?.storage_path,
+                  mime: anexo?.mime,
+                  kind: anexo?.kind,
+                  filename: anexo?.filename,
+                })
+                  .then(() => setTesteEstado("Enviado. Confira o WhatsApp desse número."))
+                  .catch((err: unknown) =>
+                    setTesteEstado(err instanceof Error ? err.message : "O teste não saiu."),
+                  )
+                  .finally(() => setTestando(false));
+              }}
+            />
+          </div>
         </div>
       ) : null}
 
@@ -924,6 +982,55 @@ export function NovaCampanhaClient() {
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function TesteNoCelular({
+  telefone,
+  onTelefone,
+  estado,
+  enviando,
+  desabilitado,
+  onEnviar,
+}: {
+  telefone: string;
+  onTelefone: (v: string) => void;
+  estado: string | null;
+  enviando: boolean;
+  desabilitado: boolean;
+  onEnviar: () => void;
+}) {
+  return (
+    <div className="rounded-[14px] bg-[var(--color-bg)] p-3">
+      <p className="text-sm font-medium">Testar no meu celular</p>
+      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+        Manda esta mensagem, com a mídia, para um número só. Não dispara a campanha.
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Input
+          value={telefone}
+          onChange={(e) => onTelefone(e.target.value)}
+          placeholder="11999999999"
+          data-testid="campanha-teste-numero"
+          className="max-w-[14rem]"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-testid="campanha-enviar-teste"
+          disabled={enviando || desabilitado || !telefone.trim()}
+          onClick={onEnviar}
+        >
+          {enviando ? "Enviando…" : "Enviar teste"}
+        </Button>
+      </div>
+      {estado ? (
+        <p className="mt-2 text-xs text-[var(--color-text-muted)]" data-testid="campanha-teste-estado">
+          {estado}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { lerModoDoDispatch } from "@/lib/campanhas/diagnostico";
 import { dispatchRecipient } from "@/lib/campanhas/dispatcher";
 import { materializarProximoLote, selecaoDosSettings } from "@/lib/campanhas/materializar";
 import { PACING_CAMPANHA_MS, podeEnviarAgora } from "@/lib/campanhas/pacing";
+import { pathDeMidiaDaOrg } from "@/lib/campanhas/midia";
 import { previewDaCampanha } from "@/lib/campanhas/preview";
 import {
   escolherSessaoParaCampanha,
@@ -176,6 +177,8 @@ export async function processarTickDasCampanhas(
 
     let lastSent = camp.last_sent_at;
     const orgInfo = await carregarRodape(db, camp.organization_id);
+    const anexo = (settings.attachments ?? [])[0];
+    const midiaAssinada = await assinarAnexoDaCampanha(db, camp.organization_id, anexo);
 
     for (const dest of (dests ?? []) as DestRow[]) {
       if (destinatarioTerminal(dest.status as never)) continue;
@@ -224,7 +227,22 @@ export async function processarTickDasCampanhas(
         },
       });
 
-      const anexo = (settings.attachments ?? [])[0];
+      if (anexo && !midiaAssinada.url) {
+        await db
+          .from("campaign_recipients")
+          .update({
+            status: "failed",
+            failed_at: agora.toISOString(),
+            error: midiaAssinada.motivo,
+            destination: guarda.destination,
+          })
+          .eq("id", dest.id)
+          .eq("organization_id", camp.organization_id)
+          .eq("status", "pending");
+        resultado.falharam += 1;
+        continue;
+      }
+
       const entrega = await dispatchRecipient(db, {
         organizationId: camp.organization_id,
         campaignId: camp.id,
@@ -240,8 +258,11 @@ export async function processarTickDasCampanhas(
         waLid: (contato as { wa_lid?: string | null } | null)?.wa_lid ?? null,
         waIdentity: (contato as { wa_identity?: string | null } | null)?.wa_identity ?? null,
         templateId: camp.template_id,
+        mediaUrl: midiaAssinada.url,
         mediaKind: anexo?.kind ?? null,
         mediaFilename: anexo?.filename ?? null,
+        mediaMime: anexo?.mime ?? null,
+        mediaPath: anexo?.storage_path ?? null,
         ctaUrl: settings.cta_url,
         ctaLabel: settings.cta_label,
         rodape: orgInfo,
@@ -466,6 +487,22 @@ async function atribuirRespostasRecentes(
       .eq("id", dest.id)
       .eq("organization_id", camp.organization_id);
   }
+}
+
+async function assinarAnexoDaCampanha(
+  db: SupabaseClient,
+  organizationId: string,
+  anexo: { storage_path: string } | undefined,
+): Promise<{ url: string | null; motivo: string }> {
+  if (!anexo?.storage_path) return { url: null, motivo: "" };
+  if (!pathDeMidiaDaOrg(anexo.storage_path, organizationId)) {
+    return { url: null, motivo: "midia_fora_da_org" };
+  }
+  const { data, error } = await db.storage
+    .from("whatsapp-media")
+    .createSignedUrl(anexo.storage_path, 600);
+  if (error || !data?.signedUrl) return { url: null, motivo: "storage_sign_failed" };
+  return { url: data.signedUrl, motivo: "" };
 }
 
 async function resolverSessaoDaCampanha(

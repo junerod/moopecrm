@@ -21,7 +21,12 @@ export interface PedidoDeEnvioWhatsappCampanha {
   templateName?: string | null;
   templateLanguage?: string | null;
   templateValues?: Record<string, string>;
-  media?: { url: string; filename?: string; kind: "image" | "video" | "document" } | null;
+  media?: {
+    url: string;
+    filename?: string;
+    kind: "image" | "video" | "audio" | "document";
+    mime?: string;
+  } | null;
   /** QR: só depois de achar conversa neste número. */
   somenteConversaExistente?: boolean;
   waIdentity?: string | null;
@@ -43,10 +48,17 @@ export function campanhaExigeTemplatePelasCaps(provider: ChannelProvider): boole
 
 export function midiaPermitidaPelasCaps(
   provider: ChannelProvider,
-  kind: "image" | "video" | "document",
+  kind: "image" | "video" | "audio" | "document",
 ): boolean {
   void kind;
   return true;
+}
+
+function mimePadraoDoKind(kind: "image" | "video" | "audio" | "document"): string {
+  if (kind === "image") return "image/jpeg";
+  if (kind === "video") return "video/mp4";
+  if (kind === "audio") return "audio/ogg";
+  return "application/pdf";
 }
 
 export function campanhaQrExigeConversaExistente(provider: ChannelProvider): boolean {
@@ -108,9 +120,9 @@ export async function enviarWhatsappDaCampanha(
       media: pedido.media
         ? {
             url: pedido.media.url,
-            mime: "application/octet-stream",
+            mime: pedido.media.mime || mimePadraoDoKind(pedido.media.kind),
             filename: pedido.media.filename,
-            caption: pedido.body,
+            caption: pedido.media.kind === "audio" ? null : pedido.body,
           }
         : undefined,
     });

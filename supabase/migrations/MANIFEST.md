@@ -239,6 +239,7 @@ aplica.
 | `20260915120000` | `0210_canal_instagram_vocabulario` | **Quinto canal** (Direct). Coluna `instagram_account_id` (sessionRef = IG user id), CHECKs recriados (quatro → cinco providers), unique parcial nos ativos. Sem isto a DM não tem sessão para gravar. |
 | `20260916200000` | `0211_bot_purpose_e_inbound` | **Propósito do quadro.** `followup_flow_pointers.purpose` (`followup` \| `bot`), default `followup`. Sem isto a aba Bots mistura menu de atendimento com lembrete de silêncio. O gatilho `inbound` vive no jsonb `trigger_config`, não numa coluna. |
 | `20261002120000` | `0212_reabre_conversa_fechada_no_inbound` | **Mensagem nova devolve conversa encerrada para a fila.** `fn_mark_conversation_message` no inbound com status closed/archived/resolved passa a `open`, sem dono. Sem isto fechar em massa esconde a próxima mensagem do cliente. |
+| `20261012180000` | `0213_storage_grants_service_role` | **Upload de mídia.** `service_role` volta a ter GRANT em `storage.buckets` e nas demais tabelas do schema. Sem isto foto, vídeo e áudio falham com `permission denied for table buckets`. |
 
 ## Reproducibility
 

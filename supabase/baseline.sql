@@ -16646,3 +16646,20 @@ create index if not exists idx_followup_flow_pointers_org_purpose
 comment on column public.followup_flow_pointers.purpose is
   'followup = lembrete/silêncio; bot = porta da frente (menu, FAQ, horário). Default followup.';
 
+-- ---- grants do storage para service_role (migration 0213) ----
+-- Sem isto o upload de mídia do WhatsApp morre em "permission denied for table buckets".
+do $$
+begin
+  execute 'grant usage on schema storage to postgres, anon, authenticated, service_role';
+  execute 'grant all on all tables in schema storage to postgres, anon, authenticated, service_role';
+  execute 'grant all on all sequences in schema storage to postgres, anon, authenticated, service_role';
+  execute 'grant all on all routines in schema storage to postgres, anon, authenticated, service_role';
+  execute 'alter default privileges for role supabase_storage_admin in schema storage grant all on tables to postgres, anon, authenticated, service_role';
+  execute 'alter default privileges for role supabase_storage_admin in schema storage grant all on sequences to postgres, anon, authenticated, service_role';
+  execute 'alter default privileges for role supabase_storage_admin in schema storage grant all on functions to postgres, anon, authenticated, service_role';
+exception
+  when insufficient_privilege then
+    raise notice '0213: grants de storage exigem supabase_admin; papel atual sem privilegio';
+end $$;
+
+

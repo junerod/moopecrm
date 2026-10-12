@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
-  const authz = await requireRole("manager", { requestId, resource: "campaigns" });
+  const authz = await requireRole("agent", { requestId, resource: "campaigns" });
   if (!authz.ok) return authz.response;
 
   const declared = Number(req.headers.get("content-length") ?? 0);

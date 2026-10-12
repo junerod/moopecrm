@@ -85,6 +85,8 @@ export async function registrarOutboundDaCampanha(
     destination: string;
     externalId?: string | null;
     mediaPath?: string | null;
+    mediaMime?: string | null;
+    mediaKind?: "image" | "video" | "audio" | "document" | null;
     channelSessionId?: string | null;
     conversationId?: string | null;
   },
@@ -106,10 +108,12 @@ export async function registrarOutboundDaCampanha(
       conversation_id: conversationId,
       contact_id: entrada.contactId,
       channel_session_id: entrada.channelSessionId ?? null,
-      type: "text",
+      type: entrada.mediaPath && entrada.mediaKind ? entrada.mediaKind : "text",
       direction: "outbound",
       status: "sent",
       body: entrada.body,
+      media_storage_path: entrada.mediaPath ?? null,
+      media_mime: entrada.mediaMime ?? null,
       external_id: entrada.externalId ?? null,
       sent_via: "system",
       sent_at: agora,

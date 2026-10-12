@@ -38,7 +38,7 @@ export function montarEnvelopeDeEmail(input: {
   ctaUrl?: string | null;
   ctaLabel?: string | null;
   midiaUrl?: string | null;
-  midiaKind?: "image" | "video" | "document" | null;
+  midiaKind?: "image" | "video" | "audio" | "document" | null;
   accentHex?: string | null;
 }): EnvelopeDaCampanha {
   const accent = input.accentHex ?? "#1e3a5f";

@@ -64,7 +64,8 @@ export function PreviewMensagem({
             ) : null}
             {midia && midia.kind !== "image" ? (
               <p className="mb-2 text-xs text-white/80">
-                {midia.kind === "video" ? "Vídeo" : "Documento"} · {midia.filename}
+                {midia.kind === "video" ? "Vídeo" : midia.kind === "audio" ? "Áudio" : "Documento"} ·{" "}
+                {midia.filename}
               </p>
             ) : null}
             <span data-testid="campanha-preview-whatsapp" className="whitespace-pre-wrap">

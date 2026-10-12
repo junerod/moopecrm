@@ -35,8 +35,10 @@ export interface PedidoDeDispatch {
   templateName?: string | null;
   templateLanguage?: string | null;
   mediaUrl?: string | null;
-  mediaKind?: "image" | "video" | "document" | null;
+  mediaKind?: "image" | "video" | "audio" | "document" | null;
   mediaFilename?: string | null;
+  mediaMime?: string | null;
+  mediaPath?: string | null;
   ctaUrl?: string | null;
   ctaLabel?: string | null;
   rodape: {
@@ -151,6 +153,7 @@ async function dispatchWhatsapp(
           url: pedido.mediaUrl,
           filename: pedido.mediaFilename ?? undefined,
           kind: pedido.mediaKind ?? "image",
+          mime: pedido.mediaMime ?? undefined,
         }
       : null,
     somenteConversaExistente: qr,
@@ -174,7 +177,9 @@ async function dispatchWhatsapp(
     body: pedido.body,
     destination: pedido.destination,
     externalId: r.externalId,
-    mediaPath: null,
+    mediaPath: pedido.mediaPath ?? null,
+    mediaMime: pedido.mediaMime ?? null,
+    mediaKind: pedido.mediaKind ?? null,
     channelSessionId: sessionId,
     conversationId,
   });
