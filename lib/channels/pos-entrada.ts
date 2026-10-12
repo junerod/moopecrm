@@ -118,6 +118,8 @@ export async function aplicarEfeitosPosEntrada(
   await aplicarOptOut(admin, entrada);
   await abrirDemanda(admin, entrada);
   await pedirDespachoDoAgente(admin, entrada);
+  const { avisarAssessorSeClienteNovo } = await import("@/lib/assessor/avisar");
+  await avisarAssessorSeClienteNovo(admin, entrada);
 }
 
 /**

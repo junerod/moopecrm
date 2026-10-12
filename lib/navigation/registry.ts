@@ -478,6 +478,16 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     sidebar: true,
   },
   {
+    href: "/app/integrations/assessor",
+    label: "Meu Assessor",
+    description: "Avisa no WhatsApp quando entra cliente novo no CRM.",
+    aliases: ["assessor", "whatsapp", "aviso", "cliente novo"],
+    icon: PuzzlePiece,
+    group: "canais",
+    minRole: "admin",
+    sidebar: true,
+  },
+  {
     href: "/app/webhooks",
     label: "Webhooks",
     description: "Avise outros sistemas quando algo acontecer aqui dentro.",

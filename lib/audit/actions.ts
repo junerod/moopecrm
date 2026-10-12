@@ -418,6 +418,7 @@ export const AUDIT_ACTIONS = [
   "moope.tenant_provisioned",
   "moope.ai_credential_from_locadora",
   "assessor.phone_saved",
+  "assessor.alert_toggled",
   // Perfil do negócio trocado em Configurações (locadora, SaaS, advocacia…).
   "org.perfil_aplicado",
   "ai_mode.config_changed",

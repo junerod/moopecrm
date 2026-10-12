@@ -84,6 +84,12 @@ const schema = z.object({
    * antiga não quebra. Não é a chave mop_; mop_ nasce DEPOIS do provision.
    */
   MOOPE_PROVISION_SECRET: z.string().optional().default(""),
+  /**
+   * Meu Assessor: o CRM libera o WhatsApp e avisa esse número quando entra
+   * cliente novo. Sem segredo a tela existe, mas o aviso fica desligado.
+   */
+  ASSESSOR_BASE_URL: z.string().optional().default("https://assessor.moope.com.br"),
+  ASSESSOR_PARTNER_SECRET: z.string().optional().default(""),
 
   /**
    * Retenção do arquivo do corpo cru dos webhooks (`webhook_events_log`).
