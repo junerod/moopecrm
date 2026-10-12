@@ -144,7 +144,7 @@ export async function consultarCrm(
     respostas: "Quem falou hoje",
   };
   const titulo = titulos[consulta];
-  const orgNome = orgs.length === 1 ? orgs[0].display_name || "CRM" : "CRM";
+  const orgNome = orgs.length === 1 ? orgs[0]?.display_name || "CRM" : "CRM";
   const mostrados = linhas.slice(0, 12);
   const text = [
     `📋 *${titulo}*`,
