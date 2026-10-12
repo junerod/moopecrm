@@ -5,6 +5,7 @@ import { chamarAssessor } from "./cliente";
 import { avisarPeloWhatsappDoCrm } from "./aviso-waha";
 import {
   destinatariosDoAviso,
+  deveAvisarResposta,
   ehFluxoComercialMoope,
   lerAssessorNasSettings,
   rotuloDaLinha,
@@ -132,6 +133,95 @@ export async function avisarAssessorSeClienteNovo(
     }
   } catch (err) {
     logger.warn("assessor: aviso de cliente novo falhou", {
+      organization_id: entrada.organizationId,
+      detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
+    });
+  }
+}
+
+/**
+ * O lead escreveu de novo, e a mensagem anterior era nossa.
+ * Alerta separado do cliente novo. Só sai se o dono ligou o alerta de resposta.
+ */
+export async function avisarAssessorSeLeadRespondeu(
+  admin: Admin,
+  entrada: {
+    organizationId: string;
+    contactId: string;
+    conversationId: string;
+    messageId: string | null;
+    texto: string | null;
+    nomeDoContato: string | null;
+  },
+): Promise<void> {
+  try {
+    if (!entrada.messageId) return;
+    const { count, error: countErr } = await admin
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", entrada.organizationId)
+      .eq("conversation_id", entrada.conversationId)
+      .eq("direction", "inbound");
+    if (countErr || count == null || count < 2) return;
+
+    const { data: recentes } = await admin
+      .from("messages")
+      .select("direction")
+      .eq("organization_id", entrada.organizationId)
+      .eq("conversation_id", entrada.conversationId)
+      .order("created_at", { ascending: false })
+      .limit(2);
+    const anterior = recentes?.[1]?.direction;
+    if (anterior !== "outbound") return;
+
+    const { data: org } = await admin
+      .from("organizations")
+      .select("display_name, settings")
+      .eq("id", entrada.organizationId)
+      .maybeSingle();
+    const cfg = lerAssessorNasSettings(org?.settings);
+    if (!deveAvisarResposta({
+      replyEnabled: cfg.replyEnabled,
+      phone: cfg.phone,
+      inboundCount: count,
+      anteriorEraNosso: true,
+    })) {
+      return;
+    }
+
+    const { data: contato } = await admin
+      .from("contacts")
+      .select("display_name, name, phone_number")
+      .eq("id", entrada.contactId)
+      .eq("organization_id", entrada.organizationId)
+      .maybeSingle();
+    const nomeCliente =
+      contato?.display_name || contato?.name || entrada.nomeDoContato || "Lead";
+    const foneCliente = contato?.phone_number || "";
+    const sent = await chamarAssessor({
+      action: "alert",
+      notice: "reply",
+      phones: [cfg.phone],
+      client_name: nomeCliente,
+      client_phone: foneCliente || null,
+      preview: (entrada.texto || "").slice(0, 180),
+      organization: org?.display_name || "CRM",
+      conversation_id: entrada.conversationId,
+      event_id: entrada.messageId,
+    });
+    if (!sent.ok && sent.error === "no_conversation") {
+      const texto = [
+        "💬 *Lead respondeu no CRM*",
+        `👤 *${nomeCliente}*${foneCliente ? ` · ${foneCliente}` : ""}`,
+        (entrada.texto || "").trim()
+          ? `💬 ${(entrada.texto || "").trim().slice(0, 180)}`
+          : "💬 Mandou outra mensagem.",
+        "Entre no CRM e responda por lá.",
+      ].join("\n");
+      await avisarPeloWhatsappDoCrm(admin, [cfg.phone], texto);
+    }
+  } catch (err) {
+    logger.warn("assessor: aviso de resposta falhou", {
       organization_id: entrada.organizationId,
       detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
     });

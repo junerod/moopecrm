@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 type Config = {
   phone: string;
   enabled: boolean;
+  reply_enabled: boolean;
   secret_configured: boolean;
   assessor_ok?: boolean;
   assessor_error?: string | null;
@@ -36,13 +37,17 @@ export function AssessorAlertClient() {
   const [saving, setSaving] = useState(false);
   const shown = phone ?? q.data?.phone ?? "";
 
-  async function salvar(enabled: boolean) {
+  async function salvar(patch: { enabled?: boolean; reply_enabled?: boolean }) {
     setSaving(true);
     try {
       const res = await fetch("/api/v1/integrations/assessor", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone: shown, enabled }),
+        body: JSON.stringify({
+          phone: shown,
+          enabled: patch.enabled ?? q.data?.enabled ?? false,
+          reply_enabled: patch.reply_enabled ?? q.data?.reply_enabled ?? false,
+        }),
       });
       const data = unwrap<Config>(await res.json());
       if (!res.ok) throw new Error("Não salvei.");
@@ -53,7 +58,7 @@ export function AssessorAlertClient() {
       } else if (data.assessor_ok === false) {
         toast.error("Salvei aqui, mas o Assessor não confirmou a liberação.");
       } else {
-        toast.success(enabled ? "Número liberado no Meu Assessor." : "Avisos desligados.");
+        toast.success("Salvo.");
       }
       setPhone(null);
       await qc.invalidateQueries({ queryKey: ["assessor-config"] });
@@ -69,9 +74,8 @@ export function AssessorAlertClient() {
       <CardHeader>
         <CardTitle>WhatsApp do Meu Assessor</CardTitle>
         <CardDescription>
-          Quando um cliente novo manda a primeira mensagem, o Assessor avisa esse número no WhatsApp.
-          A pessoa precisa já ter conversado com o Meu Assessor pelo menos uma vez.
-          No próprio Zap ela pode mandar “ligar alerta lead” ou “desligar alerta lead”. Desligar para só o aviso.
+          Cliente novo e lead que responde são dois avisos. A pessoa precisa já ter falado com o Meu Assessor.
+          No Zap: “ligar alerta lead”, “desligar alerta lead”, “ligar alerta resposta”, “desligar alerta resposta”.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -86,17 +90,24 @@ export function AssessorAlertClient() {
           />
         </div>
         <p className="text-sm text-muted-foreground">
-          {q.data?.enabled ? "Avisos ligados." : "Avisos desligados."}
+          {q.data?.enabled ? "Alerta de lead ligado." : "Alerta de lead desligado."}{" "}
+          {q.data?.reply_enabled ? "Alerta de resposta ligado." : "Alerta de resposta desligado."}
           {q.data && !q.data.secret_configured
             ? " O servidor do CRM ainda não tem o segredo do Assessor."
             : ""}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" disabled={saving || shown.replace(/\D/g, "").length < 10} onClick={() => salvar(true)}>
-            Liberar e avisar
+          <Button type="button" disabled={saving || shown.replace(/\D/g, "").length < 10} onClick={() => salvar({ enabled: true })}>
+            Ligar alerta de lead
           </Button>
-          <Button type="button" variant="outline" disabled={saving} onClick={() => salvar(false)}>
-            Desligar
+          <Button type="button" variant="outline" disabled={saving} onClick={() => salvar({ enabled: false })}>
+            Desligar alerta de lead
+          </Button>
+          <Button type="button" disabled={saving || shown.replace(/\D/g, "").length < 10} onClick={() => salvar({ reply_enabled: true })}>
+            Ligar alerta de resposta
+          </Button>
+          <Button type="button" variant="outline" disabled={saving} onClick={() => salvar({ reply_enabled: false })}>
+            Desligar alerta de resposta
           </Button>
         </div>
       </CardContent>

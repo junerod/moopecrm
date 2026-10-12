@@ -19,6 +19,7 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   phone: z.string().min(8).max(24),
   enabled: z.boolean(),
+  reply_enabled: z.boolean().optional(),
 });
 
 export async function GET(): Promise<Response> {
@@ -33,9 +34,12 @@ export async function GET(): Promise<Response> {
     .eq("id", gate.org.orgId)
     .maybeSingle();
 
+  const cfg = lerAssessorNasSettings(data?.settings);
   return ok(
     {
-      ...lerAssessorNasSettings(data?.settings),
+      phone: cfg.phone,
+      enabled: cfg.enabled,
+      reply_enabled: cfg.replyEnabled,
       secret_configured: env.ASSESSOR_PARTNER_SECRET.trim().length > 0,
     },
     { requestId },
@@ -70,7 +74,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     org.settings && typeof org.settings === "object"
       ? { ...(org.settings as Record<string, unknown>) }
       : {};
-  settings.assessor = { phone: body.phone.trim(), enabled: body.enabled };
+  const anterior = lerAssessorNasSettings(settings);
+  settings.assessor = {
+    phone: body.phone.trim(),
+    enabled: body.enabled,
+    reply_enabled: body.reply_enabled ?? anterior.replyEnabled,
+  };
 
   const { error: writeErr } = await admin
     .from("organizations")
@@ -106,6 +115,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     {
       phone: body.phone.trim(),
       enabled: body.enabled,
+      reply_enabled: body.reply_enabled ?? anterior.replyEnabled,
       assessor_ok: assessor.ok,
       assessor_error: assessor.error ?? null,
     },

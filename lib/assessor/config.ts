@@ -12,7 +12,10 @@ export function deveAvisarAssessor(input: {
 }
 
 export type AssessorOrgConfig = {
+  /** Alerta de lead: a primeira mensagem de um cliente novo. */
   enabled: boolean;
+  /** Alerta de resposta: o lead escreveu de novo depois de uma mensagem nossa. */
+  replyEnabled: boolean;
   phone: string;
 };
 
@@ -62,12 +65,28 @@ export function destinatariosDoAviso(input: {
   return lista;
 }
 
+export function deveAvisarResposta(input: {
+  replyEnabled: boolean;
+  phone: string | null | undefined;
+  inboundCount: number;
+  anteriorEraNosso: boolean;
+}): boolean {
+  const phone = (input.phone || "").replace(/\D/g, "");
+  return (
+    input.replyEnabled &&
+    phone.length >= 10 &&
+    input.inboundCount > 1 &&
+    input.anteriorEraNosso
+  );
+}
+
 export function lerAssessorNasSettings(settings: unknown): AssessorOrgConfig {
   const bag = settings && typeof settings === "object" ? (settings as Record<string, unknown>) : {};
   const raw = bag.assessor;
   const box = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
     enabled: box.enabled === true,
+    replyEnabled: box.reply_enabled === true,
     phone: typeof box.phone === "string" ? box.phone : "",
   };
 }

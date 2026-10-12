@@ -4,17 +4,44 @@
  */
 
 export type LadoDoAlerta = "on" | "off";
+export type KindDoAlerta = "lead" | "resposta";
 
-export function fraseAlertaLead(text: string): LadoDoAlerta | null {
-  const t = String(text || "")
+export function normalizarFrase(text: string): string {
+  return String(text || "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
-  if (!t || t.length > 40) return null;
-  if (/^(ligar|liga|ativar|ativa)\s+alerta\s+leads?$/.test(t)) return "on";
-  if (/^(desligar|desliga|desativar|desativa)\s+alerta\s+leads?$/.test(t)) return "off";
+}
+
+export function fraseAlertaLead(text: string): { kind: KindDoAlerta; lado: LadoDoAlerta } | null {
+  const t = normalizarFrase(text);
+  if (!t || t.length > 48) return null;
+  const liga = /^(ligar|liga|ativar|ativa)\s+/;
+  const desliga = /^(desligar|desliga|desativar|desativa)\s+/;
+  if (/^(ligar|liga|ativar|ativa)\s+alerta\s+respostas?$/.test(t)) return { kind: "resposta", lado: "on" };
+  if (/^(desligar|desliga|desativar|desativa)\s+alerta\s+respostas?$/.test(t)) {
+    return { kind: "resposta", lado: "off" };
+  }
+  if (liga.test(t) && /^((ligar|liga|ativar|ativa)\s+alerta\s+leads?)$/.test(t)) {
+    return { kind: "lead", lado: "on" };
+  }
+  if (desliga.test(t) && /alerta\s+leads?$/.test(t) && !/resposta/.test(t)) {
+    return { kind: "lead", lado: "off" };
+  }
+  return null;
+}
+
+export type ConsultaCrm = "dia" | "semana" | "abertos" | "respostas";
+
+export function fraseConsultaCrm(text: string): ConsultaCrm | null {
+  const t = normalizarFrase(text);
+  if (!t || t.length > 48) return null;
+  if (/^(leads?|clientes?) (do dia|de hoje)$/.test(t)) return "dia";
+  if (/^(leads?|clientes?) da semana$/.test(t)) return "semana";
+  if (/^(leads?|funil) abertos?$/.test(t)) return "abertos";
+  if (/^(quem respondeu hoje|respostas de hoje|leads? que responderam)$/.test(t)) return "respostas";
   return null;
 }
 

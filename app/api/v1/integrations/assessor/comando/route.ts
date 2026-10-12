@@ -19,6 +19,7 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   phone: z.string().min(8).max(24),
   enabled: z.boolean(),
+  kind: z.enum(["lead", "resposta"]).optional(),
 });
 
 function segredoConfere(got: string | null): boolean {
@@ -63,7 +64,12 @@ export async function POST(req: NextRequest): Promise<Response> {
         ? { ...(org.settings as Record<string, unknown>) }
         : {};
     const atual = lerAssessorNasSettings(settings);
-    settings.assessor = { phone: atual.phone, enabled: body.enabled };
+    const kind = body.kind ?? "lead";
+    settings.assessor = {
+      phone: atual.phone,
+      enabled: kind === "resposta" ? atual.enabled : body.enabled,
+      reply_enabled: kind === "resposta" ? body.enabled : atual.replyEnabled,
+    };
     const { error: writeErr } = await admin
       .from("organizations")
       .update({ settings })
@@ -75,7 +81,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       resourceType: "organization",
       resourceId: org.id,
       requestId,
-      metadata: { enabled: body.enabled },
+      metadata: { enabled: body.enabled, kind: body.kind ?? "lead" },
     });
   }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deveAvisarAssessor, destinatariosDoAviso, ehFluxoComercialMoope, lerAssessorNasSettings, rotuloDaLinha } from "@/lib/assessor/config";
+import { deveAvisarAssessor, deveAvisarResposta, destinatariosDoAviso, ehFluxoComercialMoope, lerAssessorNasSettings, rotuloDaLinha } from "@/lib/assessor/config";
 
 describe("Meu Assessor · aviso de cliente novo", () => {
   it("avisa só na primeira mensagem, com número ligado", () => {
@@ -16,12 +16,53 @@ describe("Meu Assessor · aviso de cliente novo", () => {
     expect(deveAvisarAssessor({ enabled: true, phone: "", inboundCount: 1 })).toBe(false);
   });
 
+  it("avisa resposta só depois da primeira, quando a mensagem anterior foi nossa", () => {
+    expect(
+      deveAvisarResposta({
+        replyEnabled: true,
+        phone: "61999990000",
+        inboundCount: 2,
+        anteriorEraNosso: true,
+      }),
+    ).toBe(true);
+    expect(
+      deveAvisarResposta({
+        replyEnabled: true,
+        phone: "61999990000",
+        inboundCount: 1,
+        anteriorEraNosso: true,
+      }),
+    ).toBe(false);
+    expect(
+      deveAvisarResposta({
+        replyEnabled: false,
+        phone: "61999990000",
+        inboundCount: 4,
+        anteriorEraNosso: true,
+      }),
+    ).toBe(false);
+    expect(
+      deveAvisarResposta({
+        replyEnabled: true,
+        phone: "61999990000",
+        inboundCount: 3,
+        anteriorEraNosso: false,
+      }),
+    ).toBe(false);
+  });
+
   it("lê o bloco assessor das settings da organização", () => {
     expect(lerAssessorNasSettings({ assessor: { enabled: true, phone: "+5561999990000" } })).toEqual({
       enabled: true,
+      replyEnabled: false,
       phone: "+5561999990000",
     });
-    expect(lerAssessorNasSettings(null)).toEqual({ enabled: false, phone: "" });
+    expect(lerAssessorNasSettings({ assessor: { reply_enabled: true, phone: "61999990000" } })).toEqual({
+      enabled: false,
+      replyEnabled: true,
+      phone: "61999990000",
+    });
+    expect(lerAssessorNasSettings(null)).toEqual({ enabled: false, replyEnabled: false, phone: "" });
   });
 
   it("no comercial da MOOPE avisa Tatiana e o DEV, e distingue a linha", () => {

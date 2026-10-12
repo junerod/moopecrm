@@ -19,6 +19,7 @@ export const PUBLIC_PATHS: RegExp[] = [
   // O Assessor liga/desliga o aviso de lead. Segredo no header, conferido na rota.
   // GET/POST /api/v1/integrations/assessor (a tela) NÃO entra: continua com sessão.
   /^\/api\/v1\/integrations\/assessor\/comando$/,
+  /^\/api\/v1\/integrations\/assessor\/consulta$/,
   /^\/api\/v1\/webhooks\//,
   /^\/api\/v1\/cron\//,
   // Heartbeat do agente do host (bearer INTERNAL_SECRET/INTERNAL_CRON_SECRET,
