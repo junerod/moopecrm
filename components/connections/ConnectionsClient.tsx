@@ -22,6 +22,7 @@ import { PerguntaIdadeDoNumero } from "./PerguntaIdadeDoNumero";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import {
   CheckCircle,
   CircleNotch,
   ClockCounterClockwise,
+  PencilSimple,
   Phone,
   Plus,
   ShieldCheck,
@@ -153,6 +155,8 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   const [qr, setQr] = useState<{ sessionId: string; title: string } | null>(null);
   const [perguntandoIdade, setPerguntandoIdade] = useState(false);
   const [idadeNovaConexao, setIdadeNovaConexao] = useState<boolean | null>(null);
+  const [apelidoNova, setApelidoNova] = useState("");
+  const [apelidar, setApelidar] = useState<ChannelSession | null>(null);
   const [antiBanId, setAntiBanId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<ChannelSession | null>(null);
   const [historicoId, setHistoricoId] = useState<string | null>(null);
@@ -189,17 +193,23 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
     void runHealthCheck(sessions);
   }, [sessions, runHealthCheck]);
 
-  const handleConnectNew = useCallback(async (numeroJaEmUso: boolean) => {
+  const handleConnectNew = useCallback(async (numeroJaEmUso: boolean, apelido: string) => {
+    const nome = apelido.trim();
+    if (!nome) {
+      toast.error("Dê um apelido antes do código. É ele que distingue o cartão novo do que caiu.");
+      return;
+    }
     setCreating(true);
     try {
       const res = await apiClient.post<{ data: ChannelSession }>(
         "/api/v1/channel-sessions",
-        { numero_ja_em_uso: numeroJaEmUso },
+        { numero_ja_em_uso: numeroJaEmUso, display_name: nome },
       );
       setPerguntandoIdade(false);
       setIdadeNovaConexao(null);
+      setApelidoNova("");
       invalidate();
-      setQr({ sessionId: res.data.id, title: "Conectar novo WhatsApp" });
+      setQr({ sessionId: res.data.id, title: `Conectar ${nome}` });
     } catch (err) {
       toast.error(errMsg(err, "Não foi possível iniciar a conexão."));
     } finally {
@@ -278,7 +288,8 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   const handleDeleted = useCallback(() => {
     setToDelete(null);
     invalidate();
-  }, [invalidate]);
+    if (sessions && sessions.length > 0) void runHealthCheck(sessions);
+  }, [invalidate, sessions, runHealthCheck]);
 
   const handleConnected = useCallback(() => {
     toast.success("WhatsApp conectado!");
@@ -410,6 +421,12 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                         {c.phone_number}
                       </p>
                     )}
+                    {c.status === "WORKING" && !c.phone_number && (
+                      <p className="mt-1 text-xs text-warning-fg">
+                        Este é o aparelho conectado. O número ainda aparece no cartão que caiu.
+                        Não apague este.
+                      </p>
+                    )}
                   </div>
                   <Badge variant={info.variant}>{info.label}</Badge>
                 </div>
@@ -472,10 +489,14 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                   )}
                   {supersedida && !residual && (
                     <p className="text-[11px] text-muted-foreground">
-                      Este número já está conectado em outra sessão. Não
-                      reconecte daqui.
+                      Este número já está conectado em outra sessão. Pode apagar
+                      este cartão. As conversas continuam no inbox.
                     </p>
                   )}
+                  <Button variant="outline" size="sm" onClick={() => setApelidar(c)}>
+                    <PencilSimple size={14} aria-hidden />
+                    Apelido
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setAntiBanId(c.id)}>
                     <ShieldCheck size={14} aria-hidden />
                     Proteção de envio
@@ -517,12 +538,24 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                 Isso decide se o número começa devagar ou já manda no ritmo de quem já atende.
               </DialogDescription>
             </DialogHeader>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">Apelido deste aparelho</span>
+              <Input
+                value={apelidoNova}
+                maxLength={80}
+                placeholder="Ex.: Comercial"
+                onChange={(e) => setApelidoNova(e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">
+                O cartão nasce com este nome. O que cair continua com o número — apague só esse.
+              </span>
+            </label>
             <PerguntaIdadeDoNumero valor={idadeNovaConexao} onEscolher={setIdadeNovaConexao} />
             <Button
               disabled={creating || idadeNovaConexao === null}
               onClick={() => {
                 if (idadeNovaConexao === null) return;
-                void handleConnectNew(idadeNovaConexao);
+                void handleConnectNew(idadeNovaConexao, apelidoNova);
               }}
             >
               {creating ? "Preparando…" : "Continuar e ver o código"}
@@ -542,6 +575,17 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
           canal={toDelete}
           onCancel={() => setToDelete(null)}
           onDeleted={handleDeleted}
+        />
+      )}
+
+      {apelidar && (
+        <ApelidoDialog
+          canal={apelidar}
+          onCancel={() => setApelidar(null)}
+          onSaved={() => {
+            setApelidar(null);
+            invalidate();
+          }}
         />
       )}
 
@@ -668,6 +712,12 @@ function ExcluirCanalDialog({
           <DialogDescription asChild>
             <div className="space-y-2">
               <p>O número será desconectado do WhatsApp e sai desta lista.</p>
+              {canal.status === "WORKING" && (
+                <p>
+                  Este cartão está conectado. Apagar desliga o aparelho. O cartão que diz Caiu é
+                  o antigo — é esse que se apaga, depois que o novo estiver verde.
+                </p>
+              )}
               {isPending ? (
                 <p>Verificando o que está ligado a este número…</p>
               ) : isError || !impact ? (
@@ -701,6 +751,68 @@ function ExcluirCanalDialog({
               <Trash size={14} aria-hidden />
             )}
             Excluir
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ApelidoDialog({
+  canal,
+  onCancel,
+  onSaved,
+}: {
+  canal: ChannelSession;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [nome, setNome] = useState(canal.display_name ?? "");
+  const [salvando, setSalvando] = useState(false);
+
+  const salvar = async () => {
+    const apelido = nome.trim();
+    if (!apelido) {
+      toast.error("O apelido não pode ficar vazio.");
+      return;
+    }
+    setSalvando(true);
+    try {
+      await apiClient.patch(`/api/v1/channel-sessions/${canal.id}`, { display_name: apelido });
+      toast.success("Apelido salvo.");
+      onSaved();
+    } catch (err) {
+      toast.error(errMsg(err, "Não foi possível salvar o apelido."));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && !salvando && onCancel()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Apelido de {channelLabel(canal)}</DialogTitle>
+          <DialogDescription>
+            O nome fica neste cartão. O telefone do WhatsApp não muda.
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          value={nome}
+          maxLength={80}
+          placeholder="Ex.: Comercial"
+          onChange={(e) => setNome(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void salvar();
+          }}
+        />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" disabled={salvando} onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button disabled={salvando} onClick={() => void salvar()}>
+            {salvando ? <CircleNotch size={14} className="animate-spin" aria-hidden /> : null}
+            Salvar
           </Button>
         </div>
       </DialogContent>

@@ -13,6 +13,11 @@ export const createChannelSchema = z.object({
 
 export type CreateChannelInput = z.infer<typeof createChannelSchema>;
 
+/** Apelido que a pessoa dá ao cartão. O WhatsApp não escolhe este nome. */
+export const renameChannelSchema = z.object({
+  display_name: z.string().trim().min(1).max(80),
+});
+
 /** Status canônicos de sessão (WAHA + DB CHECK constraint). */
 export const CHANNEL_STATUSES = [
   "STARTING",

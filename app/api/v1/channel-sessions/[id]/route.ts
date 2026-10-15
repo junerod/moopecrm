@@ -26,7 +26,7 @@ import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { CHANNEL_PROVIDER_WAHA } from "@/lib/channels/capabilities";
 import { numeroObservadoDaSessao } from "@/lib/channels/numero-observado";
-import { isChannelStatus } from "@/lib/schemas/channels";
+import { isChannelStatus, renameChannelSchema } from "@/lib/schemas/channels";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
@@ -364,4 +364,57 @@ export async function DELETE(
   });
 
   return ok({ id, archived: arquivar, impact }, { requestId });
+}
+
+/**
+ * PATCH /api/v1/channel-sessions/[id] — apelido do cartão.
+ * Não mexe no pareamento nem no telefone. Admin, como quem conecta.
+ */
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const requestId = randomUUID();
+  const { id } = await ctx.params;
+  const authz = await requireRole("admin", {
+    requestId,
+    resource: "channel_sessions",
+    allowPlatformAdmin: true,
+  });
+  if (!authz.ok) return authz.response;
+  const { user, org: activeOrg } = authz;
+
+  let raw: unknown = {};
+  try {
+    raw = await req.json();
+  } catch {
+    raw = {};
+  }
+  const parsed = renameChannelSchema.safeParse(raw ?? {});
+  if (!parsed.success) {
+    return fail("validation_failed", "Dê um apelido de até 80 caracteres.", 422, { requestId });
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("channel_sessions")
+    .update({ display_name: parsed.data.display_name })
+    .eq("organization_id", activeOrg.orgId)
+    .eq("id", id)
+    .select("id, display_name")
+    .maybeSingle();
+  if (error) return fail("internal_error", error.message, 500, { requestId });
+  if (!data) return fail("not_found", "Canal não encontrado.", 404, { requestId });
+
+  void audit({
+    action: "channel.renamed",
+    actorUserId: user.id,
+    organizationId: activeOrg.orgId,
+    resourceType: "channel_session",
+    resourceId: id,
+    requestId,
+    metadata: { display_name: parsed.data.display_name },
+  });
+
+  return ok(data, { requestId });
 }

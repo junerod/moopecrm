@@ -181,6 +181,7 @@ export const AUDIT_ACTIONS = [
   "ai_agent.run_failed",
   "channel.connected",
   "channel.reconnected",
+  "channel.renamed",
   // Importação do legado do aparelho. Uma linha por rodada, não por mensagem —
   // mil linhas de `message.received` no audit seria o mesmo defeito que o
   // gatilho desta entrega existe para impedir no event_log.
