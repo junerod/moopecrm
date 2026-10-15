@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
-import { Phone, DotsThree } from "@/lib/ui/icons";
+import { DotsThree, InstagramLogo, Phone, WhatsappLogo } from "@/lib/ui/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,9 +112,14 @@ export function ConversationHeader({ conversation }: Props) {
           {especie ? (
             <Badge
               variant="outline"
-              className="hidden h-5 px-1.5 text-[11px] md:inline-flex"
+              className="hidden h-5 gap-1 px-1.5 text-[11px] md:inline-flex"
               data-testid="canal-da-conversa"
             >
+              {especie === "direct" ? (
+                <InstagramLogo size={12} weight="fill" aria-hidden />
+              ) : (
+                <WhatsappLogo size={12} weight="fill" aria-hidden />
+              )}
               {rotuloDaEspecie(especie)}
             </Badge>
           ) : null}

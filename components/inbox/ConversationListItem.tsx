@@ -1,7 +1,7 @@
 "use client";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Robot } from "@/lib/ui/icons";
+import { InstagramLogo, Robot, WhatsappLogo } from "@/lib/ui/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ds/StatusBadge";
 import { TagChip } from "@/components/ds/TagChip";
@@ -269,8 +269,9 @@ export function ConversationListItem({
             <span
               className="inline-flex h-5 items-center gap-1 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
               data-testid="lista-canal-especie"
-              title={rotuloCanal ? `Entrou por ${rotuloCanal}` : "Entrou pelo Instagram"}
+              title={rotuloCanal ? `Entrou pelo Instagram · ${rotuloCanal}` : "Entrou pelo Instagram"}
             >
+              <InstagramLogo size={11} weight="fill" aria-hidden />
               {rotuloEspecie}
               {mostrarCanal && rotuloCanal ? ` · ${rotuloCanal}` : ""}
             </span>
@@ -279,7 +280,7 @@ export function ConversationListItem({
               className="inline-flex h-5 items-center gap-1 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground"
               title={`Entrou por ${rotuloCanal}`}
             >
-              <Phone size={9} weight="regular" aria-hidden />
+              <WhatsappLogo size={11} weight="fill" aria-hidden />
               {rotuloCanal}
             </span>
           ) : null}

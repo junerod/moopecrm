@@ -83,6 +83,8 @@ export {
   // conversation
   ChatCircle,
   Phone,
+  WhatsappLogo,
+  InstagramLogo,
   Paperclip,
   Microphone,
   Image as ImageIcon,
