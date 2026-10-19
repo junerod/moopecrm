@@ -441,6 +441,7 @@ export const AUDIT_ACTIONS = [
   "pack.integration.capability.used",
   "pack.disabled",
   "pack.enabled",
+  "conversation.inbox_purged",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

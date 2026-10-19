@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { RecomecarFila } from "@/components/inbox/RecomecarFila";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,35 +14,12 @@ import { CONFIRMACAO_DE_ESVAZIAR_FUNIL } from "@/lib/leads/esvaziar-funil";
 
 /**
  * Zona do admin da empresa. Atendente não chega nesta página.
- * Encerrar a fila guarda o histórico. Zerar o funil apaga os cards.
+ * A fila do WhatsApp tem as duas saídas: zerar (histórico fica) e limpar.
+ * Zerar o funil apaga os cards.
  */
 export function ReinicioDaOperacao() {
-  const [encerrando, setEncerrando] = useState(false);
   const [zerando, setZerando] = useState(false);
   const [confirmacao, setConfirmacao] = useState("");
-
-  async function encerrarFila() {
-    if (
-      !window.confirm(
-        "Zerar a fila? As conversas em aberto saem da fila. O histórico fica. Quando o cliente escrever de novo, a conversa volta para a fila.",
-      )
-    ) {
-      return;
-    }
-    setEncerrando(true);
-    try {
-      const res = await apiClient.post<{ data: { encerradas: number } }>(
-        "/api/v1/conversations/bulk-close",
-        {},
-        { timeoutMs: 120_000 },
-      );
-      toast.success(`${res.data.encerradas} conversas encerradas.`);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Não consegui encerrar a fila.");
-    } finally {
-      setEncerrando(false);
-    }
-  }
 
   async function zerarFunil() {
     if (confirmacao.trim() !== CONFIRMACAO_DE_ESVAZIAR_FUNIL) {
@@ -67,28 +45,14 @@ export function ReinicioDaOperacao() {
   return (
     <Card className="max-w-2xl space-y-6 border-error/40 p-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Recomeçar a operação</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Fila do WhatsApp</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Só o administrador da empresa. Atendente e supervisor não veem isto e a API recusa.
+          Só o administrador da empresa. As duas opções pedem confirmação de novo. Zerar a fila
+          mantém o histórico. Limpar a caixa apaga as conversas.
         </p>
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">Zerar a fila</h3>
-        <p className="text-sm text-muted-foreground">
-          Tira da fila todas as conversas em aberto. O histórico permanece em Fechadas. A próxima
-          mensagem do cliente devolve a conversa para a fila, sem dono.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={encerrando}
-          data-testid="encerrar-fila"
-          onClick={() => void encerrarFila()}
-        >
-          {encerrando ? "Zerando…" : "Zerar a fila"}
-        </Button>
-      </div>
+      <RecomecarFila />
 
       <div className="space-y-2 border-t border-border pt-4">
         <h3 className="text-sm font-medium">Zerar o funil</h3>

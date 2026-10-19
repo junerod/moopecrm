@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/auth/AuthProvider";
+import { ROLE_RANK } from "@/lib/auth/types";
 import { useSincronizarContatosDoAparelho } from "@/hooks/channels/useSincronizarContatosDoAparelho";
 import { canalExigeModelo, estadoDaJanela, formatarDecorrido } from "@/lib/channels/janela";
 import { JanelaFechadaAviso } from "@/components/inbox/JanelaFechadaAviso";
@@ -40,6 +41,7 @@ import { precisaBuscarConversaAvulsa } from "@/lib/inbox/deep-link-conversa";
 import { contatoDoEmbed, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { InboxEmptyState } from "./InboxEmptyState";
 import { NovaConversaDialog } from "@/components/inbox/NovaConversaDialog";
+import { LimparCaixaButton } from "@/components/inbox/LimparCaixaButton";
 import { cn } from "@/lib/utils";
 
 /**
@@ -113,6 +115,9 @@ interface InboxLayoutProps {
 export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {}) {
   const { user, activeOrg } = useAuth();
   const orgId = activeOrg?.orgId ?? null;
+  const podeLimparCaixa =
+    user.is_platform_admin ||
+    (activeOrg != null && ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin);
   useSincronizarContatosDoAparelho(Boolean(orgId));
 
   const router = useRouter();
@@ -344,6 +349,9 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
           >
             + Nova conversa
           </button>
+          {podeLimparCaixa ? (
+            <LimparCaixaButton aparencia="lista" onLimpou={() => handleSelect(null)} />
+          ) : null}
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
           <ConversationList

@@ -23,6 +23,8 @@ import { DEFAULT_VISIBILITY_MODE, ROLE_RANK, type VisibilityMode } from "@/lib/a
 import { lerAiMode } from "@/lib/ai/execucao/modos";
 import { routingConfigSchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
+import { RecomecarFila } from "@/components/inbox/RecomecarFila";
+import { Card } from "@/components/ui/card";
 import { AiModeForm } from "./_ai-mode";
 import { AtendimentoForm } from "./_form";
 
@@ -68,6 +70,19 @@ export default async function AtendimentoSettingsPage() {
       />
 
       <AiModeForm initial={{ configured: lerAiMode(settings.ai_mode) }} />
+
+      {user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin ? (
+        <Card className="max-w-2xl space-y-4 border-error/40 p-6">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Fila do WhatsApp</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Zerar a fila mantém o histórico em Fechadas. Limpar a caixa apaga as conversas. As
+              duas pedem confirmação de novo. Só o administrador.
+            </p>
+          </div>
+          <RecomecarFila />
+        </Card>
+      ) : null}
     </div>
   );
 }

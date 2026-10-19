@@ -568,7 +568,9 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     // dava para ligar com UPDATE à mão no banco.
     href: "/app/settings/atendimento",
     label: "Distribuição de atendimento",
-    description: "Quem recebe cada cliente novo, o que cada atendente enxerga, e o modo da IA.",
+    description:
+      "Quem recebe cada cliente novo, zerar a fila mantendo o histórico, e limpar a caixa.",
+    aliases: ["fila", "fila do whatsapp", "zerar fila", "limpar caixa"],
     icon: UsersThree,
     group: "organizacao",
     section: "Sua empresa",
@@ -577,8 +579,15 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/settings/tenant",
     label: "Organização",
-    description: "Dados da empresa, retenção de dados, encarregado de LGPD e zerar a fila.",
-    aliases: ["zerar fila", "limpar fila", "encerrar fila", "empresa"],
+    description: "Dados da empresa, retenção de dados, encarregado de LGPD, zerar a fila e limpar a caixa.",
+    aliases: [
+      "zerar fila",
+      "limpar fila",
+      "encerrar fila",
+      "limpar caixa",
+      "limpar caixa de entrada",
+      "empresa",
+    ],
     icon: Buildings,
     group: "organizacao",
     section: "Sua empresa",
