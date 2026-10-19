@@ -69,8 +69,6 @@ export default async function AtendimentoSettingsPage() {
         initial={{ ...routing, visibility_mode: settings.visibility_mode ?? DEFAULT_VISIBILITY_MODE }}
       />
 
-      <AiModeForm initial={{ configured: lerAiMode(settings.ai_mode) }} />
-
       {user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin ? (
         <Card className="max-w-2xl space-y-4 border-error/40 p-6">
           <div>
@@ -83,6 +81,8 @@ export default async function AtendimentoSettingsPage() {
           <RecomecarFila />
         </Card>
       ) : null}
+
+      <AiModeForm initial={{ configured: lerAiMode(settings.ai_mode) }} />
     </div>
   );
 }
