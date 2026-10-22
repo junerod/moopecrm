@@ -350,6 +350,22 @@ Retrato: nome, telefone, e-mail, contrato ativo (placa/título), faixa + `amount
 
 Estas rotas ainda nascem no repo da locadora. Sem elas o CRM falha fechado e o inbox humano segue igual.
 
+## Leitura (o parceiro vê, não mexe)
+
+A mesma chave `mop_`. Header `Authorization: Bearer`. `actor_email` é o e-mail de quem está logado no outro sistema e já é membro aqui. Agente vê o que é dele. Gestor e admin veem o escritório. Sem telefone, sem texto de WhatsApp, sem id de usuário.
+
+| GET | o que volta |
+|-----|-------------|
+| `/api/v1/integrations/moope/agenda?actor_email=&de=&ate=` | compromissos (`pending`, `confirmed`, `completed`). Sem `de`/`ate`: hoje e amanhã. Máximo 62 dias. |
+| `/api/v1/integrations/moope/acoes?actor_email=&visao=hoje\|proximos\|atrasados` | obrigações comerciais |
+| `/api/v1/integrations/moope/pulso?actor_email=&periodo=7d\|30d\|hoje` | indicadores. 403 se não for gestor ou admin |
+| `/api/v1/integrations/moope/leads?actor_email=&limit=20&status=all\|open\|won\|lost&contact_external_id=` | últimos negócios. Não move |
+| `/api/v1/integrations/moope/funil?actor_email=` | etapas, abertos, valor, ganhos e perdidos. Não move |
+
+`contact_external_id` é o id que o parceiro mandou em `person.upserted`. Launch também aceita `/app/agenda`.
+
+401 chave inválida. 403 e-mail que não é membro. 422 consulta mal formada. Estas rotas não criam, não alteram e não apagam.
+
 ## O que não fazer
 
 - Iframe do CRM dentro do outro sistema (cookie, CSP, marca).

@@ -36,7 +36,7 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/legal/privacy")).toBe(true);
   });
 
-  it("libera as seis portas do conector MOOPE, e só elas", () => {
+  it("libera as portas do conector MOOPE, e só elas", () => {
     expect(isPublicPath("/api/v1/integrations/moope/launch")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/events")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/entrar")).toBe(true);
@@ -45,10 +45,16 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/v1/integrations/moope/provision")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/channel")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/ia-credencial")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/agenda")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/acoes")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/pulso")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/leads")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/funil")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope/launch/x")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope/send/x")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope/provision/x")).toBe(false);
+    expect(isPublicPath("/api/v1/integrations/moope/agenda/x")).toBe(false);
   });
 
   it("libera a volta do Instagram Login, e só o callback", () => {

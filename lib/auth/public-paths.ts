@@ -15,7 +15,7 @@ export const PUBLIC_PATHS: RegExp[] = [
   /^\/api\/v1\/health$/,
   // Conector MOOPE: Bearer da chave (launch/events) ou token de 90s (entrar).
   // Sem cookie. A rota GET /api/v1/integrations/moope (CRUD) NÃO entra.
-  /^\/api\/v1\/integrations\/moope\/(launch|events|entrar|send|reconcile|provision|channel|ia-credencial)$/,
+  /^\/api\/v1\/integrations\/moope\/(launch|events|entrar|send|reconcile|provision|channel|ia-credencial|agenda|acoes|pulso|leads|funil)$/,
   // O Assessor liga/desliga o aviso de lead. Segredo no header, conferido na rota.
   // GET/POST /api/v1/integrations/assessor (a tela) NÃO entra: continua com sessão.
   /^\/api\/v1\/integrations\/assessor\/comando$/,

@@ -49,6 +49,7 @@ describe("launch MOOPE", () => {
     expect(caminhoDoLaunchEhSeguro("/app/contacts/9")).toBe(true);
     expect(caminhoDoLaunchEhSeguro("/app/inbox?id=1")).toBe(true);
     expect(caminhoDoLaunchEhSeguro("/app/pipeline?lead=1")).toBe(true);
+    expect(caminhoDoLaunchEhSeguro("/app/agenda")).toBe(true);
     expect(caminhoDoLaunchEhSeguro("/login")).toBe(false);
     expect(caminhoDoLaunchEhSeguro("/app/../admin")).toBe(false);
   });

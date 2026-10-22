@@ -19,7 +19,13 @@ export type MoopeOutboundType = (typeof MOOPE_OUTBOUND_TYPES)[number];
 
 export const MOOPE_LAUNCH_TTL_SECONDS = 90;
 
-export const MOOPE_PATHS_PERMITIDOS = [/^\/app\/contacts(?:\/|$)/, /^\/app\/inbox(?:\?|$)/, /^\/app\/pipeline(?:\?|$)/, /^\/app\/kanban(?:\?|$)/];
+export const MOOPE_PATHS_PERMITIDOS = [
+  /^\/app\/contacts(?:\/|$)/,
+  /^\/app\/inbox(?:\?|$)/,
+  /^\/app\/pipeline(?:\?|$)/,
+  /^\/app\/kanban(?:\?|$)/,
+  /^\/app\/agenda(?:\?|$)/,
+];
 
 export function caminhoDoLaunchEhSeguro(path: string): boolean {
   if (!path.startsWith("/app/")) return false;
