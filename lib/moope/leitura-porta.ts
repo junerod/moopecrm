@@ -9,7 +9,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { leituraAutorizada } from "@/lib/api-tokens/contrato";
+import { escritaAutorizada, leituraAutorizada } from "@/lib/api-tokens/contrato";
 import { fail, ok } from "@/lib/api/wrappers";
 import { logger } from "@/lib/logger";
 import { extrairBearer } from "@/lib/moope/chave";
@@ -21,6 +21,8 @@ export type LeituraAberta = {
   requestId: string;
   admin: SupabaseClient;
   orgId: string;
+  /** Null quando a chave é mop_. O funil que mexe grava este id no audit. */
+  tokenId: string | null;
 };
 
 /**
@@ -37,7 +39,7 @@ export async function abrirLeitura(
   const plaintext = extrairBearer(header);
 
   if (plaintext?.startsWith("dsk_")) {
-    return abrirPeloToken(admin, plaintext, requestId);
+    return abrirPeloToken(admin, plaintext, requestId, "ler");
   }
 
   const conexao = await resolverConexaoPeloBearer(admin, header);
@@ -50,13 +52,41 @@ export async function abrirLeitura(
     };
   }
 
-  return { ok: true, requestId, admin, orgId: conexao.organization_id };
+  return { ok: true, requestId, admin, orgId: conexao.organization_id, tokenId: null };
+}
+
+/**
+ * Arrastar, ganhar, perder e marcar o próximo passo. A chave mop_ não serve:
+ * ela abre o CRM e manda WhatsApp. Quem mexe no funil é o token dsk_ com a
+ * permissão de escrever.
+ */
+export async function abrirEscrita(
+  req: NextRequest,
+): Promise<LeituraAberta | { ok: false; response: Response }> {
+  const requestId = randomUUID();
+  const admin = createAdminClient();
+  const plaintext = extrairBearer(req.headers.get("authorization"));
+
+  if (!plaintext?.startsWith("dsk_")) {
+    return {
+      ok: false,
+      response: fail(
+        "forbidden",
+        "A chave de entrada não mexe no funil. Use o token de API com a permissão de mexer no funil.",
+        403,
+        { requestId },
+      ),
+    };
+  }
+
+  return abrirPeloToken(admin, plaintext, requestId, "escrever");
 }
 
 async function abrirPeloToken(
   admin: SupabaseClient,
   plaintext: string,
   requestId: string,
+  modo: "ler" | "escrever",
 ): Promise<LeituraAberta | { ok: false; response: Response }> {
   const tokenHash = createHash("sha256").update(plaintext).digest();
   const { data, error } = await admin
@@ -73,12 +103,20 @@ async function abrirPeloToken(
     };
   }
 
-  const julgamento = leituraAutorizada({
-    encontrado: Boolean(data),
-    scopes: data?.scopes,
-    revokedAt: data?.revoked_at ?? null,
-    expiresAt: data?.expires_at ?? null,
-  });
+  const julgamento =
+    modo === "escrever"
+      ? escritaAutorizada({
+          encontrado: Boolean(data),
+          scopes: data?.scopes,
+          revokedAt: data?.revoked_at ?? null,
+          expiresAt: data?.expires_at ?? null,
+        })
+      : leituraAutorizada({
+          encontrado: Boolean(data),
+          scopes: data?.scopes,
+          revokedAt: data?.revoked_at ?? null,
+          expiresAt: data?.expires_at ?? null,
+        });
   if (!julgamento.ok || !data) {
     const status = julgamento.ok ? 401 : julgamento.status;
     const message = julgamento.ok ? "Token não reconhecido." : julgamento.message;
@@ -96,7 +134,7 @@ async function abrirPeloToken(
     .eq("id", data.id)
     .eq("organization_id", data.organization_id);
 
-  return { ok: true, requestId, admin, orgId: data.organization_id };
+  return { ok: true, requestId, admin, orgId: data.organization_id, tokenId: data.id };
 }
 
 export async function ler(

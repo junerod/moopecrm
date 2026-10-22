@@ -43,6 +43,10 @@ const SCOPES: { id: string; label: string }[] = [
     id: "integrations:read",
     label: "Ler agenda, funil e indicadores (Facejus e outros sistemas)",
   },
+  {
+    id: "integrations:write",
+    label: "Mexer no funil: mover card, ganhar, perder e marcar o próximo passo",
+  },
   { id: "mcp:read", label: "Agentes de IA podem LER o CRM (MCP)" },
   { id: "mcp:write", label: "Agentes de IA podem AGIR no CRM (MCP)" },
   // Sem isto o token nasce como 'agent' e as ferramentas de nível gerente
@@ -86,7 +90,7 @@ export function ApiTokensClient() {
       });
       setCreated(res.data);
       setName("");
-      setScopes(["integrations:read"]);
+      setScopes(["integrations:read", "integrations:write"]);
       setExpiresOn("");
       setCreateOpen(false);
     } catch {
@@ -103,7 +107,7 @@ export function ApiTokensClient() {
       <div className="flex sm:justify-end">
         <Button
           onClick={() => {
-            setScopes(["integrations:read"]);
+            setScopes(["integrations:read", "integrations:write"]);
             setCreateOpen(true);
           }}
           className="w-full sm:w-auto"

@@ -50,6 +50,14 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/v1/integrations/moope/pulso")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/leads")).toBe(true);
     expect(isPublicPath("/api/v1/integrations/moope/funil")).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/funil/quadros")).toBe(true);
+    expect(
+      isPublicPath(
+        "/api/v1/integrations/moope/funil/quadros/8f4b9d4d-e9a2-49ff-8e48-b5001b3fae88/cards/8f4b9d4d-e9a2-49ff-8e48-b5001b3fae88/mover",
+      ),
+    ).toBe(true);
+    expect(isPublicPath("/api/v1/integrations/moope/funil/quadros/nao-e-uuid")).toBe(false);
+    expect(isPublicPath("/api/v1/integrations/moope/funil/quadros/8f4b9d4d-e9a2-49ff-8e48-b5001b3fae88/extra")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope/launch/x")).toBe(false);
     expect(isPublicPath("/api/v1/integrations/moope/send/x")).toBe(false);

@@ -5,6 +5,8 @@
  * moram em `api_tokens`. Este arquivo só decide se a chave ainda serve.
  */
 export const ESCOPO_LEITURA_DO_CRM = "integrations:read";
+/** Mover card, ganhar, perder e marcar o próximo passo. Não inclui WhatsApp. */
+export const ESCOPO_FUNIL_DO_CRM = "integrations:write";
 
 const MS_DIA = 24 * 60 * 60 * 1000;
 export const VALIDADE_MAXIMA_DIAS = 1825;
@@ -64,6 +66,36 @@ export function leituraAutorizada(args: {
       ok: false,
       status: 403,
       message: "Este token não tem permissão para ler o CRM. Marque essa permissão ao criar.",
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Mexer no funil é outra permissão. Quem só lê continua vendo o quadro e
+ * recebe 403 ao arrastar. A chave mop_ não passa por aqui.
+ */
+export function escritaAutorizada(args: {
+  encontrado: boolean;
+  scopes: unknown;
+  revokedAt: string | null;
+  expiresAt: string | null;
+  agora?: Date;
+}): { ok: true } | { ok: false; status: 401 | 403; message: string } {
+  const base = leituraAutorizada({ ...args, scopes: [ESCOPO_LEITURA_DO_CRM] });
+  if (!args.encontrado || args.revokedAt) return base;
+  const agora = args.agora ?? new Date();
+  if (args.expiresAt && new Date(args.expiresAt).getTime() <= agora.getTime()) return base;
+
+  const scopes = Array.isArray(args.scopes)
+    ? args.scopes.filter((s): s is string => typeof s === "string")
+    : [];
+  if (!scopes.includes(ESCOPO_FUNIL_DO_CRM)) {
+    return {
+      ok: false,
+      status: 403,
+      message:
+        "Este token só lê o CRM. Marque também a permissão de mexer no funil ao criar.",
     };
   }
   return { ok: true };

@@ -19,9 +19,10 @@ export default async function ApiTokensPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Tokens de API</h1>
         <p className="text-sm text-muted-foreground">
           Um token por sistema. Você escolhe o nome e a validade, e pode revogar sem
-          afetar os outros. O texto da chave aparece uma vez. Com a permissão de ler
-          o CRM, o outro sistema vê agenda, funil e indicadores do escritório — quem
-          abre a tela lá é regra de lá.
+          afetar os outros. O texto da chave aparece uma vez. Ler mostra agenda, funil
+          e indicadores. Mexer no funil deixa o outro sistema arrastar o card, ganhar,
+          perder e marcar o próximo passo — a mudança entra aqui na hora. Quem abre
+          a tela lá é regra de lá.
         </p>
       </header>
       <ApiTokensClient />

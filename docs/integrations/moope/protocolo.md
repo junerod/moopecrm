@@ -374,6 +374,23 @@ A chave `mop_` desta integração também lê, para quem já a colou. Ela contin
 
 401 token desconhecido, revogado ou vencido. 403 token sem a permissão de ler. 422 consulta mal formada. Estas rotas não criam, não alteram e não apagam.
 
+## Quadro do funil (o parceiro mexe na mesma linha)
+
+A lista e o quadro usam a permissão de ler. Arrastar, ganhar, perder, editar e marcar o próximo passo exigem também **Mexer no funil** (`integrations:write`). A chave `mop_` não mexe. Cada mudança grava a timeline do negócio e o audit, e a tela do CRM lê a mesma linha — não há sincronização depois.
+
+| | |
+|---|---|
+| GET `/api/v1/integrations/moope/funil/quadros` | nome dos funis |
+| GET `.../funil/quadros/{id}` | etapas e cards, na ordem do quadro |
+| POST `.../cards/{leadId}/mover` | `{ stage_id, expected_updated_at, position_in_stage? }` |
+| POST `.../cards/{leadId}/ganhar` | fecha como ganho |
+| POST `.../cards/{leadId}/perder` | `{ lost_reason }` |
+| POST `.../cards/{leadId}/proximo-passo` | `{ text, due_at? }` |
+| PATCH `.../cards/{leadId}` | `{ expected_updated_at, title?, value_cents?, temperature? }` |
+| GET `.../cards/{leadId}/historico` | timeline, sem id de usuário |
+
+`position_in_stage` é o meio entre o card de cima e o de baixo. Sem ela, o card vai para o fim da etapa. 409 pede para recarregar o quadro. 403 neste grupo é token sem a permissão de mexer.
+
 ## O que não fazer
 
 - Iframe do CRM dentro do outro sistema (cookie, CSP, marca).

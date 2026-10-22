@@ -16,6 +16,9 @@ export const PUBLIC_PATHS: RegExp[] = [
   // Conector MOOPE: Bearer da chave (launch/events) ou token de 90s (entrar).
   // Sem cookie. A rota GET /api/v1/integrations/moope (CRUD) NÃO entra.
   /^\/api\/v1\/integrations\/moope\/(launch|events|entrar|send|reconcile|provision|channel|ia-credencial|agenda|acoes|pulso|leads|funil)$/,
+  // Quadro do funil: lista, board e as ações do card. UUID no caminho; o resto
+  // continua com sessão. Sem esta linha o proxy manda o Bearer para o login.
+  /^\/api\/v1\/integrations\/moope\/funil\/quadros(?:\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:\/cards\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?:\/(?:mover|ganhar|perder|proximo-passo|historico))?)?)?$/,
   // O Assessor liga/desliga o aviso de lead. Segredo no header, conferido na rota.
   // GET/POST /api/v1/integrations/assessor (a tela) NÃO entra: continua com sessão.
   /^\/api\/v1\/integrations\/assessor\/comando$/,

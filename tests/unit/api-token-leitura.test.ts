@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ESCOPO_FUNIL_DO_CRM,
   ESCOPO_LEITURA_DO_CRM,
+  escritaAutorizada,
   instanteDaValidade,
   leituraAutorizada,
 } from "@/lib/api-tokens/contrato";
@@ -70,5 +72,26 @@ describe("token de leitura do CRM", () => {
         agora: AGORA,
       }),
     ).toMatchObject({ ok: false, status: 401 });
+  });
+
+  it("mexer no funil exige a permissão de escrever, mesmo com a de ler", () => {
+    expect(
+      escritaAutorizada({
+        encontrado: true,
+        scopes: [ESCOPO_LEITURA_DO_CRM],
+        revokedAt: null,
+        expiresAt: null,
+        agora: AGORA,
+      }),
+    ).toMatchObject({ ok: false, status: 403 });
+    expect(
+      escritaAutorizada({
+        encontrado: true,
+        scopes: [ESCOPO_LEITURA_DO_CRM, ESCOPO_FUNIL_DO_CRM],
+        revokedAt: null,
+        expiresAt: null,
+        agora: AGORA,
+      }).ok,
+    ).toBe(true);
   });
 });
