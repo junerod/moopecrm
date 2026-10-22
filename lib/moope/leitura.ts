@@ -4,6 +4,9 @@
  * Só projeção. Quem fala com o banco é `leitura-consultar.ts`. A rota não
  * decide forma: se a forma mora aqui, o teste enxerga sem subir o Postgres.
  *
+ * A chave identifica a organização inteira. Quem pode abrir a tela é
+ * permissão do sistema que guardou a chave, não um usuário daqui.
+ *
  * O que NÃO sai: telefone, corpo de mensagem, anotação, id de usuário.
  * O cliente do outro lado é o `moope_external_id` que ele mesmo mandou.
  */
@@ -14,24 +17,6 @@ export const LIMITE_DE_COMPROMISSOS = 200;
 export const LIMITE_DE_LEADS = 50;
 
 const MS_DIA = 24 * 60 * 60 * 1000;
-
-export type PapelDaLeitura = "viewer" | "agent" | "manager" | "admin";
-
-const PAPEIS: readonly PapelDaLeitura[] = ["viewer", "agent", "manager", "admin"];
-
-export function papelDaLeitura(role: string | null | undefined): PapelDaLeitura | null {
-  if (!role) return null;
-  return (PAPEIS as readonly string[]).includes(role) ? (role as PapelDaLeitura) : null;
-}
-
-export function ehGestorDaLeitura(papel: PapelDaLeitura): boolean {
-  return papel === "manager" || papel === "admin";
-}
-
-/** Agente e viewer veem o que é deles. Gestor vê o escritório. */
-export function donoDaLeitura(ator: { gestor: boolean; userId: string }): string | null {
-  return ator.gestor ? null : ator.userId;
-}
 
 export function idExternoDoContato(meta: unknown): string | null {
   if (!meta || typeof meta !== "object") return null;

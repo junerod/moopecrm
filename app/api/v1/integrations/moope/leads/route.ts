@@ -1,8 +1,7 @@
 /**
  * GET /api/v1/integrations/moope/leads
  *
- * Últimos negócios. Só leitura: não move, não ganha, não perde.
- * Agente vê os seus. Gestor vê os do escritório.
+ * Últimos negócios do escritório. Só leitura: não move, não ganha, não perde.
  */
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -37,7 +36,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   return ler(
     aberto,
     () =>
-      leadsDoParceiro(aberto.admin, aberto.orgId, aberto.ator, {
+      leadsDoParceiro(aberto.admin, aberto.orgId, {
         limite: parsed.data.limit,
         status: parsed.data.status,
         contactExternalId: parsed.data.contact_external_id ?? null,

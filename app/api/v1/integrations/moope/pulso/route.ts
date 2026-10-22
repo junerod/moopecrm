@@ -1,8 +1,8 @@
 /**
  * GET /api/v1/integrations/moope/pulso
  *
- * Indicadores do escritório. Só gestor ou admin. Só leitura.
- * Não devolve nome de atendente nem id de usuário.
+ * Indicadores do escritório inteiro. Só leitura.
+ * Quem pode abrir a tela é o Facejus. Não devolve nome de atendente nem id de usuário.
  */
 import type { NextRequest } from "next/server";
 
@@ -16,15 +16,6 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest): Promise<Response> {
   const aberto = await abrirLeitura(req);
   if (!aberto.ok) return aberto.response;
-
-  if (!aberto.ator.gestor) {
-    return fail(
-      "forbidden",
-      "O pulso do escritório só aparece para gestor ou admin no CRM.",
-      403,
-      { requestId: aberto.requestId },
-    );
-  }
 
   const bruto = req.nextUrl.searchParams.get("periodo") ?? "7d";
   if (!ehPeriodoPronto(bruto)) {

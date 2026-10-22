@@ -127,9 +127,11 @@ export function MoopeConnectionClient() {
           <CardHeader>
             <CardTitle>Mostre isto uma vez</CardTitle>
             <CardDescription>
-              Copie e cole na locadora (Empresa → MOOPE CRM), ou use o
-              provisionamento automático — aí a locadora já grava sozinha.
-              Depois some da tela.
+              A chave de entrada é o token. Cole no Facejus (Integrações) ou na
+              locadora. Com ela o outro sistema lê o escritório inteiro. Quem
+              vê a tela é permissão de lá, não um usuário daqui. O segredo de
+              saída só serve para conferir o que o CRM manda de volta. Depois
+              some da tela.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">

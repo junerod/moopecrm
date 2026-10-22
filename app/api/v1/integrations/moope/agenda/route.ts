@@ -1,7 +1,7 @@
 /**
  * GET /api/v1/integrations/moope/agenda
  *
- * Compromissos do período. Só leitura. Chave mop_ + actor_email.
+ * Compromissos do período. Só leitura. A chave mop_ vê o escritório inteiro.
  * Sem de/ate, devolve hoje e amanhã em America/Sao_Paulo.
  */
 import type { NextRequest } from "next/server";
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   return ler(
     aberto,
-    () => compromissosDoParceiro(aberto.admin, aberto.orgId, aberto.ator, de, ate),
+    () => compromissosDoParceiro(aberto.admin, aberto.orgId, de, ate),
     { de, ate },
   );
 }

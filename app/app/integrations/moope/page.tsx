@@ -14,9 +14,10 @@ export default function MoopeIntegrationPage() {
         <div>
           <h1 className="text-xl font-semibold">Integração MOOPE</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Uma chave para a frota ou o Facejus abrir o CRM pelo menu e mandar
-            cadastro. O outro sistema continua dono do contrato e do processo;
-            aqui fica o atendimento.
+            Uma chave para a frota ou o Facejus. Quem cola essa chave lê a
+            agenda, o funil e os indicadores do escritório inteiro. Quem pode
+            ver isso lá é permissão de lá. O outro sistema continua dono do
+            contrato e do processo; aqui fica o atendimento.
           </p>
         </div>
       </header>

@@ -1,7 +1,7 @@
 /**
  * GET /api/v1/integrations/moope/acoes
  *
- * Obrigações comerciais: hoje, próximas ou atrasadas. Só leitura.
+ * Obrigações comerciais do escritório: hoje, próximas ou atrasadas. Só leitura.
  */
 import type { NextRequest } from "next/server";
 
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   return ler(
     aberto,
-    () => acoesDoParceiro(aberto.admin, aberto.orgId, aberto.ator, visao),
+    () => acoesDoParceiro(aberto.admin, aberto.orgId, visao),
     { visao },
   );
 }

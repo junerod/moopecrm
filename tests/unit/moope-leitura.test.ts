@@ -3,12 +3,9 @@ import { describe, expect, it } from "vitest";
 import { isPublicPath } from "@/lib/auth/public-paths";
 import {
   DIAS_MAXIMOS_DA_AGENDA,
-  donoDaLeitura,
-  ehGestorDaLeitura,
   idExternoDoContato,
   janelaPadraoDaAgenda,
   montarFunil,
-  papelDaLeitura,
   projetarPulso,
   validarJanela,
 } from "@/lib/moope/leitura";
@@ -71,17 +68,7 @@ function kpisComAtendente(): KpisDeSupervisao {
 }
 
 describe("leitura MOOPE", () => {
-  it("agente vê o seu; gestor vê o escritório", () => {
-    expect(donoDaLeitura({ gestor: false, userId: "u1" })).toBe("u1");
-    expect(donoDaLeitura({ gestor: true, userId: "u1" })).toBeNull();
-    expect(ehGestorDaLeitura("manager")).toBe(true);
-    expect(ehGestorDaLeitura("admin")).toBe(true);
-    expect(ehGestorDaLeitura("agent")).toBe(false);
-    expect(papelDaLeitura("ai_operator")).toBeNull();
-    expect(papelDaLeitura("agent")).toBe("agent");
-  });
-
-  it("reconhece o id que o parceiro mandou e ignora o resto do metadado", () => {
+  it("a chave vê o escritório; o id do cliente é o que o parceiro mandou", () => {
     expect(idExternoDoContato({ moope_external_id: "cli-9", phone: "+5511" })).toBe("cli-9");
     expect(idExternoDoContato({ phone: "+5511" })).toBeNull();
     expect(idExternoDoContato(null)).toBeNull();

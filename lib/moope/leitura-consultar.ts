@@ -9,7 +9,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { rotuloDoContato, SEM_NOME } from "@/lib/contacts/rotulo-do-contato";
 import { listarProximasAcoes, type VisaoDaAcao } from "@/lib/demandas/listar-proximas-acoes";
 import {
-  donoDaLeitura,
   idExternoDoContato,
   LIMITE_DE_COMPROMISSOS,
   montarFunil,
@@ -22,8 +21,6 @@ import {
 } from "@/lib/moope/leitura";
 import { carregarKpisDeSupervisao } from "@/lib/supervisao/kpis";
 import { janelaDoPeriodo, type PeriodoPronto } from "@/lib/supervisao/periodo";
-
-type AtorMinimo = { gestor: boolean; userId: string };
 
 const PAGINA = 1000;
 const TETO_DE_PAGINAS = 5;
@@ -58,11 +55,10 @@ async function fichaDosContatos(
 export async function compromissosDoParceiro(
   db: SupabaseClient,
   orgId: string,
-  ator: AtorMinimo,
   de: string,
   ate: string,
 ): Promise<CompromissoPublico[]> {
-  let q = db
+  const { data, error } = await db
     .from("calendar_appointments")
     .select("id, title, starts_at, ends_at, status, contact_id, event_type_id")
     .eq("organization_id", orgId)
@@ -71,11 +67,6 @@ export async function compromissosDoParceiro(
     .in("status", ["pending", "confirmed", "completed"])
     .order("starts_at", { ascending: true })
     .limit(LIMITE_DE_COMPROMISSOS);
-
-  const dono = donoDaLeitura(ator);
-  if (dono) q = q.eq("owner_user_id", dono);
-
-  const { data, error } = await q;
   if (error) throw new Error(error.message);
   const linhas = data ?? [];
 
@@ -114,13 +105,11 @@ export async function compromissosDoParceiro(
 export async function acoesDoParceiro(
   db: SupabaseClient,
   orgId: string,
-  ator: AtorMinimo,
   visao: Extract<VisaoDaAcao, "hoje" | "proximos" | "atrasados">,
 ): Promise<AcaoPublica[]> {
   const linhas = await listarProximasAcoes(db, {
     organizationId: orgId,
     visao,
-    ownerUserId: donoDaLeitura(ator),
   });
   const contatos = await fichaDosContatos(
     db,
@@ -161,7 +150,6 @@ export async function pulsoDoParceiro(
 export async function leadsDoParceiro(
   db: SupabaseClient,
   orgId: string,
-  ator: AtorMinimo,
   args: { limite: number; status: "open" | "won" | "lost" | "all"; contactExternalId: string | null },
 ): Promise<LeadPublico[]> {
   let contatoFiltrado: string[] | null = null;
@@ -185,8 +173,6 @@ export async function leadsDoParceiro(
     .limit(args.limite);
 
   if (args.status !== "all") q = q.eq("status", args.status);
-  const dono = donoDaLeitura(ator);
-  if (dono) q = q.eq("owner_user_id", dono);
   if (contatoFiltrado) q = q.in("contact_id", contatoFiltrado);
 
   const { data, error } = await q;
