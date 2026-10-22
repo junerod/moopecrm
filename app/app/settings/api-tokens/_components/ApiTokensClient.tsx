@@ -39,6 +39,10 @@ import {
  * escondia.
  */
 const SCOPES: { id: string; label: string }[] = [
+  {
+    id: "integrations:read",
+    label: "Ler agenda, funil e indicadores (Facejus e outros sistemas)",
+  },
   { id: "mcp:read", label: "Agentes de IA podem LER o CRM (MCP)" },
   { id: "mcp:write", label: "Agentes de IA podem AGIR no CRM (MCP)" },
   // Sem isto o token nasce como 'agent' e as ferramentas de nível gerente
@@ -63,7 +67,7 @@ export function ApiTokensClient() {
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<string[]>([]);
-  const [expiresInDays, setExpiresInDays] = useState<string>("");
+  const [expiresOn, setExpiresOn] = useState("");
   const [created, setCreated] = useState<CreatedApiToken | null>(null);
 
   const tokens = data?.data ?? [];
@@ -78,12 +82,12 @@ export function ApiTokensClient() {
       const res = await create.mutateAsync({
         name,
         scopes,
-        expires_in_days: expiresInDays ? Number(expiresInDays) : undefined,
+        expires_on: expiresOn || undefined,
       });
       setCreated(res.data);
       setName("");
-      setScopes([]);
-      setExpiresInDays("");
+      setScopes(["integrations:read"]);
+      setExpiresOn("");
       setCreateOpen(false);
     } catch {
       /* noop */
@@ -97,13 +101,23 @@ export function ApiTokensClient() {
   return (
     <>
       <div className="flex sm:justify-end">
-        <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">Criar token</Button>
+        <Button
+          onClick={() => {
+            setScopes(["integrations:read"]);
+            setCreateOpen(true);
+          }}
+          className="w-full sm:w-auto"
+        >
+          Criar token
+        </Button>
       </div>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando…</p>
       ) : tokens.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum token criado ainda.</p>
+        <p className="text-sm text-muted-foreground">
+          Nenhum token ainda. Crie um para o Facejus e outro para cada sistema que for conectar.
+        </p>
       ) : (
         <div className="rounded-md border">
           <Table>
@@ -111,9 +125,10 @@ export function ApiTokensClient() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Prefixo</TableHead>
-                <TableHead>Escopos</TableHead>
+                <TableHead>Validade</TableHead>
+                <TableHead>Criado</TableHead>
+                <TableHead>Último uso</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Expira</TableHead>
                 <TableHead className="w-[120px]" />
               </TableRow>
             </TableHeader>
@@ -124,24 +139,23 @@ export function ApiTokensClient() {
                   <TableCell>
                     <code className="text-xs">{t.prefix}…</code>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {t.scopes.map((s) => (
-                        <Badge key={s} variant="secondary" className="text-xs">
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {t.expires_at ? new Date(t.expires_at).toLocaleDateString("pt-BR") : "Até revogar"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(t.created_at).toLocaleDateString("pt-BR")}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {t.last_used_at ? new Date(t.last_used_at).toLocaleString("pt-BR") : "Nunca"}
                   </TableCell>
                   <TableCell>
                     {t.revoked_at ? (
                       <Badge variant="destructive">Revogado</Badge>
+                    ) : t.expires_at && new Date(t.expires_at).getTime() <= Date.now() ? (
+                      <Badge variant="secondary">Vencido</Badge>
                     ) : (
                       <Badge variant="default">Ativo</Badge>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {t.expires_at ? new Date(t.expires_at).toLocaleDateString("pt-BR") : "—"}
                   </TableCell>
                   <TableCell>
                     {!t.revoked_at ? (
@@ -169,7 +183,9 @@ export function ApiTokensClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar novo token</DialogTitle>
-            <DialogDescription>O plaintext será mostrado apenas uma vez.</DialogDescription>
+            <DialogDescription>
+              Dê o nome do sistema. O token aparece uma vez. Crie outro quando for conectar mais um.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={onCreate} className="space-y-4">
             <div className="space-y-2">
@@ -178,7 +194,7 @@ export function ApiTokensClient() {
                 id="t-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Worker de import"
+                placeholder="Facejus"
                 minLength={2}
                 maxLength={100}
                 required
@@ -205,16 +221,16 @@ export function ApiTokensClient() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="t-exp">Expira em (dias) — opcional</Label>
+              <Label htmlFor="t-exp">Validade — opcional</Label>
               <Input
                 id="t-exp"
-                type="number"
-                min={1}
-                max={365}
-                value={expiresInDays}
-                onChange={(e) => setExpiresInDays(e.target.value)}
-                placeholder="365"
+                type="date"
+                value={expiresOn}
+                onChange={(e) => setExpiresOn(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Em branco, vale até você revogar. A data é o último dia em que o outro sistema ainda lê.
+              </p>
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>

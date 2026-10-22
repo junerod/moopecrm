@@ -36,6 +36,11 @@ export type ChangeRoleInput = z.infer<typeof changeRoleSchema>;
 export const createApiTokenSchema = z.object({
   name: z.string().min(2).max(100),
   scopes: z.array(z.string()).min(1),
-  expires_in_days: z.coerce.number().int().min(1).max(365).optional(),
+  expires_in_days: z.coerce.number().int().min(1).max(1825).optional(),
+  /** Data civil AAAA-MM-DD. Vale até o fim desse dia em America/Sao_Paulo. */
+  expires_on: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 export type CreateApiTokenInput = z.infer<typeof createApiTokenSchema>;

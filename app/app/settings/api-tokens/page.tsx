@@ -16,9 +16,12 @@ export default async function ApiTokensPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">API Tokens</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Tokens de API</h1>
         <p className="text-sm text-muted-foreground">
-          Tokens server-to-server. Plaintext exibido <strong>uma única vez</strong> na criação.
+          Um token por sistema. Você escolhe o nome e a validade, e pode revogar sem
+          afetar os outros. O texto da chave aparece uma vez. Com a permissão de ler
+          o CRM, o outro sistema vê agenda, funil e indicadores do escritório — quem
+          abre a tela lá é regra de lá.
         </p>
       </header>
       <ApiTokensClient />

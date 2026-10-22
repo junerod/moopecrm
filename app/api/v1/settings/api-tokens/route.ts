@@ -8,6 +8,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 
+import { instanteDaValidade } from "@/lib/api-tokens/contrato";
 import { ok, fail } from "@/lib/api/wrappers";
 import { ApiError } from "@/lib/api/types";
 import { audit } from "@/lib/audit";
@@ -60,9 +61,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   const plaintext = `${prefix}_${secret}`;
   const tokenHash = createHash("sha256").update(plaintext).digest();
 
-  const expiresAt = input.expires_in_days
-    ? new Date(Date.now() + input.expires_in_days * 24 * 60 * 60 * 1000).toISOString()
-    : null;
+  const validade = instanteDaValidade(input.expires_on, input.expires_in_days);
+  if (!validade.ok) {
+    return fail("validation_failed", validade.message, 422, { requestId });
+  }
+  const expiresAt = validade.expiresAt;
 
   const supabase = await createClient();
   const { data: created, error: insErr } = await supabase

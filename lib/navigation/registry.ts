@@ -670,8 +670,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   },
   {
     href: "/app/settings/api-tokens",
-    label: "API Tokens",
-    description: "Chaves para outro sistema conversar com o seu CRM.",
+    label: "Tokens de API",
+    description: "Uma chave por sistema, com nome, validade e revogação.",
     icon: Lock,
     group: "organizacao",
     section: "Dados e acesso",

@@ -352,21 +352,27 @@ Estas rotas ainda nascem no repo da locadora. Sem elas o CRM falha fechado e o i
 
 ## Leitura (o parceiro vê, não mexe)
 
-A mesma chave `mop_` que se gera em **Canais → Integração MOOPE**. Header `Authorization: Bearer`. Não pede e-mail, CPF nem usuário do CRM: a chave é da organização, e quem pode abrir a tela é permissão do Facejus ou da locadora.
+O jeito de conectar o Facejus ou outro sistema é um **token de API**, em **Tokens de API**:
 
-Sem telefone, sem texto de WhatsApp, sem id de usuário. O cliente continua sendo o `external_id` que o parceiro mandou em `person.upserted`.
+- vários, um por sistema
+- nome (ex.: Facejus)
+- validade em data, ou sem data até revogar
+- revogar um não derruba os outros
+- o texto da chave aparece uma vez
+
+Na criação, marque **Ler agenda, funil e indicadores**. O token nasce `dsk_…`. Header `Authorization: Bearer`. Não pede e-mail nem CPF. A organização sai do token.
+
+A chave `mop_` desta integração também lê, para quem já a colou. Ela continua sendo a chave de abrir o CRM, mandar cadastro e disparar WhatsApp.
 
 | GET | o que volta |
 |-----|-------------|
-| `/api/v1/integrations/moope/agenda?de=&ate=` | compromissos do escritório (`pending`, `confirmed`, `completed`). Sem `de`/`ate`: hoje e amanhã. Máximo 62 dias. |
+| `/api/v1/integrations/moope/agenda?de=&ate=` | compromissos do escritório. Sem `de`/`ate`: hoje e amanhã. Máximo 62 dias. |
 | `/api/v1/integrations/moope/acoes?visao=hoje\|proximos\|atrasados` | obrigações comerciais do escritório |
 | `/api/v1/integrations/moope/pulso?periodo=7d\|30d\|hoje` | indicadores do escritório |
 | `/api/v1/integrations/moope/leads?limit=20&status=all\|open\|won\|lost&contact_external_id=` | últimos negócios. Não move |
 | `/api/v1/integrations/moope/funil` | etapas, abertos, valor, ganhos e perdidos. Não move |
 
-Launch para abrir o CRM logado continua pedindo o e-mail da pessoa, e ela precisa ser membro. Isso é sessão humana. A leitura acima não é.
-
-401 chave inválida. 422 consulta mal formada. Estas rotas não criam, não alteram e não apagam.
+401 token desconhecido, revogado ou vencido. 403 token sem a permissão de ler. 422 consulta mal formada. Estas rotas não criam, não alteram e não apagam.
 
 ## O que não fazer
 

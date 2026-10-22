@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { PuzzlePiece } from "@/lib/ui/icons";
 
 import { MoopeConnectionClient } from "./_client";
@@ -14,10 +16,14 @@ export default function MoopeIntegrationPage() {
         <div>
           <h1 className="text-xl font-semibold">Integração MOOPE</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Uma chave para a frota ou o Facejus. Quem cola essa chave lê a
-            agenda, o funil e os indicadores do escritório inteiro. Quem pode
-            ver isso lá é permissão de lá. O outro sistema continua dono do
-            contrato e do processo; aqui fica o atendimento.
+            Uma chave mop_ para abrir o CRM, mandar cadastro e disparar
+            WhatsApp. Para o Facejus só ler agenda, funil e indicadores, crie
+            um token em{" "}
+            <Link href="/app/settings/api-tokens" className="underline">
+              Tokens de API
+            </Link>
+            — um por sistema, com nome e validade. O outro sistema continua
+            dono do contrato e do processo.
           </p>
         </div>
       </header>
