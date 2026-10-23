@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LARGURA_PASSO_COLUNA } from "@/lib/kanban/board-scroll";
+import { alvoDaSeta, rodaViraLateral } from "@/lib/kanban/board-scroll";
 
 export { LARGURA_PASSO_COLUNA } from "@/lib/kanban/board-scroll";
 
@@ -13,8 +13,9 @@ export interface BoardScrollState {
 }
 
 /**
- * Scroll horizontal do quadro: setas, chips e Alt+←/→.
+ * Scroll horizontal do quadro: setas, chips, roda do mouse e Alt+←/→.
  * Mede overflow real — setas só aparecem quando há o que rolar.
+ * O scroller é `relative`: o offsetLeft das colunas fica em coordenada de scrollLeft.
  */
 export function useBoardScroll(stageIds: string[]) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -67,8 +68,25 @@ export function useBoardScroll(stageIds: string[]) {
     el.addEventListener("scroll", medir, { passive: true });
     const ro = new ResizeObserver(() => medir());
     ro.observe(el);
+
+    const onWheel = (e: WheelEvent) => {
+      const alvo = e.target instanceof Element ? e.target : null;
+      const lista = alvo?.closest<HTMLElement>("[data-stage-list]") ?? null;
+      const vira = rodaViraLateral({
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        ctrlKey: e.ctrlKey,
+        lista: lista ? { scrollHeight: lista.scrollHeight, clientHeight: lista.clientHeight } : null,
+      });
+      if (!vira) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+
     return () => {
       el.removeEventListener("scroll", medir);
+      el.removeEventListener("wheel", onWheel);
       ro.disconnect();
     };
   }, [medir]);
@@ -76,7 +94,13 @@ export function useBoardScroll(stageIds: string[]) {
   const scrollByColumns = useCallback((dir: -1 | 1) => {
     const el = scrollerRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * LARGURA_PASSO_COLUNA, behavior: "smooth" });
+    const padding = Number.parseFloat(getComputedStyle(el).paddingLeft) || 0;
+    const inicios = Array.from(el.querySelectorAll<HTMLElement>("[data-stage-column]"))
+      .map((col) => col.offsetLeft - padding)
+      .sort((a, b) => a - b);
+    const max = el.scrollWidth - el.clientWidth;
+    // `auto`: snap + smooth no Safari/Chrome come o primeiro clique.
+    el.scrollTo({ left: alvoDaSeta(inicios, el.scrollLeft, max, dir), behavior: "auto" });
   }, []);
 
   const scrollToStage = useCallback((stageId: string) => {

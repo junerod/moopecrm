@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAtRiskLeads } from "@/hooks/leads/useAtRiskLeads";
 import { useReactivations } from "@/hooks/leads/useReactivations";
 import { midpoint } from "@/lib/kanban/fractional-indexing";
+import { chipNoPonto } from "@/lib/kanban/board-scroll";
 import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
 import { ProximaAcaoControles } from "@/components/comercial/ProximaAcaoControles";
@@ -130,6 +131,59 @@ export function KanbanBoard({
   const [dossieId, setDossieId] = useState<string | null>(leadInicial ?? null);
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [promptLead, setPromptLead] = useState<Lead | null>(null);
+  /** Etapa de origem do card em arrasto; null fora do arrasto. */
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  /** Etapa do chip sob o ponteiro durante o arrasto (já sem a de origem). */
+  const [chipSobArrasto, setChipSobArrasto] = useState<string | null>(null);
+  const chipSobArrastoRef = useRef<string | null>(null);
+  const trilhoRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!arrastando) return;
+    const trilho = trilhoRef.current;
+    if (!trilho) return;
+    // No celular o trilho transborda: segurar o dedo na borda dele rola para
+    // alcançar o chip que está fora da tela.
+    let direcaoDaBorda = 0;
+    let ultimo: { x: number; y: number } | null = null;
+    const marcarChip = (x: number, y: number) => {
+      const chips = Array.from(trilho.querySelectorAll<HTMLElement>("[data-stage-chip]")).map(
+        (el) => {
+          const r = el.getBoundingClientRect();
+          return { id: el.dataset.stageChip ?? "", left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+        },
+      );
+      const achado = chipNoPonto(chips, x, y);
+      const valido = achado && achado !== arrastando ? achado : null;
+      if (chipSobArrastoRef.current === valido) return;
+      chipSobArrastoRef.current = valido;
+      setChipSobArrasto(valido);
+    };
+    const rolagem = window.setInterval(() => {
+      if (direcaoDaBorda === 0 || !ultimo) return;
+      trilho.scrollLeft += direcaoDaBorda * 7;
+      marcarChip(ultimo.x, ultimo.y);
+    }, 30);
+    const atualizar = (x: number, y: number) => {
+      ultimo = { x, y };
+      const t = trilho.getBoundingClientRect();
+      const naAlturaDoTrilho = y >= t.top - 24 && y <= t.bottom + 24;
+      direcaoDaBorda = !naAlturaDoTrilho ? 0 : x < t.left + 40 ? -1 : x > t.right - 40 ? 1 : 0;
+      marcarChip(x, y);
+    };
+    const onMouse = (e: MouseEvent) => atualizar(e.clientX, e.clientY);
+    const onTouch = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (t) atualizar(t.clientX, t.clientY);
+    };
+    window.addEventListener("mousemove", onMouse, true);
+    window.addEventListener("touchmove", onTouch, { capture: true, passive: true });
+    return () => {
+      window.clearInterval(rolagem);
+      window.removeEventListener("mousemove", onMouse, true);
+      window.removeEventListener("touchmove", onTouch, true);
+    };
+  }, [arrastando]);
   const selectedLeadIds = useMemo(
     () => (selectedIds ? new Set(selectedIds) : internalSelected),
     [selectedIds, internalSelected],
@@ -153,6 +207,22 @@ export function KanbanBoard({
   const stageIds = useMemo(() => (data?.stages ?? []).map((s) => s.id), [data?.stages]);
   const { scrollerRef, state: scrollState, scrollByColumns, scrollToStage } =
     useBoardScroll(stageIds);
+
+  // O trilho também transborda: o chip da etapa visível fica sempre à vista.
+  useEffect(() => {
+    const trilho = trilhoRef.current;
+    const id = scrollState.activeStageId;
+    if (!trilho || !id) return;
+    const chip = trilho.querySelector<HTMLElement>(`[data-stage-chip="${id}"]`);
+    if (!chip) return;
+    const inicio = chip.offsetLeft;
+    const fim = inicio + chip.offsetWidth;
+    if (inicio < trilho.scrollLeft) {
+      trilho.scrollTo({ left: Math.max(0, inicio - 8), behavior: "smooth" });
+    } else if (fim > trilho.scrollLeft + trilho.clientWidth) {
+      trilho.scrollTo({ left: fim - trilho.clientWidth + 8, behavior: "smooth" });
+    }
+  }, [scrollState.activeStageId]);
 
   const leadDoDossie = dossieId
     ? (data?.leads.find((l) => l.id === dossieId) ?? null)
@@ -218,10 +288,16 @@ export function KanbanBoard({
 
   const handleDragEnd = useCallback(
     (result: DropResult) => {
+      const chip = chipSobArrastoRef.current;
+      chipSobArrastoRef.current = null;
+      setChipSobArrasto(null);
+      setArrastando(null);
       if (!data || !grouped) return;
       const { source, destination, draggableId } = result;
-      if (!destination) return;
+      if (!chip && !destination) return;
       if (
+        !chip &&
+        destination &&
         source.droppableId === destination.droppableId &&
         source.index === destination.index
       ) {
@@ -231,14 +307,16 @@ export function KanbanBoard({
       const lead = data.leads.find((l) => l.id === draggableId);
       if (!lead) return;
 
-      const destStageId = destination.droppableId;
+      const destStageId = chip ?? destination!.droppableId;
+      if (destStageId === source.droppableId && chip) return;
       const destList = (grouped.get(destStageId) ?? []).filter(
         (l) => l.id !== draggableId,
       );
+      // Soltar no chip do trilho põe o card no fim da etapa.
+      const destIndex = chip ? destList.length : destination!.index;
 
-      const before = destination.index > 0 ? destList[destination.index - 1] : null;
-      const after =
-        destination.index < destList.length ? destList[destination.index] : null;
+      const before = destIndex > 0 ? destList[destIndex - 1] : null;
+      const after = destIndex < destList.length ? destList[destIndex] : null;
 
       const newPosition = midpoint(
         before?.position_in_stage ?? null,
@@ -302,21 +380,28 @@ export function KanbanBoard({
   const pulses = pulsesProp ?? queryResult.pulses;
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext
+      onDragStart={(inicio) => setArrastando(inicio.source.droppableId)}
+      onDragEnd={handleDragEnd}
+    >
       <div
         className="flex min-h-0 flex-1 flex-col gap-2"
         data-testid="kanban-board-shell"
       >
-        {/* Trilho de etapas — orientação espacial quando há muitas colunas. */}
+        {/* Trilho de etapas — clique vai até a etapa; soltar um card no chip
+            muda de fase, inclusive para etapa que está fora da tela. */}
         <div
-          className="flex shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5"
+          ref={trilhoRef}
+          className="relative flex shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5"
           data-testid="kanban-stage-rail"
+          data-arrastando={arrastando ? "1" : undefined}
           role="tablist"
           aria-label="Etapas do funil"
         >
           {data.stages.map((stage) => {
             const count = grouped.get(stage.id)?.length ?? 0;
             const active = scrollState.activeStageId === stage.id;
+            const sobArrasto = chipSobArrasto === stage.id;
             return (
               <button
                 key={stage.id}
@@ -324,16 +409,24 @@ export function KanbanBoard({
                 role="tab"
                 aria-selected={active}
                 data-testid={`stage-chip-${stage.id}`}
+                data-stage-chip={stage.id}
+                data-sob-arrasto={sobArrasto ? "1" : undefined}
                 onClick={() => scrollToStage(stage.id)}
                 onDoubleClick={() => abrirFoco(stage.id)}
                 className={cn(
-                  "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors",
+                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium tabular-nums transition-colors",
                   "ring-1 ring-[var(--color-border)]",
                   active
                     ? "bg-[var(--moope-primary)] text-white ring-[var(--moope-primary)]"
                     : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]",
+                  arrastando &&
+                    arrastando !== stage.id &&
+                    !sobArrasto &&
+                    "outline-dashed outline-2 outline-offset-1 outline-[var(--moope-primary)]",
+                  sobArrasto &&
+                    "scale-110 bg-[var(--moope-primary)] text-white ring-2 ring-[var(--moope-primary)]",
                 )}
-                title="Clique para ir · duplo clique para tela cheia"
+                title="Clique para ir · duplo clique para tela cheia · solte um card aqui para mudar de fase"
               >
                 {stage.name}
                 <span className="ml-1 opacity-80">({count})</span>
@@ -344,36 +437,52 @@ export function KanbanBoard({
 
         <div className="relative min-h-0 flex-1">
           {scrollState.canScrollLeft ? (
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="absolute left-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full bg-[var(--color-surface)] shadow-md"
-              onClick={() => scrollByColumns(-1)}
-              aria-label="Ver etapas à esquerda"
-              data-testid="kanban-scroll-left"
-            >
-              <CaretLeft size={16} weight="bold" />
-            </Button>
+            <>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-14 bg-gradient-to-r from-[var(--color-bg)] to-transparent"
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="primary"
+                className="absolute left-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 touch-manipulation rounded-full shadow-lg max-md:bottom-3 max-md:top-auto max-md:translate-y-0"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => scrollByColumns(-1)}
+                aria-label="Etapa anterior"
+                title="Etapa anterior"
+                data-testid="kanban-scroll-left"
+              >
+                <CaretLeft size={22} weight="bold" />
+              </Button>
+            </>
           ) : null}
           {scrollState.canScrollRight ? (
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="absolute right-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full bg-[var(--color-surface)] shadow-md"
-              onClick={() => scrollByColumns(1)}
-              aria-label="Ver etapas à direita"
-              data-testid="kanban-scroll-right"
-            >
-              <CaretRight size={16} weight="bold" />
-            </Button>
+            <>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-14 bg-gradient-to-l from-[var(--color-bg)] to-transparent"
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="primary"
+                className="absolute right-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 touch-manipulation rounded-full shadow-lg max-md:bottom-3 max-md:top-auto max-md:translate-y-0"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => scrollByColumns(1)}
+                aria-label="Próxima etapa"
+                title="Próxima etapa"
+                data-testid="kanban-scroll-right"
+              >
+                <CaretRight size={22} weight="bold" />
+              </Button>
+            </>
           ) : null}
 
           <div
             ref={scrollerRef}
             tabIndex={0}
-            className="flex h-full min-h-0 gap-3 overflow-x-auto overflow-y-hidden scroll-smooth bg-[var(--color-bg)] px-1 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)]"
+            className="relative flex h-full min-h-0 gap-3 overflow-x-auto overflow-y-hidden bg-[var(--color-bg)] px-1 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-[var(--moope-primary)] max-md:snap-x max-md:snap-mandatory max-md:scroll-px-1"
             data-testid="kanban-board-scroller"
           >
             {data.stages.map((stage, i) => (
@@ -399,6 +508,25 @@ export function KanbanBoard({
           </div>
         </div>
       </div>
+
+      {/* Fixo na tela: não mexe no layout no meio do arrasto (o dnd mede as
+          colunas no começo e erraria o alvo se algo empurrasse o quadro). */}
+      {arrastando ? (
+        <div
+          aria-live="polite"
+          data-testid="kanban-dica-arrasto"
+          className={cn(
+            "pointer-events-none fixed inset-x-0 bottom-6 z-50 mx-auto w-fit max-w-[90vw] truncate rounded-full px-4 py-2 text-sm font-medium shadow-lg",
+            chipSobArrasto
+              ? "bg-[var(--moope-primary)] text-white"
+              : "bg-[var(--color-surface)] text-[var(--color-text)] ring-1 ring-[var(--color-border)]",
+          )}
+        >
+          {chipSobArrasto
+            ? `Soltar em ${data.stages.find((s) => s.id === chipSobArrasto)?.name ?? "etapa"}`
+            : "Solte numa coluna ou leve até uma etapa lá em cima"}
+        </div>
+      ) : null}
 
       <StageFocusView
         open={!!focusStage}
