@@ -105,20 +105,13 @@ export async function quadroDoFunil(
     .order("position");
   if (erroEtapas) throw new Error(erroEtapas.message);
 
-  const { data: leads, error: erroLeads } = await db
-    .from("crm_leads")
-    .select(COLUNAS_DO_LEAD)
-    .eq("organization_id", orgId)
-    .eq("pipeline_id", pipelineId)
-    .neq("status", "archived")
-    .order("position_in_stage");
-  if (erroLeads) throw new Error(erroLeads.message);
+  const leads = await leadsDoFunil(db, orgId, pipelineId);
 
   const linhas = (leads ?? []) as LeadLinha[];
   const contatos = await fichaDosContatos(
     db,
     orgId,
-    linhas.map((l) => l.contact_id).filter((id): id is string => Boolean(id)),
+    [...new Set(linhas.map((l) => l.contact_id).filter((id): id is string => Boolean(id)))],
   );
   const passos = await passosAbertos(db, orgId);
 
@@ -621,26 +614,47 @@ function projetarCard(
   };
 }
 
+async function leadsDoFunil(db: SupabaseClient, orgId: string, pipelineId: string): Promise<LeadLinha[]> {
+  const pagina = 500;
+  const linhas: LeadLinha[] = [];
+  for (let from = 0; ; from += pagina) {
+    const { data, error } = await db
+      .from("crm_leads")
+      .select(COLUNAS_DO_LEAD)
+      .eq("organization_id", orgId)
+      .eq("pipeline_id", pipelineId)
+      .neq("status", "archived")
+      .order("position_in_stage")
+      .range(from, from + pagina - 1);
+    if (error) throw new Error(error.message);
+    const lote = (data ?? []) as LeadLinha[];
+    linhas.push(...lote);
+    if (lote.length < pagina) return linhas;
+  }
+}
+
 async function fichaDosContatos(
   db: SupabaseClient,
   orgId: string,
   ids: string[],
 ): Promise<Map<string, { externalId: string | null; nome: string | null; papel: string | null }>> {
   const mapa = new Map<string, { externalId: string | null; nome: string | null; papel: string | null }>();
-  if (ids.length === 0) return mapa;
-  const { data, error } = await db
-    .from("contacts")
-    .select("id, display_name, name, papel, source_metadata")
-    .eq("organization_id", orgId)
-    .in("id", ids);
-  if (error) throw new Error(error.message);
-  for (const c of data ?? []) {
-    const rotulo = rotuloDoContato({ display_name: c.display_name, name: c.name });
-    mapa.set(String(c.id), {
-      externalId: idExternoDoContato(c.source_metadata),
-      nome: rotulo === SEM_NOME ? null : rotulo,
-      papel: typeof c.papel === "string" ? c.papel : null,
-    });
+  const loteDe = 40;
+  for (let i = 0; i < ids.length; i += loteDe) {
+    const { data, error } = await db
+      .from("contacts")
+      .select("id, display_name, name, papel, source_metadata")
+      .eq("organization_id", orgId)
+      .in("id", ids.slice(i, i + loteDe));
+    if (error) throw new Error(error.message);
+    for (const c of data ?? []) {
+      const rotulo = rotuloDoContato({ display_name: c.display_name, name: c.name });
+      mapa.set(String(c.id), {
+        externalId: idExternoDoContato(c.source_metadata),
+        nome: rotulo === SEM_NOME ? null : rotulo,
+        papel: typeof c.papel === "string" ? c.papel : null,
+      });
+    }
   }
   return mapa;
 }
