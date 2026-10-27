@@ -4,7 +4,10 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { chamarAssessor } from "./cliente";
 import { avisarPeloWhatsappDoCrm } from "./aviso-waha";
 import {
+  destinatariosDaQueda,
+  destinatariosDaResposta,
   destinatariosDoAviso,
+  deveAvisarQueda,
   deveAvisarResposta,
   ehFluxoComercialMoope,
   lerAssessorNasSettings,
@@ -55,7 +58,15 @@ export async function avisarAssessorSeClienteNovo(
       .eq("organization_id", entrada.organizationId)
       .eq("conversation_id", entrada.conversationId)
       .eq("direction", "inbound");
-    if (countErr || count !== 1) return;
+    if (countErr) {
+      logger.warn("assessor: não contei as mensagens do cliente novo", {
+        organization_id: entrada.organizationId,
+        conversation_id: entrada.conversationId,
+        detail: countErr.message.slice(0, 160),
+      });
+      return;
+    }
+    if (count !== 1) return;
 
     const { data: org } = await admin
       .from("organizations")
@@ -67,8 +78,7 @@ export async function avisarAssessorSeClienteNovo(
     const fluxoComercial = ehFluxoComercialMoope(emails);
     const phones = destinatariosDoAviso({
       fluxoComercial,
-      phoneConfigurado: cfg.phone,
-      enabled: cfg.enabled,
+      phones: cfg.contacts.filter((c) => c.leadEnabled).map((c) => c.phone),
     });
     if (!phones.length) return;
 
@@ -101,12 +111,12 @@ export async function avisarAssessorSeClienteNovo(
       preview: (entrada.texto || "").slice(0, 180),
       organization: org?.display_name || "CRM",
       conversation_id: entrada.conversationId,
-    });
+    }, 20000);
     const semJanela = new Set<string>();
     for (const r of sent.results || []) {
-      if (!r.ok && r.error === "no_conversation") semJanela.add(r.phone);
+      if (!r.ok) semJanela.add(r.phone);
     }
-    if (!sent.ok && sent.error === "no_conversation") {
+    if (!sent.ok && semJanela.size === 0) {
       for (const p of phones) semJanela.add(p);
     }
     if (semJanela.size) {
@@ -124,11 +134,12 @@ export async function avisarAssessorSeClienteNovo(
         .join("\n");
       await avisarPeloWhatsappDoCrm(admin, [...semJanela], texto);
     }
-    if (!sent.ok && sent.error !== "secret_missing" && sent.error !== "no_conversation") {
+    if (!sent.ok) {
       logger.warn("assessor: aviso de cliente novo não saiu", {
         organization_id: entrada.organizationId,
         conversation_id: entrada.conversationId,
         error: sent.error,
+        phones: phones.length,
       });
     }
   } catch (err) {
@@ -180,9 +191,11 @@ export async function avisarAssessorSeLeadRespondeu(
       .eq("id", entrada.organizationId)
       .maybeSingle();
     const cfg = lerAssessorNasSettings(org?.settings);
+    const phones = destinatariosDaResposta(cfg.contacts);
+    if (!phones.length) return;
     if (!deveAvisarResposta({
-      replyEnabled: cfg.replyEnabled,
-      phone: cfg.phone,
+      replyEnabled: true,
+      phone: phones[0],
       inboundCount: count,
       anteriorEraNosso: true,
     })) {
@@ -201,15 +214,22 @@ export async function avisarAssessorSeLeadRespondeu(
     const sent = await chamarAssessor({
       action: "alert",
       notice: "reply",
-      phones: [cfg.phone],
+      phones,
       client_name: nomeCliente,
       client_phone: foneCliente || null,
       preview: (entrada.texto || "").slice(0, 180),
       organization: org?.display_name || "CRM",
       conversation_id: entrada.conversationId,
       event_id: entrada.messageId,
-    });
-    if (!sent.ok && sent.error === "no_conversation") {
+    }, 20000);
+    const falhou = new Set<string>();
+    for (const r of sent.results || []) {
+      if (!r.ok) falhou.add(r.phone);
+    }
+    if (!sent.ok && falhou.size === 0) {
+      for (const p of phones) falhou.add(p);
+    }
+    if (falhou.size) {
       const texto = [
         "💬 *Lead respondeu no CRM*",
         `👤 *${nomeCliente}*${foneCliente ? ` · ${foneCliente}` : ""}`,
@@ -218,10 +238,99 @@ export async function avisarAssessorSeLeadRespondeu(
           : "💬 Mandou outra mensagem.",
         "Entre no CRM e responda por lá.",
       ].join("\n");
-      await avisarPeloWhatsappDoCrm(admin, [cfg.phone], texto);
+      await avisarPeloWhatsappDoCrm(admin, [...falhou], texto);
+      logger.warn("assessor: aviso de resposta não saiu pelo Assessor", {
+        organization_id: entrada.organizationId,
+        error: sent.error,
+        phones: falhou.size,
+      });
     }
   } catch (err) {
     logger.warn("assessor: aviso de resposta falhou", {
+      organization_id: entrada.organizationId,
+      detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
+    });
+  }
+}
+
+export function textoDoAvisoWhatsappCaiu(entrada: {
+  apelido: string;
+  status: string;
+  organization: string;
+}): string {
+  return [
+    "⚠️ *WhatsApp do CRM caiu*",
+    `Empresa: *${entrada.organization}*`,
+    `Conexão: *${entrada.apelido}* (${entrada.status})`,
+    "Nenhuma mensagem entra nem sai por esta linha até ela voltar.",
+    "Abra o CRM em Conexões e reconecte — se pedir QR, escaneie de novo.",
+    "_Não precisa responder neste WhatsApp._",
+  ].join("\n");
+}
+
+/**
+ * A conexão caiu de verdade — avisa quem está na lista do Meu Assessor.
+ * Uma vez por episódio: quem chama já deduplicou. Oscilação de rede não entra.
+ */
+export async function avisarAssessorWhatsappCaiu(
+  admin: Admin,
+  entrada: {
+    organizationId: string;
+    apelido: string;
+    status: string;
+    episodio: string;
+  },
+): Promise<void> {
+  if (!deveAvisarQueda(entrada.episodio)) return;
+  try {
+    const { data: org } = await admin
+      .from("organizations")
+      .select("display_name, settings")
+      .eq("id", entrada.organizationId)
+      .maybeSingle();
+    const cfg = lerAssessorNasSettings(org?.settings);
+    const emails = await emailsDaOrganizacao(admin, entrada.organizationId);
+    const fluxoComercial = ehFluxoComercialMoope(emails);
+    const phones = destinatariosDoAviso({
+      fluxoComercial,
+      phones: destinatariosDaQueda(cfg.contacts),
+    });
+    if (!phones.length) return;
+
+    const organization = org?.display_name || "CRM";
+    const status = entrada.status || entrada.episodio;
+    const texto = textoDoAvisoWhatsappCaiu({
+      apelido: entrada.apelido,
+      status,
+      organization,
+    });
+    const sent = await chamarAssessor({
+      action: "alert",
+      notice: "whatsapp_down",
+      phones,
+      organization,
+      preview: texto.slice(0, 180),
+      event_id: `${entrada.organizationId}:${entrada.episodio}:${entrada.apelido}`,
+    }, 20000);
+    const falhou = new Set<string>();
+    for (const r of sent.results || []) {
+      if (!r.ok) falhou.add(r.phone);
+    }
+    if (!sent.ok && falhou.size === 0) {
+      for (const p of phones) falhou.add(p);
+    }
+    if (falhou.size) {
+      await avisarPeloWhatsappDoCrm(admin, [...falhou], texto);
+    }
+    if (!sent.ok) {
+      logger.warn("assessor: aviso de WhatsApp caído não saiu", {
+        organization_id: entrada.organizationId,
+        error: sent.error,
+        phones: phones.length,
+      });
+    }
+  } catch (err) {
+    logger.warn("assessor: aviso de WhatsApp caído falhou", {
       organization_id: entrada.organizationId,
       detail: err instanceof Error ? err.message.slice(0, 160) : "desconhecido",
     });

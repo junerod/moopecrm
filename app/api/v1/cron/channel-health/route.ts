@@ -115,11 +115,33 @@ async function handle(req: NextRequest): Promise<Response> {
     if (!adapter.checkHealth || !sessionRef) continue;
 
     try {
-      const saude = await adapter.checkHealth({
+      let saude = await adapter.checkHealth({
         organizationId: s.organization_id,
         sessionRef,
       });
       verificadas++;
+
+      // STOPPED com credencial no disco: tenta subir de novo ANTES de avisar.
+      // Se voltar, o episódio nem abre. FAILED e QR ficam de fora — o adapter
+      // só implementa este verbo para o estado em que religar sozinho é seguro.
+      const parada = (saude.status ?? "").toUpperCase() === "STOPPED";
+      if (saude.reachable && parada && adapter.resumeIfStopped) {
+        try {
+          const retomada = await adapter.resumeIfStopped({
+            organizationId: s.organization_id,
+            sessionRef,
+          });
+          if (retomada.status) {
+            saude = { ...saude, status: retomada.status };
+          }
+        } catch (err) {
+          logger.warn("[channel-health] retomada falhou", {
+            sessionId: s.id,
+            detail: err instanceof Error ? err.message : "erro",
+            requestId,
+          });
+        }
+      }
 
       // O status novo vale para o banco, mas SÓ quando deu para perguntar:
       // gravar por cima com um erro de rede transitório trocaria informação boa

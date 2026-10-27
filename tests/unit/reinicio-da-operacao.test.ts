@@ -189,7 +189,7 @@ describe("limpar caixa", () => {
     const { client, log } = clienteDeLimpeza({
       conversations: [[{ id: "a" }]],
     });
-    await expect(limparCaixa(client, "org-1", "sim", "req-1")).rejects.toThrow(/LIMPAR/);
+    await expect(limparCaixa(client, "org-1", "sim")).rejects.toThrow(/LIMPAR/);
     expect(log).toEqual([]);
   });
 
@@ -200,13 +200,14 @@ describe("limpar caixa", () => {
       agent_inbox_items: [[{ id: "v1" }], []],
       conversations: [[{ id: "a" }, { id: "b" }], []],
     });
-    const r = await limparCaixa(client, "org-1", "LIMPAR", "req-1");
+    const r = await limparCaixa(client, "org-1", "LIMPAR");
     expect(r).toEqual({ apagadas: 2, acompanhamentos: 1, midias: 1, avisos: 1 });
     expect(upserts).toEqual([
       expect.objectContaining({
         object_path: "org-1/c/m1.jpg",
         organization_id: "org-1",
         bucket: "whatsapp-media",
+        request_id: null,
       }),
     ]);
     const escritas = log.filter((e) => e.op !== "select").map((e) => `${e.op}:${e.table}`);
@@ -225,7 +226,7 @@ describe("limpar caixa", () => {
       { messages: [[{ id: "m1", media_storage_path: "org-1/c/m1.jpg" }]] },
       true,
     );
-    await expect(limparCaixa(client, "org-1", " LIMPAR ", "req-1")).rejects.toThrow(/fila cheia/);
+    await expect(limparCaixa(client, "org-1", " LIMPAR ")).rejects.toThrow(/fila cheia/);
     expect(log.some((e) => e.table === "conversations")).toBe(false);
   });
 
@@ -236,7 +237,7 @@ describe("limpar caixa", () => {
       agent_inbox_items: [[]],
       conversations: [[{ id: "stuck" }], [{ id: "stuck" }]],
     });
-    await expect(limparCaixa(client, "org-1", "LIMPAR", "req-1")).rejects.toThrow(/caixa/);
+    await expect(limparCaixa(client, "org-1", "LIMPAR")).rejects.toThrow(/caixa/);
     expect(log.filter((e) => e.op === "delete" && e.table === "conversations")).toHaveLength(1);
   });
 });

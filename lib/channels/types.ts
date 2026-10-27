@@ -249,6 +249,18 @@ export interface ChannelAdapter {
   checkHealth?(input: ChannelTenantScope & { sessionRef: string }): Promise<ChannelHealth>;
 
   /**
+   * Sessão parada (STOPPED / 404 no transporte) volta a subir SEM escanear QR.
+   *
+   * Só o estado em que a credencial no disco ainda vale. FAILED e SCAN_QR_CODE
+   * não entram — religar sozinho um número derrubado pela plataforma piora, e
+   * QR exige o celular na mão. OPCIONAL: canal sem este verbo não implementa,
+   * e o vigia testa a presença em vez de perguntar QUAL provider é.
+   */
+  resumeIfStopped?(input: ChannelTenantScope & { sessionRef: string }): Promise<{
+    status: string | null;
+  }>;
+
+  /**
    * Envia uma DEFINIÇÃO APROVADA — o único caminho de volta quando a janela de
    * 24h fechou.
    *

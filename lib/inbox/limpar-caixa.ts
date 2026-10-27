@@ -33,13 +33,12 @@ export async function limparCaixa(
   supabase: SupabaseClient,
   organizationId: string,
   confirmacao: string,
-  requestId: string,
 ): Promise<CaixaLimpa> {
   if (confirmacao.trim() !== CONFIRMACAO_DE_LIMPAR_CAIXA) {
     throw new Error("Digite LIMPAR para limpar a caixa de entrada.");
   }
 
-  const midias = await enfileirarMidias(supabase, organizationId, requestId);
+  const midias = await enfileirarMidias(supabase, organizationId);
   const acompanhamentos = await pararAcompanhamentos(supabase, organizationId);
   const avisos = await apagarEmLotes(
     supabase,
@@ -60,7 +59,6 @@ export async function limparCaixa(
 async function enfileirarMidias(
   supabase: SupabaseClient,
   organizationId: string,
-  requestId: string,
 ): Promise<number> {
   let cursor = "";
   let midias = 0;
@@ -90,7 +88,10 @@ async function enfileirarMidias(
       return [
         {
           organization_id: organizationId,
-          request_id: requestId,
+          // Esta limpeza NÃO é um pedido LGPD. A coluna aponta para
+          // `lgpd_requests` — gravar o UUID da requisição HTTP quebrava
+          // a chave estrangeira e a caixa ficava pela metade.
+          request_id: null,
           bucket: "whatsapp-media",
           object_path: path,
           status: "pending",

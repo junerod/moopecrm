@@ -322,6 +322,7 @@ describe("carregarSnapshotDaHome", () => {
       conversas_minhas: 0,
       acoes: [],
     });
+    expect(snap.conexoes_caidas).toEqual([]);
   });
 
   it("falha parcial do funil não zera o pessoal", async () => {

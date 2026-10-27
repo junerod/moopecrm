@@ -153,6 +153,17 @@ export const wahaAdapter: ChannelAdapter = {
     }
   },
 
+  async resumeIfStopped(input: { sessionRef: string }): Promise<{ status: string | null }> {
+    const client = getWahaClient();
+    if (!client) return { status: null };
+    try {
+      const r = await client.startSession(input.sessionRef);
+      return { status: r.status ?? "STARTING" };
+    } catch {
+      return { status: null };
+    }
+  },
+
   /**
    * Baixa o anexo que o cliente mandou.
    *

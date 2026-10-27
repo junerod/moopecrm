@@ -30,6 +30,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { avisarAssessorWhatsappCaiu } from "@/lib/assessor/avisar";
+
 import { ehSessaoSupersedida, filtrarCaidasParaFaixa } from "./sessoes-residuais";
 
 /** Único estado em que mensagem entra e sai. Contrato do CRM (uppercase). */
@@ -326,6 +328,12 @@ export async function sincronizarSaudeDaConexao(
     ref_id: sessao.id,
   });
   await gravarEpisodio(admin, sessao, episodio);
+  void avisarAssessorWhatsappCaiu(admin as never, {
+    organizationId: sessao.organization_id,
+    apelido,
+    status: saude.status ?? aviso.episodio,
+    episodio: aviso.episodio,
+  });
   return "avisado";
 }
 

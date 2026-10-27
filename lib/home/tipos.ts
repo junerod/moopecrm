@@ -118,6 +118,8 @@ export interface SnapshotDaHome {
     valor_cents: number;
   }>;
   pipeline_href: string;
+  /** Conexões fora do ar agora. Vazio = não pintar o alerta. */
+  conexoes_caidas: Array<{ id: string; apelido: string; status: string }>;
   sources: {
     personal: FonteDoSnapshot;
     team: FonteDoSnapshot | "omit";

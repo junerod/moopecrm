@@ -289,6 +289,7 @@ describe("os elos que somem sem barulho", () => {
     expect(cron).toMatch(/checkHealth\(\{[\s\S]{0,120}?organizationId: s\.organization_id/);
     expect(cron).toMatch(/await sincronizarSaudeDaConexao\(/);
     expect(cron).toMatch(/await resolverAvisosDeSessoesMortas\(/);
+    expect(cron).toMatch(/adapter\.resumeIfStopped/);
   });
 
   it("o vigia está AGENDADO — rota sem cron nunca roda", () => {
@@ -311,11 +312,14 @@ describe("os elos que somem sem barulho", () => {
     // reprova, porque foi assim que três seletores passaram a oferecer canal
     // arquivado.
     const layout = readFileSync("app/app/layout.tsx", "utf8");
-    expect(layout).toMatch(/await listarConexoesCaidas\(/);
+    expect(layout).toMatch(/listarConexoesCaidas\(/);
     expect(layout).toMatch(/<ConexaoCaidaBanner/);
     const health = readFileSync("lib/channels/health.ts", "utf8");
     expect(health, "a faixa tem que filtrar residual pela regra compartilhada").toMatch(
       /filtrarCaidasParaFaixa/,
+    );
+    expect(health, "queda real tem que avisar o Meu Assessor").toMatch(
+      /avisarAssessorWhatsappCaiu/,
     );
     expect(layout, "tela montando o select de canais à mão").not.toMatch(
       /from\(\s*["'`]channel_sessions/,

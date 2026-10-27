@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { agregarMetricas, aplicarDesfecho, desfechoDosLeads } from "@/lib/campanhas/metricas";
+import { listarConexoesCaidas } from "@/lib/channels/health";
 import { ehAcaoDeHoje } from "@/lib/comercial/proxima-acao";
 import {
   listarProximasAcoes,
@@ -175,7 +176,15 @@ export async function carregarSnapshotDaHome(
     return { via: "mine" as const, funil };
   });
 
-  const [acoesF, countsF, agendaF, funilF] = await Promise.all([acoesP, countsP, agendaP, funilP]);
+  const conexoesP = fonte("conexoes", () => listarConexoesCaidas(db, pedido.organizationId));
+
+  const [acoesF, countsF, agendaF, funilF, conexoesF] = await Promise.all([
+    acoesP,
+    countsP,
+    agendaP,
+    funilP,
+    conexoesP,
+  ]);
 
   let personal = vazioPessoal();
   let personalOk: "ok" | "error" = "ok";
@@ -426,6 +435,7 @@ export async function carregarSnapshotDaHome(
     conteudos: gestor ? conteudos : [],
     perdas: gestor ? perdas : [],
     pipeline_href: pipelineHref,
+    conexoes_caidas: conexoesF.ok ? conexoesF.data : [],
     sources: {
       personal: personalOk,
       team: gestor ? teamSrc : "omit",

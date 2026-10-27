@@ -50,7 +50,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       createAdminClient(),
       authz.org.orgId,
       parsed.data.confirm,
-      requestId,
     );
     await audit({
       action: "conversation.inbox_purged",

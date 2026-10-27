@@ -103,6 +103,7 @@ describe("sessão que JÁ existe é corrigida — sem levar a config junto", () 
     expect(cfg?.ignore).toEqual(CONVERSAS_IGNORADAS);
     expect(cfg?.noweb, "o PUT não ligou a loja — legado continua invisível").toEqual({
       store: LOJA_NOWEB,
+      markOnline: true,
     });
   });
 
@@ -121,7 +122,7 @@ describe("sessão que JÁ existe é corrigida — sem levar a config junto", () 
     const vistos = comSessao({
       webhooks: WEBHOOKS,
       ignore: { ...CONVERSAS_IGNORADAS },
-      noweb: { store: { ...LOJA_NOWEB } },
+      noweb: { store: { ...LOJA_NOWEB }, markOnline: true },
     });
     await new WahaClient("http://w", "k").startSession("s1");
     expect(vistos.some((v) => v.metodo === "PUT"), "reiniciou a sessão à toa").toBe(false);

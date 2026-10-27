@@ -42,6 +42,7 @@ import {
   Trophy,
   UsersThree,
   Warning,
+  WifiSlash,
 } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -193,6 +194,29 @@ function Prioridades({
   const manager = snap?.papel === "manager";
   const maisAntiga = segundosMaisAntiga(p?.acoes ?? []);
   const linhas: ReactNode[] = [];
+  const caidas = snap?.conexoes_caidas ?? [];
+
+  if (caidas.length > 0) {
+    const uma = caidas.length === 1 ? caidas[0] : null;
+    const precisaEscanear = caidas.some((c) => c.status === "SCAN_QR_CODE");
+    linhas.push(
+      <AlertRow
+        key="whatsapp"
+        href="/app/connections"
+        testid="home-chip-whatsapp"
+        icon={WifiSlash}
+        tone="red"
+        destaque
+        titulo={
+          uma
+            ? `WhatsApp ${uma.apelido} está desconectado`
+            : `${caidas.length} conexões de WhatsApp estão desconectadas`
+        }
+        detalhe="Nenhuma mensagem entra nem sai até reconectar."
+        cta={precisaEscanear ? "Escanear o QR" : "Reconectar"}
+      />,
+    );
+  }
 
   if (atrasadas > 0) {
     linhas.push(

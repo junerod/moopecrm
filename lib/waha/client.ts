@@ -95,7 +95,7 @@ export function configPadraoDaSessao(
   return {
     ...base,
     ignore: CONVERSAS_IGNORADAS,
-    noweb: { ...nowebAtual, store: { ...LOJA_NOWEB } },
+    noweb: { ...nowebAtual, store: { ...LOJA_NOWEB }, markOnline: true },
   };
 }
 
@@ -118,8 +118,14 @@ function lojaConvergida(config: Record<string, unknown>): boolean {
   return s.enabled === LOJA_NOWEB.enabled && s.fullSync === LOJA_NOWEB.fullSync;
 }
 
+function marcaOnlineConvergida(config: Record<string, unknown>): boolean {
+  const noweb = config.noweb;
+  if (!noweb || typeof noweb !== "object") return false;
+  return (noweb as Record<string, unknown>).markOnline === true;
+}
+
 export function configDaSessaoJaConvergida(config: Record<string, unknown>): boolean {
-  return ignoreConvergido(config) && lojaConvergida(config);
+  return ignoreConvergido(config) && lojaConvergida(config) && marcaOnlineConvergida(config);
 }
 
 /**
