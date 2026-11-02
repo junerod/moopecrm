@@ -216,6 +216,14 @@ describe("avisar uma vez, e fechar quando volta", () => {
     expect(ops.some((o) => o.op === "insert" || o.op === "update")).toBe(false);
   });
 
+  it("grava a hora da queda — senão a volta não sabe desde quando puxar", async () => {
+    await sincronizarSaudeDaConexao(admin, sessao, caiu, "Vendas");
+    const up = ops.find((o) => o.tabela === "channel_sessions" && o.op === "update");
+    expect(up?.payload, "a queda não gravou a hora").toMatchObject({
+      metadata: { caiu_em: expect.any(String) },
+    });
+  });
+
   it("grava o episódio por UPSERT — a linha de saúde pode não existir ainda", async () => {
     // Com `update`, uma sessão sem linha de saúde não gravaria nada e o dedup
     // pararia de funcionar em silêncio: avisaria de novo a cada rodada.

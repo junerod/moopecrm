@@ -2,10 +2,9 @@
  * Traz para o CRM o legado do aparelho — em TRÊS tempos, de propósito.
  *
  * 1. Ao conectar / reconectar / cron: CONTATOS (agenda + chats).
- * 2. Na mesma rodada: FIOS NOVOS — chat do aparelho com atividade DEPOIS
- *    da última mensagem que o inbox já tem (ou das últimas 48h se a fila
- *    está vazia). É o recorte que o suporte precisa: duas conversas de
- *    agora entram sozinhas; dois mil chats de 2019 não.
+ * 2. Na mesma rodada: FIOS NOVOS. Se a conexão tinha caído, o recorte
+ *    é DA QUEDA ATÉ AGORA — o que o aparelho recebeu enquanto o CRM
+ *    estava surdo. Sem queda, olha a última mensagem do inbox ou 48h.
  * 3. No dossiê, "Importar conversa" puxa o arquivo INTEIRO daquela pessoa.
  *
  * Mensagem importada leva `metadata.historico=true`; o gatilho recusa
@@ -15,6 +14,7 @@
  */
 import { logger } from "@/lib/logger";
 import { audit } from "@/lib/audit";
+import { JANELA_DESDE_A_QUEDA_MS, lerCaiuEm, semCaiuEm } from "@/lib/channels/caiu-em";
 import { emitirParaParceiro } from "@/lib/moope/emitir";
 import type { ProgressoHistorico, StatusDoHistorico } from "@/lib/channels/historico-tipos";
 import type { createAdminClient } from "@/lib/supabase/admin";
@@ -54,6 +54,8 @@ export const REINICIO_AGENDA_MS = 6 * 60 * 60 * 1000;
 export const JANELA_INBOX_VAZIA_MS = 48 * 60 * 60 * 1000;
 export const SOBREPOSICAO_FIOS_MS = 10 * 60 * 1000;
 export const FIOS_NOVOS_POR_RODADA = 40;
+/** Depois de uma queda, o teto de 40 deixava lead de ontem de fora. */
+export const FIOS_DESDE_A_QUEDA = 200;
 /** Recorte automático não baixa o arquivo inteiro — só o bastante pro inbox. */
 export const TETO_MSGS_FIO_NOVO = 80;
 /** Fio que já está no inbox só atualiza se o aparelho estiver claramente na frente. */
@@ -140,11 +142,19 @@ export function instanteDoChat(ts: number): number {
 /**
  * Até onde olhar no aparelho.
  *
- * Inbox vazio ou recente: últimas 48h (não importa 2019).
- * Inbox parado há mais que 48h: desde a última mensagem que já está lá
- * — é o recorte depois de um fim de semana sem ninguém na tela.
+ * Se sabemos quando caiu: daquela hora até agora (com uma folga).
+ * Sem queda: inbox vazio ou recente olha 48h; inbox parado há mais
+ * que 48h olha desde a última mensagem que já está lá.
  */
-export function corteDosFiosNovos(agoraMs: number, ultimaInboxMs: number | null): number {
+export function corteDosFiosNovos(
+  agoraMs: number,
+  ultimaInboxMs: number | null,
+  caiuEmMs?: number | null,
+): number {
+  if (caiuEmMs != null && caiuEmMs > 0 && caiuEmMs <= agoraMs) {
+    const piso = Math.max(caiuEmMs, agoraMs - JANELA_DESDE_A_QUEDA_MS);
+    return piso - SOBREPOSICAO_FIOS_MS;
+  }
   const piso = agoraMs - JANELA_INBOX_VAZIA_MS;
   const fundo = ultimaInboxMs !== null && ultimaInboxMs < piso ? ultimaInboxMs : piso;
   return fundo - SOBREPOSICAO_FIOS_MS;
@@ -521,6 +531,26 @@ async function ultimaPorContatoNoInbox(
  * Fios do aparelho que o inbox ainda não tem — ou que o aparelho passou
  * na frente. Não é "importar a agenda"; é o recorte do suporte.
  */
+async function instanteDaQuedaNaIrma(
+  admin: Admin,
+  sessao: SessaoParaHistorico,
+  telefone: string | null,
+): Promise<number | null> {
+  if (!telefone) return null;
+  const { data, error } = await admin
+    .from("channel_sessions")
+    .select("metadata")
+    .eq("organization_id", sessao.organization_id)
+    .eq("phone_number", telefone);
+  if (error || !data) return null;
+  let maisAntigo: number | null = null;
+  for (const row of data as { metadata?: unknown }[]) {
+    const t = lerCaiuEm(row.metadata);
+    if (t != null && (maisAntigo == null || t < maisAntigo)) maisAntigo = t;
+  }
+  return maisAntigo;
+}
+
 async function puxarFiosNovos(
   admin: Admin,
   sessao: SessaoParaHistorico,
@@ -529,10 +559,12 @@ async function puxarFiosNovos(
   contatoPorChat: Map<string, string>,
   deps: DepsDoHistorico,
   agora: () => string,
+  caiuEmMs: number | null,
 ): Promise<{ conversas: number; mensagens: number }> {
   const agoraMs = Date.parse(agora()) || Date.now();
   const watermark = await ultimaMensagemDoInbox(admin, sessao);
-  const desde = corteDosFiosNovos(agoraMs, watermark);
+  const desde = corteDosFiosNovos(agoraMs, watermark, caiuEmMs);
+  const teto = caiuEmMs != null ? FIOS_DESDE_A_QUEDA : FIOS_NOVOS_POR_RODADA;
 
   const recentes = chats
     .map((raw) => ({ raw, id: idDoChat(raw), ts: timestampDoChat(raw) }))
@@ -551,7 +583,7 @@ async function puxarFiosNovos(
       if (!contactId) return false;
       return fioPrecisaEntrarNoInbox(instanteDoChat(c.ts), jaNoInbox.get(contactId) ?? null);
     })
-    .slice(0, FIOS_NOVOS_POR_RODADA);
+    .slice(0, teto);
 
   let conversas = 0;
   let mensagens = 0;
@@ -612,7 +644,7 @@ export async function puxarHistorico(
 
   const { data: linha } = await admin
     .from("channel_sessions")
-    .select("metadata")
+    .select("metadata, phone_number")
     .eq("organization_id", sessao.organization_id)
     .eq("id", sessao.id)
     .maybeSingle();
@@ -620,6 +652,12 @@ export async function puxarHistorico(
     linha?.metadata && typeof linha.metadata === "object"
       ? { ...(linha.metadata as Record<string, unknown>) }
       : {};
+  const telefone =
+    typeof (linha as { phone_number?: unknown } | null)?.phone_number === "string"
+      ? (linha as { phone_number: string }).phone_number
+      : null;
+  const caiuEmMs =
+    lerCaiuEm(metadataAtual) ?? (await instanteDaQuedaNaIrma(admin, sessao, telefone));
 
   await gravarProgresso(admin, sessao, metadataAtual, vazio);
 
@@ -709,6 +747,7 @@ export async function puxarHistorico(
         contatoPorChat,
         deps,
         agora,
+        caiuEmMs,
       );
       conversas = fios.conversas;
       mensagens = fios.mensagens;
@@ -730,7 +769,7 @@ export async function puxarHistorico(
       puladas,
       loja_curta: agenda.length + chats.length < LOJA_CURTA ? true : undefined,
     };
-    await gravarProgresso(admin, sessao, metadataAtual, pronto);
+    await gravarProgresso(admin, sessao, semCaiuEm(metadataAtual), pronto);
     if (deps.auditar !== false) {
       void audit({
         action: "channel.historico_importado",

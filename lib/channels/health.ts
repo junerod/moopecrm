@@ -31,6 +31,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { avisarAssessorWhatsappCaiu } from "@/lib/assessor/avisar";
+import { comCaiuEmSeFaltar } from "@/lib/channels/caiu-em";
 
 import { ehSessaoSupersedida, filtrarCaidasParaFaixa } from "./sessoes-residuais";
 
@@ -264,13 +265,14 @@ export async function sincronizarSaudeDaConexao(
 ): Promise<"avisado" | "ja_avisado" | "resolvido" | "sem_mudanca"> {
   const { data: irmas } = await admin
     .from("channel_sessions")
-    .select("id, status, phone_number, archived_at")
+    .select("id, status, phone_number, archived_at, metadata")
     .eq("organization_id", sessao.organization_id);
   const linhas = (irmas ?? []) as Array<{
     id: string;
     status: string | null;
     phone_number: string | null;
     archived_at: string | null;
+    metadata?: unknown;
   }>;
   const atual = linhas.find((s) => s.id === sessao.id);
   const ativas = linhas.filter((s) => !s.archived_at);
@@ -313,6 +315,17 @@ export async function sincronizarSaudeDaConexao(
   // saber que aquele crítico veio do provedor — e voltaria a fechá-lo.
   const episodio =
     origem === "empurrao" ? `${PREFIXO_EMPURRAO}${aviso.episodio}` : aviso.episodio;
+
+  // Primeira queda do episódio: guarda a hora. Sem isso o puxão da volta
+  // não sabe desde quando olhar o aparelho.
+  const marcada = comCaiuEmSeFaltar(atual?.metadata, new Date().toISOString());
+  if (marcada) {
+    await admin
+      .from("channel_sessions")
+      .update({ metadata: marcada })
+      .eq("organization_id", sessao.organization_id)
+      .eq("id", sessao.id);
+  }
 
   // Mesmo episódio: já foi avisado, e repetir é ruído. Um episódio DIFERENTE
   // (caiu por QR, agora está FAILED) avisa de novo — mudou o que fazer.

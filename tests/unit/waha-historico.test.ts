@@ -301,6 +301,61 @@ describe("puxar o legado", () => {
     expect(ingerirMensagemHistorica).toHaveBeenCalled();
   });
 
+  it("depois da queda, puxa o que mexeu DESDE A QUEDA — o de antes fica", async () => {
+    vi.mocked(ingerirMensagemHistorica).mockClear();
+    const tsAntes = Math.floor(Date.parse("2026-08-30T11:00:00.000Z") / 1000);
+    const tsDepois = Math.floor(Date.parse("2026-08-30T11:50:00.000Z") / 1000);
+    const cliente = {
+      convergirConfigDaSessao: vi.fn(async () => undefined),
+      listChats: vi.fn(async () => [
+        { id: "5561001@c.us", name: "Antes de cair", conversationTimestamp: tsAntes },
+        { id: "5561002@c.us", name: "Enquanto estava caído", conversationTimestamp: tsDepois },
+      ]),
+      listChatMessages: vi.fn(async (_s: string, chatId: string) =>
+        chatId === "5561002@c.us"
+          ? [{ id: "m-queda", fromMe: false, body: "cheguei agora", timestamp: tsDepois }]
+          : [{ id: "m-velha", fromMe: false, body: "ontem", timestamp: tsAntes }],
+      ),
+    };
+    const r = await puxarHistorico(
+      adminComMetadata({ caiu_em: "2026-08-30T11:40:00.000Z" }) as never,
+      sessao,
+      {
+        cliente,
+        dormir: async () => undefined,
+        agora: () => "2026-08-30T12:00:00.000Z",
+      },
+    );
+    expect(r.status).toBe("pronto");
+    expect(r.conversas).toBe(1);
+    expect(cliente.listChatMessages.mock.calls.map((c) => c[1])).toEqual(["5561002@c.us"]);
+  });
+
+  it("depois da queda o teto sobe — 40 fios deixavam lead de ontem de fora", async () => {
+    const ts = Math.floor(Date.parse("2026-08-30T11:50:00.000Z") / 1000);
+    const chats = Array.from({ length: 41 }, (_, i) => ({
+      id: `5561${String(i).padStart(4, "0")}@c.us`,
+      name: `Lead ${i}`,
+      conversationTimestamp: ts,
+    }));
+    const cliente = {
+      convergirConfigDaSessao: vi.fn(async () => undefined),
+      listChats: vi.fn(async () => chats),
+      listChatMessages: vi.fn(async () => [{ id: "m1", fromMe: false, body: "oi", timestamp: ts }]),
+    };
+    const r = await puxarHistorico(
+      adminComMetadata({ caiu_em: "2026-08-30T11:40:00.000Z" }) as never,
+      sessao,
+      {
+        cliente,
+        dormir: async () => undefined,
+        agora: () => "2026-08-30T12:00:00.000Z",
+      },
+    );
+    expect(r.status).toBe("pronto");
+    expect(cliente.listChatMessages).toHaveBeenCalledTimes(41);
+  });
+
   it("fio que já está no inbox e no mesmo instante não baixa de novo", async () => {
     vi.mocked(ingerirMensagemHistorica).mockClear();
     const tsRecente = Math.floor(Date.parse("2026-08-30T11:00:00.000Z") / 1000);
@@ -690,6 +745,14 @@ describe("recorte do inbox — a régua, sem o transporte", () => {
     expect(corteDosFiosNovos(agora, haUmaSemana)).toBe(haUmaSemana - SOBREPOSICAO_FIOS_MS);
   });
 
+  it("se caiu, o recorte é DA QUEDA — não as 48h nem o watermark do inbox", () => {
+    const agora = Date.parse("2026-08-30T12:00:00.000Z");
+    const caiu = Date.parse("2026-08-30T11:40:00.000Z");
+    const inboxDeOntem = agora - 7 * 24 * 60 * 60 * 1000;
+    expect(corteDosFiosNovos(agora, inboxDeOntem, caiu)).toBe(caiu - SOBREPOSICAO_FIOS_MS);
+    expect(corteDosFiosNovos(agora, null, caiu)).toBe(caiu - SOBREPOSICAO_FIOS_MS);
+  });
+
   it("órfão entra; fio em dia não; aparelho na frente entra", () => {
     const agora = Date.parse("2026-08-30T12:00:00.000Z");
     expect(fioPrecisaEntrarNoInbox(agora, null)).toBe(true);
@@ -777,6 +840,42 @@ describe("lista acompanha o aparelho sem reconectar", () => {
     });
     expect(r.puladas).toBe(1);
     expect(puxar).not.toHaveBeenCalled();
+  });
+
+  it("lista fresca COM queda ainda puxa — o recorte da queda não espera o cron", async () => {
+    const puxar = vi.fn(async () => ({
+      status: "pronto" as const,
+      iniciado_em: "2026-08-30T00:00:00.000Z",
+      conversas: 2,
+      mensagens: 4,
+      puladas: 0,
+    }));
+    const r = await sincronizarContatosDosCanaisNoAr({
+      agoraMs: Date.parse("2026-08-30T00:02:00.000Z"),
+      admin: adminDoLote([
+        {
+          id: "s1",
+          organization_id: "o1",
+          status: "WORKING",
+          waha_session_name: "org_x",
+          archived_at: null,
+          metadata: {
+            caiu_em: "2026-08-30T00:00:30.000Z",
+            historico: {
+              status: "pronto",
+              iniciado_em: "2026-08-30T00:00:00.000Z",
+              terminado_em: "2026-08-30T00:01:00.000Z",
+              conversas: 0,
+              mensagens: 0,
+              puladas: 0,
+            },
+          },
+        },
+      ]) as never,
+      puxar,
+    });
+    expect(r.puxadas).toBe(1);
+    expect(puxar).toHaveBeenCalled();
   });
 
   it("reconectar espera o número voltar e então puxa", async () => {

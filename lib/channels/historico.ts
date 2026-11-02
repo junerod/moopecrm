@@ -8,6 +8,7 @@
  * organization_id chega de quem já autenticou (cookie). Nunca do body.
  */
 import { createAdminClient } from "@/lib/supabase/admin";
+import { lerCaiuEm } from "@/lib/channels/caiu-em";
 import { fraseDaFalhaDeCanal } from "@/lib/channels/frases-de-falha";
 import type { ProgressoHistorico } from "@/lib/channels/historico-tipos";
 import {
@@ -328,7 +329,7 @@ export async function sincronizarContatosDosCanaisNoAr(deps: {
       resumo.puladas += 1;
       continue;
     }
-    if (historicoAindaFresco(atual, agoraMs)) {
+    if (historicoAindaFresco(atual, agoraMs) && lerCaiuEm(linha.metadata) == null) {
       resumo.puladas += 1;
       continue;
     }
