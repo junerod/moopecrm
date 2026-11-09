@@ -36,6 +36,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DefinirSenhaDeMembroDialog } from "@/components/auth/DefinirSenhaDeMembroDialog";
+import { apiClient } from "@/lib/api/client";
+import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { ROLES, type Role } from "@/lib/schemas/team";
 import { DotsThree } from "@/lib/ui/icons";
 
@@ -50,6 +53,8 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
   const revoke = useRevokeMember();
 
   const [revokeDialog, setRevokeDialog] = useState<TeamMember | null>(null);
+  const [senhaDialog, setSenhaDialog] = useState<TeamMember | null>(null);
+  const [senhaPending, setSenhaPending] = useState(false);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -132,6 +137,9 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setSenhaDialog(m)}>
+                            Definir senha
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => setRevokeDialog(m)}
@@ -150,6 +158,30 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
           </TableBody>
         </Table>
       </div>
+
+      <DefinirSenhaDeMembroDialog
+        open={!!senhaDialog}
+        onClose={() => setSenhaDialog(null)}
+        titulo="Definir senha"
+        descricao={`Nova senha para ${senhaDialog?.email ?? senhaDialog?.full_name ?? "este membro"}.`}
+        pending={senhaPending}
+        onConfirm={async (password, password_confirm) => {
+          if (!senhaDialog) return;
+          setSenhaPending(true);
+          try {
+            await apiClient.post(`/api/v1/team/${senhaDialog.user_id}/password`, {
+              password,
+              password_confirm,
+            });
+            toast.success("Senha definida. A pessoa troca de novo no próximo login.");
+            setSenhaDialog(null);
+          } catch (err) {
+            showApiError(err);
+          } finally {
+            setSenhaPending(false);
+          }
+        }}
+      />
 
       <Dialog open={!!revokeDialog} onOpenChange={(o) => !o && setRevokeDialog(null)}>
         <DialogContent>

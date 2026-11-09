@@ -83,3 +83,15 @@ export const changePasswordSchema = z
     message: "A nova senha precisa ser diferente da atual.",
   });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/** Admin define a senha de um membro — sem senha atual, com confirmação. */
+export const definirSenhaDeMembroSchema = z
+  .object({
+    password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
+    password_confirm: z.string(),
+  })
+  .refine((v) => v.password === v.password_confirm, {
+    path: ["password_confirm"],
+    message: "As senhas não coincidem",
+  });
+export type DefinirSenhaDeMembroInput = z.infer<typeof definirSenhaDeMembroSchema>;

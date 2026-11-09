@@ -211,7 +211,7 @@ export function FichaDaEmpresaForm({
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/app/settings/profile">Trocar senha</Link>
+          <Link href="/app/settings/security">Trocar senha</Link>
         </Button>
       </section>
     </form>

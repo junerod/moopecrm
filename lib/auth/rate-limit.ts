@@ -139,6 +139,7 @@ export const AUTH_LIMITS = {
   reset: { ip: 30, id: 3, windowSec: 3600 },
   invite_accept: { ip: 60, windowSec: 3600 },
   password_change: { ip: 20, id: 5, windowSec: 300 },
+  password_set: { ip: 20, id: 10, windowSec: 300 },
 } satisfies Record<string, AuthRateLimits>;
 
 export const __LOGIN_IP_DEFAULT_PARA_TESTE = LOGIN_IP_DEFAULT;

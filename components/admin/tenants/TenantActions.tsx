@@ -1,9 +1,29 @@
 "use client";
 import { useState } from "react";
+import { toast } from "sonner";
+
+import { DefinirSenhaDeMembroDialog } from "@/components/auth/DefinirSenhaDeMembroDialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ImpersonateButton } from "@/components/admin/ImpersonateButton";
+import { apiClient } from "@/lib/api/client";
+import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { SuspendDialog } from "./SuspendDialog";
 import { ReactivateDialog } from "./ReactivateDialog";
-import { ImpersonateButton } from "@/components/admin/ImpersonateButton";
+
+type Membro = {
+  user_id: string;
+  role: string;
+  email: string | null;
+  full_name: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // Props
@@ -26,6 +46,10 @@ export function TenantActions({
 }: TenantActionsProps) {
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [senhaOpen, setSenhaOpen] = useState(false);
+  const [senhaPending, setSenhaPending] = useState(false);
+  const [membros, setMembros] = useState<Membro[] | null>(null);
+  const [alvo, setAlvo] = useState<string>("");
 
   const canSuspend = status === "active";
   const isSuspended = status === "suspended";
@@ -37,6 +61,27 @@ export function TenantActions({
         <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Ações
         </h2>
+
+        {!isRedacted && (
+          <Button
+            className="w-full"
+            variant="outline"
+            onClick={async () => {
+              setSenhaOpen(true);
+              try {
+                const r = await apiClient.get<{ data: Membro[] }>(
+                  `/api/v1/admin/tenants/${organizationId}/members`,
+                );
+                setMembros(r.data);
+                if (r.data.length === 1) setAlvo(r.data[0].user_id);
+              } catch (err) {
+                showApiError(err);
+              }
+            }}
+          >
+            Definir senha do tenant
+          </Button>
+        )}
 
         {/* Impersonate (S-11.07) */}
         <ImpersonateButton
@@ -89,6 +134,55 @@ export function TenantActions({
         open={reactivateOpen}
         onClose={() => setReactivateOpen(false)}
         organizationId={organizationId}
+      />
+
+      <DefinirSenhaDeMembroDialog
+        open={senhaOpen}
+        onClose={() => {
+          setSenhaOpen(false);
+          setAlvo("");
+        }}
+        titulo="Definir senha do tenant"
+        descricao={`Quem entra em ${displayName} recebe esta senha e troca no próximo login.`}
+        pending={senhaPending}
+        extra={
+          <div className="space-y-2">
+            <Label htmlFor="senha_alvo">Quem recebe a senha</Label>
+            <Select value={alvo} onValueChange={setAlvo}>
+              <SelectTrigger id="senha_alvo" aria-label="Quem recebe a senha">
+                <SelectValue placeholder={membros ? "Escolha a pessoa" : "Carregando…"} />
+              </SelectTrigger>
+              <SelectContent>
+                {(membros ?? []).map((m) => (
+                  <SelectItem key={m.user_id} value={m.user_id}>
+                    {m.email ?? m.full_name ?? m.user_id.slice(0, 8)} ({m.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+        onConfirm={async (password, password_confirm) => {
+          if (!alvo) {
+            toast.error("Escolha quem vai receber a senha.");
+            return;
+          }
+          setSenhaPending(true);
+          try {
+            await apiClient.post(`/api/v1/admin/tenants/${organizationId}/password`, {
+              user_id: alvo,
+              password,
+              password_confirm,
+            });
+            toast.success("Senha definida.");
+            setSenhaOpen(false);
+            setAlvo("");
+          } catch (err) {
+            showApiError(err);
+          } finally {
+            setSenhaPending(false);
+          }
+        }}
       />
     </>
   );

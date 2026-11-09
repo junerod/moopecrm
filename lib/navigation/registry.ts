@@ -540,7 +540,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
   {
     href: "/app/settings/security",
     label: "Segurança",
-    description: "Verificação em duas etapas, códigos de recuperação e sessões.",
+    description: "Senha de acesso, verificação em duas etapas e sessões.",
+    aliases: ["senha", "password", "acesso", "mfa", "duas etapas"],
     icon: ShieldCheck,
     group: "organizacao",
     section: "Sua conta",

@@ -58,6 +58,7 @@ describe("integridade do registro", () => {
     expect(dest("/app/ai/followups").label).toBe("Bots");
     expect(textoBuscavel(dest("/app/ai/followups"))).toMatch(/automa/i);
     expect(textoBuscavel(inbox).toLowerCase()).toContain("instagram");
+    expect(textoBuscavel(dest("/app/settings/security"))).toMatch(/senha/i);
   });
 
   it("todo destino de um grupo com hub declara sua seção", () => {
@@ -142,6 +143,7 @@ describe("sidebarGroups", () => {
     expect(integracoes?.items.map((i) => i.href)).toEqual([
       "/app/connections",
       "/app/integrations/moope",
+      "/app/integrations/assessor",
     ]);
   });
 });

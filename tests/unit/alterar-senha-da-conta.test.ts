@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const signIn = vi.fn();
@@ -25,6 +27,13 @@ vi.mock("@/lib/audit", () => ({
 import { loadAuthUser } from "@/lib/auth/server";
 import { alterarSenhaDaConta } from "@/app/actions/settings/alterarSenhaDaConta";
 import { changePasswordSchema } from "@/lib/auth/schemas";
+
+describe("o lugar da senha", () => {
+  it("Segurança é onde se troca a senha de acesso", () => {
+    const pagina = readFileSync("app/app/settings/security/page.tsx", "utf8");
+    expect(pagina).toMatch(/TrocarSenhaForm/);
+  });
+});
 
 describe("changePasswordSchema", () => {
   it("senha curta ou igual à atual não passa", () => {

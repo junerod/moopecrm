@@ -5,6 +5,8 @@ import { requireAuth, isMfaEnrolled, resolveActiveOrg, requiresMfa } from "@/lib
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ShieldCheck } from "@/lib/ui/icons";
 
+import { TrocarSenhaForm } from "@/app/app/settings/profile/_senha";
+
 import { SecurityClient } from "./_client";
 
 export const dynamic = "force-dynamic";
@@ -45,8 +47,10 @@ export default async function SecurityPage() {
       <PageHeader
         icon={<AppIcon icon={ShieldCheck} tone="blue" size="lg" />}
         titulo="Segurança"
-        descricao="A verificação em duas etapas da sua conta, os códigos de recuperação e as sessões abertas."
+        descricao="Senha de entrada, verificação em duas etapas e sessões abertas."
       />
+
+      <TrocarSenhaForm />
 
       <SecurityClient
         mfaEnrolled={enrolled}

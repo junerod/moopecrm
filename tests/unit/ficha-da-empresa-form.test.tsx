@@ -27,7 +27,7 @@ describe("FichaDaEmpresaForm", () => {
     expect(screen.getByRole("button", { name: "Salvar" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Trocar senha" })).toHaveAttribute(
       "href",
-      "/app/settings/profile",
+      "/app/settings/security",
     );
 
     rerender(

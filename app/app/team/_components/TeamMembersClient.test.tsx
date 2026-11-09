@@ -87,6 +87,14 @@ beforeEach(() => {
 });
 
 describe("TeamMembersClient — seletor de papel (G2-02)", () => {
+  it("admin vê Definir senha no menu do membro", async () => {
+    const user = userEvent.setup();
+    renderClient();
+    const acoes = await screen.findByRole("button", { name: "Ações" });
+    await user.click(acoes);
+    expect(await screen.findByRole("menuitem", { name: "Definir senha" })).toBeInTheDocument();
+  });
+
   it("não-admin não vê seletor de papel (só badge)", async () => {
     renderClient({ canManage: false });
     expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
