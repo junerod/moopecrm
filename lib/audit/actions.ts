@@ -442,6 +442,7 @@ export const AUDIT_ACTIONS = [
   "pack.disabled",
   "pack.enabled",
   "conversation.inbox_purged",
+  "auth.password_set_by_admin",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

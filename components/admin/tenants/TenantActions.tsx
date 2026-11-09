@@ -73,7 +73,8 @@ export function TenantActions({
                   `/api/v1/admin/tenants/${organizationId}/members`,
                 );
                 setMembros(r.data);
-                if (r.data.length === 1) setAlvo(r.data[0].user_id);
+                const unico = r.data[0];
+                if (r.data.length === 1 && unico) setAlvo(unico.user_id);
               } catch (err) {
                 showApiError(err);
               }
