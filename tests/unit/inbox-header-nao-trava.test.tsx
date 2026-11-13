@@ -56,6 +56,9 @@ vi.mock("@/hooks/inbox/usePauseAiAttendance", () => ({
 vi.mock("@/hooks/ai/useAutomaticoAtivo", () => ({
   useAutomaticoAtivo: () => ({ data: false }),
 }));
+vi.mock("@/hooks/inbox/useMarkAsUnread", () => ({
+  useMarkAsUnread: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 vi.mock("@/hooks/inbox/useSnoozeConversation", () => ({
   useSnoozeConversation: () => ({
     snooze: { mutate: vi.fn(), isPending: false },
@@ -141,6 +144,7 @@ describe("header do inbox — não trava a largura da tela", () => {
       await screen.findByRole("menuitem", { name: "Fechar" }),
       "Fechar tem de continuar acessível no overflow",
     ).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Marcar como não lida" })).toBeTruthy();
   });
 
   it('"Ver contato" fica no overflow — não compete na barra', async () => {

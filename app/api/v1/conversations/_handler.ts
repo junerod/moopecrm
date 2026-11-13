@@ -376,3 +376,29 @@ export async function markConversationReadHandler(
   }
   return data as unknown as Conversation;
 }
+
+// ---------------------------------------------------------------------------
+// mark unread — o inverso da leitura automática. 1 basta para voltar à fila.
+// ---------------------------------------------------------------------------
+
+export async function markConversationUnreadHandler(
+  supabase: SB,
+  ctx: HandlerCtx,
+  conversationId: string,
+): Promise<Conversation> {
+  const { data, error } = await supabase
+    .from("conversations")
+    .update({ unread_count_for_assignee: 1 })
+    .eq("id", conversationId)
+    .eq("organization_id", ctx.organization_id)
+    .select(SELECT_COLS)
+    .maybeSingle();
+
+  if (error) {
+    throw new ApiError(500, "internal_error", undefined, ctx.requestId, error.message);
+  }
+  if (!data) {
+    throw new ApiError(404, "not_found", undefined, ctx.requestId, "Conversa não encontrada.");
+  }
+  return data as unknown as Conversation;
+}

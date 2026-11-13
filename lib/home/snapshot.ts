@@ -18,6 +18,7 @@ import { CONVERSATION_QUEUE_STATUSES, CONVERSATION_TERMINAL_STATUSES } from "@/l
 import { carregarKpisDeSupervisao } from "@/lib/supervisao/kpis";
 import { janelaDoPeriodo, type PeriodoPronto } from "@/lib/supervisao/periodo";
 
+import { listarMovimentacoesDoFunil } from "./movimentacoes-funil";
 import {
   ehGestor,
   type AcaoDaHome,
@@ -177,13 +178,23 @@ export async function carregarSnapshotDaHome(
   });
 
   const conexoesP = fonte("conexoes", () => listarConexoesCaidas(db, pedido.organizationId));
+  const movsP = fonte("movimentacoes", () =>
+    listarMovimentacoesDoFunil(db, {
+      organizationId: pedido.organizationId,
+      userId: pedido.userId,
+      soDoDono: !gestor,
+      agora,
+      limite: 8,
+    }),
+  );
 
-  const [acoesF, countsF, agendaF, funilF, conexoesF] = await Promise.all([
+  const [acoesF, countsF, agendaF, funilF, conexoesF, movsF] = await Promise.all([
     acoesP,
     countsP,
     agendaP,
     funilP,
     conexoesP,
+    movsP,
   ]);
 
   let personal = vazioPessoal();
@@ -436,6 +447,7 @@ export async function carregarSnapshotDaHome(
     perdas: gestor ? perdas : [],
     pipeline_href: pipelineHref,
     conexoes_caidas: conexoesF.ok ? conexoesF.data : [],
+    movimentacoes_funil: movsF.ok ? movsF.data : [],
     sources: {
       personal: personalOk,
       team: gestor ? teamSrc : "omit",

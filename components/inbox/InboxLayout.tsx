@@ -206,12 +206,14 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
 
   const claim = useClaimConversation();
   const close = useCloseConversation();
+  const [pausarLeituraId, setPausarLeituraId] = useState<string | null>(null);
 
   // A leitura da conversa aberta é do upstream e fica: sem ela o contador de
   // não-lidas nunca zera para quem abre a conversa.
   useMarkAsRead(
     selectedConversation?.id ?? null,
     selectedConversation?.unread_count_for_assignee ?? 0,
+    pausarLeituraId === selectedConversation?.id,
   );
 
   // Aceita `null`: é o VOLTAR do celular, que limpa a seleção e devolve a lista.
@@ -224,6 +226,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   // conversa, que hoje entra por `initialSelectedId` vindo da rota.
   const handleSelect = useCallback((id: string | null) => {
     setSelectedId(id);
+    setPausarLeituraId(null);
     // Sem isto, escolher "responder" numa conversa e trocar para outra levaria
     // a citação junto — e a resposta sairia citando mensagem de outro cliente.
     setRespondendo(null);
@@ -419,7 +422,13 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         )}
         {selectedConversation ? (
           <>
-            <ConversationHeader conversation={selectedConversation} />
+            <ConversationHeader
+              conversation={selectedConversation}
+              onMarcadaNaoLida={() => {
+                handleSelect(null);
+                setPausarLeituraId(selectedConversation.id);
+              }}
+            />
             <AssignmentHistory conversationId={selectedConversation.id} />
             <div className="min-h-0 flex-1 overflow-hidden">
               <ChatThread conversationId={selectedConversation.id} onResponder={setRespondendo} />

@@ -103,6 +103,8 @@ export const DICIONARIO: Traducoes = {
   Transferir: { es: "Transferir" },
   Lembrar: { es: "Recordar" },
   Fechar: { es: "Cerrar" },
+  "Marcar como não lida": { es: "Marcar como no leída" },
+  "Salvar resposta rápida": { es: "Guardar respuesta rápida" },
   "Devolver ao automático": { es: "Devolver al automático" },
   Aberta: { es: "Abierta" },
   Fechada: { es: "Cerrada" },

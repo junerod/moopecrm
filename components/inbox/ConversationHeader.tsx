@@ -22,6 +22,8 @@ import { useCloseConversation } from "@/hooks/inbox/useCloseConversation";
 import { useResumeAiAttendance } from "@/hooks/inbox/useResumeAiAttendance";
 import { usePauseAiAttendance } from "@/hooks/inbox/usePauseAiAttendance";
 import { useSnoozeConversation } from "@/hooks/inbox/useSnoozeConversation";
+import { useMarkAsUnread } from "@/hooks/inbox/useMarkAsUnread";
+import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
 import { OwnerBadge } from "@/components/kanban/OwnerBadge";
 import { comandoDaConversa, ROTULO_DO_MOTIVO } from "@/lib/inbox/comando-da-conversa";
@@ -37,6 +39,8 @@ import { SeloDaPessoa } from "./SeloDaPessoa";
 
 interface Props {
   conversation: ConversationWithContact;
+  /** Depois de marcar não lida: o inbox sai da conversa para o automático não zerar de novo. */
+  onMarcadaNaoLida?: () => void;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -54,7 +58,7 @@ const SNOOZE_HORAS: Array<{ hours: 1 | 3 | 24; label: string }> = [
   { hours: 24, label: "Em 24 horas" },
 ];
 
-export function ConversationHeader({ conversation }: Props) {
+export function ConversationHeader({ conversation, onMarcadaNaoLida }: Props) {
   const t = useT();
   const { user } = useAuth();
   const claim = useClaimConversation();
@@ -62,6 +66,7 @@ export function ConversationHeader({ conversation }: Props) {
   const close = useCloseConversation();
   const retomar = useResumeAiAttendance();
   const pausar = usePauseAiAttendance();
+  const marcarNaoLida = useMarkAsUnread();
   const { snooze, cancel } = useSnoozeConversation();
   const automaticoDaOrg = useAutomaticoAtivo();
   const [reassignOpen, setReassignOpen] = useState(false);
@@ -206,6 +211,18 @@ export function ConversationHeader({ conversation }: Props) {
                 <MarcarPessoa contactId={c.id} papel={c.papel} contactName={displayName} />
               </div>
             ) : null}
+            <DropdownMenuItem
+              disabled={marcarNaoLida.isPending}
+              data-testid="marcar-nao-lida"
+              onClick={() => {
+                marcarNaoLida.mutate(conversation.id, {
+                  onSuccess: () => onMarcadaNaoLida?.(),
+                  onError: showApiError,
+                });
+              }}
+            >
+              {t("Marcar como não lida")}
+            </DropdownMenuItem>
             {podeTransferir ? (
               <DropdownMenuItem
                 className="md:hidden"

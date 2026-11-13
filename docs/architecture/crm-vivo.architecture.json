@@ -45,7 +45,9 @@
     { "id": "fila", "lane": "fila", "col": 4, "type": "service", "label": "job_queue · followup_turn", "sublabel": "o envio passa pelos portões" },
     { "id": "risco", "lane": "fila", "col": 5, "type": "service", "label": "classifyRisk + resolveStageWindow", "sublabel": "fonte ÚNICA de esfriamento" },
 
-    { "id": "inbox", "lane": "fora", "col": 4, "type": "frontend", "label": "agent_inbox_items", "sublabel": "demanda sem dono não mora no Kanban" }
+    { "id": "inbox", "lane": "fora", "col": 4, "type": "frontend", "label": "agent_inbox_items", "sublabel": "demanda sem dono não mora no Kanban" },
+    { "id": "inicio-mov", "lane": "humano", "col": 6, "type": "frontend", "label": "Início · alterações do funil", "sublabel": "lê stage_changed, não grava outro rastro" },
+    { "id": "sino-funil", "lane": "humano", "col": 6, "type": "frontend", "label": "Sino · Funil", "sublabel": "separado da Central de avisos" }
   ],
   "edges": [
     { "id": "e1", "from": "ritual", "to": "leadstate", "label": "escreve estágio e next_action" },
@@ -91,7 +93,11 @@
     { "id": "e41", "from": "atividades", "to": "chat", "label": "âncora {conversation_id, message_id}" },
     { "id": "e42", "from": "dossie", "to": "chat", "label": "clique leva ao momento" },
     { "id": "e43", "from": "dossie", "to": "atividades", "label": "editar campo deixa rastro humano" },
-    { "id": "e44", "from": "filtro", "to": "card", "label": "applyFilters decide o que aparece" }
+    { "id": "e44", "from": "filtro", "to": "card", "label": "applyFilters decide o que aparece" },
+    { "id": "e45", "from": "atividades", "to": "inicio-mov", "label": "stage_changed das últimas 48h" },
+    { "id": "e46", "from": "atividades", "to": "sino-funil", "label": "a mesma lista, sem agent_inbox_items" },
+    { "id": "e47", "from": "inicio-mov", "to": "dossie", "label": "clique abre o negócio" },
+    { "id": "e48", "from": "sino-funil", "to": "inicio-mov", "label": "ver na Início" }
   ],
   "cards": [
     {

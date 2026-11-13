@@ -120,6 +120,14 @@ export interface SnapshotDaHome {
   pipeline_href: string;
   /** Conexões fora do ar agora. Vazio = não pintar o alerta. */
   conexoes_caidas: Array<{ id: string; apelido: string; status: string }>;
+  /** Mudanças de etapa das últimas 48h. Vazio = não pintar a faixa. */
+  movimentacoes_funil: Array<{
+    activity_id: string;
+    lead_id: string;
+    titulo: string;
+    texto: string;
+    em: string;
+  }>;
   sources: {
     personal: FonteDoSnapshot;
     team: FonteDoSnapshot | "omit";

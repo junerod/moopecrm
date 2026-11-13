@@ -2,6 +2,7 @@
 import { useT } from "@/hooks/i18n/useT";
 import {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -15,6 +16,7 @@ import { AttachmentPreviewDialog } from "@/components/inbox/composer/AttachmentP
 import { ContactPickerDialog } from "@/components/inbox/composer/ContactPickerDialog";
 import { AudioRecorder } from "@/components/inbox/composer/AudioRecorder";
 import { DraftReplyButton } from "@/components/inbox/composer/DraftReplyButton";
+import { SalvarRespostaRapidaDialog } from "@/components/inbox/composer/SalvarRespostaRapidaDialog";
 import { EmojiButton } from "@/components/inbox/composer/EmojiButton";
 import {
   deveReabrirMenuSlash,
@@ -28,6 +30,7 @@ import { useSendMessage } from "@/hooks/inbox/useSendMessage";
 import { useUploadMedia } from "@/hooks/inbox/useUploadMedia";
 import { imagemDoClipboard } from "@/lib/inbox/clipboard-image";
 import { interpolateTemplate } from "@/lib/inbox/template-vars";
+import { gravarRascunho, lerRascunho } from "@/lib/inbox/rascunho-da-conversa";
 import { cn } from "@/lib/utils";
 
 export interface ComposerHandle {
@@ -85,6 +88,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 ) {
   const t = useT();
   const [text, setText] = useState("");
+  const [salvarRapidaOpen, setSalvarRapidaOpen] = useState(false);
+  const rascunhoProntoRef = useRef<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [menuDismissed, setMenuDismissed] = useState(false);
@@ -100,6 +105,19 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const slashMenu = slash.open && !menuDismissed;
   const menuOpen = mode === "reply" && (slashMenu || quickOpen);
   const menuQuery = quickOpen && !slashMenu ? quickQuery : slash.query;
+
+  useEffect(() => {
+    const storage = typeof window === "undefined" ? null : window.localStorage;
+    setText(lerRascunho(storage, conversationId));
+    rascunhoProntoRef.current = conversationId;
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (rascunhoProntoRef.current !== conversationId) return;
+    const storage = typeof window === "undefined" ? null : window.localStorage;
+    const tmr = window.setTimeout(() => gravarRascunho(storage, conversationId, text), 200);
+    return () => window.clearTimeout(tmr);
+  }, [conversationId, text]);
 
   useImperativeHandle(ref, () => ({
     focus: () => taRef.current?.focus(),
@@ -341,6 +359,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               // "(só o time vê)" FICA: não é atalho, é consequência. Quem escreve
               // uma nota interna precisa saber que ela não vai para o cliente, e
               // essa informação não pode depender de abrir um diálogo.
+              lang="pt-BR"
+              spellCheck
+              autoCorrect="on"
+              autoCapitalize="sentences"
               placeholder={
                 mode === "note" ? t("Escreva uma nota interna… (só o time vê)") : t("Escreva uma mensagem…")
               }
@@ -380,6 +402,17 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             {mode === "reply" && (
               <DraftReplyButton conversationId={conversationId} disabled={isDisabled} onDraft={applyDraft} />
             )}
+            {mode === "reply" && text.trim() ? (
+              <button
+                type="button"
+                data-testid="salvar-resposta-rapida"
+                className="shrink-0 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => setSalvarRapidaOpen(true)}
+                title="Salva este texto nas respostas rápidas — dá para corrigir as palavras antes"
+              >
+                {t("Salvar resposta rápida")}
+              </button>
+            ) : null}
             {mode === "reply" && (
               <button
                 type="button"
@@ -445,6 +478,11 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             return;
           }
         }}
+      />
+      <SalvarRespostaRapidaDialog
+        open={salvarRapidaOpen}
+        onOpenChange={setSalvarRapidaOpen}
+        corpo={text}
       />
       <ContactPickerDialog
         open={contactPickerOpen}

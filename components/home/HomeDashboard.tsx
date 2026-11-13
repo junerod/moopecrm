@@ -25,6 +25,7 @@ import {
 } from "@/lib/home/formatar";
 import { insightsDoSnapshot } from "@/lib/home/insights";
 import type { AcaoDaHome, EtapaDoFunilDaHome, SnapshotDaHome } from "@/lib/home/tipos";
+import type { MovimentacaoDoFunil } from "@/lib/home/movimentacoes-funil";
 import type { PeriodoPronto } from "@/lib/supervisao/periodo";
 import {
   Buildings,
@@ -310,6 +311,55 @@ function Prioridades({
       ) : (
         <div className="space-y-1">{linhas.slice(0, 5)}</div>
       )}
+    </AppCard>
+  );
+}
+
+function quandoDaMovimentacao(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function AlteracoesDoFunil({
+  itens,
+  className,
+}: {
+  itens: MovimentacaoDoFunil[];
+  className?: string;
+}) {
+  if (itens.length === 0) return null;
+  return (
+    <AppCard testid="home-alteracoes-funil" className={className}>
+      <SectionHeader
+        titulo="Alterações do funil"
+        cta="Abrir funil"
+        href="/app/kanban"
+        icon={<AppIcon icon={Funnel} tone="indigo" size="sm" />}
+      />
+      <ul className="space-y-2.5">
+        {itens.map((m) => (
+          <li key={m.activity_id}>
+            <Link
+              href={`/app/leads/${m.lead_id}`}
+              className="block rounded-md hover:bg-[var(--color-surface-elevated)]"
+            >
+              <p className="text-[13px] font-medium text-[var(--color-text)]">{m.titulo}</p>
+              <p className="text-[12px] text-[var(--color-text-muted)]">{m.texto}</p>
+              {quandoDaMovimentacao(m.em) ? (
+                <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+                  {quandoDaMovimentacao(m.em)}
+                </p>
+              ) : null}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </AppCard>
   );
 }
@@ -831,6 +881,10 @@ export function HomeDashboard({
                   className="lg:col-span-2"
                 />
                 {snap ? <Pulso snap={snap} /> : null}
+                <AlteracoesDoFunil
+                  itens={snap?.movimentacoes_funil ?? []}
+                  className="lg:col-span-3"
+                />
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <BlocoHoje snap={snap} />
@@ -847,6 +901,10 @@ export function HomeDashboard({
                   etapas={snap?.funnel ?? []}
                   href={funilHref}
                   erro={snap?.sources.funnel === "error"}
+                  className="lg:col-span-3"
+                />
+                <AlteracoesDoFunil
+                  itens={snap?.movimentacoes_funil ?? []}
                   className="lg:col-span-3"
                 />
               </div>

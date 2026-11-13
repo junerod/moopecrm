@@ -21,12 +21,16 @@ vi.mock("@/lib/escalacao/atendentes", () => ({
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
+vi.mock("@/lib/home/movimentacoes-funil", () => ({
+  listarMovimentacoesDoFunil: vi.fn(async () => []),
+}));
 
 import { listarProximasAcoes } from "@/lib/demandas/listar-proximas-acoes";
 import { carregarRosterDeAtendimento } from "@/lib/escalacao/atendentes";
 import { carregaRadarDeRisco } from "@/lib/leads/radar-de-risco";
 import { getQueueStatus } from "@/lib/routing/queue";
 import { carregarKpisDeSupervisao } from "@/lib/supervisao/kpis";
+import { listarMovimentacoesDoFunil } from "@/lib/home/movimentacoes-funil";
 
 import { carregarSnapshotDaHome } from "./snapshot";
 
@@ -144,6 +148,8 @@ describe("carregarSnapshotDaHome", () => {
     vi.mocked(getQueueStatus).mockReset();
     vi.mocked(carregaRadarDeRisco).mockReset();
     vi.mocked(carregarRosterDeAtendimento).mockReset();
+    vi.mocked(listarMovimentacoesDoFunil).mockReset();
+    vi.mocked(listarMovimentacoesDoFunil).mockResolvedValue([]);
     vi.mocked(listarProximasAcoes).mockResolvedValue([]);
     vi.mocked(carregarKpisDeSupervisao).mockResolvedValue(kpisOk);
     vi.mocked(getQueueStatus).mockResolvedValue({
@@ -323,6 +329,33 @@ describe("carregarSnapshotDaHome", () => {
       acoes: [],
     });
     expect(snap.conexoes_caidas).toEqual([]);
+    expect(snap.movimentacoes_funil).toEqual([]);
+  });
+
+  it("leva as alterações de etapa que o funil já gravou, sem inventar linha", async () => {
+    vi.mocked(listarMovimentacoesDoFunil).mockResolvedValueOnce([
+      {
+        activity_id: "a1",
+        lead_id: "l1",
+        titulo: "Maria",
+        texto: "Movido de Novo para Proposta",
+        em: agora.toISOString(),
+      },
+    ]);
+    const db = dbComContagens();
+    const snap = await carregarSnapshotDaHome(db as never, {
+      organizationId: ORG_A,
+      userId: USER,
+      role: "agent",
+      periodo: "hoje",
+      agora,
+    });
+    expect(snap.movimentacoes_funil).toHaveLength(1);
+    expect(snap.movimentacoes_funil[0]?.texto).toBe("Movido de Novo para Proposta");
+    expect(listarMovimentacoesDoFunil).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ organizationId: ORG_A, userId: USER, soDoDono: true }),
+    );
   });
 
   it("falha parcial do funil não zera o pessoal", async () => {
