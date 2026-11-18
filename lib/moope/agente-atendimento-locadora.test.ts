@@ -155,6 +155,16 @@ describe("garantirAgenteAtendimentoLocadora", () => {
     vi.mocked(listSelectableChannels).mockResolvedValue([{ id: "canal-1" }] as never);
   });
 
+  it("sem a chave da empresa fica rascunho, mesmo com chave na instalação", async () => {
+    vi.mocked(carregarConexaoLocadora).mockResolvedValue({ id: "cx" } as never);
+    const r = await garantirAgenteAtendimentoLocadora(
+      adminDeMemoria({ agentes: [], versoes: [] }) as never,
+      "org",
+      "u",
+    );
+    expect(r).toMatchObject({ ok: true, status: "draft", motivo: "sem_chave" });
+  });
+
   it("sem conexão locadora não cria agente", async () => {
     vi.mocked(carregarConexaoLocadora).mockResolvedValue(null);
     const r = await garantirAgenteAtendimentoLocadora(adminDeMemoria({ agentes: [], versoes: [] }) as never, "org", "u");
@@ -173,7 +183,7 @@ describe("garantirAgenteAtendimentoLocadora", () => {
     );
     expect(r.origem).toBe("existente");
     expect(r.agent_id).toBe("ag-1");
-    expect(r.status).toBe("published");
+    expect(r).toMatchObject({ status: "draft", motivo: "sem_chave" });
   });
 
   it("adapta o default de loja em vez de publicar o segundo no canal", async () => {

@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
+import { enderecoDeLeitura } from "@/lib/moope/origem-da-leitura";
 import { assinarSaida } from "@/lib/moope/eventos-outbound";
 import { cpfOuCnpjDigitos, telefoneE164 } from "@/lib/moope/telefone";
 import type { MoopeConnectionRow } from "@/lib/moope/tipos";
@@ -120,15 +121,7 @@ function corpoData(json: unknown): Record<string, unknown> {
 }
 
 export function urlDaApiDaLocadora(conn: Pick<MoopeConnectionRow, "partner_api_url" | "partner_webhook_url">): string | null {
-  const explicita = conn.partner_api_url?.trim();
-  if (explicita) return explicita.replace(/\/+$/, "");
-  const webhook = conn.partner_webhook_url?.trim();
-  if (!webhook) return null;
-  try {
-    return new URL(webhook).origin;
-  } catch {
-    return null;
-  }
+  return enderecoDeLeitura(conn).base;
 }
 
 /** Canonical do GET: método + path + query. Sem body. A locadora verifica o mesmo. */

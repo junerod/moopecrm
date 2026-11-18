@@ -9,7 +9,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { listSelectableChannels } from "@/lib/channels/selectable";
 import { escolherModeloDoProvedor } from "@/lib/ai/agents/escolher-modelo";
-import { chaveDePlataforma } from "@/lib/ai/runtime/agent";
 import { catalogoComHandler } from "@/lib/ai/agents/capacidades-padrao";
 import { ligarPacote, TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
 import { carregarConexaoLocadora } from "@/lib/moope/cliente-locadora";
@@ -181,7 +180,9 @@ async function resolverPublicacao(
     .limit(1)
     .maybeSingle();
   const credentialId = (credencial?.id as string | undefined) ?? null;
-  const temChave = Boolean(credentialId) || Boolean(chaveDePlataforma(provider));
+  // Só a chave da empresa, em Credenciais. A chave da instalação não publica
+  // este assistente — o token do atendimento não sai da Moope.
+  const temChave = Boolean(credentialId);
 
   if (!(await canalLivre(admin, orgId, canal.id, excetoAgentId))) {
     return {

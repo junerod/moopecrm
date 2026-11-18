@@ -6,6 +6,7 @@ import {
   lookupLocatario,
   urlDaApiDaLocadora,
 } from "@/lib/moope/cliente-locadora";
+import { enderecoDeLeitura } from "@/lib/moope/origem-da-leitura";
 
 vi.mock("@/lib/webhooks/secrets", () => ({
   decryptWebhookSecret: vi.fn(async () => "segredo-saida"),
@@ -47,6 +48,12 @@ describe("urlDaApiDaLocadora", () => {
         partner_webhook_url: "https://outro/hooks",
       }),
     ).toBe("https://frota.exemplo");
+    expect(
+      enderecoDeLeitura({
+        partner_api_url: "https://frota.exemplo/",
+        partner_webhook_url: "https://outro/hooks",
+      }).veioDe,
+    ).toBe("api");
   });
 
   it("sem campo, usa a origem do webhook", () => {

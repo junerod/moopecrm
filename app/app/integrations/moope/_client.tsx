@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copyToClipboard } from "@/lib/clipboard";
+import { ABA_COMO_USAR } from "@/lib/moope/guia-integracao";
+import { enderecoDeLeitura } from "@/lib/moope/origem-da-leitura";
+
+import { GuiaIntegracaoMoope } from "./guia";
 
 type Kind = "locadora" | "juridico";
 
@@ -40,6 +45,7 @@ export function MoopeConnectionClient() {
   const [apiUrlEdit, setApiUrl] = useState<string | null>(null);
   const [segredos, setSegredos] = useState<{ inbound?: string; outbound?: string } | null>(null);
   const [pendente, setPendente] = useState(false);
+  const [aba, setAba] = useState("conexao");
 
   const consulta = useQuery({
     queryKey: ["moope-connection"],
@@ -121,7 +127,14 @@ export function MoopeConnectionClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <Tabs value={aba} onValueChange={setAba} className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="conexao">Conexão</TabsTrigger>
+        <TabsTrigger value={ABA_COMO_USAR} data-testid="aba-como-usar">
+          Como o cliente pergunta
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="conexao" className="space-y-4">
       {segredos?.inbound || segredos?.outbound ? (
         <Card className="border-amber-500/40">
           <CardHeader>
@@ -152,22 +165,13 @@ export function MoopeConnectionClient() {
             {conexao ? <Badge variant="secondary">{conexao.status}</Badge> : null}
           </CardTitle>
           <CardDescription>
-            O outro produto declara se é locadora ou jurídico. A URL pública
-            deste CRM é o domínio desta instalação.
+            Locadora não cola endereço aqui. O Ligar agora, na aba Atendimento
+            da frota, manda o endereço, a chave e o segredo. Esta tela só
+            confere de onde o atendimento lê.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {conexao?.public_url ? (
-            <p className="text-sm">
-              <span className="font-medium">URL deste CRM:</span>{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs">{conexao.public_url}</code>
-            </p>
-          ) : null}
-          {conexao ? (
-            <p className="text-sm text-muted-foreground">
-              Prefixo da chave: <code>{conexao.inbound_key_prefix}</code>
-            </p>
-          ) : null}
+          {kind === "locadora" ? <ConferenciaDaFrota conexao={conexao} /> : null}
 
           <div className="space-y-2">
             <Label htmlFor="kind">Tipo do parceiro</Label>
@@ -182,31 +186,8 @@ export function MoopeConnectionClient() {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="webhook">Webhook do parceiro (eventos que o CRM manda)</Label>
-            <Input
-              id="webhook"
-              placeholder="https://frota.exemplo/api/crm/events"
-              value={webhook}
-              onChange={(e) => setWebhook(e.target.value)}
-            />
-          </div>
-
-          {kind === "locadora" ? (
-            <div className="space-y-2">
-              <Label htmlFor="api-url">URL da API da locadora</Label>
-              <Input
-                id="api-url"
-                placeholder="https://frota.exemplo"
-                value={apiUrl}
-                onChange={(e) => setApiUrl(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                De onde o atendimento lê cadastro e o link do boleto. Se ficar
-                vazio, usa o domínio do webhook. Sem isto o agente não consulta
-                a locadora.
-              </p>
-            </div>
+          {kind === "juridico" ? (
+            <CampoWebhook webhook={webhook} onChange={setWebhook} />
           ) : null}
 
           {conexao?.agente && kind === "locadora" ? (
@@ -229,12 +210,14 @@ export function MoopeConnectionClient() {
           ) : null}
 
           <p className="text-xs text-muted-foreground">
-            A chave mop_ só aparece ao criar ou ao clicar em Nova chave.
-            Tem botão Copiar. O caminho sem cola é a locadora chamar
-            POST /provision (segredo da instalação).
+            A chave mop_ só aparece ao criar ou ao girar, e some em seguida.
+            Na frota ela nem passa por esta tela: o Ligar agora grava os dois lados.
           </p>
           <div className="flex flex-wrap gap-2">
-            {conexao ? (
+            <Button type="button" variant="secondary" onClick={() => setAba(ABA_COMO_USAR)}>
+              Ver exemplos de pergunta
+            </Button>
+            {kind === "locadora" && !conexao ? null : conexao ? (
               <>
                 <Button disabled={pendente} onClick={() => void salvar()}>
                   Salvar
@@ -271,8 +254,89 @@ export function MoopeConnectionClient() {
               </Button>
             )}
           </div>
+          {kind === "locadora" ? (
+            <details className="rounded-md border border-border px-3 py-2 text-sm">
+              <summary className="cursor-pointer text-muted-foreground">
+                Ajuste manual — só se o suporte pedir
+              </summary>
+              <div className="mt-3 space-y-3">
+                <CampoWebhook webhook={webhook} onChange={setWebhook} />
+                <div className="space-y-2">
+                  <Label htmlFor="api-url">URL da API da locadora</Label>
+                  <Input
+                    id="api-url"
+                    placeholder="https://frotas.moope.com.br"
+                    value={apiUrl}
+                    onChange={(e) => setApiUrl(e.target.value)}
+                  />
+                </div>
+                <Button disabled={pendente} variant="outline" onClick={() => void (conexao ? salvar() : criar())}>
+                  {conexao ? "Salvar endereço" : "Criar conexão"}
+                </Button>
+              </div>
+            </details>
+          ) : null}
         </CardContent>
       </Card>
+      </TabsContent>
+      <TabsContent value={ABA_COMO_USAR}>
+        <GuiaIntegracaoMoope />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function ConferenciaDaFrota({ conexao }: { conexao: Conexao | null }) {
+  if (!conexao) {
+    return (
+      <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="frota-sem-ligacao">
+        <p className="font-medium text-amber-950 dark:text-amber-100">Ainda não chegou da locadora</p>
+        <p className="leading-relaxed text-amber-950/80 dark:text-amber-100/80">
+          Não cole webhook nem endereço aqui. Na locadora, abra Empresa → Integração CRM,
+          aba Atendimento, e clique em Ligar agora. O endereço da sua frota, a chave e o
+          segredo entram sozinhos nos dois lados.
+        </p>
+        <p className="text-xs leading-relaxed text-amber-950/80 dark:text-amber-100/80">
+          O e-mail pedido lá é o desta sessão — o mesmo do canto superior direito, com o
+          nome da empresa embaixo. Não é o login da locadora.
+        </p>
+      </div>
+    );
+  }
+  const leitura = enderecoDeLeitura(conexao);
+  return (
+    <div className="space-y-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm" data-testid="frota-origem">
+      <p className="font-medium">O atendimento lê a frota neste endereço</p>
+      {leitura.base ? (
+        <code className="block break-all rounded bg-background px-2 py-1 text-xs">{leitura.base}</code>
+      ) : (
+        <p>A locadora ligou sem endereço. Volte na aba Atendimento e clique Ligar agora de novo.</p>
+      )}
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {leitura.veioDe === "api"
+          ? "Este endereço veio do Ligar agora. Cadastro, oferta e boleto saem daqui. O webhook não se preenche nesta tela."
+          : leitura.veioDe === "webhook"
+            ? "A locadora não mandou a URL da API. O CRM está usando o domínio do aviso de volta. Confira se é a frota certa."
+            : "Sem este endereço o bot não consulta carro, boleto nem cadastro."}
+      </p>
+    </div>
+  );
+}
+
+function CampoWebhook({ webhook, onChange }: { webhook: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="webhook">Webhook do parceiro (avisos que o CRM manda de volta)</Label>
+      <Input
+        id="webhook"
+        placeholder="https://frotas.moope.com.br/api/crm/events"
+        value={webhook}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <p className="text-xs text-muted-foreground">
+        Não é daqui que sai o preço do carro. É só o aviso de conversa aberta e card movido.
+        Vazio, esses avisos não saem e a consulta continua.
+      </p>
     </div>
   );
 }
