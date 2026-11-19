@@ -102,6 +102,7 @@ export const EXEMPLOS_DE_PERGUNTA: readonly ExemploDePergunta[] = [
     id: "oferta",
     fonte: "oferta",
     ferramenta: "moope_listar_oferta",
+    acompanha: ["moope_consultar_disponibilidade"],
     titulo: "Quais carros estão disponíveis",
     pergunta: "Quais carros vocês têm disponível?",
     resposta:
@@ -109,7 +110,7 @@ export const EXEMPLOS_DE_PERGUNTA: readonly ExemploDePergunta[] = [
     tom: "emerald",
     passo: PASSO_BOT,
     limite:
-      "Sai o que a página de ofertas da gestão mandar: modelo, situação e preço, se o preço vier. O bot lista até 8. Sem preço no retorno, ninguém inventa valor. Não filtra por lugares nem por data.",
+      "O bot lista a página de ofertas, até 8, sem filtrar por data nem por lugares. No assistente, se a pessoa disse as datas, a consulta de disponibilidade responde sim ou não e um preço. Ela não devolve quantos carros cabem 5 pessoas nem o dia em que um alugado volta. Se não trouxer sim ou não, a conversa passa para a equipe com as datas já ditas, sem perguntar se pode confirmar. Sem preço no retorno, ninguém inventa valor.",
   },
   {
     id: "cliente",

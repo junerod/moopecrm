@@ -19,6 +19,8 @@ describe("exemplo do assistente da locadora", () => {
     expect(PROMPT_EXEMPLO_LOCADORA.length).toBeGreaterThan(400);
     expect(PROMPT_EXEMPLO_LOCADORA.length).toBeLessThan(20000);
     expect(PROMPT_EXEMPLO_LOCADORA).toMatch(/NUNCA invente/);
+    expect(PROMPT_EXEMPLO_LOCADORA).toMatch(/moope_consultar_disponibilidade/);
+    expect(PROMPT_EXEMPLO_LOCADORA).toMatch(/Não pergunte se pode confirmar a disponibilidade/);
     expect(PROMPT_EXEMPLO_LOCADORA).toMatch(/boleto/);
     expect(promptDoExemploEstaPelado(PROMPT_EXEMPLO_LOCADORA)).toBe(false);
     expect(promptDoExemploEstaPelado("Você é um atendente. Responda de forma educada e clara.")).toBe(true);

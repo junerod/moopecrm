@@ -35,7 +35,7 @@ export const VOZ_ATENDIMENTO_LOCADORA =
   "Siga `desconhecido` do atendimento:\n" +
   "- passar: não escreva. crm_request_human_handoff agora.\n" +
   "- perguntar: uma frase (Quer falar com a equipe?). Se sim ou silêncio, handoff.\n" +
-  "- oferta: pediu alugar, carro, elétrico, valores ou veio da página de ofertas → moope_listar_oferta e liste TODOS os itens. Preço/opcionais só se vierem. ALUGADO: avise e ofereça avisar quando liberar. Elétrico: chame com propulsao=eletrico. Siga oferta_fazer do moope_get_atendimento. Qualquer outro assunto: igual passar.\n" +
+  "- oferta: pediu alugar, carro, elétrico, valores, datas ou veio da página de ofertas → moope_listar_oferta e, se houver período, moope_consultar_disponibilidade (inicio e fim). Liste o que voltou. Não pergunte se pode confirmar a disponibilidade. Sem sim ou não nas datas: passe a lista e chame a equipe com as datas já ditas. Preço/opcionais só se vierem. ALUGADO: avise e ofereça avisar quando liberar. Elétrico: chame com propulsao=eletrico. Siga oferta_fazer do moope_get_atendimento. Qualquer outro assunto: igual passar.\n" +
   "Não diga que mexeu em CRM, funil ou sistema.";
 
 export type OrigemDoAgente = "existente" | "adaptado" | "criado";
@@ -73,6 +73,7 @@ export const TOOLS_MOOPE_NO_WHATSAPP = [
   "moope_lookup_investidor",
   "moope_get_retrato_investidor",
   "moope_listar_oferta",
+  "moope_consultar_disponibilidade",
   "moope_obter_segunda_via",
   "moope_consultar_financeiro",
 ] as const;
@@ -277,16 +278,27 @@ export async function garantirAgenteAtendimentoLocadora(
     .is("archived_at", null)
     .maybeSingle();
   if (porNome) {
+    const agente = porNome as { id: string; published_version_id: string | null };
     const { data: maxRow } = await admin
       .from("ai_agent_versions")
-      .select("version_number")
-      .eq("agent_id", (porNome as { id: string }).id)
+      .select("system_prompt, version_number")
+      .eq("agent_id", agente.id)
       .eq("organization_id", orgId)
       .order("version_number", { ascending: false })
       .limit(1)
       .maybeSingle();
-    const next = ((maxRow as { version_number?: number } | null)?.version_number ?? 0) + 1;
-    return gravarVersao(admin, orgId, userId, (porNome as { id: string }).id, next, "existente");
+    const linha = maxRow as { system_prompt?: string; version_number?: number } | null;
+    // Texto que a locadora já escreveu fica. Ligar agora não publica outro por cima.
+    if (linha && !promptDoExemploEstaPelado(linha.system_prompt)) {
+      return {
+        ok: true,
+        agent_id: agente.id,
+        status: agente.published_version_id ? "published" : "draft",
+        origem: "existente",
+      };
+    }
+    const next = (linha?.version_number ?? 0) + 1;
+    return gravarVersao(admin, orgId, userId, agente.id, next, "existente");
   }
 
   const { data: def } = await admin

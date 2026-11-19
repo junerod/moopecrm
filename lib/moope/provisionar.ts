@@ -77,6 +77,41 @@ export function slugDoTenantParceiro(partnerTenantId: string): string {
   return `loc-${limpo || "x"}`.toLowerCase();
 }
 
+/**
+ * Ligar agora manda a URL da tela. Página de painel não é a API.
+ * A origem continua valendo: o GET usa caminho absoluto.
+ */
+export function urlDeLeituraDoProvision(url: string | null | undefined): string | null {
+  const bruto = url?.trim();
+  if (!bruto) return null;
+  try {
+    const u = new URL(bruto);
+    if (u.pathname === "/" || u.pathname === "/dashboard" || u.pathname.startsWith("/dashboard/")) {
+      return u.origin;
+    }
+    return bruto.replace(/\/+$/, "");
+  } catch {
+    return bruto.replace(/\/+$/, "");
+  }
+}
+
+/**
+ * Conexão locadora já existente, ainda sem o id do parceiro.
+ * Uma só: o Ligar agora reabre essa empresa. Duas ou nenhuma: não chuta.
+ */
+export function orfaParaReabrir(
+  conexoesDoDono: Array<{ organization_id: string; partner_tenant_id: string | null; status: string }>,
+): string | null {
+  const ids = [
+    ...new Set(
+      conexoesDoDono
+        .filter((c) => c.status === "active" && (c.partner_tenant_id == null || c.partner_tenant_id === ""))
+        .map((c) => c.organization_id),
+    ),
+  ];
+  return ids.length === 1 ? ids[0] : null;
+}
+
 export function provisionSecretBate(recebido: string | null, esperado: string): boolean {
   if (!esperado || esperado.length < PISO_DO_SEGREDO_DE_PROVISION) return false;
   if (!recebido) return false;
@@ -99,7 +134,89 @@ export async function provisionarTenantLocadora(
   if (ja) {
     return reabrir(admin, ja, pedido);
   }
+  const orfa = await acharOrfaDoDono(admin, pedido.owner_email);
+  if (orfa) {
+    await amarrarOrfa(admin, orfa, pedido);
+    return reabrir(admin, orfa, { ...pedido, rotate_keys: true });
+  }
   return nascer(admin, pedido, partnerTenantId);
+}
+
+async function acharOrfaDoDono(
+  admin: SupabaseClient,
+  email: string,
+): Promise<Awaited<ReturnType<typeof acharPorParceiro>>> {
+  const alvo = email.trim().toLowerCase();
+  if (!alvo) return null;
+  let userId: string | null = null;
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) return null;
+    const achado = data.users.find((u) => u.email?.trim().toLowerCase() === alvo);
+    if (achado) {
+      userId = achado.id;
+      break;
+    }
+    if (data.users.length < 200) break;
+  }
+  if (!userId) return null;
+  const { data: membros } = await admin
+    .from("user_organizations")
+    .select("organization_id")
+    .eq("user_id", userId)
+    .is("revoked_at", null)
+    .not("accepted_at", "is", null);
+  const orgIds = (membros ?? []).map((m) => (m as { organization_id: string }).organization_id);
+  if (orgIds.length === 0) return null;
+  const { data: conexoes } = await admin
+    .from("moope_connections")
+    .select("id, organization_id, partner_tenant_id, status, kind, inbound_key_prefix")
+    .in("organization_id", orgIds)
+    .eq("kind", "locadora")
+    .eq("status", "active");
+  const linhas = (conexoes ?? []) as Array<{
+    id: string;
+    organization_id: string;
+    partner_tenant_id: string | null;
+    status: string;
+    inbound_key_prefix: string | null;
+  }>;
+  const orgId = orfaParaReabrir(linhas);
+  if (!orgId) return null;
+  const conn = linhas.find((c) => c.organization_id === orgId);
+  if (!conn) return null;
+  const { data: org } = await admin
+    .from("organizations")
+    .select("id, slug, display_name")
+    .eq("id", orgId)
+    .maybeSingle();
+  if (!org) return null;
+  return {
+    organization_id: orgId,
+    slug: String((org as { slug: string }).slug),
+    display_name: String((org as { display_name: string }).display_name),
+    connection_id: conn.id,
+    inbound_key_prefix: conn.inbound_key_prefix,
+  };
+}
+
+async function amarrarOrfa(
+  admin: SupabaseClient,
+  orfa: NonNullable<Awaited<ReturnType<typeof acharPorParceiro>>>,
+  pedido: PedidoDeProvisionamento,
+): Promise<void> {
+  if (!orfa.connection_id) return;
+  const patch: Record<string, string> = { partner_tenant_id: pedido.partner_tenant_id.trim() };
+  const webhook = pedido.partner_webhook_url?.trim();
+  const api = urlDeLeituraDoProvision(pedido.partner_api_url);
+  if (webhook) patch.partner_webhook_url = webhook;
+  if (api) patch.partner_api_url = api;
+  const { error } = await admin
+    .from("moope_connections")
+    .update(patch as never)
+    .eq("id", orfa.connection_id)
+    .eq("organization_id", orfa.organization_id);
+  if (error) throw new Error(error.message);
 }
 
 async function acharPorParceiro(
@@ -329,7 +446,7 @@ async function gravarConexao(
     throw new Error("cifra_indisponivel");
   }
   const webhook = args.webhook && args.webhook.length > 0 ? args.webhook : null;
-  const apiUrl = args.apiUrl && args.apiUrl.length > 0 ? args.apiUrl : null;
+  const apiUrl = urlDeLeituraDoProvision(args.apiUrl);
   const { error } = await admin.from("moope_connections").insert({
     organization_id: args.organizationId,
     kind: "locadora",

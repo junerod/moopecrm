@@ -186,6 +186,27 @@ describe("garantirAgenteAtendimentoLocadora", () => {
     expect(r).toMatchObject({ status: "draft", motivo: "sem_chave" });
   });
 
+  it("não reescreve o texto que a locadora já publicou", async () => {
+    vi.mocked(carregarConexaoLocadora).mockResolvedValue({ id: "cx" } as never);
+    const texto =
+      "Você atende a Absoluta. Tabela de dezembro fica com a equipe quando cruza o mês. " +
+      "Nunca invente placa. O restante o comercial confirma.";
+    const estado = {
+      agentes: [
+        {
+          id: "ag-1",
+          name: NOME_AGENTE_ATENDIMENTO_LOCADORA,
+          published_version_id: "v9",
+        },
+      ],
+      versoes: [{ id: "v9", agent_id: "ag-1", version_number: 9, system_prompt: texto }],
+    };
+    const r = await garantirAgenteAtendimentoLocadora(adminDeMemoria(estado) as never, "org", "u");
+    expect(r).toMatchObject({ ok: true, origem: "existente", status: "published", agent_id: "ag-1" });
+    expect(estado.versoes).toHaveLength(1);
+    expect(estado.versoes[0]?.system_prompt).toBe(texto);
+  });
+
   it("adapta o default de loja em vez de publicar o segundo no canal", async () => {
     vi.mocked(carregarConexaoLocadora).mockResolvedValue({ id: "cx" } as never);
     const estado = {

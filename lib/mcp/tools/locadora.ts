@@ -393,7 +393,7 @@ const dispShape = {
 export const moopeConsultarDisponibilidade: McpToolDefinition<typeof dispShape> = {
   name: "moope_consultar_disponibilidade",
   description:
-    "Disponibilidade REAL por período. Nunca use status genérico da frota. Sem período, não afirma.",
+    "Disponibilidade REAL por período. Chame assim que a pessoa disser as datas. Não pergunte se pode confirmar. Nunca use status genérico da frota. Sem período, não afirma.",
   inputSchema: dispShape,
   category: "read",
   requiresRole: "agent",

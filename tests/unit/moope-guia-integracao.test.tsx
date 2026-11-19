@@ -37,7 +37,7 @@ describe("guia da integração Moope", () => {
     for (const ferramenta of TOOLS_LOCADORA) {
       expect(vistas.has(ferramenta.name), ferramenta.name).toBe(true);
     }
-    expect(ferramentasSoDoAtendente()).toContain("moope_consultar_disponibilidade");
+    expect(ferramentasSoDoAtendente()).not.toContain("moope_consultar_disponibilidade");
     expect(ferramentasSoDoAtendente()).not.toContain("moope_listar_oferta");
   });
 
@@ -56,7 +56,7 @@ describe("guia da integração Moope", () => {
     expect(screen.getByTestId("porta-bot").textContent).toMatch(/não gasta chave de IA/i);
     expect(screen.getByTestId("porta-assistente").textContent).toMatch(/Credenciais/);
     expect(screen.getByTestId("exemplo-oferta").textContent).toMatch(/Quais carros vocês têm disponível/);
-    expect(screen.getByTestId("so-atendente").textContent).toMatch(/cabem 5 pessoas/);
+    expect(screen.getByTestId("exemplo-oferta").textContent).toMatch(/cabem 5 pessoas/);
     for (const fonte of FONTES_DE_CONSULTA) {
       expect(screen.getAllByText(rotuloVisivel(fonte)).length).toBeGreaterThan(0);
     }

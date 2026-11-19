@@ -247,12 +247,6 @@ export function GuiaIntegracaoMoope() {
             <li key={nome} className="rounded-lg bg-muted/60 p-3 text-sm">
               <p className="font-medium">{rotuloDaFerramenta(nome)}</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{explicacaoDaFerramenta(nome)}</p>
-              {nome === "moope_consultar_disponibilidade" ? (
-                <p className="mt-2 text-xs leading-relaxed">
-                  Responde sim ou não, mais um preço, para as datas pedidas. Não devolve quantos
-                  carros cabem 5 pessoas nem o dia em que um alugado volta.
-                </p>
-              ) : null}
             </li>
           ))}
         </ul>
