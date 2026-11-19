@@ -109,7 +109,8 @@ export function orfaParaReabrir(
         .map((c) => c.organization_id),
     ),
   ];
-  return ids.length === 1 ? ids[0] : null;
+  const unica = ids[0];
+  return ids.length === 1 && unica ? unica : null;
 }
 
 export function provisionSecretBate(recebido: string | null, esperado: string): boolean {
