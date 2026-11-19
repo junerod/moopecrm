@@ -131,7 +131,7 @@ export function MoopeConnectionClient() {
       <TabsList>
         <TabsTrigger value="conexao">Conexão</TabsTrigger>
         <TabsTrigger value={ABA_COMO_USAR} data-testid="aba-como-usar">
-          Como o cliente pergunta
+          Como ligar e perguntar
         </TabsTrigger>
       </TabsList>
       <TabsContent value="conexao" className="space-y-4">
@@ -165,9 +165,10 @@ export function MoopeConnectionClient() {
             {conexao ? <Badge variant="secondary">{conexao.status}</Badge> : null}
           </CardTitle>
           <CardDescription>
-            Locadora não cola endereço aqui. O Ligar agora, na aba Atendimento
-            da frota, manda o endereço, a chave e o segredo. Esta tela só
-            confere de onde o atendimento lê.
+            Locadora não cola endereço aqui. Na gestão, aba Atendimento, o
+            Ligar agora manda o endereço, a chave e o segredo. Se a empresa já
+            existe, use o e-mail de quem já é membro. O passo a passo dos dois
+            casos está na outra aba.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

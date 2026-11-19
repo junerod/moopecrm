@@ -93,8 +93,62 @@ export const PASSO_CONEXAO: PassoDaTela = {
   href: "/app/integrations/moope",
   tituloDaJanela: "Integração MOOPE · Conexão",
   oQueClicar:
-    "Não cole endereço aqui. Na locadora, aba Atendimento, clique Ligar agora. Esta tela só mostra de onde o atendimento passou a ler.",
+    "Não cole endereço nem chave. Na gestão, aba Atendimento, clique Ligar agora com o e-mail de quem já é desta empresa. A faixa verde daqui mostra o domínio de onde o atendimento lê.",
 };
+
+export interface CasoDeLigacao {
+  id: "nasce-ligada" | "ja-existe";
+  titulo: string;
+  quando: string;
+  ondeDigita: string;
+  passos: readonly string[];
+}
+
+/**
+ * Os dois nascimentos reais. Ligar agora é o único gesto.
+ * Colar painel, chave ou caixa de entrada não liga a frota.
+ */
+export const CASOS_DE_LIGACAO: readonly CasoDeLigacao[] = [
+  {
+    id: "nasce-ligada",
+    titulo: "A empresa nasce já ligada",
+    quando:
+      "A locadora ainda não tem empresa neste CRM, e o e-mail do Ligar agora não é membro de uma empresa que esteja solta.",
+    ondeDigita:
+      "Na gestão, em Empresa → Integração CRM → aba Atendimento. O e-mail e a senha são os deste CRM, não o login da locadora. Não se copia nada de lá para cá.",
+    passos: [
+      "Abra a gestão da locadora. Vá em Empresa → Integração CRM → aba Atendimento.",
+      "Digite o e-mail de quem vai ser o dono aqui e a senha. Se esse e-mail ainda não entra neste CRM, essa senha vira a senha inicial. Se a pessoa já entra, a senha dela não muda.",
+      "Clique em Ligar agora. Deixe os campos de endereço, chave e segredo em branco.",
+      "A gestão grava a chave dos dois lados. Aqui nasce a empresa já com o endereço de leitura.",
+      "Abra Integração MOOPE, aba Conexão. A faixa verde mostra o domínio da gestão, sem /dashboard e sem a página da caixa de entrada.",
+      "O WhatsApp ainda pede o QR em Canais → Conexões. Sem o número, a lista de carros não sai no Zap.",
+    ],
+  },
+  {
+    id: "ja-existe",
+    titulo: "A empresa já existe e ainda não está ligada",
+    quando:
+      "Alguém já criou a empresa aqui, por cadastro ou convite. A gestão ainda não gravou a chave. Colar o endereço do painel deixa a tela preenchida e a frota recusa a leitura.",
+    ondeDigita:
+      "O mesmo lugar: gestão → Empresa → Integração CRM → aba Atendimento. Digita-se só o e-mail e a senha de quem já é membro desta empresa. Nada se copia da gestão para esta tela.",
+    passos: [
+      "Neste CRM, olhe o canto superior direito. O e-mail da sessão e o nome da empresa embaixo são a empresa que vai receber a frota. Essa pessoa já precisa ser membro dela.",
+      "Se estiver em outra empresa, saia e entre com o e-mail da locadora.",
+      "Na gestão, aba Atendimento, digite esse mesmo e-mail e a senha deste CRM. Não é o login da locadora.",
+      "Clique em Ligar agora. Não cole o painel, não cole chave, não cole a caixa de entrada.",
+      "Volte na aba Conexão. A empresa continua a mesma. A faixa verde passa a mostrar o domínio da gestão. O texto do assistente que vocês já escreveram permanece.",
+      "Se aparecer uma empresa nova com nome loc- e um número, o e-mail não era membro da empresa antiga. A antiga segue sem a chave. Entre com o e-mail certo e clique Ligar agora de novo.",
+    ],
+  },
+];
+
+export const O_QUE_NAO_COLAR: readonly string[] = [
+  "Não copie chave, segredo ou endereço da gestão para colar nesta tela. O Ligar agora grava os dois lados.",
+  "Não cole o endereço do painel (o que termina em /dashboard) nem a página da caixa de entrada deste CRM. Isso não é a API da frota.",
+  "Não clique Ligar agora com um e-mail que não é membro da empresa que você quer ligar. Esse clique abre outra empresa.",
+  "Se o mesmo e-mail for membro de duas empresas ainda soltas, o Ligar agora não escolhe entre elas: abre uma nova. Deixe uma só solta.",
+];
 
 /** O que o cliente pode ouvir hoje, no bot e no assistente de exemplo. */
 export const EXEMPLOS_DE_PERGUNTA: readonly ExemploDePergunta[] = [

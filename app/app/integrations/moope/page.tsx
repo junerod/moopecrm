@@ -16,9 +16,11 @@ export default function MoopeIntegrationPage() {
         <div>
           <h1 className="text-xl font-semibold">Integração MOOPE</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            A locadora liga sozinha, na aba Atendimento. Aqui se confere o
-            endereço de onde saem cadastro, oferta e boleto. A aba «Como o
-            cliente pergunta» mostra o bot e o assistente. Para o Facejus só
+            A locadora liga sozinha, na aba Atendimento da gestão. Aqui se
+            confere o endereço de onde saem cadastro, oferta e boleto. A aba
+            «Como ligar e perguntar» tem o passo a passo dos dois começos — a
+            empresa que nasce ligada e a que já existe — e o bot e o
+            assistente. Para o Facejus só
             ler agenda, funil e indicadores, crie
             um token em{" "}
             <Link href="/app/settings/api-tokens" className="underline">

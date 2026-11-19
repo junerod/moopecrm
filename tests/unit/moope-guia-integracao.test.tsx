@@ -57,6 +57,12 @@ describe("guia da integração Moope", () => {
     expect(screen.getByTestId("porta-assistente").textContent).toMatch(/Credenciais/);
     expect(screen.getByTestId("exemplo-oferta").textContent).toMatch(/Quais carros vocês têm disponível/);
     expect(screen.getByTestId("exemplo-oferta").textContent).toMatch(/cabem 5 pessoas/);
+    const ligar = screen.getByTestId("como-ligar").textContent ?? "";
+    expect(ligar).toMatch(/nasce já ligada/i);
+    expect(ligar).toMatch(/já existe e ainda não está ligada/i);
+    expect(ligar).toMatch(/Ligar agora/);
+    expect(ligar).toMatch(/Não copie chave/);
+    expect(ligar).toMatch(/não é o login da locadora/i);
     for (const fonte of FONTES_DE_CONSULTA) {
       expect(screen.getAllByText(rotuloVisivel(fonte)).length).toBeGreaterThan(0);
     }

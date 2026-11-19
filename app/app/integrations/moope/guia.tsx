@@ -3,8 +3,10 @@
 import Link from "next/link";
 
 import {
+  CASOS_DE_LIGACAO,
   EXEMPLO_DE_PESSOA,
   EXEMPLOS_DE_PERGUNTA,
+  O_QUE_NAO_COLAR,
   PASSO_ASSISTENTE,
   PASSO_CONEXAO,
   PASSO_CREDENCIAL,
@@ -117,6 +119,64 @@ export function GuiaIntegracaoMoope() {
 
   return (
     <div className="space-y-6" data-testid="guia-integracao-moope">
+      <section className="space-y-4 rounded-2xl border border-border p-5" data-testid="como-ligar">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--moope-primary)]">
+            Ligar a locadora
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight">
+            Um clique na gestão. Nada se cola nesta tela.
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            O endereço, a chave e o segredo nascem no Ligar agora, na aba
+            Atendimento da gestão. Esta aba Conexão só confere o domínio. Há
+            dois começos. O gesto é o mesmo. Muda só de quem é o e-mail.
+          </p>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {CASOS_DE_LIGACAO.map((caso) => (
+            <article
+              key={caso.id}
+              className={
+                caso.id === "nasce-ligada"
+                  ? "space-y-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4"
+                  : "space-y-3 rounded-xl border border-sky-500/40 bg-sky-500/10 p-4"
+              }
+              data-testid={`caso-${caso.id}`}
+            >
+              <h3 className="text-sm font-semibold">{caso.titulo}</h3>
+              <p className="text-sm leading-relaxed">{caso.quando}</p>
+              <p className="text-sm leading-relaxed">
+                <span className="font-medium">Onde se digita. </span>
+                {caso.ondeDigita}
+              </p>
+              <ol className="list-decimal space-y-1.5 pl-4 text-sm leading-relaxed">
+                {caso.passos.map((passo) => (
+                  <li key={passo}>{passo}</li>
+                ))}
+              </ol>
+            </article>
+          ))}
+        </div>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+          <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+            Para não errar
+          </p>
+          <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-amber-950/90 dark:text-amber-100/90">
+            {O_QUE_NAO_COLAR.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm leading-relaxed text-amber-950/90 dark:text-amber-100/90">
+            Deu certo quando a faixa verde mostra o domínio da gestão. A lista
+            de carros e os preços passam a poder sair. A consulta por data só
+            responde se a gestão devolver sim ou não. Se voltar sessão
+            expirada, o assistente passa as datas para a equipe. Lançar a
+            reserva na tela da gestão, sozinho, não abre essa porta.
+          </p>
+        </div>
+      </section>
+
       <section className="rounded-2xl border border-[color-mix(in_srgb,var(--moope-primary)_28%,transparent)] bg-[var(--moope-primary-bg)] p-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--moope-primary)]">
           Onde a gestão entra na conversa
