@@ -40,7 +40,7 @@ export const TOOLS_LOCADORA = declararTools([
     category: "read",
     rotulo: "Veículos disponíveis",
     explicacao:
-      "Lista a frota da página de ofertas. Se o cliente citou um carro, a consulta vai com o nome. Preço só o que a gestão devolver.",
+      "Lista a frota da página de ofertas. Se o cliente citou um carro, a consulta vai com o nome. Preço, lugares e o dia da volta só o que a gestão devolver.",
     oQueToca: "Página de ofertas da locadora",
     risco: "seguro",
     pacotes: ["organizar"],

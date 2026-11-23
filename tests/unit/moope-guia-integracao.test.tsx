@@ -57,6 +57,8 @@ describe("guia da integração Moope", () => {
     expect(screen.getByTestId("porta-assistente").textContent).toMatch(/Credenciais/);
     expect(screen.getByTestId("exemplo-oferta").textContent).toMatch(/Quais carros vocês têm disponível/);
     expect(screen.getByTestId("exemplo-oferta").textContent).toMatch(/cabem 5 pessoas/);
+    expect(screen.getByTestId("exemplo-oferta").textContent).toMatch(/volta_em/);
+    expect(screen.getByTestId("exemplo-oferta").textContent).not.toMatch(/não devolve quantos/);
     const ligar = screen.getByTestId("como-ligar").textContent ?? "";
     expect(ligar).toMatch(/nasce já ligada/i);
     expect(ligar).toMatch(/já existe e ainda não está ligada/i);

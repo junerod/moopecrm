@@ -66,6 +66,21 @@ describe("pergunta de carro na mensagem", () => {
     const p = lerPerguntaDeFrota("a Saveiro está livre em 02/01?", new Date(2026, 11, 31));
     expect(p?.inicio).toBe("2027-01-02");
   });
+
+  it("pergunta de lugares não precisa do nome do carro", () => {
+    const p = lerPerguntaDeFrota("tem carro para 5 pessoas?", HOJE);
+    expect(p).toMatchObject({ q: null, lugares: 5, querVolta: false, querPreco: false });
+  });
+
+  it("quando a Saveiro volta não vira consulta de data", () => {
+    const p = lerPerguntaDeFrota("quando a Saveiro volta?", HOJE);
+    expect(p).toMatchObject({
+      q: "Saveiro",
+      querVolta: true,
+      querDisponibilidade: false,
+      lugares: null,
+    });
+  });
 });
 
 describe("a resposta nasce da consulta, não do 'vou verificar'", () => {
@@ -138,5 +153,102 @@ describe("a resposta nasce da consulta, não do 'vou verificar'", () => {
     expect(bloco).toMatch(/não trouxe esse valor/);
     expect(bloco).toMatch(/não vira número/);
     expect(bloco).not.toMatch(/150/);
+  });
+
+  it("cinco pessoas: fala só o carro cuja ficha cabe", async () => {
+    const urls: string[] = [];
+    const fetchFn: typeof fetch = async (input) => {
+      const url = String(input);
+      urls.push(url);
+      return new Response(
+        JSON.stringify({
+          data: [
+            { modelo: "Mobi", lugares: 4, valor_diario: 90 },
+            { modelo: "Spin", lugares: "7", valor_diario: 220 },
+            { modelo: "Saveiro", valor_diario: 150 },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const bloco = await blocoDaPerguntaDeFrota(
+      adminCom(CONN) as never,
+      "org-1",
+      "tem carro para 5 pessoas?",
+      HOJE,
+      { fetchFn },
+    );
+    const chamada = new URL(urls[0]!);
+    expect(chamada.pathname).toBe("/api/crm/oferta");
+    expect(chamada.searchParams.get("lugares")).toBe("5");
+    expect(bloco).toMatch(/Spin \(7 lugares\)/);
+    expect(bloco).not.toMatch(/Mobi/);
+    expect(bloco).not.toMatch(/Saveiro/);
+    expect(bloco).toMatch(/Não diga que vai verificar com a equipe/);
+  });
+
+  it("sem lugares na ficha não inventa carro para 5 pessoas", async () => {
+    const fetchFn: typeof fetch = async () =>
+      new Response(JSON.stringify({ data: [{ modelo: "Saveiro", valor_diario: 150 }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    const bloco = await blocoDaPerguntaDeFrota(
+      adminCom(CONN) as never,
+      "org-1",
+      "cabem 5 pessoas?",
+      HOJE,
+      { fetchFn },
+    );
+    expect(bloco).toMatch(/não trouxe quantos lugares/);
+    expect(bloco).toMatch(/Não invente/);
+    expect(bloco).not.toMatch(/Saveiro/);
+  });
+
+  it("diz o dia em que a Saveiro volta e ignora data mal formada", async () => {
+    const urls: string[] = [];
+    const fetchFn: typeof fetch = async (input) => {
+      urls.push(String(input));
+      return new Response(
+        JSON.stringify({
+          data: [
+            { modelo: "Saveiro", status: "ALUGADO", volta_em: "2026-12-02" },
+            { modelo: "Onix", status: "ALUGADO", volta_em: "semana que vem" },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const bloco = await blocoDaPerguntaDeFrota(
+      adminCom(CONN) as never,
+      "org-1",
+      "quando a Saveiro volta?",
+      HOJE,
+      { fetchFn },
+    );
+    expect(new URL(urls[0]!).searchParams.get("q")).toBe("Saveiro");
+    expect(bloco).toMatch(/Saveiro volta em 02\/12\/2026/);
+    expect(bloco).not.toMatch(/Onix/);
+    expect(bloco).toMatch(/Não diga que vai verificar com a equipe/);
+  });
+
+  it("carro alocado com volta_em fala a data na mesma frase", async () => {
+    const fetchFn: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          data: { situacao: "indisponivel", volta_em: "2026-12-02", alternativas: ["Onix"] },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    const bloco = await blocoDaPerguntaDeFrota(
+      adminCom(CONN) as never,
+      "org-1",
+      "a Saveiro está livre de 28/11 a 30/11?",
+      HOJE,
+      { fetchFn },
+    );
+    expect(bloco).toMatch(/não está disponível/);
+    expect(bloco).toMatch(/Volta em 02\/12\/2026/);
+    expect(bloco).toMatch(/Onix/);
   });
 });

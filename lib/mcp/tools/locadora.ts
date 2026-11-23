@@ -180,7 +180,14 @@ const ofertaShape = {
   visao: z
     .enum(["disponiveis", "todos", "alugados_fim"])
     .optional()
-    .describe("Deixe vazio: usa a visão da página de ofertas da locadora."),
+    .describe("Deixe vazio: usa a visão da página de ofertas da locadora. alugados_fim quando a pessoa pergunta quando um carro alugado volta e não citou o modelo."),
+  lugares: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .optional()
+    .describe("Se a pessoa pediu carro para N pessoas ou N lugares, mande N. Vira ?lugares= na gestão."),
 };
 
 export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
@@ -188,6 +195,8 @@ export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
   description:
     "Preço e frota da página de ofertas. Se a pessoa citou um carro, mande esse nome em q (GET /api/crm/oferta?q=). " +
     "Fale só valor_diario, valor_semanal ou valor_mensal. Campo vazio não vira número. Não fale FIPE nem valor de compra. " +
+    "Pediu para N pessoas: mande lugares=N e fale só o item cuja ficha trouxe lugares suficientes. Sem o número, não invente. " +
+    "Carro alugado: se voltar volta_em, diga esse dia. Sem a data, não invente. " +
     "Sem carro citado, chame sem q e liste os itens. Item ALUGADO: diga que está alugado. Lista vazia = passe para a equipe.",
   inputSchema: ofertaShape,
   category: "read",
@@ -198,6 +207,7 @@ export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
       visao: input.visao,
       propulsao: input.propulsao,
       q: input.q,
+      lugares: input.lugares,
     });
     if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined, "lead");
     return {
@@ -205,7 +215,7 @@ export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
       itens: r.itens,
       aviso:
         r.itens.length > 0
-          ? "Fale só valor_diario, valor_semanal e valor_mensal que vierem. Campo vazio: não invente. ALUGADO: não ofereça para hoje. Não fecha contrato."
+          ? "Fale só valor_diario, valor_semanal e valor_mensal que vierem. Campo vazio: não invente. Lugares e volta_em só se vierem na ficha. ALUGADO: não ofereça para hoje. Não fecha contrato."
           : "Nenhum veículo nesta lista. Não invente. Passe para a equipe.",
     };
   },
@@ -427,8 +437,8 @@ export const moopeConsultarDisponibilidade: McpToolDefinition<typeof dispShape> 
         : r.situacao === "disponivel"
           ? "Disponível no período informado pela gestão. Fale só isso."
           : r.alternativas.length > 0
-            ? "Indisponível nesse período. Ofereça só os carros de alternativas. Preço só se vier no item."
-            : "Indisponível nesse período. A gestão não devolveu outro carro. Não invente alternativa.";
+            ? "Indisponível nesse período. Ofereça só os carros de alternativas. Preço só se vier no item. Se voltar volta_em, diga esse dia. Sem a data, não invente."
+            : "Indisponível nesse período. A gestão não devolveu outro carro. Não invente alternativa. Se voltar volta_em, diga esse dia.";
     return {
       encontrado: r.situacao !== "consulta_indisponivel",
       situacao: r.situacao,
@@ -438,6 +448,7 @@ export const moopeConsultarDisponibilidade: McpToolDefinition<typeof dispShape> 
       inicio: r.inicio,
       fim: r.fim,
       preco: r.preco,
+      volta_em: r.volta_em,
       alternativas: r.alternativas,
       aviso,
     };

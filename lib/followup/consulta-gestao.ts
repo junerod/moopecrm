@@ -76,6 +76,11 @@ export function textoDaOferta(itens: OfertaItem[]): ResultadoDaConsulta {
     if (item.valor_diario != null) partes.push(`${reais(item.valor_diario)}/dia`);
     if (item.valor_semanal != null) partes.push(`${reais(item.valor_semanal)}/semana`);
     if (item.valor_mensal != null) partes.push(`${reais(item.valor_mensal)}/mês`);
+    if (item.lugares != null) partes.push(`${item.lugares} lugares`);
+    if (item.volta_em) {
+      const [ano, mes, dia] = item.volta_em.split("-");
+      if (ano && mes && dia) partes.push(`volta em ${dia}/${mes}/${ano}`);
+    }
     if (item.opcionais) partes.push(item.opcionais);
     linhas.push(`• ${partes.join(" — ")}`);
   }

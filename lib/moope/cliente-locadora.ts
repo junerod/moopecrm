@@ -73,6 +73,10 @@ export interface OfertaItem {
   valor_diario: number | null;
   valor_semanal: number | null;
   valor_mensal: number | null;
+  /** Lugares da ficha. Ausente não vira “cabe N pessoas”. */
+  lugares: number | null;
+  /** Dia em que o carro alugado volta, YYYY-MM-DD. Ausente não vira data. */
+  volta_em: string | null;
   status: string | null;
   propulsao: string | null;
   eletrico: boolean;
@@ -264,6 +268,24 @@ function inteiro(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+/** 1 a 20. Fora disso, ou texto, a ficha não trouxe lugares. */
+function lugaresDaFicha(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN;
+  if (!Number.isInteger(n) || n < 1 || n > 20) return null;
+  return n;
+}
+
+/** Só AAAA-MM-DD válido. Qualquer outra forma fica de fora. */
+function dataIso(v: unknown): string | null {
+  const s = texto(v);
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [ano, mes, dia] = s.split("-").map(Number);
+  if (ano == null || mes == null || dia == null) return null;
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  if (d.getUTCFullYear() !== ano || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) return null;
+  return s;
+}
+
 function dinheiro(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN;
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -381,7 +403,7 @@ export async function listarOferta(
   admin: SupabaseClient,
   orgId: string,
   deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
-  filtros: { visao?: string; propulsao?: string; q?: string } = {},
+  filtros: { visao?: string; propulsao?: string; q?: string; lugares?: number } = {},
 ): Promise<ResultadoOferta> {
   const prep = await prepararChamada(admin, orgId);
   if (!prep.ok) return prep;
@@ -389,7 +411,9 @@ export async function listarOferta(
   const visao = String(filtros.visao || "").trim().toLowerCase();
   const propulsao = String(filtros.propulsao || "").trim().toLowerCase();
   const q = consultaQ(filtros.q);
+  const lugares = lugaresDaFicha(filtros.lugares);
   if (q) url.searchParams.set("q", q);
+  if (lugares != null) url.searchParams.set("lugares", String(lugares));
   if (visao === "disponiveis" || visao === "todos" || visao === "alugados_fim") {
     url.searchParams.set("visao", visao);
   }
@@ -414,6 +438,8 @@ export async function listarOferta(
         valor_diario: dinheiro(r.valor_diario),
         valor_semanal: dinheiro(r.valor_semanal),
         valor_mensal: dinheiro(r.valor_mensal),
+        lugares: lugaresDaFicha(r.lugares),
+        volta_em: dataIso(r.volta_em),
         status: status === "ALUGADO" || status === "RESERVADO" ? status : "DISPONIVEL",
         propulsao: texto(r.propulsao),
         eletrico: r.eletrico === true || texto(r.propulsao) === "eletrico",
@@ -515,6 +541,8 @@ export interface DisponibilidadePeriodo {
   inicio: string | null;
   fim: string | null;
   preco: number | null;
+  /** Dia em que o carro indisponível volta. Ausente não vira data. */
+  volta_em: string | null;
   alternativas: AlternativaDeFrota[];
 }
 
@@ -661,6 +689,7 @@ export async function consultarDisponibilidade(
     inicio: texto(r.data.inicio) ?? inicio,
     fim: texto(r.data.fim) ?? fim,
     preco: dinheiro(r.data.preco ?? corpo.preco),
+    volta_em: dataIso(r.data.volta_em ?? corpo.volta_em),
     alternativas,
   };
 }
