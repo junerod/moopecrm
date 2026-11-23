@@ -319,7 +319,8 @@ GET {URL_DA_API}/api/crm/locatario/:id/retrato
 GET {URL_DA_API}/api/crm/locatario/:id/locacoes
 GET {URL_DA_API}/api/crm/locatario/:id/financeiro
 GET {URL_DA_API}/api/crm/locatario/:id/segunda-via
-GET {URL_DA_API}/api/crm/disponibilidade?inicio=&fim=&categoria=&unidade=
+GET {URL_DA_API}/api/crm/oferta?q=&visao=&propulsao=
+GET {URL_DA_API}/api/crm/disponibilidade?inicio=&fim=&q=&categoria=&unidade=
 GET {URL_DA_API}/api/crm/locatario/:id/manutencao
 GET {URL_DA_API}/api/crm/locatario/:id/multas
 GET {URL_DA_API}/api/crm/locatario/:id/sinistros
@@ -332,7 +333,7 @@ X-Moope-Signature: sha256=<hmac de "GET\n" + path + query>
 Bridge v1 é **somente GET**. Sem baixa, sem alterar contrato, sem bloquear veículo.
 Identidade: vínculo persistido → telefone → identificador explícito → CPF/CNPJ.
 Nome sozinho não identifica. 409 = ambíguo; falha fechada.
-Disponibilidade exige período. Status genérico da frota não vira “disponível”.
+Disponibilidade exige período. `q` é o nome do carro que o cliente citou. Sem `q`, a gestão não sabe qual veículo. A resposta traz `situacao` (`disponivel` ou `indisponivel`) e, se indisponível, `alternativas`. A oferta traz `valor_diario`, `valor_semanal` e `valor_mensal`; campo vazio não vira número. Valor FIPE e valor de compra não seguem para o cliente. Status genérico da frota não vira “disponível”.
 Segunda via devolve link já existente — não emite cobrança.
 Mock oficial do contrato: `lib/moope/mock-gestao.ts`. Contrato E2E ≠ Gestão real.
 

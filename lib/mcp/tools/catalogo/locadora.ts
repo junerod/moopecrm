@@ -40,7 +40,7 @@ export const TOOLS_LOCADORA = declararTools([
     category: "read",
     rotulo: "Veículos disponíveis",
     explicacao:
-      "Lista a frota da página de ofertas: preço se existir, elétrico, opcionais e tarja ALUGADO. Sem inventar valor ou fechar contrato.",
+      "Lista a frota da página de ofertas. Se o cliente citou um carro, a consulta vai com o nome. Preço só o que a gestão devolver.",
     oQueToca: "Página de ofertas da locadora",
     risco: "seguro",
     pacotes: ["organizar"],
@@ -103,7 +103,8 @@ export const TOOLS_LOCADORA = declararTools([
     name: "moope_consultar_disponibilidade",
     category: "read",
     rotulo: "Disponibilidade",
-    explicacao: "Consulta disponibilidade real por período. Não usa status genérico da frota.",
+    explicacao:
+      "Consulta se o carro citado está livre nas datas. Se estiver alocado, devolve os outros que a gestão listar.",
     oQueToca: "Agenda da frota",
     risco: "seguro",
     pacotes: ["organizar"],

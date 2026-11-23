@@ -164,7 +164,7 @@ export const EXEMPLOS_DE_PERGUNTA: readonly ExemploDePergunta[] = [
     tom: "emerald",
     passo: PASSO_BOT,
     limite:
-      "O bot lista a página de ofertas, até 8, sem filtrar por data nem por lugares. No assistente, se a pessoa disse as datas, a consulta de disponibilidade responde sim ou não e um preço. Ela não devolve quantos carros cabem 5 pessoas nem o dia em que um alugado volta. Se não trouxer sim ou não, a conversa passa para a equipe com as datas já ditas, sem perguntar se pode confirmar. Sem preço no retorno, ninguém inventa valor.",
+      "O bot lista a página de ofertas, até 8, sem filtrar por data nem por lugares. No assistente, se a pessoa disse o carro e as datas, a consulta manda o nome em q e responde se aquele carro está livre ou alocado. Se vier indisponível, ofereça só os carros de alternativas. Ela não devolve quantos carros cabem 5 pessoas nem o dia em que um alugado volta. Se não trouxer sim ou não, a conversa passa para a equipe com as datas já ditas, sem perguntar se pode confirmar. Sem preço no retorno, ninguém inventa valor.",
   },
   {
     id: "cliente",

@@ -6,6 +6,7 @@ import {
   consultarFinanceiro,
   consultarLocacao,
   consultarMultas,
+  listarOferta,
   listarUnidades,
   lookupLocatario,
   obterSegundaVia,
@@ -94,6 +95,86 @@ describe("contrato mock da Gestão", () => {
     const via = await obterSegundaVia(adminCom(CONN) as never, "org-1", MOCK_LOCATARIO_ID, deps);
     expect(via.ok).toBe(true);
     if (via.ok) expect(via.boleto_url).toBeTruthy();
+  });
+
+  it("manda o nome do carro em q e lê alternativas sem FIPE", async () => {
+    const urls: string[] = [];
+    const fetchFn: typeof fetch = async (input) => {
+      const url = String(input);
+      urls.push(url);
+      const u = new URL(url);
+      if (u.pathname === "/api/crm/oferta") {
+        return new Response(
+          JSON.stringify({
+            data: [
+              {
+                modelo: "Saveiro",
+                valor_diario: 150,
+                valor_semanal: 900,
+                valor_mensal: 2800,
+                valor_fipe: 80000,
+                valor_compra: 50000,
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          data: {
+            situacao: "indisponivel",
+            inicio: u.searchParams.get("inicio"),
+            fim: u.searchParams.get("fim"),
+            alternativas: [{ modelo: "Onix", valor_diario: 180, valor_fipe: 70000 }],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+
+    const oferta = await listarOferta(
+      adminCom(CONN) as never,
+      "org-1",
+      { fetchFn },
+      { q: " Saveiro " },
+    );
+    expect(new URL(urls[0]!).searchParams.get("q")).toBe("Saveiro");
+    expect(oferta.ok).toBe(true);
+    if (oferta.ok) {
+      expect(oferta.itens[0]).toMatchObject({
+        modelo: "Saveiro",
+        valor_diario: 150,
+        valor_semanal: 900,
+        valor_mensal: 2800,
+      });
+      expect(oferta.itens[0]).not.toHaveProperty("valor_fipe");
+      expect(oferta.itens[0]).not.toHaveProperty("valor_compra");
+    }
+
+    const vazio = await listarOferta(adminCom(CONN) as never, "org-1", { fetchFn }, { q: "   " });
+    expect(vazio.ok).toBe(true);
+    expect(new URL(urls[1]!).searchParams.has("q")).toBe(false);
+
+    const disp = await consultarDisponibilidade(
+      adminCom(CONN) as never,
+      "org-1",
+      { inicio: "2026-11-28", fim: "2026-11-30", q: "Saveiro" },
+      { fetchFn },
+    );
+    const chamada = new URL(urls[2]!);
+    expect(chamada.pathname).toBe("/api/crm/disponibilidade");
+    expect(chamada.searchParams.get("q")).toBe("Saveiro");
+    expect(chamada.searchParams.get("inicio")).toBe("2026-11-28");
+    expect(chamada.searchParams.get("fim")).toBe("2026-11-30");
+    expect(disp.ok).toBe(true);
+    if (disp.ok) {
+      expect(disp.situacao).toBe("indisponivel");
+      expect(disp.carro).toBe("Saveiro");
+      expect(disp.alternativas).toEqual([
+        { modelo: "Onix", valor_diario: 180, valor_semanal: null, valor_mensal: null },
+      ]);
+    }
   });
 
   it("disponibilidade exige período e não inventa frota", async () => {

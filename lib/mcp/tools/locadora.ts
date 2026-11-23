@@ -165,6 +165,14 @@ export const moopeGetAtendimento: McpToolDefinition<typeof emptyShape> = {
 };
 
 const ofertaShape = {
+  q: z
+    .string()
+    .min(2)
+    .max(80)
+    .optional()
+    .describe(
+      "Nome do carro que a pessoa citou, como ela falou (ex.: Saveiro). Vira ?q= na gestão. Sem carro citado, omita.",
+    ),
   propulsao: z
     .enum(["eletrico", "combustao", "hibrido"])
     .optional()
@@ -178,9 +186,9 @@ const ofertaShape = {
 export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
   name: "moope_listar_oferta",
   description:
-    "Lista a frota da página de ofertas (modelo, ano, preços se existirem, opcionais, se é elétrico, se está ALUGADO). " +
-    "Quem veio da página de ofertas ou pediu carro/alugar/valores: chame e liste TODOS os itens. Não invente preço. " +
-    "Item ALUGADO: diga que está alugado e ofereça avisar quando liberar. Lista vazia = passe para a equipe.",
+    "Preço e frota da página de ofertas. Se a pessoa citou um carro, mande esse nome em q (GET /api/crm/oferta?q=). " +
+    "Fale só valor_diario, valor_semanal ou valor_mensal. Campo vazio não vira número. Não fale FIPE nem valor de compra. " +
+    "Sem carro citado, chame sem q e liste os itens. Item ALUGADO: diga que está alugado. Lista vazia = passe para a equipe.",
   inputSchema: ofertaShape,
   category: "read",
   requiresRole: "agent",
@@ -189,6 +197,7 @@ export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
     const r = await listarOferta(ctx.supabase, ctx.organizationId, {}, {
       visao: input.visao,
       propulsao: input.propulsao,
+      q: input.q,
     });
     if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined, "lead");
     return {
@@ -196,7 +205,7 @@ export const moopeListarOferta: McpToolDefinition<typeof ofertaShape> = {
       itens: r.itens,
       aviso:
         r.itens.length > 0
-          ? "Liste todos. Preço e opcionais só se vierem no item. ALUGADO: não ofereça para hoje. Depois pergunte se quer a equipe. Não fecha contrato."
+          ? "Fale só valor_diario, valor_semanal e valor_mensal que vierem. Campo vazio: não invente. ALUGADO: não ofereça para hoje. Não fecha contrato."
           : "Nenhum veículo nesta lista. Não invente. Passe para a equipe.",
     };
   },
@@ -386,6 +395,14 @@ export const moopeObterSegundaVia: McpToolDefinition<typeof idShape> = {
 const dispShape = {
   inicio: z.string().min(8).describe("Data início YYYY-MM-DD."),
   fim: z.string().min(8).describe("Data fim YYYY-MM-DD."),
+  q: z
+    .string()
+    .min(2)
+    .max(80)
+    .optional()
+    .describe(
+      "Nome do carro que a pessoa citou (ex.: Saveiro). Obrigatório para dizer se AQUELE carro está livre. Vira ?q= na gestão.",
+    ),
   categoria: z.string().optional(),
   unidade: z.string().optional(),
 };
@@ -393,7 +410,10 @@ const dispShape = {
 export const moopeConsultarDisponibilidade: McpToolDefinition<typeof dispShape> = {
   name: "moope_consultar_disponibilidade",
   description:
-    "Disponibilidade REAL por período. Chame assim que a pessoa disser as datas. Não pergunte se pode confirmar. Nunca use status genérico da frota. Sem período, não afirma.",
+    "Disponibilidade REAL de um carro num período. Chame assim que a pessoa disser as datas. " +
+    "Se ela citou o carro, mande o nome em q (GET /api/crm/disponibilidade?inicio&fim&q=). Sem q a gestão não sabe qual veículo. " +
+    "Leia situacao: disponivel ou indisponivel. Se indisponivel, ofereça só os carros de alternativas. " +
+    "Não pergunte se pode confirmar. Sem período, não afirma.",
   inputSchema: dispShape,
   category: "read",
   requiresRole: "agent",
@@ -401,20 +421,25 @@ export const moopeConsultarDisponibilidade: McpToolDefinition<typeof dispShape> 
   handler: async (input, ctx) => {
     const r = await consultarDisponibilidade(ctx.supabase, ctx.organizationId, input);
     if (!r.ok) return respostaDaFalha(r.codigo, "detalhe" in r ? r.detalhe : undefined, "lead");
+    const aviso =
+      r.situacao === "consulta_indisponivel"
+        ? "Não consegui consultar essa informação agora."
+        : r.situacao === "disponivel"
+          ? "Disponível no período informado pela gestão. Fale só isso."
+          : r.alternativas.length > 0
+            ? "Indisponível nesse período. Ofereça só os carros de alternativas. Preço só se vier no item."
+            : "Indisponível nesse período. A gestão não devolveu outro carro. Não invente alternativa.";
     return {
       encontrado: r.situacao !== "consulta_indisponivel",
       situacao: r.situacao,
+      carro: r.carro,
       categoria: r.categoria,
       unidade: r.unidade,
       inicio: r.inicio,
       fim: r.fim,
       preco: r.preco,
-      aviso:
-        r.situacao === "consulta_indisponivel"
-          ? "Não consegui consultar essa informação agora."
-          : r.situacao === "disponivel"
-            ? "Disponível no período informado pela gestão."
-            : "Indisponível no período informado pela gestão.",
+      alternativas: r.alternativas,
+      aviso,
     };
   },
 };
