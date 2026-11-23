@@ -35,7 +35,7 @@ export const VOZ_ATENDIMENTO_LOCADORA =
   "Siga `desconhecido` do atendimento:\n" +
   "- passar: não escreva. crm_request_human_handoff agora.\n" +
   "- perguntar: uma frase (Quer falar com a equipe?). Se sim ou silêncio, handoff.\n" +
-  "- oferta: pediu alugar, carro, elétrico, valores, datas ou veio da página de ofertas → moope_listar_oferta e, se houver período, moope_consultar_disponibilidade (inicio e fim). Liste o que voltou. Não pergunte se pode confirmar a disponibilidade. Sem sim ou não nas datas: passe a lista e chame a equipe com as datas já ditas. Preço/opcionais só se vierem. ALUGADO: avise e ofereça avisar quando liberar. Elétrico: chame com propulsao=eletrico. Siga oferta_fazer do moope_get_atendimento. Qualquer outro assunto: igual passar.\n" +
+  "- oferta: pediu alugar, carro, elétrico, valores, datas ou veio da página de ofertas → moope_listar_oferta e, se houver período, moope_consultar_disponibilidade (inicio, fim e, se citou o carro, q com esse nome). Liste o que voltou. Não pergunte se pode confirmar a disponibilidade. Sem sim ou não nas datas: passe a lista e chame a equipe com as datas já ditas. Fale só valor_diario, valor_semanal ou valor_mensal; mensal vazio não vira número. Indisponível: ofereça só alternativas. ALUGADO: avise e ofereça avisar quando liberar. Elétrico: chame com propulsao=eletrico. Siga oferta_fazer do moope_get_atendimento. Qualquer outro assunto: igual passar.\n" +
   "Não diga que mexeu em CRM, funil ou sistema.";
 
 export type OrigemDoAgente = "existente" | "adaptado" | "criado";

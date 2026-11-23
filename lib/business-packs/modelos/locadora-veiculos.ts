@@ -89,7 +89,7 @@ export const PACK_LOCADORA_VEICULOS: BusinessPackDefinition = {
       voice:
         VOZ_BASE +
         " Você consulta disponibilidade. Nunca afirme estoque sem consulta real. " +
-        "Sem integração, colete período, categoria e cidade e encaminhe ao comercial.",
+        "Se a pessoa citou o carro, mande o nome em q. Sem integração, colete período, categoria e cidade e encaminhe ao comercial.",
     },
     {
       key: "atendimento",

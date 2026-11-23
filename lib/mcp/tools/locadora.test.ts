@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { locadoraDaFicha } from "@/lib/mcp/tools/contacts";
-import { moopeGetRetrato, moopeLookupLocatario } from "@/lib/mcp/tools/locadora";
+import {
+  moopeConsultarDisponibilidade,
+  moopeGetRetrato,
+  moopeListarOferta,
+  moopeLookupLocatario,
+} from "@/lib/mcp/tools/locadora";
 
 vi.mock("@/lib/moope/cliente-locadora", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/moope/cliente-locadora")>();
@@ -9,10 +14,17 @@ vi.mock("@/lib/moope/cliente-locadora", async (importOriginal) => {
     ...actual,
     lookupLocatario: vi.fn(),
     getRetratoLocatario: vi.fn(),
+    consultarDisponibilidade: vi.fn(),
+    listarOferta: vi.fn(),
   };
 });
 
-import { getRetratoLocatario, lookupLocatario } from "@/lib/moope/cliente-locadora";
+import {
+  consultarDisponibilidade,
+  getRetratoLocatario,
+  listarOferta,
+  lookupLocatario,
+} from "@/lib/moope/cliente-locadora";
 
 const ctx = {
   organizationId: "org-1",
@@ -74,6 +86,75 @@ describe("tools da locadora — o modelo lê código, não exception", () => {
     };
     expect(r.tem_link).toBe(true);
     expect(r.link_para_enviar).toBe("https://asaas.exemplo/b/1");
+  });
+});
+
+describe("carro citado vai no parâmetro q", () => {
+  it("as duas ferramentas oferecem q ao modelo", () => {
+    expect(moopeListarOferta.inputSchema).toHaveProperty("q");
+    expect(moopeConsultarDisponibilidade.inputSchema).toHaveProperty("q");
+    expect(moopeListarOferta.description).toMatch(/\bq\b/);
+    expect(moopeConsultarDisponibilidade.description).toMatch(/alternativas/);
+  });
+
+  it("disponibilidade devolve situacao e as alternativas da gestão", async () => {
+    vi.mocked(consultarDisponibilidade).mockResolvedValue({
+      ok: true,
+      situacao: "indisponivel",
+      carro: "Saveiro",
+      categoria: null,
+      unidade: null,
+      inicio: "2026-11-28",
+      fim: "2026-11-30",
+      preco: null,
+      alternativas: [{ modelo: "Onix", valor_diario: 180, valor_semanal: null, valor_mensal: null }],
+    });
+    const r = await moopeConsultarDisponibilidade.handler(
+      { inicio: "2026-11-28", fim: "2026-11-30", q: "Saveiro" },
+      ctx as never,
+    );
+    expect(consultarDisponibilidade).toHaveBeenCalledWith(
+      ctx.supabase,
+      "org-1",
+      expect.objectContaining({ q: "Saveiro", inicio: "2026-11-28", fim: "2026-11-30" }),
+    );
+    expect(r).toMatchObject({
+      situacao: "indisponivel",
+      carro: "Saveiro",
+      alternativas: [{ modelo: "Onix" }],
+    });
+  });
+
+  it("oferta manda o carro e não inventa mensal ausente", async () => {
+    vi.mocked(listarOferta).mockResolvedValue({
+      ok: true,
+      itens: [
+        {
+          modelo: "Saveiro",
+          marca: null,
+          ano: null,
+          placa: null,
+          valor_diario: 150,
+          valor_semanal: null,
+          valor_mensal: null,
+          status: "DISPONIVEL",
+          propulsao: null,
+          eletrico: false,
+          opcionais: null,
+          foto_url: null,
+        },
+      ],
+    });
+    const r = (await moopeListarOferta.handler({ q: "Saveiro" }, ctx as never)) as {
+      itens: { valor_mensal: number | null }[];
+    };
+    expect(listarOferta).toHaveBeenCalledWith(
+      ctx.supabase,
+      "org-1",
+      {},
+      expect.objectContaining({ q: "Saveiro" }),
+    );
+    expect(r.itens[0]?.valor_mensal).toBeNull();
   });
 });
 

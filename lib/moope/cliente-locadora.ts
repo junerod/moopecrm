@@ -213,6 +213,38 @@ function texto(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
+/** Nome do carro citado pelo cliente. Vira `?q=` na gestão. Vazio não entra na URL. */
+function consultaQ(v: unknown): string | undefined {
+  const s = texto(v);
+  if (!s) return undefined;
+  return s.slice(0, 80);
+}
+
+function alternativasDaResposta(data: Record<string, unknown>): AlternativaDeFrota[] {
+  if (!Array.isArray(data.alternativas)) return [];
+  const itens: AlternativaDeFrota[] = [];
+  for (const item of data.alternativas) {
+    if (typeof item === "string") {
+      const modelo = texto(item);
+      if (modelo) {
+        itens.push({ modelo, valor_diario: null, valor_semanal: null, valor_mensal: null });
+      }
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const modelo = texto(row.modelo) ?? texto(row.nome) ?? texto(row.veiculo);
+    if (!modelo) continue;
+    itens.push({
+      modelo,
+      valor_diario: dinheiro(row.valor_diario),
+      valor_semanal: dinheiro(row.valor_semanal),
+      valor_mensal: dinheiro(row.valor_mensal),
+    });
+  }
+  return itens;
+}
+
 function inteiro(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
@@ -334,13 +366,15 @@ export async function listarOferta(
   admin: SupabaseClient,
   orgId: string,
   deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
-  filtros: { visao?: string; propulsao?: string } = {},
+  filtros: { visao?: string; propulsao?: string; q?: string } = {},
 ): Promise<ResultadoOferta> {
   const prep = await prepararChamada(admin, orgId);
   if (!prep.ok) return prep;
   const url = new URL("/api/crm/oferta", `${prep.base}/`);
   const visao = String(filtros.visao || "").trim().toLowerCase();
   const propulsao = String(filtros.propulsao || "").trim().toLowerCase();
+  const q = consultaQ(filtros.q);
+  if (q) url.searchParams.set("q", q);
   if (visao === "disponiveis" || visao === "todos" || visao === "alugados_fim") {
     url.searchParams.set("visao", visao);
   }
@@ -451,13 +485,22 @@ export interface SegundaViaOficial {
   portal_url: string | null;
 }
 
+export interface AlternativaDeFrota {
+  modelo: string;
+  valor_diario: number | null;
+  valor_semanal: number | null;
+  valor_mensal: number | null;
+}
+
 export interface DisponibilidadePeriodo {
   situacao: "disponivel" | "indisponivel" | "consulta_indisponivel";
+  carro: string | null;
   categoria: string | null;
   unidade: string | null;
   inicio: string | null;
   fim: string | null;
   preco: number | null;
+  alternativas: AlternativaDeFrota[];
 }
 
 export interface UnidadeResumo {
@@ -575,17 +618,19 @@ export async function obterSegundaVia(
 export async function consultarDisponibilidade(
   admin: SupabaseClient,
   orgId: string,
-  filtro: { categoria?: unknown; unidade?: unknown; inicio?: unknown; fim?: unknown },
+  filtro: { categoria?: unknown; unidade?: unknown; inicio?: unknown; fim?: unknown; q?: unknown },
   deps: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
 ): Promise<ResultadoDisponibilidade> {
   const inicio = texto(filtro.inicio);
   const fim = texto(filtro.fim);
   if (!inicio || !fim) return { ok: false, codigo: "entrada_invalida" };
+  const q = consultaQ(filtro.q);
   const r = await getJsonAutenticado(admin, orgId, "/api/crm/disponibilidade", deps, {
     categoria: texto(filtro.categoria) ?? undefined,
     unidade: texto(filtro.unidade) ?? undefined,
     inicio,
     fim,
+    q,
   });
   if (!r.ok) return r;
   const raw = texto(r.data.situacao)?.toLowerCase();
@@ -596,11 +641,13 @@ export async function consultarDisponibilidade(
   return {
     ok: true,
     situacao,
+    carro: texto(r.data.modelo) ?? texto(r.data.q) ?? q ?? null,
     categoria: texto(r.data.categoria),
     unidade: texto(r.data.unidade),
     inicio: texto(r.data.inicio) ?? inicio,
     fim: texto(r.data.fim) ?? fim,
     preco: dinheiro(r.data.preco),
+    alternativas: alternativasDaResposta(r.data),
   };
 }
 
