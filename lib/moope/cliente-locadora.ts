@@ -220,10 +220,25 @@ function consultaQ(v: unknown): string | undefined {
   return s.slice(0, 80);
 }
 
+function situacaoDaGestao(v: unknown): "disponivel" | "indisponivel" | "consulta_indisponivel" {
+  const bruto = texto(v);
+  if (!bruto) return "consulta_indisponivel";
+  const n = bruto.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  if (n === "disponivel" || n === "livre") return "disponivel";
+  if (n === "indisponivel" || n === "alugado" || n === "alocado" || n === "reservado") return "indisponivel";
+  if (n === "consulta_indisponivel") return "consulta_indisponivel";
+  return "consulta_indisponivel";
+}
+
 function alternativasDaResposta(data: Record<string, unknown>): AlternativaDeFrota[] {
-  if (!Array.isArray(data.alternativas)) return [];
+  const lista = Array.isArray(data.alternativas)
+    ? data.alternativas
+    : Array.isArray(data.carros)
+      ? data.carros
+      : [];
+  if (lista.length === 0) return [];
   const itens: AlternativaDeFrota[] = [];
-  for (const item of data.alternativas) {
+  for (const item of lista) {
     if (typeof item === "string") {
       const modelo = texto(item);
       if (modelo) {
@@ -633,11 +648,10 @@ export async function consultarDisponibilidade(
     q,
   });
   if (!r.ok) return r;
-  const raw = texto(r.data.situacao)?.toLowerCase();
-  const situacao =
-    raw === "disponivel" || raw === "indisponivel" || raw === "consulta_indisponivel"
-      ? raw
-      : "consulta_indisponivel";
+  const corpo = r.json && typeof r.json === "object" ? (r.json as Record<string, unknown>) : {};
+  const situacao = situacaoDaGestao(r.data.situacao ?? corpo.situacao);
+  const comAlternativas = alternativasDaResposta(r.data);
+  const alternativas = comAlternativas.length > 0 ? comAlternativas : alternativasDaResposta(corpo);
   return {
     ok: true,
     situacao,
@@ -646,8 +660,8 @@ export async function consultarDisponibilidade(
     unidade: texto(r.data.unidade),
     inicio: texto(r.data.inicio) ?? inicio,
     fim: texto(r.data.fim) ?? fim,
-    preco: dinheiro(r.data.preco),
-    alternativas: alternativasDaResposta(r.data),
+    preco: dinheiro(r.data.preco ?? corpo.preco),
+    alternativas,
   };
 }
 
