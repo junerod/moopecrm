@@ -9,7 +9,10 @@ export type AssessorCall = {
 /**
  * Fala com o Meu Assessor (whitelist ou aviso). Segredo fica no servidor.
  */
-export async function chamarAssessor(body: Record<string, unknown>): Promise<AssessorCall> {
+export async function chamarAssessor(
+  body: Record<string, unknown>,
+  timeoutMs = 8000,
+): Promise<AssessorCall> {
   const secret = env.ASSESSOR_PARTNER_SECRET.trim();
   const base = env.ASSESSOR_BASE_URL.replace(/\/$/, "");
   if (!secret) return { ok: false, error: "secret_missing" };
@@ -21,7 +24,7 @@ export async function chamarAssessor(body: Record<string, unknown>): Promise<Ass
       "x-assessor-moope-secret": secret,
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const json = (await res.json().catch(() => ({}))) as {
     error?: string;
