@@ -19,6 +19,8 @@ function oferta(parcial: Partial<OfertaItem> = {}): OfertaItem {
     valor_diario: null,
     valor_semanal: null,
     valor_mensal: null,
+    lugares: null,
+    volta_em: null,
     status: "DISPONIVEL",
     propulsao: null,
     eletrico: false,
@@ -64,6 +66,13 @@ describe("texto da consulta à gestão", () => {
     const r = textoDaOferta([oferta({ valor_diario: 120, status: "ALUGADO" })]);
     expect(r.texto).toContain("R$ 120,00/dia");
     expect(r.texto).toContain("alugado");
+  });
+
+  it("escreve lugares e o dia da volta só quando a ficha trouxe", () => {
+    const r = textoDaOferta([oferta({ lugares: 5, volta_em: "2026-12-02", status: "ALUGADO" })]);
+    expect(r.texto).toContain("5 lugares");
+    expect(r.texto).toContain("volta em 02/12/2026");
+    expect(textoDaOferta([oferta()]).texto).not.toContain("lugares");
   });
 
   it("lista vazia não vira mensagem", () => {

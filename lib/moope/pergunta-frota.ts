@@ -29,14 +29,20 @@ const PARADA = new Set([
   "me", "te", "voce", "ele", "ela", "esse", "essa", "isso", "nao", "sim", "ta", "vai",
   "disponibilidade", "horario", "pode", "poderia", "saber", "dizer", "informar",
   "consulta", "consultar", "reservado", "reservada",
+  "pessoas", "pessoa", "lugares", "lugar", "cabe", "cabem", "caber",
+  "volta", "voltam", "voltar", "libera", "liberar", "quando", "quantos", "quantas",
 ]);
 
 export interface PerguntaDeFrota {
-  q: string;
+  q: string | null;
   inicio: string | null;
   fim: string | null;
   querPreco: boolean;
   querDisponibilidade: boolean;
+  /** “para 5 pessoas” / “5 lugares”. Sem o número, a pergunta não é de lugares. */
+  lugares: number | null;
+  /** “quando volta” / “quando libera”. */
+  querVolta: boolean;
 }
 
 function semAcento(s: string): string {
@@ -93,19 +99,37 @@ function nomeDoCarro(texto: string): string | null {
   return nomes.join(" ").slice(0, 80);
 }
 
+/** 1 a 20 pessoas ou lugares. “5 dias” não entra. */
+function lugaresDaMensagem(texto: string): number | null {
+  const n = semAcento(texto);
+  const padroes = [
+    /\b(\d{1,2})\s*(?:pessoas|pessoa|lugares|lugar)\b/,
+    /\b(?:cabem|cabe)\s*(\d{1,2})\b/,
+    /\b(?:para|pra)\s*(\d{1,2})\s*(?:pessoas|pessoa|lugares|lugar)\b/,
+  ];
+  for (const re of padroes) {
+    const m = n.match(re);
+    const num = m ? Number(m[1]) : NaN;
+    if (Number.isInteger(num) && num >= 1 && num <= 20) return num;
+  }
+  return null;
+}
+
 export function lerPerguntaDeFrota(texto: string, hoje: Date): PerguntaDeFrota | null {
   const q = nomeDoCarro(texto);
-  if (!q) return null;
   const datas = datasDaMensagem(texto, hoje);
   const ordenadas = [...datas].sort();
   const inicio = ordenadas[0] ?? null;
   const fim = ordenadas.length >= 2 ? ordenadas[ordenadas.length - 1]! : inicio;
   const n = semAcento(texto);
+  const lugares = lugaresDaMensagem(texto);
+  const querVolta = /\b(?:volta|voltam|voltar|libera|liberar)\b/.test(n);
   const querDisponibilidade =
     datas.length > 0 || /disponiv|livre|alugad|alocad|reserv/.test(n);
   const querPreco = /quanto|valor|preco|mensal|semanal|diari/.test(n) || /\bmes\b/.test(n);
-  if (!querDisponibilidade && !querPreco) return null;
-  return { q, inicio, fim, querPreco, querDisponibilidade };
+  if (!q && lugares == null && !querVolta) return null;
+  if (!querDisponibilidade && !querPreco && lugares == null && !querVolta) return null;
+  return { q, inicio, fim, querPreco, querDisponibilidade, lugares, querVolta };
 }
 
 function reais(n: number): string {
@@ -163,10 +187,69 @@ export function fraseDaDisponibilidade(
   const oferta = outros
     ? `Ofereça só estes: ${outros}.`
     : "A frota não apontou outro carro. Não invente um modelo.";
+  const volta =
+    resultado.volta_em != null ? ` Volta em ${diaBr(resultado.volta_em)}.` : "";
   return (
-    `Consulta ao Frotas desta mensagem: ${pergunta.q} não está disponível ${quando}. ` +
+    `Consulta ao Frotas desta mensagem: ${pergunta.q} não está disponível ${quando}.${volta} ` +
     `Responda agora que não está disponível e pergunte se a pessoa quer escolher outro. ${oferta} ` +
     "Não diga que vai verificar com a equipe."
+  );
+}
+
+export function fraseDosLugares(
+  lugares: number,
+  resultado: ResultadoOferta,
+): string {
+  if (!resultado.ok || resultado.itens.length === 0) {
+    return (
+      `A consulta de carro para ${lugares} pessoas não voltou frota. ` +
+      "Não invente um modelo. Aí pode dizer que vai verificar com a equipe."
+    );
+  }
+  const comNumero = resultado.itens.filter((item) => item.lugares != null);
+  if (comNumero.length === 0) {
+    return (
+      `A ficha não trouxe quantos lugares. Não invente um carro para ${lugares} pessoas. ` +
+      "Aí pode dizer que vai verificar com a equipe."
+    );
+  }
+  const cabem = comNumero.filter((item) => (item.lugares ?? 0) >= lugares);
+  if (cabem.length === 0) {
+    const veio = comNumero
+      .map((item) => `${item.modelo} (${item.lugares} lugares)`)
+      .join("; ");
+    return (
+      `Nenhum carro devolvido cabe ${lugares} pessoas. Os que vieram: ${veio}. Não invente outro.`
+    );
+  }
+  const linhas = cabem.slice(0, 4).map((item) => `${item.modelo} (${item.lugares} lugares)`);
+  return (
+    `Para ${lugares} pessoas a gestão devolveu: ${linhas.join("; ")}. ` +
+    "Fale só estes. Não diga que vai verificar com a equipe."
+  );
+}
+
+export function fraseDaVolta(q: string | null, resultado: ResultadoOferta): string {
+  const quem = q ?? "o carro";
+  if (!resultado.ok || resultado.itens.length === 0) {
+    return (
+      `A consulta de quando ${quem} volta não trouxe data. ` +
+      "Não invente o dia. Aí pode dizer que vai verificar com a equipe."
+    );
+  }
+  const comData = resultado.itens.filter((item) => item.volta_em != null);
+  if (comData.length === 0) {
+    return (
+      `A ficha não trouxe o dia em que ${quem} volta. Não invente a data. ` +
+      "Aí pode dizer que vai verificar com a equipe."
+    );
+  }
+  const linhas = comData
+    .slice(0, 4)
+    .map((item) => `${item.modelo} volta em ${diaBr(item.volta_em!)}`);
+  return (
+    `A gestão devolveu a volta: ${linhas.join("; ")}. ` +
+    "Fale só essa data. Não diga que vai verificar com a equipe."
   );
 }
 
@@ -214,7 +297,7 @@ export async function blocoDaPerguntaDeFrota(
   const pergunta = lerPerguntaDeFrota(texto, hoje);
   if (!pergunta) return "";
   const partes: string[] = [];
-  if (pergunta.querDisponibilidade) {
+  if (pergunta.querDisponibilidade && pergunta.q) {
     if (!pergunta.inicio || !pergunta.fim) {
       partes.push(
         `A pessoa perguntou da ${pergunta.q} sem dizer as datas. Peça o dia de início e o de fim. Não diga que vai verificar com a equipe.`,
@@ -229,9 +312,23 @@ export async function blocoDaPerguntaDeFrota(
       partes.push(fraseDaDisponibilidade(pergunta, disp));
     }
   }
-  if (pergunta.querPreco) {
+  if (pergunta.querPreco && pergunta.q) {
     const oferta = await listarOferta(admin, orgId, deps, { q: pergunta.q });
     partes.push(fraseDoPreco(pergunta.q, semAcento(texto), oferta));
+  }
+  if (pergunta.lugares != null) {
+    const oferta = await listarOferta(admin, orgId, deps, {
+      q: pergunta.q ?? undefined,
+      lugares: pergunta.lugares,
+    });
+    partes.push(fraseDosLugares(pergunta.lugares, oferta));
+  }
+  if (pergunta.querVolta && !pergunta.querDisponibilidade) {
+    const oferta = await listarOferta(admin, orgId, deps, {
+      q: pergunta.q ?? undefined,
+      visao: pergunta.q ? undefined : "alugados_fim",
+    });
+    partes.push(fraseDaVolta(pergunta.q, oferta));
   }
   return partes.join("\n");
 }

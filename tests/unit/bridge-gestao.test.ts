@@ -112,6 +112,8 @@ describe("contrato mock da Gestão", () => {
                 valor_diario: 150,
                 valor_semanal: 900,
                 valor_mensal: 2800,
+                lugares: 5,
+                volta_em: "2026-12-02",
                 valor_fipe: 80000,
                 valor_compra: 50000,
               },
@@ -147,6 +149,8 @@ describe("contrato mock da Gestão", () => {
         valor_diario: 150,
         valor_semanal: 900,
         valor_mensal: 2800,
+        lugares: 5,
+        volta_em: "2026-12-02",
       });
       expect(oferta.itens[0]).not.toHaveProperty("valor_fipe");
       expect(oferta.itens[0]).not.toHaveProperty("valor_compra");
