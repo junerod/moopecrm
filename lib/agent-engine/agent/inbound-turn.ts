@@ -124,6 +124,7 @@ import { decidePromise } from '../guardrails/promise/engine';
 import { loadPromiseTable } from '../guardrails/promise/table';
 import { classifyPromise } from '../guardrails/promise/semantic';
 import { expectativaDeAtendimento } from '@/lib/escalacao/disponibilidade';
+import { blocoDaPerguntaDeFrota } from '@/lib/moope/pergunta-frota';
 import { diffCheckpoint } from '@/lib/leads/checkpoint-diff';
 import { emitAgentActivityForContact } from '@/lib/leads/agent-activity';
 import { resolveActiveLeadForContact, type LeadCandidate } from '@/lib/leads/active-lead';
@@ -2662,9 +2663,36 @@ async function executarTurnoDoAgente(
         `Se a mensagem dele responde a isso, chame provide_case_update com este case_id e a informação recebida — ` +
         `NÃO diga que já repassou/avisou o responsável sem chamar a tool.`
       : '';
-  const openingSuffixes = [matchedSkillsBlock, stageHintBlock, splitHint, caseAwaitingLeadBlock].filter(
-    (b) => b !== '',
-  );
+  // A pergunta de carro não espera o modelo lembrar da ferramenta. Sem isto,
+  // "a Saveiro está livre?" virava "vou verificar com a equipe" e a consulta
+  // ao Frotas não saía. O bloco é desta mensagem — fica no sufixo, não no
+  // prefixo cacheável.
+  let frotaBlock = '';
+  const ferramentasDaFrota = agentConfig?.toolIds ?? [];
+  if (
+    ferramentasDaFrota.includes('moope_consultar_disponibilidade') ||
+    ferramentasDaFrota.includes('moope_listar_oferta')
+  ) {
+    try {
+      frotaBlock = await blocoDaPerguntaDeFrota(
+        deps.crmCfg.supabase,
+        tenantId,
+        skillSignal,
+        clock(),
+      );
+    } catch (err) {
+      runLog.warn('consulta da frota nesta mensagem falhou', {
+        error: err instanceof Error ? err.message : 'erro',
+      });
+    }
+  }
+  const openingSuffixes = [
+    matchedSkillsBlock,
+    stageHintBlock,
+    splitHint,
+    caseAwaitingLeadBlock,
+    frotaBlock,
+  ].filter((b) => b !== '');
   const openingText =
     openingSuffixes.length === 0 ? openingBase : `${openingBase}\n\n${openingSuffixes.join('\n\n')}`;
   // Onda 3 (aprimoramento): mídia inbound recente vira part nativa (image/file) SÓ para
